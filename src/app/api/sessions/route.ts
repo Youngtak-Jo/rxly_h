@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { createClient } from "@/lib/supabase/server"
 
 export async function GET() {
   try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const sessions = await prisma.session.findMany({
+      where: { userId: user.id },
       orderBy: { startedAt: "desc" },
       take: 50,
     })
@@ -16,10 +27,20 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const body = await req.json()
 
     const session = await prisma.session.create({
       data: {
+        userId: user.id,
         title: body.title || "New Consultation",
         patientName: body.patientName || null,
         insights: {

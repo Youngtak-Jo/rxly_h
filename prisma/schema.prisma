@@ -10,9 +10,9 @@ datasource db {
 
 model Session {
   id          String        @id @default(uuid())
+  userId      String        @map("user_id")
   title       String?
   patientName String?       @map("patient_name")
-  status      SessionStatus @default(ACTIVE)
   startedAt   DateTime      @default(now()) @map("started_at")
   endedAt     DateTime?     @map("ended_at")
   createdAt   DateTime      @default(now()) @map("created_at")
@@ -24,14 +24,8 @@ model Session {
   checklistItems    ChecklistItem[]
   notes             Note[]
 
+  @@index([userId])
   @@map("sessions")
-}
-
-enum SessionStatus {
-  ACTIVE
-  PAUSED
-  COMPLETED
-  ARCHIVED
 }
 
 enum Speaker {
@@ -120,12 +114,13 @@ model ConsultationRecord {
 }
 
 model Note {
-  id        String     @id @default(uuid())
-  sessionId String     @map("session_id")
-  content   String
-  imageUrls Json       @default("[]") @map("image_urls")
-  source    NoteSource @default(MANUAL)
-  createdAt DateTime   @default(now()) @map("created_at")
+  id           String     @id @default(uuid())
+  sessionId    String     @map("session_id")
+  content      String
+  imageUrls    Json       @default("[]") @map("image_urls")
+  storagePaths Json       @default("[]") @map("storage_paths")
+  source       NoteSource @default(MANUAL)
+  createdAt    DateTime   @default(now()) @map("created_at")
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 

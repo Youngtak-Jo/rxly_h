@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { createClient } from "@supabase/supabase-js"
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function GET(
   req: Request,
@@ -11,7 +17,28 @@ export async function GET(
       where: { sessionId: id },
       orderBy: { createdAt: "asc" },
     })
-    return NextResponse.json(notes)
+
+    // Generate fresh signed URLs for any notes with storage paths
+    const notesWithFreshUrls = await Promise.all(
+      notes.map(async (note) => {
+        const paths = note.storagePaths as string[]
+        if (!paths || paths.length === 0) return note
+
+        const freshUrls: string[] = []
+        for (const path of paths) {
+          const { data } = await supabaseAdmin.storage
+            .from("medical-images")
+            .createSignedUrl(path, 3600)
+          if (data?.signedUrl) {
+            freshUrls.push(data.signedUrl)
+          }
+        }
+
+        return { ...note, imageUrls: freshUrls.length > 0 ? freshUrls : note.imageUrls }
+      })
+    )
+
+    return NextResponse.json(notesWithFreshUrls)
   } catch (error) {
     console.error("Failed to fetch notes:", error)
     return NextResponse.json([], { status: 500 })
@@ -31,6 +58,7 @@ export async function POST(
         sessionId: id,
         content: body.content || "",
         imageUrls: body.imageUrls || [],
+        storagePaths: body.storagePaths || [],
         source: body.source || "MANUAL",
       },
     })

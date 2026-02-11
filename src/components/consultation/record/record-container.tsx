@@ -23,11 +23,39 @@ export function RecordContainer() {
 
     setGenerating(true)
     try {
+      // Fetch doctor notes for record generation
+      let doctorNotes = ""
+      try {
+        const notesRes = await fetch(
+          `/api/sessions/${activeSession.id}/notes`
+        )
+        if (notesRes.ok) {
+          const notes = await notesRes.json()
+          if (notes.length > 0) {
+            doctorNotes = notes
+              .map(
+                (n: { content: string; imageUrls: string[] }) => {
+                  let noteText = n.content
+                  if (n.imageUrls && n.imageUrls.length > 0) {
+                    noteText += `\n[Doctor uploaded ${n.imageUrls.length} medical image(s)]`
+                  }
+                  return noteText
+                }
+              )
+              .filter(Boolean)
+              .join("\n")
+          }
+        }
+      } catch {
+        // Continue without notes
+      }
+
       const res = await fetch("/api/grok/record", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           transcript,
+          doctorNotes,
           insights: { summary, keyFindings },
           sessionId: activeSession.id,
           existingRecord: record,
@@ -76,6 +104,14 @@ export function RecordContainer() {
       console.error("Failed to generate record:", error)
       setGenerating(false)
     }
+  }
+
+  const toStr = (val: unknown): string => {
+    if (val == null) return ""
+    if (typeof val === "string") return val
+    if (Array.isArray(val)) return val.map((v) => (typeof v === "string" ? v : JSON.stringify(v))).join("\n")
+    if (typeof val === "object") return JSON.stringify(val, null, 2)
+    return String(val)
   }
 
   const sections = [
@@ -151,7 +187,7 @@ export function RecordContainer() {
             <RecordSection
               key={key}
               title={title}
-              value={(record?.[key] as string) || ""}
+              value={toStr(record?.[key])}
               onChange={(value) => updateField(key, value)}
               isLoading={isGenerating && !record}
             />

@@ -4,6 +4,8 @@ import { useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useSessionStore } from "@/stores/session-store"
+import { useNoteStore } from "@/stores/note-store"
+import { useInsightsStore } from "@/stores/insights-store"
 import {
   IconPaperclip,
   IconSend,
@@ -81,11 +83,13 @@ export function NoteInputBar() {
     setIsSending(true)
 
     try {
-      // Upload images first
+      // Upload images first (to Supabase Storage)
       const imageUrls: string[] = []
+      const storagePaths: string[] = []
       for (const attachment of attachments) {
         const formData = new FormData()
         formData.append("file", attachment.file)
+        formData.append("sessionId", activeSession.id)
         const res = await fetch("/api/upload", {
           method: "POST",
           body: formData,
@@ -93,18 +97,37 @@ export function NoteInputBar() {
         if (res.ok) {
           const data = await res.json()
           imageUrls.push(data.url)
+          if (data.path) storagePaths.push(data.path)
         }
       }
 
-      // Send note
-      await fetch(`/api/sessions/${activeSession.id}/notes`, {
+      // Send note to DB
+      const noteRes = await fetch(`/api/sessions/${activeSession.id}/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: text.trim(),
           imageUrls,
+          storagePaths,
         }),
       })
+
+      if (noteRes.ok) {
+        const savedNote = await noteRes.json()
+        // Add to client-side note store for immediate UI display
+        useNoteStore.getState().addNote({
+          id: savedNote.id,
+          content: savedNote.content,
+          imageUrls: savedNote.imageUrls || [],
+          storagePaths: savedNote.storagePaths || [],
+          source: savedNote.source,
+          createdAt: savedNote.createdAt,
+        })
+
+        // Trigger immediate AI re-analysis
+        const trigger = useInsightsStore.getState()._noteTrigger
+        if (trigger) trigger()
+      }
 
       setText("")
       setAttachments((prev) => {

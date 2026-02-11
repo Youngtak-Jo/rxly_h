@@ -18,15 +18,15 @@ export interface Insights {
   lastProcessedAt: string | null
 }
 
-export interface ChecklistUpdate {
-  add: { label: string; autoChecked: boolean }[]
-  autoCheck: string[]
-  remove: string[]
+export interface ChecklistOutputItem {
+  label: string
+  checked: boolean
 }
 
 export interface InsightsResponse {
+  title?: string
   summary: string
   keyFindings: string[]
   redFlags: string[]
-  checklistUpdates: ChecklistUpdate
+  checklist: ChecklistOutputItem[]
 }

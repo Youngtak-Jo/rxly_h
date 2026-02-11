@@ -2,11 +2,9 @@
 
 import * as React from "react"
 import {
-  IconActivity,
   IconHelp,
   IconInnerShadowTop,
   IconSettings,
-  IconStethoscope,
 } from "@tabler/icons-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -22,25 +20,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { useUser } from "@/hooks/use-user"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const data = {
-  user: {
-    name: "Dr. Smith",
-    email: "dr.smith@clinic.com",
-    avatar: "",
-  },
-  navMain: [
-    {
-      title: "Consultation",
-      url: "/consultation",
-      icon: IconStethoscope,
-    },
-    {
-      title: "Activity",
-      url: "#",
-      icon: IconActivity,
-    },
-  ],
   navSecondary: [
     {
       title: "Settings",
@@ -56,6 +39,17 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user, loading } = useUser()
+
+  const userData = {
+    name:
+      user?.user_metadata?.full_name ||
+      user?.email?.split("@")[0] ||
+      "User",
+    email: user?.email || "",
+    avatar: user?.user_metadata?.avatar_url || "",
+  }
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -74,12 +68,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain />
         <NavSessions />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        {loading ? (
+          <div className="flex items-center gap-2 p-2">
+            <Skeleton className="h-8 w-8 rounded-lg" />
+            <div className="flex-1 space-y-1">
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          </div>
+        ) : (
+          <NavUser user={userData} />
+        )}
       </SidebarFooter>
     </Sidebar>
   )

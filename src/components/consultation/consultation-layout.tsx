@@ -33,7 +33,7 @@ export function ConsultationLayout() {
 
   if (!activeSession) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
           <IconStethoscope className="h-8 w-8 text-muted-foreground" />
         </div>
@@ -51,12 +51,12 @@ export function ConsultationLayout() {
   }
 
   return (
-    <ResizablePanelGroup orientation="horizontal" className="flex-1">
-      <ResizablePanel defaultSize={65} minSize={40}>
+    <ResizablePanelGroup orientation="horizontal" className="h-full min-h-0">
+      <ResizablePanel defaultSize={60} minSize={30}>
         <CenterPanel />
       </ResizablePanel>
       <ResizableHandle withHandle />
-      <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
+      <ResizablePanel defaultSize={40} minSize={20} maxSize={70}>
         <RightPanel />
       </ResizablePanel>
     </ResizablePanelGroup>

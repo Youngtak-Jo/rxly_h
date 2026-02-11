@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { createClient } from "@/lib/supabase/server"
 
 export async function GET(
   req: Request,
@@ -7,8 +8,17 @@ export async function GET(
 ) {
   const { id } = await params
   try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const session = await prisma.session.findUnique({
-      where: { id },
+      where: { id, userId: user.id },
       include: {
         insights: true,
         record: true,
@@ -34,14 +44,28 @@ export async function PATCH(
 ) {
   const { id } = await params
   try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const existing = await prisma.session.findUnique({
+      where: { id, userId: user.id },
+    })
+    if (!existing) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 })
+    }
+
     const body = await req.json()
     const session = await prisma.session.update({
       where: { id },
       data: {
         title: body.title,
         patientName: body.patientName,
-        status: body.status,
-        endedAt: body.status === "COMPLETED" ? new Date() : undefined,
       },
     })
     return NextResponse.json(session)
@@ -60,6 +84,22 @@ export async function DELETE(
 ) {
   const { id } = await params
   try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const existing = await prisma.session.findUnique({
+      where: { id, userId: user.id },
+    })
+    if (!existing) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 })
+    }
+
     await prisma.session.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error) {

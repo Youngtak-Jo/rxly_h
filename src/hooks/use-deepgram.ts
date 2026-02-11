@@ -10,29 +10,76 @@ import type { Speaker } from "@/types/session"
 
 const SAMPLE_RATE = 16000
 
+/**
+ * Resolve speaker label from raw Deepgram speaker ID.
+ * Reads the store directly (no closure) so the WebSocket handler
+ * always picks up the latest AI-identified mapping.
+ */
+function resolveSpeaker(speakerId: number): Speaker {
+  const { speakerRoleMap } = useTranscriptStore.getState()
+  if (speakerRoleMap[speakerId]) {
+    return speakerRoleMap[speakerId]
+  }
+  return "UNKNOWN"
+}
+
+interface WordInfo {
+  word: string
+  speaker: number
+  start: number
+  end: number
+}
+
+/**
+ * Group consecutive words by speaker so a single Deepgram segment
+ * that contains overlapping speakers is split into per-speaker chunks.
+ */
+function splitBySpeaker(words: WordInfo[]): { speakerId: number; text: string; start: number; end: number }[] {
+  if (words.length === 0) return []
+
+  const chunks: { speakerId: number; text: string; start: number; end: number }[] = []
+  let currentSpeaker = words[0].speaker
+  let currentWords: string[] = [words[0].word]
+  let chunkStart = words[0].start
+  let chunkEnd = words[0].end
+
+  for (let i = 1; i < words.length; i++) {
+    const w = words[i]
+    if (w.speaker !== currentSpeaker) {
+      chunks.push({
+        speakerId: currentSpeaker,
+        text: currentWords.join(" "),
+        start: chunkStart,
+        end: chunkEnd,
+      })
+      currentSpeaker = w.speaker
+      currentWords = [w.word]
+      chunkStart = w.start
+      chunkEnd = w.end
+    } else {
+      currentWords.push(w.word)
+      chunkEnd = w.end
+    }
+  }
+  chunks.push({
+    speakerId: currentSpeaker,
+    text: currentWords.join(" "),
+    start: chunkStart,
+    end: chunkEnd,
+  })
+
+  return chunks
+}
+
 export function useDeepgram() {
   const wsRef = useRef<WebSocket | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const workletNodeRef = useRef<AudioWorkletNode | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const sessionStartTimeRef = useRef<number>(0)
-  const speakerMapRef = useRef<Map<number, Speaker>>(new Map())
 
   const { setRecording, setPaused, setError, setDuration } = useRecordingStore()
-  const { addFinalEntry, setInterimText, clearInterim } = useTranscriptStore()
-  const activeSession = useSessionStore((s) => s.activeSession)
   const { triggerAnalysis } = useLiveInsights()
-
-  const mapSpeaker = useCallback((speakerId: number): Speaker => {
-    if (!speakerMapRef.current.has(speakerId)) {
-      if (speakerMapRef.current.size === 0)
-        speakerMapRef.current.set(speakerId, "DOCTOR")
-      else if (speakerMapRef.current.size === 1)
-        speakerMapRef.current.set(speakerId, "PATIENT")
-      else speakerMapRef.current.set(speakerId, "UNKNOWN")
-    }
-    return speakerMapRef.current.get(speakerId) || "UNKNOWN"
-  }, [])
 
   const startListening = useCallback(async () => {
     try {
@@ -66,6 +113,9 @@ export function useDeepgram() {
       source.connect(workletNode)
       workletNode.connect(audioContext.destination)
 
+      // Capture session ID at connection time (stable for the session)
+      const sessionId = useSessionStore.getState().activeSession?.id || ""
+
       // Open WebSocket to Deepgram
       const params = new URLSearchParams({
         model: "nova-3",
@@ -76,7 +126,8 @@ export function useDeepgram() {
         smart_format: "true",
         language: "en",
         interim_results: "true",
-        utterance_end_ms: "1000",
+        endpointing: "400",
+        utterance_end_ms: "1200",
         vad_events: "true",
       })
 
@@ -87,7 +138,6 @@ export function useDeepgram() {
       wsRef.current = ws
 
       sessionStartTimeRef.current = Date.now()
-      speakerMapRef.current.clear()
 
       ws.onopen = () => {
         setRecording(true)
@@ -110,50 +160,72 @@ export function useDeepgram() {
               data.channel?.alternatives?.[0]?.transcript || ""
             if (!transcript.trim()) return
 
-            const words = data.channel?.alternatives?.[0]?.words || []
-            const speakerId = words[0]?.speaker ?? 0
-            const speaker = mapSpeaker(speakerId)
-            const startTime =
-              (Date.now() - sessionStartTimeRef.current) / 1000 -
-              (data.duration || 0)
-            const endTime =
+            const words: WordInfo[] = (
+              data.channel?.alternatives?.[0]?.words || []
+            ).map((w: { word: string; speaker: number; start: number; end: number }) => ({
+              word: w.word,
+              speaker: w.speaker ?? 0,
+              start: w.start,
+              end: w.end,
+            }))
+
+            const baseTime =
               (Date.now() - sessionStartTimeRef.current) / 1000
 
-            if (data.is_final) {
-              addFinalEntry({
-                id: uuid(),
-                sessionId: activeSession?.id || "",
-                speaker,
-                text: transcript,
-                startTime: Math.max(0, startTime),
-                endTime,
-                confidence:
-                  data.channel?.alternatives?.[0]?.confidence || 0,
-                isFinal: true,
-                createdAt: new Date().toISOString(),
-              })
+            if (data.is_final && words.length > 0) {
+              // Split segment at speaker boundaries
+              const chunks = splitBySpeaker(words)
+              const { addFinalEntry } = useTranscriptStore.getState()
 
-              // Persist to DB (fire-and-forget)
-              if (activeSession?.id) {
-                fetch(`/api/sessions/${activeSession.id}/transcript`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    speaker,
-                    text: transcript,
-                    startTime: Math.max(0, startTime),
-                    endTime,
-                    confidence:
-                      data.channel?.alternatives?.[0]?.confidence || 0,
-                  }),
-                }).catch(console.error)
+              for (const chunk of chunks) {
+                const speaker = resolveSpeaker(chunk.speakerId)
+                const startTime = baseTime - (data.duration || 0) + chunk.start
+                const endTime = baseTime - (data.duration || 0) + chunk.end
+
+                const entry = {
+                  id: uuid(),
+                  sessionId,
+                  speaker,
+                  rawSpeakerId: chunk.speakerId,
+                  text: chunk.text,
+                  startTime: Math.max(0, startTime),
+                  endTime: Math.max(0, endTime),
+                  confidence:
+                    data.channel?.alternatives?.[0]?.confidence || 0,
+                  isFinal: true,
+                  createdAt: new Date().toISOString(),
+                }
+
+                addFinalEntry(entry)
+
+                // Persist to DB (fire-and-forget)
+                if (sessionId) {
+                  fetch(`/api/sessions/${sessionId}/transcript`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      id: entry.id,
+                      speaker,
+                      text: chunk.text,
+                      startTime: Math.max(0, startTime),
+                      endTime: Math.max(0, endTime),
+                      confidence:
+                        data.channel?.alternatives?.[0]?.confidence || 0,
+                    }),
+                  }).catch(console.error)
+                }
               }
-            } else {
+            } else if (!data.is_final) {
+              // Interim: use first word's speaker (best we can do for live preview)
+              const speakerId = words[0]?.speaker ?? 0
+              const speaker = resolveSpeaker(speakerId)
+              const { setInterimText } = useTranscriptStore.getState()
               setInterimText(transcript, speaker)
             }
           }
 
           if (data.type === "UtteranceEnd") {
+            const { clearInterim } = useTranscriptStore.getState()
             clearInterim()
             triggerAnalysis()
           }
@@ -176,18 +248,7 @@ export function useDeepgram() {
       console.error("Failed to start listening:", error)
       setError(message)
     }
-  }, [
-    setRecording,
-    setDuration,
-    setPaused,
-    setError,
-    addFinalEntry,
-    setInterimText,
-    clearInterim,
-    activeSession,
-    mapSpeaker,
-    triggerAnalysis,
-  ])
+  }, [setRecording, setDuration, setPaused, setError, triggerAnalysis])
 
   const stopListening = useCallback(() => {
     if (wsRef.current) {
@@ -207,8 +268,9 @@ export function useDeepgram() {
       streamRef.current = null
     }
     setRecording(false)
+    const { clearInterim } = useTranscriptStore.getState()
     clearInterim()
-  }, [setRecording, clearInterim])
+  }, [setRecording])
 
   const pauseListening = useCallback(() => {
     if (streamRef.current) {

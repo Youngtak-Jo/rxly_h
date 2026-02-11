@@ -4,7 +4,8 @@ import { RECORD_SYSTEM_PROMPT } from "@/lib/prompts"
 
 export async function POST(req: Request) {
   try {
-    const { transcript, insights, sessionId, existingRecord } = await req.json()
+    const { transcript, doctorNotes, insights, sessionId, existingRecord } =
+      await req.json()
 
     if (!transcript?.trim()) {
       return new Response("No transcript provided", { status: 400 })
@@ -14,6 +15,9 @@ export async function POST(req: Request) {
 
     const userContent = [
       `Transcript:\n${transcript}`,
+      doctorNotes?.trim()
+        ? `\nDoctor's notes (inline annotations during consultation):\n${doctorNotes}`
+        : "",
       insights
         ? `\nCurrent insights:\n${JSON.stringify(insights, null, 2)}`
         : "",
