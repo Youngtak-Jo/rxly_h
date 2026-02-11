@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Session {
+  id          String        @id @default(uuid())
+  title       String?
+  patientName String?       @map("patient_name")
+  status      SessionStatus @default(ACTIVE)
+  startedAt   DateTime      @default(now()) @map("started_at")
+  endedAt     DateTime?     @map("ended_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  transcriptEntries TranscriptEntry[]
+  insights          Insights?
+  record            ConsultationRecord?
+  checklistItems    ChecklistItem[]
+  notes             Note[]
+
+  @@map("sessions")
+}
+
+enum SessionStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum Speaker {
+  DOCTOR
+  PATIENT
+  UNKNOWN
+}
+
+model TranscriptEntry {
+  id         String   @id @default(uuid())
+  sessionId  String   @map("session_id")
+  speaker    Speaker
+  text       String
+  startTime  Float    @map("start_time")
+  endTime    Float    @map("end_time")
+  confidence Float    @default(0)
+  isFinal    Boolean  @default(false) @map("is_final")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, startTime])
+  @@map("transcript_entries")
+}
+
+model Insights {
+  id              String    @id @default(uuid())
+  sessionId       String    @unique @map("session_id")
+  summary         String    @default("")
+  keyFindings     Json      @default("[]") @map("key_findings")
+  redFlags        Json      @default("[]") @map("red_flags")
+  lastProcessedAt DateTime? @map("last_processed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("insights")
+}
+
+model ChecklistItem {
+  id            String          @id @default(uuid())
+  sessionId     String          @map("session_id")
+  label         String
+  isChecked     Boolean         @default(false) @map("is_checked")
+  isAutoChecked Boolean         @default(false) @map("is_auto_checked")
+  doctorNote    String?         @map("doctor_note")
+  sortOrder     Int             @default(0) @map("sort_order")
+  source        ChecklistSource @default(AI)
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, sortOrder])
+  @@map("checklist_items")
+}
+
+enum ChecklistSource {
+  AI
+  MANUAL
+}
+
+model ConsultationRecord {
+  id             String   @id @default(uuid())
+  sessionId      String   @unique @map("session_id")
+  date           DateTime @default(now())
+  patientName    String?  @map("patient_name")
+  chiefComplaint String?  @map("chief_complaint")
+  hpiText        String?  @map("hpi_text")
+  rosText        String?  @map("ros_text")
+  pmh            String?
+  socialHistory  String?  @map("social_history")
+  familyHistory  String?  @map("family_history")
+  vitals         Json?
+  physicalExam   String?  @map("physical_exam")
+  labsStudies    String?  @map("labs_studies")
+  assessment     String?
+  plan           String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("consultation_records")
+}
+
+model Note {
+  id        String     @id @default(uuid())
+  sessionId String     @map("session_id")
+  content   String
+  imageUrls Json       @default("[]") @map("image_urls")
+  source    NoteSource @default(MANUAL)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("notes")
+}
+
+enum NoteSource {
+  MANUAL
+  STT
+  IMAGE
+}
