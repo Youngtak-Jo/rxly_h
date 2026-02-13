@@ -124,3 +124,46 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Insights update animations */
+@keyframes insights-breathe {
+  0%, 100% { opacity: 1; filter: blur(0px); }
+  50% { opacity: 0.3; filter: blur(1px); }
+}
+
+.animate-breathe {
+  animation: insights-breathe 1.5s ease-in-out infinite;
+}
+
+@keyframes insights-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.insights-shimmer-overlay {
+  position: relative;
+  overflow: hidden;
+}
+
+.insights-shimmer-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(0.7 0.1 250 / 0.15) 50%,
+    transparent 100%
+  );
+  animation: insights-shimmer 2.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.dark .insights-shimmer-overlay::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(0.6 0.15 250 / 0.18) 50%,
+    transparent 100%
+  );
+}

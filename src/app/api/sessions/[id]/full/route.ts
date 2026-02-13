@@ -23,7 +23,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const [session, transcriptEntries, notes] = await Promise.all([
+    const [session, transcriptEntries, notes, researchMessages] = await Promise.all([
       prisma.session.findUnique({
         where: { id, userId: user.id },
         include: {
@@ -38,6 +38,10 @@ export async function GET(
         orderBy: { startTime: "asc" },
       }),
       prisma.note.findMany({
+        where: { sessionId: id },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.researchMessage.findMany({
         where: { sessionId: id },
         orderBy: { createdAt: "asc" },
       }),
@@ -86,6 +90,7 @@ export async function GET(
       session,
       transcriptEntries,
       notes: notesWithUrls,
+      researchMessages,
     })
   } catch (error) {
     console.error("Failed to fetch full session:", error)

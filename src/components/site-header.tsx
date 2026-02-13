@@ -34,6 +34,7 @@ import {
   IconLayoutSidebarRightCollapse,
 } from "@tabler/icons-react"
 import { ConnectorsDialog } from "@/components/consultation/note-input/connectors-dialog"
+import { ExportDropdown } from "@/components/consultation/export-dropdown"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 
 function formatDuration(seconds: number) {
@@ -283,6 +284,7 @@ export function SiteHeader() {
               )}
             </Button>
           )}
+          <ExportDropdown />
           <ConnectorsDialog />
           {process.env.NODE_ENV === "development" && <SimulationDialog />}
         </div>

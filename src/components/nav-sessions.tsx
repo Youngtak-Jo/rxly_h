@@ -10,12 +10,14 @@ import {
 import { v4 as uuidv4 } from "uuid"
 
 import { useSessionStore } from "@/stores/session-store"
+import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useRecordStore } from "@/stores/record-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useNoteStore } from "@/stores/note-store"
 import { useDdxStore } from "@/stores/ddx-store"
+import { useResearchStore } from "@/stores/research-store"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +55,7 @@ export function NavSessions() {
   const recordingStore = useRecordingStore()
   const noteStore = useNoteStore()
   const ddxStore = useDdxStore()
+  const researchStore = useResearchStore()
 
   const createSession = async () => {
     const tempId = uuidv4()
@@ -75,6 +78,8 @@ export function NavSessions() {
     recordStore.reset()
     recordingStore.reset()
     noteStore.reset()
+    researchStore.reset()
+    useConsultationTabStore.getState().clearAllUnseenUpdates()
 
     try {
       const res = await fetch("/api/sessions", {
@@ -110,7 +115,7 @@ export function NavSessions() {
     try {
       const res = await fetch(`/api/sessions/${sessionId}/full`)
       if (!res.ok) throw new Error("Failed to load session")
-      const { session, transcriptEntries, notes } = await res.json()
+      const { session, transcriptEntries, notes, researchMessages } = await res.json()
 
       transcriptStore.reset()
       insightsStore.reset()
@@ -118,6 +123,8 @@ export function NavSessions() {
       recordStore.reset()
       recordingStore.reset()
       noteStore.reset()
+      researchStore.reset()
+      useConsultationTabStore.getState().clearAllUnseenUpdates()
 
       setActiveSession(session)
 
@@ -187,6 +194,20 @@ export function NavSessions() {
           }))
         )
       }
+
+      if (researchMessages?.length > 0) {
+        researchStore.loadFromDB(
+          researchMessages.map(
+            (m: { id: string; role: string; content: string; citations: unknown; createdAt: string }) => ({
+              id: m.id,
+              role: m.role as "user" | "assistant",
+              content: m.content,
+              citations: (typeof m.citations === "string" ? JSON.parse(m.citations) : m.citations) || [],
+              createdAt: m.createdAt,
+            })
+          )
+        )
+      }
     } catch (error) {
       console.error("Failed to load session:", error)
     } finally {
@@ -205,6 +226,8 @@ export function NavSessions() {
         ddxStore.reset()
         recordStore.reset()
         noteStore.reset()
+        researchStore.reset()
+        useConsultationTabStore.getState().clearAllUnseenUpdates()
       }
     } catch (error) {
       console.error("Failed to delete session:", error)

@@ -24,6 +24,7 @@ model Session {
   checklistItems    ChecklistItem[]
   diagnoses         Diagnosis[]
   notes             Note[]
+  researchMessages  ResearchMessage[]
 
   @@index([userId])
   @@map("sessions")
@@ -135,6 +136,20 @@ enum NoteSource {
   MANUAL
   STT
   IMAGE
+}
+
+model ResearchMessage {
+  id        String   @id @default(uuid())
+  sessionId String   @map("session_id")
+  role      String   // "user" or "assistant"
+  content   String
+  citations Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("research_messages")
 }
 
 enum DiagnosisConfidence {

@@ -17,6 +17,7 @@ import { useInsightsAutoSave } from "@/hooks/use-insights-autosave"
 import { useDdxAutoSave } from "@/hooks/use-ddx-autosave"
 import { useLiveDdx } from "@/hooks/use-live-ddx"
 import { useLiveRecord } from "@/hooks/use-live-record"
+import { useUnseenUpdateTracker } from "@/hooks/use-unseen-update-tracker"
 import { IconStethoscope, IconLoader2 } from "@tabler/icons-react"
 import { v4 as uuidv4 } from "uuid"
 
@@ -33,6 +34,7 @@ export function ConsultationLayout() {
   useDdxAutoSave()
   useLiveDdx()
   useLiveRecord()
+  useUnseenUpdateTracker()
 
   const toggleRightPanel = useCallback(() => {
     const panel = rightPanelRef.current
