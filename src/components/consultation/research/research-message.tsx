@@ -51,7 +51,7 @@ export function ResearchMessageBubble({
   return (
     <div>
       {message.content ? (
-        <div className="prose dark:prose-invert max-w-none text-sm prose-p:leading-7 prose-p:my-3.5 prose-h2:text-[17px] prose-h2:font-bold prose-h2:mt-8 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-border prose-h3:text-[15px] prose-h3:font-semibold prose-h3:mt-6 prose-h3:mb-3 prose-ul:my-3.5 prose-ol:my-3.5 prose-li:my-1.5 prose-li:leading-7 prose-pre:my-4 prose-pre:rounded-lg prose-blockquote:my-4 prose-blockquote:leading-7 prose-blockquote:border-l-primary prose-hr:my-8 prose-table:my-4 prose-th:py-2.5 prose-th:px-3 prose-td:py-2 prose-td:px-3 prose-strong:font-semibold prose-code:before:content-none prose-code:after:content-none">
+        <div className="research-markdown">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
