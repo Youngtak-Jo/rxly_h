@@ -63,6 +63,7 @@ interface InsightsState {
     diagnoses?: DiagnosisItem[]
   }) => void
   toggleChecklistItem: (id: string) => void
+  addChecklistItem: (label: string, sessionId: string) => void
   removeChecklistItem: (id: string) => void
   updateChecklistNote: (id: string, note: string) => void
   setWordCountAtLastUpdate: (count: number) => void
@@ -188,6 +189,24 @@ export const useInsightsStore = create<InsightsState>((set) => ({
       checklistItems: state.checklistItems.map((item) =>
         item.id === id ? { ...item, isChecked: !item.isChecked } : item
       ),
+      lastUpdated: new Date(),
+    })),
+
+  addChecklistItem: (label, sessionId) =>
+    set((state) => ({
+      checklistItems: [
+        ...state.checklistItems,
+        {
+          id: uuid(),
+          sessionId,
+          label,
+          isChecked: false,
+          isAutoChecked: false,
+          doctorNote: null,
+          sortOrder: state.checklistItems.length,
+          source: "MANUAL" as const,
+        },
+      ],
       lastUpdated: new Date(),
     })),
 
