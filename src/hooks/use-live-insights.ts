@@ -9,13 +9,11 @@ import type { InsightsResponse } from "@/types/insights"
 
 const MIN_NEW_WORDS = 30
 const MIN_INTERVAL_MS = 12000
-const AUTO_SAVE_DEBOUNCE_MS = 2000
 
 export function useLiveInsights() {
   const lastAnalysisTimeRef = useRef<number>(0)
   const abortControllerRef = useRef<AbortController | null>(null)
   const isAnalyzingRef = useRef(false)
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const titleGeneratedRef = useRef(false)
 
   const activeSession = useSessionStore((s) => s.activeSession)
@@ -24,55 +22,6 @@ export function useLiveInsights() {
   useEffect(() => {
     titleGeneratedRef.current = false
   }, [activeSession?.id])
-
-  // Auto-save insights to DB via Zustand subscribe (stable, no dependency churn)
-  useEffect(() => {
-    const unsubscribe = useInsightsStore.subscribe((state, prevState) => {
-      if (state.lastUpdated === prevState.lastUpdated) return
-      const session = useSessionStore.getState().activeSession
-      if (!session || !state.lastUpdated) return
-
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current)
-      }
-
-      autoSaveTimerRef.current = setTimeout(() => {
-        fetch(`/api/sessions/${session.id}/insights`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            summary: state.summary,
-            keyFindings: state.keyFindings,
-            redFlags: state.redFlags,
-            checklistItems: state.checklistItems.map((item) => ({
-              label: item.label,
-              isChecked: item.isChecked,
-              isAutoChecked: item.isAutoChecked,
-              doctorNote: item.doctorNote,
-              sortOrder: item.sortOrder,
-              source: item.source,
-            })),
-            diagnoses: state.diagnoses.map((dx) => ({
-              icdCode: dx.icdCode,
-              icdUri: dx.icdUri,
-              diseaseName: dx.diseaseName,
-              confidence: dx.confidence,
-              evidence: dx.evidence,
-              citations: dx.citations,
-              sortOrder: dx.sortOrder,
-            })),
-          }),
-        }).catch(console.error)
-      }, AUTO_SAVE_DEBOUNCE_MS)
-    })
-
-    return () => {
-      unsubscribe()
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current)
-      }
-    }
-  }, [])
 
   const runAnalysis = useCallback(
     async (forceRun: boolean = false) => {

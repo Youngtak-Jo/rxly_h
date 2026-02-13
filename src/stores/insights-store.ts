@@ -181,7 +181,6 @@ export const useInsightsStore = create<InsightsState>((set) => ({
       redFlags: data.redFlags || [],
       checklistItems: data.checklistItems || [],
       diagnoses: data.diagnoses || [],
-      lastUpdated: new Date(),
     }),
 
   toggleChecklistItem: (id) =>

@@ -13,6 +13,7 @@ import { RightPanel } from "./right-panel"
 import { useSessionStore } from "@/stores/session-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useRecordAutoSave } from "@/hooks/use-record-autosave"
+import { useInsightsAutoSave } from "@/hooks/use-insights-autosave"
 import { IconStethoscope, IconLoader2 } from "@tabler/icons-react"
 import { v4 as uuidv4 } from "uuid"
 
@@ -25,6 +26,7 @@ export function ConsultationLayout() {
   const rightPanelRef = useRef<PanelImperativeHandle | null>(null)
 
   useRecordAutoSave()
+  useInsightsAutoSave()
 
   const toggleRightPanel = useCallback(() => {
     const panel = rightPanelRef.current
@@ -113,26 +115,28 @@ export function ConsultationLayout() {
   }
 
   return (
-    <div className="flex flex-1 min-h-0">
-      <ResizablePanelGroup orientation="horizontal">
-        <ResizablePanel defaultSize="55" minSize="30">
-          <CenterPanel />
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel
-          panelRef={rightPanelRef}
-          defaultSize="45"
-          minSize="25"
-          maxSize="70"
-          collapsible
-          collapsedSize="0"
-          onResize={(size) => {
-            setTranscriptCollapsed(size.asPercentage === 0)
-          }}
-        >
-          <RightPanel />
-        </ResizablePanel>
-      </ResizablePanelGroup>
+    <div className="relative flex-1 min-h-0 min-w-0">
+      <div className="absolute inset-0">
+        <ResizablePanelGroup orientation="horizontal">
+          <ResizablePanel defaultSize="55" minSize="30">
+            <CenterPanel />
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel
+            panelRef={rightPanelRef}
+            defaultSize="45"
+            minSize="25"
+            maxSize="70"
+            collapsible
+            collapsedSize="0"
+            onResize={(size) => {
+              setTranscriptCollapsed(size.asPercentage === 0)
+            }}
+          >
+            <RightPanel />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
     </div>
   )
 }

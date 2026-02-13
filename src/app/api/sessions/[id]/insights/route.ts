@@ -39,97 +39,101 @@ export async function PUT(
       ? body.diagnosticKeywords
       : undefined
 
-    const insights = await prisma.insights.upsert({
-      where: { sessionId: id },
-      update: {
-        summary: body.summary,
-        keyFindings: body.keyFindings,
-        redFlags: body.redFlags,
-        lastProcessedAt: new Date(),
-        ...(diagnosticKeywords !== undefined && { diagnosticKeywords }),
-      },
-      create: {
-        sessionId: id,
-        summary: body.summary || "",
-        keyFindings: body.keyFindings || [],
-        redFlags: body.redFlags || [],
-        lastProcessedAt: new Date(),
-        ...(diagnosticKeywords !== undefined && { diagnosticKeywords }),
-      },
+    const insights = await prisma.$transaction(async (tx) => {
+      const result = await tx.insights.upsert({
+        where: { sessionId: id },
+        update: {
+          summary: body.summary,
+          keyFindings: body.keyFindings,
+          redFlags: body.redFlags,
+          lastProcessedAt: new Date(),
+          ...(diagnosticKeywords !== undefined && { diagnosticKeywords }),
+        },
+        create: {
+          sessionId: id,
+          summary: body.summary || "",
+          keyFindings: body.keyFindings || [],
+          redFlags: body.redFlags || [],
+          lastProcessedAt: new Date(),
+          ...(diagnosticKeywords !== undefined && { diagnosticKeywords }),
+        },
+      })
+
+      // Sync checklist items if provided
+      if (body.checklistItems && Array.isArray(body.checklistItems)) {
+        await tx.checklistItem.deleteMany({
+          where: { sessionId: id },
+        })
+
+        if (body.checklistItems.length > 0) {
+          await tx.checklistItem.createMany({
+            data: body.checklistItems.map(
+              (
+                item: {
+                  label: string
+                  isChecked: boolean
+                  isAutoChecked: boolean
+                  doctorNote: string | null
+                  sortOrder: number
+                  source: string
+                },
+                index: number
+              ) => ({
+                sessionId: id,
+                label: item.label,
+                isChecked: item.isChecked ?? false,
+                isAutoChecked: item.isAutoChecked ?? false,
+                doctorNote: item.doctorNote ?? null,
+                sortOrder: item.sortOrder ?? index,
+                source: item.source === "MANUAL" ? "MANUAL" : "AI",
+              })
+            ),
+          })
+        }
+      }
+
+      // Sync diagnoses if provided
+      if (body.diagnoses && Array.isArray(body.diagnoses)) {
+        await tx.diagnosis.deleteMany({
+          where: { sessionId: id },
+        })
+
+        if (body.diagnoses.length > 0) {
+          await tx.diagnosis.createMany({
+            data: body.diagnoses.map(
+              (
+                dx: {
+                  icdCode: string
+                  icdUri?: string
+                  diseaseName: string
+                  confidence: string
+                  evidence: string
+                  citations: unknown[]
+                  sortOrder: number
+                },
+                index: number
+              ) => ({
+                sessionId: id,
+                icdCode: dx.icdCode,
+                icdUri: dx.icdUri || null,
+                diseaseName: dx.diseaseName,
+                confidence:
+                  dx.confidence?.toUpperCase() === "HIGH"
+                    ? "HIGH"
+                    : dx.confidence?.toUpperCase() === "LOW"
+                      ? "LOW"
+                      : "MODERATE",
+                evidence: dx.evidence,
+                citations: dx.citations || [],
+                sortOrder: dx.sortOrder ?? index,
+              })
+            ),
+          })
+        }
+      }
+
+      return result
     })
-
-    // Sync checklist items if provided
-    if (body.checklistItems && Array.isArray(body.checklistItems)) {
-      await prisma.checklistItem.deleteMany({
-        where: { sessionId: id },
-      })
-
-      if (body.checklistItems.length > 0) {
-        await prisma.checklistItem.createMany({
-          data: body.checklistItems.map(
-            (
-              item: {
-                label: string
-                isChecked: boolean
-                isAutoChecked: boolean
-                doctorNote: string | null
-                sortOrder: number
-                source: string
-              },
-              index: number
-            ) => ({
-              sessionId: id,
-              label: item.label,
-              isChecked: item.isChecked ?? false,
-              isAutoChecked: item.isAutoChecked ?? false,
-              doctorNote: item.doctorNote ?? null,
-              sortOrder: item.sortOrder ?? index,
-              source: item.source === "MANUAL" ? "MANUAL" : "AI",
-            })
-          ),
-        })
-      }
-    }
-
-    // Sync diagnoses if provided
-    if (body.diagnoses && Array.isArray(body.diagnoses)) {
-      await prisma.diagnosis.deleteMany({
-        where: { sessionId: id },
-      })
-
-      if (body.diagnoses.length > 0) {
-        await prisma.diagnosis.createMany({
-          data: body.diagnoses.map(
-            (
-              dx: {
-                icdCode: string
-                icdUri?: string
-                diseaseName: string
-                confidence: string
-                evidence: string
-                citations: unknown[]
-                sortOrder: number
-              },
-              index: number
-            ) => ({
-              sessionId: id,
-              icdCode: dx.icdCode,
-              icdUri: dx.icdUri || null,
-              diseaseName: dx.diseaseName,
-              confidence:
-                dx.confidence?.toUpperCase() === "HIGH"
-                  ? "HIGH"
-                  : dx.confidence?.toUpperCase() === "LOW"
-                    ? "LOW"
-                    : "MODERATE",
-              evidence: dx.evidence,
-              citations: dx.citations || [],
-              sortOrder: dx.sortOrder ?? index,
-            })
-          ),
-        })
-      }
-    }
 
     return NextResponse.json(insights)
   } catch (error) {

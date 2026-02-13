@@ -1,6 +1,5 @@
 "use client"
 
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { InsightsContainer } from "./insights/insights-container"
 import { RecordContainer } from "./record/record-container"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
@@ -9,16 +8,16 @@ export function CenterPanel() {
   const activeTab = useConsultationTabStore((s) => s.activeTab)
 
   return (
-    <div className="flex h-full flex-col">
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-4">
+    <div className="relative h-full w-full">
+      <div className="absolute inset-0 overflow-y-auto">
+        <div className="p-4 min-w-0">
           {activeTab === "insights" ? (
             <InsightsContainer />
           ) : (
             <RecordContainer />
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   )
 }
