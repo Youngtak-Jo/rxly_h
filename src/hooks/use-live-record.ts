@@ -5,7 +5,6 @@ import { useRecordStore } from "@/stores/record-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useInsightsStore } from "@/stores/insights-store"
-import { useDdxStore } from "@/stores/ddx-store"
 import { useSessionStore } from "@/stores/session-store"
 
 const WAIT_TIMEOUT_MS = 60000
@@ -133,46 +132,37 @@ export async function generateRecord(
   }
 }
 
-function waitForProcessingToComplete(signal: AbortSignal): Promise<void> {
+function waitForInsightsToComplete(signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    const check = () => {
-      const insightsProcessing = useInsightsStore.getState().isProcessing
-      const ddxProcessing = useDdxStore.getState().isProcessing
-      return !insightsProcessing && !ddxProcessing
-    }
+    // Only wait for insights — Record doesn't depend on DDx,
+    // so DDx and Record can run in parallel after insights finishes.
+    const check = () => !useInsightsStore.getState().isProcessing
 
-    // Already done
     if (check()) {
       resolve()
       return
     }
 
     const timeout = setTimeout(() => {
-      unsubInsights()
-      unsubDdx()
-      resolve() // Proceed anyway after timeout
+      unsub()
+      resolve()
     }, WAIT_TIMEOUT_MS)
 
     const onAbort = () => {
       clearTimeout(timeout)
-      unsubInsights()
-      unsubDdx()
+      unsub()
       reject(new DOMException("Aborted", "AbortError"))
     }
     signal.addEventListener("abort", onAbort, { once: true })
 
-    const tryResolve = () => {
+    const unsub = useInsightsStore.subscribe(() => {
       if (check()) {
         clearTimeout(timeout)
         signal.removeEventListener("abort", onAbort)
-        unsubInsights()
-        unsubDdx()
+        unsub()
         resolve()
       }
-    }
-
-    const unsubInsights = useInsightsStore.subscribe(tryResolve)
-    const unsubDdx = useDdxStore.subscribe(tryResolve)
+    })
   })
 }
 
@@ -182,8 +172,8 @@ export function useLiveRecord() {
 
   const autoGenerate = useCallback(async (signal: AbortSignal) => {
     try {
-      // Wait for insights and DDx to finish first
-      await waitForProcessingToComplete(signal)
+      // Wait for insights only — DDx and Record run in parallel
+      await waitForInsightsToComplete(signal)
 
       const session = useSessionStore.getState().activeSession
       if (!session) return

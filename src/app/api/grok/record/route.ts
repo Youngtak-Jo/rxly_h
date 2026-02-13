@@ -1,5 +1,5 @@
 import { streamText } from "ai"
-import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic"
+import { xai, DEFAULT_MODEL } from "@/lib/grok"
 import { RECORD_SYSTEM_PROMPT } from "@/lib/prompts"
 import type { UserContent } from "ai"
 
@@ -18,20 +18,20 @@ export async function POST(req: Request) {
       return new Response("No transcript, notes, or images provided", { status: 400 })
     }
 
-    const model = anthropic(CLAUDE_MODEL)
+    const model = xai(DEFAULT_MODEL)
 
     let textContent = [
       transcript?.trim()
-        ? `Transcript:\n${transcript}`
+        ? `Transcript:\n${(transcript as string).slice(-6000)}`
         : "Transcript:\n(No speech recorded yet)",
       doctorNotes?.trim()
         ? `\nDoctor's notes (inline annotations during consultation):\n${doctorNotes}`
         : "",
       insights
-        ? `\nCurrent insights:\n${JSON.stringify(insights, null, 2)}`
+        ? `\nCurrent insights:\n${JSON.stringify(insights)}`
         : "",
       existingRecord
-        ? `\nExisting record to update:\n${JSON.stringify(existingRecord, null, 2)}`
+        ? `\nExisting record to update:\n${JSON.stringify(existingRecord)}`
         : "",
     ]
       .filter(Boolean)
