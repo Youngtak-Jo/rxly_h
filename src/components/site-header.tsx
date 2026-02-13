@@ -1,12 +1,11 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -28,7 +27,6 @@ import { useRecordingStore } from "@/stores/recording-store"
 import { useSimulatedTranscript } from "@/hooks/use-simulated-transcript"
 import { SCENARIOS } from "@/data/scenarios"
 import {
-  IconDice,
   IconTestPipe,
   IconLayoutSidebarRightExpand,
   IconLayoutSidebarRightCollapse,
@@ -47,44 +45,18 @@ function SimulationDialog() {
   const [open, setOpen] = useState(false)
   const [speed, setSpeed] = useState("0.5")
   const [scenarioId, setScenarioId] = useState(SCENARIOS[0].id)
-  const [skipInterim, setSkipInterim] = useState(false)
-  const [autoCreateSession, setAutoCreateSession] = useState(true)
 
   const activeSession = useSessionStore((s) => s.activeSession)
   const { addSession, setActiveSession } = useSessionStore()
   const { isRecording, isSimulating } = useRecordingStore()
   const { startSimulation, stopSimulation } = useSimulatedTranscript()
 
-  const selectedScenario = useMemo(
-    () => SCENARIOS.find((s) => s.id === scenarioId) || SCENARIOS[0],
-    [scenarioId]
-  )
-
-  const estimatedDuration = useMemo(() => {
-    const speedFactor = parseFloat(speed)
-    const totalDelayMs = selectedScenario.entries.reduce(
-      (sum, e) => sum + e.delayMs * speedFactor,
-      0
-    )
-    const totalInterimMs = selectedScenario.entries.reduce(
-      (sum, e) => sum + e.text.split(" ").length * 80 * speedFactor,
-      0
-    )
-    const totalSec = Math.round((totalDelayMs + totalInterimMs) / 1000)
-    const m = Math.floor(totalSec / 60)
-    const s = totalSec % 60
-    return `${m}m ${s}s`
-  }, [selectedScenario, speed])
-
-  const handleRandomScenario = () => {
-    const others = SCENARIOS.filter((s) => s.id !== scenarioId)
-    const random = others[Math.floor(Math.random() * others.length)]
-    setScenarioId(random.id)
-  }
+  const selectedScenario =
+    SCENARIOS.find((s) => s.id === scenarioId) || SCENARIOS[0]
 
   const handleStart = async () => {
     let sessionReady = !!activeSession
-    if (!activeSession && autoCreateSession) {
+    if (!activeSession) {
       try {
         const res = await fetch("/api/sessions", {
           method: "POST",
@@ -104,12 +76,15 @@ function SimulationDialog() {
 
     if (!sessionReady) return
 
+    const isInstant = speed === "instant"
+
     // Small delay to let session state propagate
     setTimeout(() => {
       startSimulation({
-        speedFactor: parseFloat(speed),
-        skipInterim,
+        speedFactor: isInstant ? 0.1 : parseFloat(speed),
+        skipInterim: true,
         scenario: selectedScenario.entries,
+        instantInsert: isInstant,
       })
       setOpen(false)
     }, 100)
@@ -142,18 +117,7 @@ function SimulationDialog() {
         <div className="grid gap-4 py-2">
           {/* Scenario selector */}
           <div className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <Label>Scenario</Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-                onClick={handleRandomScenario}
-              >
-                <IconDice className="size-3" />
-                Random
-              </Button>
-            </div>
+            <Label>Scenario</Label>
             <Select value={scenarioId} onValueChange={setScenarioId}>
               <SelectTrigger>
                 <SelectValue />
@@ -166,19 +130,6 @@ function SimulationDialog() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              {selectedScenario.description}
-            </p>
-            <div className="flex items-center gap-2 flex-wrap">
-              {selectedScenario.tags.map((tag) => (
-                <Badge key={tag} variant="outline" className="text-[10px]">
-                  {tag}
-                </Badge>
-              ))}
-              <span className="text-[10px] text-muted-foreground ml-auto">
-                {selectedScenario.entries.length} utterances · ~{estimatedDuration}
-              </span>
-            </div>
           </div>
 
           {/* Speed */}
@@ -193,30 +144,10 @@ function SimulationDialog() {
                 <SelectItem value="0.5">2x</SelectItem>
                 <SelectItem value="0.25">4x</SelectItem>
                 <SelectItem value="0.1">10x (Fastest)</SelectItem>
+                <Separator className="my-1" />
+                <SelectItem value="instant">즉시삽입 (Instant)</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="skip-interim"
-              checked={skipInterim}
-              onCheckedChange={(v) => setSkipInterim(v === true)}
-            />
-            <Label htmlFor="skip-interim" className="font-normal">
-              Skip interim text animation
-            </Label>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="auto-create"
-              checked={autoCreateSession}
-              onCheckedChange={(v) => setAutoCreateSession(v === true)}
-            />
-            <Label htmlFor="auto-create" className="font-normal">
-              Auto-create session if none active
-            </Label>
           </div>
         </div>
 
@@ -286,7 +217,7 @@ export function SiteHeader() {
           )}
           <ExportDropdown />
           <ConnectorsDialog />
-          {process.env.NODE_ENV === "development" && <SimulationDialog />}
+          <SimulationDialog />
         </div>
       </div>
     </header>

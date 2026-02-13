@@ -15,12 +15,14 @@ export interface SimulationOptions {
   speedFactor: number
   skipInterim: boolean
   scenario: MockEntry[]
+  instantInsert?: boolean
 }
 
 const DEFAULT_OPTIONS: SimulationOptions = {
   speedFactor: 0.5,
-  skipInterim: false,
+  skipInterim: true,
   scenario: SCENARIOS[0].entries,
+  instantInsert: false,
 }
 
 function resolveSpeaker(rawSpeakerId: number): Speaker {
@@ -214,6 +216,72 @@ export function useSimulatedTranscript() {
   resumeRef.current = resumeSimulation
   stopRef.current = stopSimulation
 
+  const instantInsertAll = useCallback(
+    async (entries: MockEntry[], sessionId: string) => {
+      const { addFinalEntry, clearInterim } = useTranscriptStore.getState()
+      let runningTime = 0
+
+      const transcriptEntries = entries.map((mockEntry) => {
+        const speaker = resolveSpeaker(mockEntry.rawSpeakerId)
+        const wordCount = mockEntry.text.split(" ").length
+        const startTime = runningTime
+        runningTime += wordCount * 0.3
+        const endTime = runningTime
+
+        const entryId = uuid()
+        const entry = {
+          id: entryId,
+          sessionId,
+          speaker,
+          rawSpeakerId: mockEntry.rawSpeakerId,
+          text: mockEntry.text,
+          startTime,
+          endTime,
+          confidence: 0.95 + Math.random() * 0.05,
+          isFinal: true as const,
+          createdAt: new Date().toISOString(),
+        }
+
+        addFinalEntry(entry)
+        return entry
+      })
+
+      clearInterim()
+
+      // POST all entries to the API in parallel
+      await Promise.allSettled(
+        transcriptEntries.map((entry) =>
+          fetch(`/api/sessions/${sessionId}/transcript`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: entry.id,
+              speaker: entry.speaker,
+              text: entry.text,
+              startTime: entry.startTime,
+              endTime: entry.endTime,
+              confidence: entry.confidence,
+              rawSpeakerId: entry.rawSpeakerId,
+            }),
+          })
+        )
+      )
+
+      // Trigger analysis once at the end
+      triggerAnalysis()
+
+      // End simulation
+      const store = useRecordingStore.getState()
+      store.setRecording(false)
+      store.setSimulating(false)
+      store.setSimulationControls(null)
+      if (durationIntervalRef.current)
+        clearInterval(durationIntervalRef.current)
+      isRunningRef.current = false
+    },
+    [triggerAnalysis]
+  )
+
   const startSimulation = useCallback(
     (options: Partial<SimulationOptions> = {}) => {
       if (isRunningRef.current) return
@@ -246,6 +314,12 @@ export function useSimulatedTranscript() {
         stop: () => stopRef.current(),
       })
 
+      // Instant insert: dump all entries at once
+      if (opts.instantInsert) {
+        instantInsertAll(opts.scenario, sessionId)
+        return
+      }
+
       // Duration timer (skips incrementing when paused)
       durationIntervalRef.current = setInterval(() => {
         const s = useRecordingStore.getState()
@@ -256,7 +330,7 @@ export function useSimulatedTranscript() {
       // Start processing from entry 0
       processEntry(0)
     },
-    [setRecording, setDuration, processEntry]
+    [setRecording, setDuration, processEntry, instantInsertAll]
   )
 
   return {
