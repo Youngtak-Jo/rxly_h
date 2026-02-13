@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useSessionStore } from "@/stores/session-store"
 import { useNoteStore } from "@/stores/note-store"
 import { useInsightsStore } from "@/stores/insights-store"
+import { useDdxStore } from "@/stores/ddx-store"
 import {
   IconPaperclip,
   IconSend,
@@ -126,6 +127,10 @@ export function NoteInputBar() {
         // Trigger immediate AI re-analysis
         const trigger = useInsightsStore.getState()._noteTrigger
         if (trigger) trigger()
+
+        // Trigger DDx re-analysis
+        const ddxTrigger = useDdxStore.getState()._noteTrigger
+        if (ddxTrigger) ddxTrigger()
       }
 
       setText("")

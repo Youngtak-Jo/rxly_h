@@ -1,6 +1,6 @@
 import { create } from "zustand"
 
-type Tab = "insights" | "record"
+type Tab = "insights" | "ddx" | "record"
 
 interface ConsultationTabState {
   activeTab: Tab

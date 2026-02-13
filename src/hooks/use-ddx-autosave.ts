@@ -1,16 +1,16 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { useInsightsStore } from "@/stores/insights-store"
+import { useDdxStore } from "@/stores/ddx-store"
 import { useSessionStore } from "@/stores/session-store"
 
 const AUTO_SAVE_DEBOUNCE_MS = 2000
 
-export function useInsightsAutoSave() {
+export function useDdxAutoSave() {
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    const unsubscribe = useInsightsStore.subscribe((state, prevState) => {
+    const unsubscribe = useDdxStore.subscribe((state, prevState) => {
       if (state.lastUpdated === prevState.lastUpdated) return
 
       // Always clear pending timer first (even on reset) to prevent
@@ -27,23 +27,21 @@ export function useInsightsAutoSave() {
 
       autoSaveTimerRef.current = setTimeout(() => {
         const currentSession = useSessionStore.getState().activeSession
-        const currentState = useInsightsStore.getState()
+        const currentState = useDdxStore.getState()
         if (!currentSession || currentSession.id !== scheduledSessionId) return
 
-        fetch(`/api/sessions/${currentSession.id}/insights`, {
+        fetch(`/api/sessions/${currentSession.id}/diagnoses`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            summary: currentState.summary,
-            keyFindings: currentState.keyFindings,
-            redFlags: currentState.redFlags,
-            checklistItems: currentState.checklistItems.map((item) => ({
-              label: item.label,
-              isChecked: item.isChecked,
-              isAutoChecked: item.isAutoChecked,
-              doctorNote: item.doctorNote,
-              sortOrder: item.sortOrder,
-              source: item.source,
+            diagnoses: currentState.diagnoses.map((dx) => ({
+              icdCode: dx.icdCode,
+              icdUri: dx.icdUri,
+              diseaseName: dx.diseaseName,
+              confidence: dx.confidence,
+              evidence: dx.evidence,
+              citations: dx.citations,
+              sortOrder: dx.sortOrder,
             })),
           }),
         }).catch(console.error)

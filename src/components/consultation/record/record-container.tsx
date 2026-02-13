@@ -3,130 +3,22 @@
 import { Button } from "@/components/ui/button"
 import { RecordSection } from "./record-section"
 import { useRecordStore } from "@/stores/record-store"
-import { useTranscriptStore } from "@/stores/transcript-store"
-import { useInsightsStore } from "@/stores/insights-store"
 import { useSessionStore } from "@/stores/session-store"
+import { generateRecord } from "@/hooks/use-live-record"
+
 import { IconSparkles, IconLoader2 } from "@tabler/icons-react"
 
 export function RecordContainer() {
-  const { record, isGenerating, setRecord, setGenerating, updateField } =
-    useRecordStore()
-  const getFullTranscript = useTranscriptStore((s) => s.getFullTranscript)
-  const summary = useInsightsStore((s) => s.summary)
-  const keyFindings = useInsightsStore((s) => s.keyFindings)
+  const { record, isGenerating, updateField } = useRecordStore()
   const activeSession = useSessionStore((s) => s.activeSession)
 
-  const generateRecord = async () => {
-    if (!activeSession) return
-    const transcript = getFullTranscript()
-
-    // Fetch doctor notes and image URLs for record generation
-    let doctorNotes = ""
-    let imageUrls: string[] = []
-    try {
-      const notesRes = await fetch(
-        `/api/sessions/${activeSession.id}/notes`
-      )
-      if (notesRes.ok) {
-        const notes = await notesRes.json()
-        if (notes.length > 0) {
-          doctorNotes = notes
-            .map((n: { content: string }) => n.content)
-            .filter(Boolean)
-            .join("\n")
-          imageUrls = notes.flatMap(
-            (n: { imageUrls: string[] }) => n.imageUrls || []
-          )
-        }
-      }
-    } catch {
-      // Continue without notes
-    }
-
-    // Need at least transcript, notes, or images to generate
-    if (!transcript.trim() && !doctorNotes.trim() && imageUrls.length === 0) return
-
-    setGenerating(true)
-    try {
-
-      const res = await fetch("/api/grok/record", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          transcript,
-          doctorNotes,
-          imageUrls,
-          insights: { summary, keyFindings },
-          sessionId: activeSession.id,
-          existingRecord: record,
-        }),
-      })
-
-      if (!res.ok) throw new Error("Failed to generate record")
-
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error("No stream")
-
-      const decoder = new TextDecoder()
-      let accumulated = ""
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        accumulated += decoder.decode(value, { stream: true })
-      }
-
-      // Parse the final accumulated JSON
-      try {
-        const parsed = JSON.parse(accumulated)
-        const newRecord = {
-          id: record?.id || "temp",
-          sessionId: activeSession.id,
-          date: new Date().toISOString(),
-          patientName: activeSession.patientName,
-          chiefComplaint: parsed.chiefComplaint || null,
-          hpiText: parsed.hpiText || null,
-          medications: parsed.medications || null,
-          rosText: parsed.rosText || null,
-          pmh: parsed.pmh || null,
-          socialHistory: parsed.socialHistory || null,
-          familyHistory: parsed.familyHistory || null,
-          vitals: parsed.vitals || null,
-          physicalExam: parsed.physicalExam || null,
-          labsStudies: parsed.labsStudies || null,
-          assessment: parsed.assessment || null,
-          plan: parsed.plan || null,
-        }
-        setRecord(newRecord)
-
-        // Immediately persist to DB (fire-and-forget)
-        fetch(`/api/sessions/${activeSession.id}/record`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            patientName: newRecord.patientName,
-            chiefComplaint: newRecord.chiefComplaint,
-            hpiText: newRecord.hpiText,
-            medications: newRecord.medications,
-            rosText: newRecord.rosText,
-            pmh: newRecord.pmh,
-            socialHistory: newRecord.socialHistory,
-            familyHistory: newRecord.familyHistory,
-            vitals: newRecord.vitals,
-            physicalExam: newRecord.physicalExam,
-            labsStudies: newRecord.labsStudies,
-            assessment: newRecord.assessment,
-            plan: newRecord.plan,
-          }),
-        }).catch((err) => console.error("Failed to persist record:", err))
-      } catch {
-        console.error("Failed to parse record response")
-        setGenerating(false)
-      }
-    } catch (error) {
-      console.error("Failed to generate record:", error)
-      setGenerating(false)
-    }
+  const handleGenerate = () => {
+    if (!activeSession || isGenerating) return
+    generateRecord(
+      activeSession.id,
+      activeSession.patientName,
+      record?.id
+    )
   }
 
   const toStr = (val: unknown): string => {
@@ -164,7 +56,7 @@ export function RecordContainer() {
           )}
         </div>
         <Button
-          onClick={generateRecord}
+          onClick={handleGenerate}
           disabled={isGenerating}
           size="sm"
           className="gap-1.5"
@@ -177,6 +69,20 @@ export function RecordContainer() {
           {isGenerating ? "Generating..." : record ? "Regenerate" : "Generate Record"}
         </Button>
       </div>
+
+      {isGenerating && !record && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          Generating consultation record...
+        </div>
+      )}
+
+      {isGenerating && record && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          Updating consultation record...
+        </div>
+      )}
 
       {!record && !isGenerating && (
         <p className="text-sm text-muted-foreground/50 italic text-center py-8">

@@ -1,20 +1,26 @@
 import { streamText } from "ai"
-import { xai, DEFAULT_MODEL } from "@/lib/grok"
+import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic"
 import { RECORD_SYSTEM_PROMPT } from "@/lib/prompts"
 import type { UserContent } from "ai"
 
 export async function POST(req: Request) {
   try {
-    const { transcript, doctorNotes, imageUrls, insights, sessionId, existingRecord } =
-      await req.json()
+    const {
+      transcript,
+      doctorNotes,
+      imageUrls,
+      insights,
+      sessionId,
+      existingRecord,
+    } = await req.json()
 
     if (!transcript?.trim() && !doctorNotes?.trim() && (!imageUrls || imageUrls.length === 0)) {
       return new Response("No transcript, notes, or images provided", { status: 400 })
     }
 
-    const model = xai(DEFAULT_MODEL)
+    const model = anthropic(CLAUDE_MODEL)
 
-    const textContent = [
+    let textContent = [
       transcript?.trim()
         ? `Transcript:\n${transcript}`
         : "Transcript:\n(No speech recorded yet)",

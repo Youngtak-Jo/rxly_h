@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef } from "react"
-import { useInsightsStore } from "@/stores/insights-store"
+import { useDdxStore } from "@/stores/ddx-store"
 import { useConnectorStore } from "@/stores/connector-store"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -667,7 +667,7 @@ function RichReferenceCard({ reference }: { reference: MergedReference }) {
 }
 
 export function DiagnosisSection() {
-  const diagnoses = useInsightsStore((s) => s.diagnoses)
+  const diagnoses = useDdxStore((s) => s.diagnoses)
   const [selectedDiagnosis, setSelectedDiagnosis] =
     useState<DiagnosisItem | null>(null)
   const [details, setDetails] = useState<DiagnosisDetails | null>(null)

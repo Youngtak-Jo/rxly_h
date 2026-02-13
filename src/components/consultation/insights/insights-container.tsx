@@ -17,7 +17,6 @@ import {
   IconChecklist,
   IconPhoto,
 } from "@tabler/icons-react"
-import { DiagnosisSection } from "./diagnosis-section"
 
 export function InsightsContainer() {
   const {
@@ -50,6 +49,13 @@ export function InsightsContainer() {
         <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
           <span className="h-2 w-2 rounded-full bg-blue-500" />
           Analyzing conversation...
+        </div>
+      )}
+
+      {isProcessing && hasContent && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+          <span className="h-2 w-2 rounded-full bg-blue-500" />
+          Updating insights...
         </div>
       )}
 
@@ -169,9 +175,6 @@ export function InsightsContainer() {
           </div>
         )}
       </section>
-
-      {/* Differential Diagnosis */}
-      <DiagnosisSection />
 
       {/* Imaging Uploads */}
       {uploadedImages.length > 0 && (

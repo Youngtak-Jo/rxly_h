@@ -1,40 +1,7 @@
-import { streamText, generateText } from "ai"
+import { streamText } from "ai"
 import { xai, DEFAULT_MODEL } from "@/lib/grok"
-import {
-  INSIGHTS_SYSTEM_PROMPT,
-  DIAGNOSIS_PROMPT_ADDENDUM,
-  SEARCH_TERM_EXTRACTION_PROMPT,
-} from "@/lib/prompts"
-import {
-  fetchRAGContext,
-  formatRAGContextForPrompt,
-  getRAGSourceMeta,
-} from "@/lib/connectors"
-import type { ConnectorState } from "@/types/insights"
+import { INSIGHTS_SYSTEM_PROMPT } from "@/lib/prompts"
 import type { UserContent } from "ai"
-
-async function extractSearchTerms(
-  transcript: string,
-  doctorNotes: string
-): Promise<string[]> {
-  try {
-    const model = xai(DEFAULT_MODEL)
-    const { text } = await generateText({
-      model,
-      system: SEARCH_TERM_EXTRACTION_PROMPT,
-      prompt: `Transcript excerpt: ${transcript.slice(-2000)}\nDoctor notes: ${doctorNotes?.slice(-500) || "none"}`,
-      temperature: 0.1,
-      maxOutputTokens: 200,
-    })
-    const parsed = JSON.parse(text)
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed.map(String)
-    }
-    return [transcript.slice(-500).replace(/\[.*?\]/g, "").trim()]
-  } catch {
-    return [transcript.slice(-500).replace(/\[.*?\]/g, "").trim()]
-  }
-}
 
 export async function POST(req: Request) {
   try {
@@ -43,8 +10,6 @@ export async function POST(req: Request) {
       doctorNotes,
       imageUrls,
       currentInsights,
-      sessionId,
-      enabledConnectors,
     } = await req.json()
 
     if (
@@ -58,50 +23,6 @@ export async function POST(req: Request) {
     }
 
     const model = xai(DEFAULT_MODEL)
-
-    // Check if any connectors are enabled
-    const hasConnectorsEnabled =
-      enabledConnectors &&
-      Object.values(enabledConnectors as ConnectorState).some(Boolean)
-
-    // Fetch RAG context from enabled connectors
-    let ragContextText = ""
-    if (
-      hasConnectorsEnabled &&
-      (transcript?.trim() || doctorNotes?.trim())
-    ) {
-      try {
-        const searchTerms = await extractSearchTerms(
-          transcript || "",
-          doctorNotes || ""
-        )
-        const ragContext = await fetchRAGContext(
-          searchTerms,
-          enabledConnectors
-        )
-
-        const meta = getRAGSourceMeta(ragContext)
-        console.log(
-          `[RAG] Search terms: ${JSON.stringify(searchTerms)} | ` +
-          `PubMed: ${meta.pubmedCount} | ` +
-          `Europe PMC: ${meta.europePmcCount} | ` +
-          `ICD-11: ${meta.icd11Count} | ` +
-          `OpenFDA: ${meta.openfdaCount} | ` +
-          `ClinicalTrials: ${meta.clinicalTrialsCount} | ` +
-          `DailyMed: ${meta.dailymedCount}`
-        )
-
-        ragContextText = formatRAGContextForPrompt(ragContext)
-      } catch (error) {
-        console.error("RAG context fetch failed:", error)
-      }
-    }
-
-    // Build system prompt — conditionally append diagnosis instructions
-    let systemPrompt = INSIGHTS_SYSTEM_PROMPT
-    if (hasConnectorsEnabled) {
-      systemPrompt += DIAGNOSIS_PROMPT_ADDENDUM
-    }
 
     // Format existing checklist so the AI can see current state
     const checklistItems = currentInsights?.checklistItems || []
@@ -131,40 +52,9 @@ export async function POST(req: Request) {
       existingChecklistText += "\n--- END CURRENT CHECKLIST ---"
     }
 
-    // Format existing diagnoses so the AI can preserve citations
-    let existingDiagnosesText = ""
-    const existingDiagnoses = currentInsights?.diagnoses || []
-    if (hasConnectorsEnabled && existingDiagnoses.length > 0) {
-      existingDiagnosesText =
-        "\n\n--- CURRENT DIAGNOSES (preserve citations from previous analysis) ---"
-      existingDiagnoses.forEach(
-        (dx: {
-          icdCode: string
-          diseaseName: string
-          confidence: string
-          citations: { source: string; title: string; url: string }[]
-        }) => {
-          existingDiagnosesText += `\n- ${dx.icdCode} ${dx.diseaseName} (${dx.confidence})`
-          if (dx.citations && dx.citations.length > 0) {
-            dx.citations.forEach(
-              (c: { source: string; title: string; url: string }) => {
-                existingDiagnosesText += `\n    [${c.source}] "${c.title}" ${c.url}`
-              }
-            )
-          }
-        }
-      )
-      existingDiagnosesText += "\n--- END CURRENT DIAGNOSES ---"
-    }
-
-    let textContent = `Current summary: ${currentInsights?.summary || "(none yet)"}\nCurrent key findings: ${JSON.stringify(currentInsights?.keyFindings || [])}\nCurrent red flags: ${JSON.stringify(currentInsights?.redFlags || [])}${existingChecklistText}${existingDiagnosesText}\n\nFull transcript:\n${transcript || "(No speech recorded yet)"}`
+    let textContent = `Current summary: ${currentInsights?.summary || "(none yet)"}\nCurrent key findings: ${JSON.stringify(currentInsights?.keyFindings || [])}\nCurrent red flags: ${JSON.stringify(currentInsights?.redFlags || [])}${existingChecklistText}\n\nFull transcript:\n${transcript || "(No speech recorded yet)"}`
     if (doctorNotes?.trim()) {
       textContent += `\n\nDoctor's notes (from chat):\n${doctorNotes}`
-    }
-
-    // Append RAG context if available
-    if (ragContextText) {
-      textContent += `\n\n--- EXTERNAL MEDICAL KNOWLEDGE (use for diagnosis citations) ---${ragContextText}\n--- END EXTERNAL KNOWLEDGE ---`
     }
 
     // Build multimodal content: text + images
@@ -186,7 +76,7 @@ export async function POST(req: Request) {
 
     const result = streamText({
       model,
-      system: systemPrompt,
+      system: INSIGHTS_SYSTEM_PROMPT,
       messages: [
         {
           role: "user",

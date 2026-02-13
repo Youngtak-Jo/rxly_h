@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef } from "react"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
-import { useConnectorStore } from "@/stores/connector-store"
 import type { InsightsResponse } from "@/types/insights"
 
 const MIN_NEW_WORDS = 30
@@ -33,7 +32,6 @@ export function useLiveInsights() {
         keyFindings,
         redFlags,
         checklistItems,
-        diagnoses,
         wordCountAtLastUpdate,
         setProcessing,
         updateFromResponse,
@@ -90,8 +88,6 @@ export function useLiveInsights() {
           // Ignore notes fetch failure
         }
 
-        const enabledConnectors = useConnectorStore.getState().connectors
-
         const res = await fetch("/api/grok/insights", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -107,15 +103,7 @@ export function useLiveInsights() {
                 label: item.label,
                 isChecked: item.isChecked,
               })),
-              diagnoses: diagnoses.map((dx) => ({
-                icdCode: dx.icdCode,
-                diseaseName: dx.diseaseName,
-                confidence: dx.confidence,
-                citations: dx.citations,
-              })),
             },
-            sessionId: session.id,
-            enabledConnectors,
           }),
           signal: abortController.signal,
         })
@@ -134,9 +122,10 @@ export function useLiveInsights() {
           accumulated += decoder.decode(value, { stream: true })
         }
 
-        // Parse the complete response
+        // Parse the complete response (strip markdown code fences if present)
         try {
-          const parsed: InsightsResponse = JSON.parse(accumulated)
+          const cleaned = accumulated.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
+          const parsed: InsightsResponse = JSON.parse(cleaned)
           updateFromResponse(parsed, session.id)
           setWordCountAtLastUpdate(currentWordCount)
           lastAnalysisTimeRef.current = Date.now()

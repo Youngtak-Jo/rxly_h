@@ -14,6 +14,9 @@ import { useSessionStore } from "@/stores/session-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useRecordAutoSave } from "@/hooks/use-record-autosave"
 import { useInsightsAutoSave } from "@/hooks/use-insights-autosave"
+import { useDdxAutoSave } from "@/hooks/use-ddx-autosave"
+import { useLiveDdx } from "@/hooks/use-live-ddx"
+import { useLiveRecord } from "@/hooks/use-live-record"
 import { IconStethoscope, IconLoader2 } from "@tabler/icons-react"
 import { v4 as uuidv4 } from "uuid"
 
@@ -27,6 +30,9 @@ export function ConsultationLayout() {
 
   useRecordAutoSave()
   useInsightsAutoSave()
+  useDdxAutoSave()
+  useLiveDdx()
+  useLiveRecord()
 
   const toggleRightPanel = useCallback(() => {
     const panel = rightPanelRef.current

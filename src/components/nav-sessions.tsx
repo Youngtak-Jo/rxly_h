@@ -15,6 +15,7 @@ import { useInsightsStore } from "@/stores/insights-store"
 import { useRecordStore } from "@/stores/record-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useNoteStore } from "@/stores/note-store"
+import { useDdxStore } from "@/stores/ddx-store"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +52,7 @@ export function NavSessions() {
   const recordStore = useRecordStore()
   const recordingStore = useRecordingStore()
   const noteStore = useNoteStore()
+  const ddxStore = useDdxStore()
 
   const createSession = async () => {
     const tempId = uuidv4()
@@ -69,6 +71,7 @@ export function NavSessions() {
     setActiveSession(optimisticSession)
     transcriptStore.reset()
     insightsStore.reset()
+    ddxStore.reset()
     recordStore.reset()
     recordingStore.reset()
     noteStore.reset()
@@ -111,6 +114,7 @@ export function NavSessions() {
 
       transcriptStore.reset()
       insightsStore.reset()
+      ddxStore.reset()
       recordStore.reset()
       recordingStore.reset()
       noteStore.reset()
@@ -133,7 +137,12 @@ export function NavSessions() {
           keyFindings: session.insights.keyFindings,
           redFlags: session.insights.redFlags,
           checklistItems: session.checklistItems || [],
-          diagnoses: (session.diagnoses || []).map(
+        })
+      }
+
+      if (session.diagnoses && session.diagnoses.length > 0) {
+        ddxStore.loadFromDB(
+          session.diagnoses.map(
             (dx: {
               id: string
               sessionId: string
@@ -158,8 +167,8 @@ export function NavSessions() {
               citations: dx.citations || [],
               sortOrder: dx.sortOrder,
             })
-          ),
-        })
+          )
+        )
       }
 
       if (session.record) {
@@ -193,6 +202,7 @@ export function NavSessions() {
         setActiveSession(null)
         transcriptStore.reset()
         insightsStore.reset()
+        ddxStore.reset()
         recordStore.reset()
         noteStore.reset()
       }
