@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from "react"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
+import { useConnectorStore } from "@/stores/connector-store"
 import type { InsightsResponse } from "@/types/insights"
 
 const MIN_NEW_WORDS = 30
@@ -17,18 +18,6 @@ export function useLiveInsights() {
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const titleGeneratedRef = useRef(false)
 
-  const {
-    summary,
-    keyFindings,
-    redFlags,
-    checklistItems,
-    lastUpdated,
-    wordCountAtLastUpdate,
-    setProcessing,
-    updateFromResponse,
-    setWordCountAtLastUpdate,
-  } = useInsightsStore()
-  const getFullTranscript = useTranscriptStore((s) => s.getFullTranscript)
   const activeSession = useSessionStore((s) => s.activeSession)
 
   // Reset title-generated flag when session changes
@@ -36,57 +25,86 @@ export function useLiveInsights() {
     titleGeneratedRef.current = false
   }, [activeSession?.id])
 
-  // Auto-save insights to DB whenever store state changes
+  // Auto-save insights to DB via Zustand subscribe (stable, no dependency churn)
   useEffect(() => {
-    if (!activeSession || !lastUpdated) return
+    const unsubscribe = useInsightsStore.subscribe((state, prevState) => {
+      if (state.lastUpdated === prevState.lastUpdated) return
+      const session = useSessionStore.getState().activeSession
+      if (!session || !state.lastUpdated) return
 
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current)
-    }
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+      }
 
-    autoSaveTimerRef.current = setTimeout(() => {
-      fetch(`/api/sessions/${activeSession.id}/insights`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          summary,
-          keyFindings,
-          redFlags,
-          checklistItems: checklistItems.map((item) => ({
-            label: item.label,
-            isChecked: item.isChecked,
-            isAutoChecked: item.isAutoChecked,
-            doctorNote: item.doctorNote,
-            sortOrder: item.sortOrder,
-            source: item.source,
-          })),
-        }),
-      }).catch(console.error)
-    }, AUTO_SAVE_DEBOUNCE_MS)
+      autoSaveTimerRef.current = setTimeout(() => {
+        fetch(`/api/sessions/${session.id}/insights`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            summary: state.summary,
+            keyFindings: state.keyFindings,
+            redFlags: state.redFlags,
+            checklistItems: state.checklistItems.map((item) => ({
+              label: item.label,
+              isChecked: item.isChecked,
+              isAutoChecked: item.isAutoChecked,
+              doctorNote: item.doctorNote,
+              sortOrder: item.sortOrder,
+              source: item.source,
+            })),
+            diagnoses: state.diagnoses.map((dx) => ({
+              icdCode: dx.icdCode,
+              icdUri: dx.icdUri,
+              diseaseName: dx.diseaseName,
+              confidence: dx.confidence,
+              evidence: dx.evidence,
+              citations: dx.citations,
+              sortOrder: dx.sortOrder,
+            })),
+          }),
+        }).catch(console.error)
+      }, AUTO_SAVE_DEBOUNCE_MS)
+    })
 
     return () => {
+      unsubscribe()
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current)
       }
     }
-  }, [activeSession, lastUpdated, summary, keyFindings, redFlags, checklistItems])
+  }, [])
 
   const runAnalysis = useCallback(
     async (forceRun: boolean = false) => {
-      if (!activeSession || isAnalyzingRef.current) return
+      const session = useSessionStore.getState().activeSession
+      if (!session || isAnalyzingRef.current) return
 
-      const transcript = getFullTranscript()
+      const {
+        summary,
+        keyFindings,
+        redFlags,
+        checklistItems,
+        diagnoses,
+        wordCountAtLastUpdate,
+        setProcessing,
+        updateFromResponse,
+        setWordCountAtLastUpdate,
+      } = useInsightsStore.getState()
+
+      const transcript = useTranscriptStore.getState().getFullTranscript()
       const currentWordCount = transcript.split(/\s+/).length
       const newWords = currentWordCount - wordCountAtLastUpdate
       const timeSinceLastAnalysis = Date.now() - lastAnalysisTimeRef.current
 
-      // Skip threshold checks when forced (e.g., triggered by doctor note)
-      if (
-        !forceRun &&
-        newWords < MIN_NEW_WORDS &&
-        timeSinceLastAnalysis < MIN_INTERVAL_MS
-      )
-        return
+      // When not forced, require transcript with enough new content
+      if (!forceRun) {
+        if (!transcript.trim()) return
+        if (
+          newWords < MIN_NEW_WORDS &&
+          timeSinceLastAnalysis < MIN_INTERVAL_MS
+        )
+          return
+      }
 
       // Abort any in-flight analysis
       if (abortControllerRef.current) {
@@ -99,33 +117,31 @@ export function useLiveInsights() {
       setProcessing(true)
 
       try {
-        // Fetch doctor notes for context (including image URLs)
+        // Fetch doctor notes for context (including image URLs for vision)
         let doctorNotes = ""
+        let imageUrls: string[] = []
         try {
           const notesRes = await fetch(
-            `/api/sessions/${activeSession.id}/notes`,
+            `/api/sessions/${session.id}/notes`,
             { signal: abortController.signal }
           )
           if (notesRes.ok) {
             const notes = await notesRes.json()
             if (notes.length > 0) {
               doctorNotes = notes
-                .map(
-                  (n: { content: string; imageUrls: string[] }) => {
-                    let noteText = n.content
-                    if (n.imageUrls && n.imageUrls.length > 0) {
-                      noteText += `\n[Doctor uploaded ${n.imageUrls.length} medical image(s)]`
-                    }
-                    return noteText
-                  }
-                )
+                .map((n: { content: string }) => n.content)
                 .filter(Boolean)
                 .join("\n")
+              imageUrls = notes.flatMap(
+                (n: { imageUrls: string[] }) => n.imageUrls || []
+              )
             }
           }
         } catch {
           // Ignore notes fetch failure
         }
+
+        const enabledConnectors = useConnectorStore.getState().connectors
 
         const res = await fetch("/api/grok/insights", {
           method: "POST",
@@ -133,6 +149,7 @@ export function useLiveInsights() {
           body: JSON.stringify({
             transcript,
             doctorNotes,
+            imageUrls,
             currentInsights: {
               summary,
               keyFindings,
@@ -141,8 +158,15 @@ export function useLiveInsights() {
                 label: item.label,
                 isChecked: item.isChecked,
               })),
+              diagnoses: diagnoses.map((dx) => ({
+                icdCode: dx.icdCode,
+                diseaseName: dx.diseaseName,
+                confidence: dx.confidence,
+                citations: dx.citations,
+              })),
             },
-            sessionId: activeSession.id,
+            sessionId: session.id,
+            enabledConnectors,
           }),
           signal: abortController.signal,
         })
@@ -164,20 +188,20 @@ export function useLiveInsights() {
         // Parse the complete response
         try {
           const parsed: InsightsResponse = JSON.parse(accumulated)
-          updateFromResponse(parsed, activeSession.id)
+          updateFromResponse(parsed, session.id)
           setWordCountAtLastUpdate(currentWordCount)
           lastAnalysisTimeRef.current = Date.now()
 
           // Auto-save title once from the first insights response
           if (
             !titleGeneratedRef.current &&
-            activeSession.title === "New Consultation" &&
+            session.title === "New Consultation" &&
             parsed.title
           ) {
             titleGeneratedRef.current = true
             const title = parsed.title.replace(/^["']|["']$/g, "")
-            useSessionStore.getState().updateSession(activeSession.id, { title })
-            fetch(`/api/sessions/${activeSession.id}`, {
+            useSessionStore.getState().updateSession(session.id, { title })
+            fetch(`/api/sessions/${session.id}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ title }),
@@ -189,26 +213,15 @@ export function useLiveInsights() {
         }
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
-          return // Cancelled, new analysis will follow
+          return
         }
         console.error("Insights analysis failed:", error)
-        setProcessing(false)
+        useInsightsStore.getState().setProcessing(false)
       } finally {
         isAnalyzingRef.current = false
       }
     },
-    [
-      activeSession,
-      getFullTranscript,
-      wordCountAtLastUpdate,
-      summary,
-      keyFindings,
-      redFlags,
-      checklistItems,
-      setProcessing,
-      updateFromResponse,
-      setWordCountAtLastUpdate,
-    ]
+    []
   )
 
   const analyzeTranscript = useCallback(() => {
@@ -216,12 +229,10 @@ export function useLiveInsights() {
   }, [runAnalysis])
 
   const triggerAnalysis = useCallback(() => {
-    // Debounce: only run if enough time has passed
     const timeSinceLastAnalysis = Date.now() - lastAnalysisTimeRef.current
     if (timeSinceLastAnalysis >= MIN_INTERVAL_MS) {
       analyzeTranscript()
     } else {
-      // Schedule for later
       setTimeout(
         () => analyzeTranscript(),
         MIN_INTERVAL_MS - timeSinceLastAnalysis
@@ -229,7 +240,6 @@ export function useLiveInsights() {
     }
   }, [analyzeTranscript])
 
-  // Force analysis immediately (bypasses word count and time checks)
   const triggerFromNote = useCallback(() => {
     runAnalysis(true)
   }, [runAnalysis])

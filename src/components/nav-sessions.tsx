@@ -7,6 +7,7 @@ import {
   IconPlus,
   IconTrash,
 } from "@tabler/icons-react"
+import { v4 as uuidv4 } from "uuid"
 
 import { useSessionStore } from "@/stores/session-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
@@ -52,6 +53,26 @@ export function NavSessions() {
   const noteStore = useNoteStore()
 
   const createSession = async () => {
+    const tempId = uuidv4()
+    const now = new Date().toISOString()
+    const optimisticSession = {
+      id: tempId,
+      title: "New Consultation",
+      patientName: null,
+      startedAt: now,
+      endedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    addSession(optimisticSession)
+    setActiveSession(optimisticSession)
+    transcriptStore.reset()
+    insightsStore.reset()
+    recordStore.reset()
+    recordingStore.reset()
+    noteStore.reset()
+
     try {
       const res = await fetch("/api/sessions", {
         method: "POST",
@@ -59,76 +80,108 @@ export function NavSessions() {
         body: JSON.stringify({ title: "New Consultation" }),
       })
       if (!res.ok) throw new Error("Failed to create session")
-      const session = await res.json()
-      addSession(session)
-      setActiveSession(session)
-      transcriptStore.reset()
-      insightsStore.reset()
-      recordStore.reset()
-      recordingStore.reset()
-      noteStore.reset()
+      const realSession = await res.json()
+
+      const store = useSessionStore.getState()
+      store.setSessions(
+        store.sessions.map((s) => (s.id === tempId ? realSession : s))
+      )
+      if (store.activeSession?.id === tempId) {
+        store.setActiveSession(realSession)
+      }
     } catch (error) {
       console.error("Failed to create session:", error)
+      const store = useSessionStore.getState()
+      store.setSessions(store.sessions.filter((s) => s.id !== tempId))
+      if (store.activeSession?.id === tempId) {
+        store.setActiveSession(null)
+      }
     }
   }
 
   const loadSession = async (sessionId: string) => {
     if (activeSession?.id === sessionId) return
+
+    useSessionStore.getState().setLoading(true)
+
     try {
-      const res = await fetch(`/api/sessions/${sessionId}`)
+      const res = await fetch(`/api/sessions/${sessionId}/full`)
       if (!res.ok) throw new Error("Failed to load session")
-      const session = await res.json()
-      setActiveSession(session)
+      const { session, transcriptEntries, notes } = await res.json()
+
       transcriptStore.reset()
       insightsStore.reset()
       recordStore.reset()
       recordingStore.reset()
       noteStore.reset()
 
-      const transcriptRes = await fetch(
-        `/api/sessions/${sessionId}/transcript`
-      )
-      if (transcriptRes.ok) {
-        const entries = await transcriptRes.json()
-        transcriptStore.loadEntries(entries)
+      setActiveSession(session)
+
+      if (transcriptEntries?.length > 0) {
+        transcriptStore.loadEntries(transcriptEntries)
       }
 
-      // Load insights + checklist
+      // Restore diagnostic keyword highlights from DB
+      const savedKeywords = session.insights?.diagnosticKeywords
+      if (Array.isArray(savedKeywords) && savedKeywords.length > 0) {
+        transcriptStore.setDiagnosticKeywords(savedKeywords)
+      }
+
       if (session.insights) {
         insightsStore.loadFromDB({
           summary: session.insights.summary,
           keyFindings: session.insights.keyFindings,
           redFlags: session.insights.redFlags,
           checklistItems: session.checklistItems || [],
+          diagnoses: (session.diagnoses || []).map(
+            (dx: {
+              id: string
+              sessionId: string
+              icdCode: string
+              icdUri?: string
+              diseaseName: string
+              confidence: string
+              evidence: string
+              citations: unknown
+              sortOrder: number
+            }) => ({
+              id: dx.id,
+              sessionId: dx.sessionId,
+              icdCode: dx.icdCode,
+              icdUri: dx.icdUri,
+              diseaseName: dx.diseaseName,
+              confidence: dx.confidence.toLowerCase() as
+                | "high"
+                | "moderate"
+                | "low",
+              evidence: dx.evidence,
+              citations: dx.citations || [],
+              sortOrder: dx.sortOrder,
+            })
+          ),
         })
       }
 
-      // Load record
       if (session.record) {
         recordStore.loadFromDB(session.record)
       }
 
-      // Load notes
-      try {
-        const notesRes = await fetch(`/api/sessions/${sessionId}/notes`)
-        if (notesRes.ok) {
-          const notes = await notesRes.json()
-          noteStore.loadNotes(
-            notes.map((n: { id: string; content: string; imageUrls: string[]; source: string; createdAt: string }) => ({
-              id: n.id,
-              content: n.content,
-              imageUrls: n.imageUrls || [],
-              storagePaths: [],
-              source: n.source as "MANUAL" | "STT" | "IMAGE",
-              createdAt: n.createdAt,
-            }))
-          )
-        }
-      } catch {
-        // Continue without notes
+      if (notes?.length > 0) {
+        noteStore.loadNotes(
+          notes.map((n: { id: string; content: string; imageUrls: string[]; source: string; createdAt: string }) => ({
+            id: n.id,
+            content: n.content,
+            imageUrls: n.imageUrls || [],
+            storagePaths: [],
+            source: n.source as "MANUAL" | "STT" | "IMAGE",
+            createdAt: n.createdAt,
+          }))
+        )
       }
     } catch (error) {
       console.error("Failed to load session:", error)
+    } finally {
+      useSessionStore.getState().setLoading(false)
     }
   }
 

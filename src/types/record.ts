@@ -13,6 +13,7 @@ export interface ConsultationRecord {
   patientName: string | null
   chiefComplaint: string | null
   hpiText: string | null
+  medications: string | null
   rosText: string | null
   pmh: string | null
   socialHistory: string | null
@@ -27,6 +28,7 @@ export interface ConsultationRecord {
 export interface ConsultationRecordUpdate {
   chiefComplaint?: string
   hpiText?: string
+  medications?: string
   rosText?: string
   pmh?: string
   socialHistory?: string

@@ -1,5 +1,10 @@
 export type Speaker = "DOCTOR" | "PATIENT" | "UNKNOWN"
 
+export interface DiagnosticKeyword {
+  phrase: string
+  category: "symptom" | "diagnosis" | "medication" | "finding" | "vital"
+}
+
 export interface Session {
   id: string
   title: string | null

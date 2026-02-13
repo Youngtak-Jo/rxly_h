@@ -7,7 +7,7 @@ export async function GET(
 ) {
   const { id } = await params
   try {
-    const [insights, checklistItems] = await Promise.all([
+    const [insights, checklistItems, diagnoses] = await Promise.all([
       prisma.insights.findUnique({
         where: { sessionId: id },
       }),
@@ -15,8 +15,12 @@ export async function GET(
         where: { sessionId: id },
         orderBy: { sortOrder: "asc" },
       }),
+      prisma.diagnosis.findMany({
+        where: { sessionId: id },
+        orderBy: { sortOrder: "asc" },
+      }),
     ])
-    return NextResponse.json({ ...insights, checklistItems })
+    return NextResponse.json({ ...insights, checklistItems, diagnoses })
   } catch (error) {
     console.error("Failed to fetch insights:", error)
     return NextResponse.json(null, { status: 500 })
@@ -31,6 +35,10 @@ export async function PUT(
   try {
     const body = await req.json()
 
+    const diagnosticKeywords = body.diagnosticKeywords !== undefined
+      ? body.diagnosticKeywords
+      : undefined
+
     const insights = await prisma.insights.upsert({
       where: { sessionId: id },
       update: {
@@ -38,6 +46,7 @@ export async function PUT(
         keyFindings: body.keyFindings,
         redFlags: body.redFlags,
         lastProcessedAt: new Date(),
+        ...(diagnosticKeywords !== undefined && { diagnosticKeywords }),
       },
       create: {
         sessionId: id,
@@ -45,6 +54,7 @@ export async function PUT(
         keyFindings: body.keyFindings || [],
         redFlags: body.redFlags || [],
         lastProcessedAt: new Date(),
+        ...(diagnosticKeywords !== undefined && { diagnosticKeywords }),
       },
     })
 
@@ -75,6 +85,46 @@ export async function PUT(
               doctorNote: item.doctorNote ?? null,
               sortOrder: item.sortOrder ?? index,
               source: item.source === "MANUAL" ? "MANUAL" : "AI",
+            })
+          ),
+        })
+      }
+    }
+
+    // Sync diagnoses if provided
+    if (body.diagnoses && Array.isArray(body.diagnoses)) {
+      await prisma.diagnosis.deleteMany({
+        where: { sessionId: id },
+      })
+
+      if (body.diagnoses.length > 0) {
+        await prisma.diagnosis.createMany({
+          data: body.diagnoses.map(
+            (
+              dx: {
+                icdCode: string
+                icdUri?: string
+                diseaseName: string
+                confidence: string
+                evidence: string
+                citations: unknown[]
+                sortOrder: number
+              },
+              index: number
+            ) => ({
+              sessionId: id,
+              icdCode: dx.icdCode,
+              icdUri: dx.icdUri || null,
+              diseaseName: dx.diseaseName,
+              confidence:
+                dx.confidence?.toUpperCase() === "HIGH"
+                  ? "HIGH"
+                  : dx.confidence?.toUpperCase() === "LOW"
+                    ? "LOW"
+                    : "MODERATE",
+              evidence: dx.evidence,
+              citations: dx.citations || [],
+              sortOrder: dx.sortOrder ?? index,
             })
           ),
         })

@@ -22,6 +22,7 @@ model Session {
   insights          Insights?
   record            ConsultationRecord?
   checklistItems    ChecklistItem[]
+  diagnoses         Diagnosis[]
   notes             Note[]
 
   @@index([userId])
@@ -52,14 +53,15 @@ model TranscriptEntry {
 }
 
 model Insights {
-  id              String    @id @default(uuid())
-  sessionId       String    @unique @map("session_id")
-  summary         String    @default("")
-  keyFindings     Json      @default("[]") @map("key_findings")
-  redFlags        Json      @default("[]") @map("red_flags")
-  lastProcessedAt DateTime? @map("last_processed_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id                  String    @id @default(uuid())
+  sessionId           String    @unique @map("session_id")
+  summary             String    @default("")
+  keyFindings         Json      @default("[]") @map("key_findings")
+  redFlags            Json      @default("[]") @map("red_flags")
+  diagnosticKeywords  Json      @default("[]") @map("diagnostic_keywords")
+  lastProcessedAt     DateTime? @map("last_processed_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
@@ -96,6 +98,7 @@ model ConsultationRecord {
   patientName    String?  @map("patient_name")
   chiefComplaint String?  @map("chief_complaint")
   hpiText        String?  @map("hpi_text")
+  medications    String?
   rosText        String?  @map("ros_text")
   pmh            String?
   socialHistory  String?  @map("social_history")
@@ -132,4 +135,29 @@ enum NoteSource {
   MANUAL
   STT
   IMAGE
+}
+
+enum DiagnosisConfidence {
+  HIGH
+  MODERATE
+  LOW
+}
+
+model Diagnosis {
+  id          String              @id @default(uuid())
+  sessionId   String              @map("session_id")
+  icdCode     String              @map("icd_code")
+  icdUri      String?             @map("icd_uri")
+  diseaseName String              @map("disease_name")
+  confidence  DiagnosisConfidence @default(MODERATE)
+  evidence    String
+  citations   Json                @default("[]")
+  sortOrder   Int                 @default(0) @map("sort_order")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, sortOrder])
+  @@map("diagnoses")
 }

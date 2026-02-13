@@ -19,36 +19,35 @@ export function RecordContainer() {
   const generateRecord = async () => {
     if (!activeSession) return
     const transcript = getFullTranscript()
-    if (!transcript.trim()) return
+
+    // Fetch doctor notes and image URLs for record generation
+    let doctorNotes = ""
+    let imageUrls: string[] = []
+    try {
+      const notesRes = await fetch(
+        `/api/sessions/${activeSession.id}/notes`
+      )
+      if (notesRes.ok) {
+        const notes = await notesRes.json()
+        if (notes.length > 0) {
+          doctorNotes = notes
+            .map((n: { content: string }) => n.content)
+            .filter(Boolean)
+            .join("\n")
+          imageUrls = notes.flatMap(
+            (n: { imageUrls: string[] }) => n.imageUrls || []
+          )
+        }
+      }
+    } catch {
+      // Continue without notes
+    }
+
+    // Need at least transcript, notes, or images to generate
+    if (!transcript.trim() && !doctorNotes.trim() && imageUrls.length === 0) return
 
     setGenerating(true)
     try {
-      // Fetch doctor notes for record generation
-      let doctorNotes = ""
-      try {
-        const notesRes = await fetch(
-          `/api/sessions/${activeSession.id}/notes`
-        )
-        if (notesRes.ok) {
-          const notes = await notesRes.json()
-          if (notes.length > 0) {
-            doctorNotes = notes
-              .map(
-                (n: { content: string; imageUrls: string[] }) => {
-                  let noteText = n.content
-                  if (n.imageUrls && n.imageUrls.length > 0) {
-                    noteText += `\n[Doctor uploaded ${n.imageUrls.length} medical image(s)]`
-                  }
-                  return noteText
-                }
-              )
-              .filter(Boolean)
-              .join("\n")
-          }
-        }
-      } catch {
-        // Continue without notes
-      }
 
       const res = await fetch("/api/grok/record", {
         method: "POST",
@@ -56,6 +55,7 @@ export function RecordContainer() {
         body: JSON.stringify({
           transcript,
           doctorNotes,
+          imageUrls,
           insights: { summary, keyFindings },
           sessionId: activeSession.id,
           existingRecord: record,
@@ -86,6 +86,7 @@ export function RecordContainer() {
           patientName: activeSession.patientName,
           chiefComplaint: parsed.chiefComplaint || null,
           hpiText: parsed.hpiText || null,
+          medications: parsed.medications || null,
           rosText: parsed.rosText || null,
           pmh: parsed.pmh || null,
           socialHistory: parsed.socialHistory || null,
@@ -117,6 +118,7 @@ export function RecordContainer() {
   const sections = [
     { key: "chiefComplaint", title: "Chief Complaint" },
     { key: "hpiText", title: "History of Present Illness (HPI)" },
+    { key: "medications", title: "Current Medications" },
     { key: "rosText", title: "Review of Systems (ROS)" },
     { key: "pmh", title: "Past Medical History (PMH)" },
     { key: "socialHistory", title: "Social History" },
@@ -146,9 +148,9 @@ export function RecordContainer() {
           className="gap-1.5"
         >
           {isGenerating ? (
-            <IconLoader2 className="size-3.5 animate-spin" />
+            <IconLoader2 key="loader" className="size-3.5 animate-spin" />
           ) : (
-            <IconSparkles className="size-3.5" />
+            <IconSparkles key="sparkles" className="size-3.5" />
           )}
           {isGenerating ? "Generating..." : record ? "Regenerate" : "Generate Record"}
         </Button>

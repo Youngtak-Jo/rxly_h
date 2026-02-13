@@ -27,7 +27,14 @@ import { useSessionStore } from "@/stores/session-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useSimulatedTranscript } from "@/hooks/use-simulated-transcript"
 import { SCENARIOS } from "@/data/scenarios"
-import { IconDice, IconTestPipe } from "@tabler/icons-react"
+import {
+  IconDice,
+  IconTestPipe,
+  IconLayoutSidebarRightExpand,
+  IconLayoutSidebarRightCollapse,
+} from "@tabler/icons-react"
+import { ConnectorsDialog } from "@/components/consultation/note-input/connectors-dialog"
+import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 
 function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -229,6 +236,12 @@ function SimulationDialog() {
 export function SiteHeader() {
   const activeSession = useSessionStore((s) => s.activeSession)
   const { isRecording, isPaused, duration } = useRecordingStore()
+  const isTranscriptCollapsed = useConsultationTabStore(
+    (s) => s.isTranscriptCollapsed
+  )
+  const _toggleTranscript = useConsultationTabStore(
+    (s) => s._toggleTranscript
+  )
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -252,11 +265,25 @@ export function SiteHeader() {
             </Badge>
           </div>
         )}
-        {process.env.NODE_ENV === "development" && (
-          <div className="ml-auto">
-            <SimulationDialog />
-          </div>
-        )}
+        <div className="ml-auto flex items-center gap-1">
+          {_toggleTranscript && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 text-muted-foreground hover:text-foreground"
+              onClick={_toggleTranscript}
+              title={isTranscriptCollapsed ? "Show transcript" : "Hide transcript"}
+            >
+              {isTranscriptCollapsed ? (
+                <IconLayoutSidebarRightExpand className="size-4" />
+              ) : (
+                <IconLayoutSidebarRightCollapse className="size-4" />
+              )}
+            </Button>
+          )}
+          <ConnectorsDialog />
+          {process.env.NODE_ENV === "development" && <SimulationDialog />}
+        </div>
       </div>
     </header>
   )

@@ -1,10 +1,12 @@
 import { create } from "zustand"
-import type { TranscriptEntry, Speaker } from "@/types/session"
+import type { TranscriptEntry, Speaker, DiagnosticKeyword } from "@/types/session"
 
 export type IdentificationStatus =
   | "unidentified"
   | "identifying"
   | "identified"
+
+export type HighlightStatus = "idle" | "loading" | "done"
 
 interface TranscriptState {
   entries: TranscriptEntry[]
@@ -13,6 +15,8 @@ interface TranscriptState {
   identificationStatus: IdentificationStatus
   identificationAttempt: number
   speakerRoleMap: Record<number, Speaker>
+  diagnosticKeywords: DiagnosticKeyword[]
+  highlightStatus: HighlightStatus
 
   addFinalEntry: (entry: TranscriptEntry) => void
   setInterimText: (text: string, speaker: Speaker) => void
@@ -23,6 +27,8 @@ interface TranscriptState {
   setIdentificationStatus: (status: IdentificationStatus) => void
   incrementIdentificationAttempt: () => void
   relabelSpeakers: (mapping: Record<number, Speaker>) => void
+  setDiagnosticKeywords: (keywords: DiagnosticKeyword[]) => void
+  setHighlightStatus: (status: HighlightStatus) => void
 }
 
 export const useTranscriptStore = create<TranscriptState>((set, get) => ({
@@ -32,6 +38,8 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
   identificationStatus: "unidentified",
   identificationAttempt: 0,
   speakerRoleMap: {},
+  diagnosticKeywords: [],
+  highlightStatus: "idle",
 
   addFinalEntry: (entry) =>
     set((state) => ({
@@ -51,6 +59,8 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
     set({
       entries,
       identificationStatus: hasIdentifiedSpeakers ? "identified" : "unidentified",
+      diagnosticKeywords: [],
+      highlightStatus: "idle",
     })
   },
 
@@ -62,6 +72,8 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
       identificationStatus: "unidentified",
       identificationAttempt: 0,
       speakerRoleMap: {},
+      diagnosticKeywords: [],
+      highlightStatus: "idle",
     }),
 
   getFullTranscript: () => {
@@ -91,4 +103,9 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
         return entry
       }),
     })),
+
+  setDiagnosticKeywords: (keywords) =>
+    set({ diagnosticKeywords: keywords, highlightStatus: "done" }),
+
+  setHighlightStatus: (status) => set({ highlightStatus: status }),
 }))

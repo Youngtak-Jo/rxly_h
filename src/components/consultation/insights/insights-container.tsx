@@ -17,6 +17,7 @@ import {
   IconChecklist,
   IconPhoto,
 } from "@tabler/icons-react"
+import { DiagnosisSection } from "./diagnosis-section"
 
 export function InsightsContainer() {
   const {
@@ -168,6 +169,9 @@ export function InsightsContainer() {
           </div>
         )}
       </section>
+
+      {/* Differential Diagnosis */}
+      <DiagnosisSection />
 
       {/* Imaging Uploads */}
       {uploadedImages.length > 0 && (

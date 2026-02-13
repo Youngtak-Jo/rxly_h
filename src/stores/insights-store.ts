@@ -1,5 +1,9 @@
 import { create } from "zustand"
-import type { ChecklistItem, InsightsResponse } from "@/types/insights"
+import type {
+  ChecklistItem,
+  DiagnosisItem,
+  InsightsResponse,
+} from "@/types/insights"
 import { v4 as uuid } from "uuid"
 
 /**
@@ -41,6 +45,7 @@ interface InsightsState {
   keyFindings: string[]
   redFlags: string[]
   checklistItems: ChecklistItem[]
+  diagnoses: DiagnosisItem[]
   isProcessing: boolean
   lastUpdated: Date | null
   wordCountAtLastUpdate: number
@@ -55,6 +60,7 @@ interface InsightsState {
     keyFindings: string[]
     redFlags: string[]
     checklistItems: ChecklistItem[]
+    diagnoses?: DiagnosisItem[]
   }) => void
   toggleChecklistItem: (id: string) => void
   removeChecklistItem: (id: string) => void
@@ -68,6 +74,7 @@ export const useInsightsStore = create<InsightsState>((set) => ({
   keyFindings: [],
   redFlags: [],
   checklistItems: [],
+  diagnoses: [],
   isProcessing: false,
   lastUpdated: null,
   wordCountAtLastUpdate: 0,
@@ -120,11 +127,47 @@ export const useInsightsStore = create<InsightsState>((set) => ({
           item.source === "MANUAL" && !matchedExistingIds.has(item.id)
       )
 
+      // Reconcile diagnoses by ICD code match.
+      // response.diagnoses === undefined → AI wasn't asked (connectors disabled) → preserve existing
+      // response.diagnoses is defined → merge citations (union of old + new)
+      const newDiagnoses: DiagnosisItem[] =
+        response.diagnoses !== undefined
+          ? response.diagnoses.map((aiDx, index) => {
+              const existing = state.diagnoses.find(
+                (d) => d.icdCode === aiDx.icdCode
+              )
+              // Merge citations: keep existing + add new unique ones
+              const newCites = aiDx.citations || []
+              const oldCites = existing?.citations || []
+              const citeKeys = new Set(
+                newCites.map((c) => `${c.source}:${c.url}`)
+              )
+              const merged = [
+                ...newCites,
+                ...oldCites.filter(
+                  (c) => !citeKeys.has(`${c.source}:${c.url}`)
+                ),
+              ]
+              return {
+                id: existing?.id || uuid(),
+                sessionId,
+                icdCode: aiDx.icdCode,
+                icdUri: undefined,
+                diseaseName: aiDx.diseaseName,
+                confidence: aiDx.confidence,
+                evidence: aiDx.evidence,
+                citations: merged,
+                sortOrder: index,
+              }
+            })
+          : state.diagnoses
+
       return {
         summary: response.summary,
         keyFindings: response.keyFindings,
         redFlags: response.redFlags,
         checklistItems: [...reconciledItems, ...manualItems],
+        diagnoses: newDiagnoses,
         isProcessing: false,
         lastUpdated: new Date(),
       }
@@ -136,6 +179,7 @@ export const useInsightsStore = create<InsightsState>((set) => ({
       keyFindings: data.keyFindings || [],
       redFlags: data.redFlags || [],
       checklistItems: data.checklistItems || [],
+      diagnoses: data.diagnoses || [],
       lastUpdated: new Date(),
     }),
 
@@ -170,6 +214,7 @@ export const useInsightsStore = create<InsightsState>((set) => ({
       keyFindings: [],
       redFlags: [],
       checklistItems: [],
+      diagnoses: [],
       isProcessing: false,
       lastUpdated: null,
       wordCountAtLastUpdate: 0,

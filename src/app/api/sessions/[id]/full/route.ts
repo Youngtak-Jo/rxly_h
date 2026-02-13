@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/server"
+import { createClient as createAdminClient } from "@supabase/supabase-js"
 
-const supabaseAdmin = createClient(
+const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -13,10 +14,38 @@ export async function GET(
 ) {
   const { id } = await params
   try {
-    const notes = await prisma.note.findMany({
-      where: { sessionId: id },
-      orderBy: { createdAt: "asc" },
-    })
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const [session, transcriptEntries, notes] = await Promise.all([
+      prisma.session.findUnique({
+        where: { id, userId: user.id },
+        include: {
+          insights: true,
+          record: true,
+          checklistItems: { orderBy: { sortOrder: "asc" } },
+          diagnoses: { orderBy: { sortOrder: "asc" } },
+        },
+      }),
+      prisma.transcriptEntry.findMany({
+        where: { sessionId: id, isFinal: true },
+        orderBy: { startTime: "asc" },
+      }),
+      prisma.note.findMany({
+        where: { sessionId: id },
+        orderBy: { createdAt: "asc" },
+      }),
+    ])
+
+    if (!session) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 })
+    }
 
     // Batch signed URL generation for all notes
     const allPaths: string[] = []
@@ -40,7 +69,7 @@ export async function GET(
       signedUrlResults = data || []
     }
 
-    const notesWithFreshUrls = notes.map((note, i) => {
+    const notesWithUrls = notes.map((note, i) => {
       const range = notePathRanges[i]
       if (range.count === 0) return note
       const freshUrls = signedUrlResults
@@ -53,36 +82,15 @@ export async function GET(
       }
     })
 
-    return NextResponse.json(notesWithFreshUrls)
-  } catch (error) {
-    console.error("Failed to fetch notes:", error)
-    return NextResponse.json([], { status: 500 })
-  }
-}
-
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params
-  try {
-    const body = await req.json()
-
-    const note = await prisma.note.create({
-      data: {
-        sessionId: id,
-        content: body.content || "",
-        imageUrls: body.imageUrls || [],
-        storagePaths: body.storagePaths || [],
-        source: body.source || "MANUAL",
-      },
+    return NextResponse.json({
+      session,
+      transcriptEntries,
+      notes: notesWithUrls,
     })
-
-    return NextResponse.json(note, { status: 201 })
   } catch (error) {
-    console.error("Failed to create note:", error)
+    console.error("Failed to fetch full session:", error)
     return NextResponse.json(
-      { error: "Failed to create note" },
+      { error: "Failed to fetch full session" },
       { status: 500 }
     )
   }

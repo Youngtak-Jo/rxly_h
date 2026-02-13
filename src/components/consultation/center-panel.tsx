@@ -3,7 +3,6 @@
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { InsightsContainer } from "./insights/insights-container"
 import { RecordContainer } from "./record/record-container"
-import { NoteInputBar } from "./note-input/note-input-bar"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 
 export function CenterPanel() {
@@ -20,7 +19,6 @@ export function CenterPanel() {
           )}
         </div>
       </ScrollArea>
-      <NoteInputBar />
     </div>
   )
 }

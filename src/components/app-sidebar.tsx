@@ -67,10 +67,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="!overflow-hidden">
         <NavMain />
-        <NavSessions />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <NavSessions />
+        </div>
+        <NavSecondary items={data.navSecondary} />
       </SidebarContent>
       <SidebarFooter>
         {loading ? (
