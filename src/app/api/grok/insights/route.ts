@@ -83,9 +83,12 @@ export async function POST(req: Request) {
         const meta = getRAGSourceMeta(ragContext)
         console.log(
           `[RAG] Search terms: ${JSON.stringify(searchTerms)} | ` +
-            `PubMed: ${meta.pubmedCount} results | ` +
-            `Europe PMC: ${meta.europePmcCount} results | ` +
-            `ICD-11: ${meta.icd11Count} results`
+          `PubMed: ${meta.pubmedCount} | ` +
+          `Europe PMC: ${meta.europePmcCount} | ` +
+          `ICD-11: ${meta.icd11Count} | ` +
+          `OpenFDA: ${meta.openfdaCount} | ` +
+          `ClinicalTrials: ${meta.clinicalTrialsCount} | ` +
+          `DailyMed: ${meta.dailymedCount}`
         )
 
         ragContextText = formatRAGContextForPrompt(ragContext)

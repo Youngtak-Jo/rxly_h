@@ -58,10 +58,10 @@ async function enrichSources(
         },
         icd11Detail: detail
           ? {
-              description: detail.description,
-              parents: detail.parents,
-              browserUrl: detail.browserUrl,
-            }
+            description: detail.description,
+            parents: detail.parents,
+            browserUrl: detail.browserUrl,
+          }
           : null,
       })
     )
@@ -79,6 +79,39 @@ async function enrichSources(
       results.push(r.value as EnrichedSource)
     }
   })
+
+  // Tier 1 connectors — pass through as-is (no dedicated detail APIs)
+  const openfdaSources: EnrichedSource[] = ragContext.openfdaResults.map(
+    (r) => ({
+      citation: { source: "openfda", title: `FDA Adverse Events: ${r.drugName}`, url: r.url },
+      articleDetail: {
+        abstract: `Top reported reactions: ${r.reactions.join(", ")}. Total reports: ${r.reportCount}`,
+        authors: [],
+      },
+    })
+  )
+
+  const clinicalTrialsSources: EnrichedSource[] =
+    ragContext.clinicalTrialsResults.map((r) => ({
+      citation: { source: "clinical_trials", title: r.title, url: r.url },
+      articleDetail: {
+        abstract: `${r.nctId} | Phase: ${r.phase} | Status: ${r.status} | Conditions: ${r.conditions.join(", ")}`,
+        authors: [],
+      },
+    }))
+
+  const dailymedSources: EnrichedSource[] = ragContext.dailymedResults.map(
+    (r) => ({
+      citation: { source: "dailymed", title: r.title, url: r.url },
+      articleDetail: {
+        abstract: `Active ingredients: ${r.activeIngredients.join(", ") || "N/A"}`,
+        authors: [],
+      },
+    })
+  )
+
+  // Add Tier 1 connector sources
+  results.push(...openfdaSources, ...clinicalTrialsSources, ...dailymedSources)
 
   return results
 }

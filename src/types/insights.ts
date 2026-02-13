@@ -24,7 +24,7 @@ export interface ChecklistOutputItem {
 }
 
 export interface DiagnosisCitation {
-  source: "pubmed" | "europe_pmc" | "icd11"
+  source: "pubmed" | "europe_pmc" | "icd11" | "openfda" | "clinical_trials" | "dailymed"
   title: string
   url: string
   snippet?: string
@@ -50,12 +50,15 @@ export interface DiagnosisOutputItem {
   citations: DiagnosisCitation[]
 }
 
-export type ConnectorType = "pubmed" | "icd11" | "europe_pmc"
+export type ConnectorType = "pubmed" | "icd11" | "europe_pmc" | "openfda" | "clinical_trials" | "dailymed"
 
 export interface ConnectorState {
   pubmed: boolean
   icd11: boolean
   europe_pmc: boolean
+  openfda: boolean
+  clinical_trials: boolean
+  dailymed: boolean
 }
 
 export interface DiagnosisDetailArticle {

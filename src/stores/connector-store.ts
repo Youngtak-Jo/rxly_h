@@ -12,6 +12,9 @@ const DEFAULT_CONNECTORS: ConnectorState = {
   pubmed: true,
   icd11: true,
   europe_pmc: true,
+  openfda: true,
+  clinical_trials: true,
+  dailymed: true,
 }
 
 export const useConnectorStore = create<ConnectorStoreState>((set) => ({

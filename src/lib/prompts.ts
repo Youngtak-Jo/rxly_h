@@ -118,7 +118,7 @@ Rules:
 export const DIAGNOSIS_PROMPT_ADDENDUM = `
 
 DIFFERENTIAL DIAGNOSIS:
-When external medical knowledge is provided below (from PubMed, ICD-11, Europe PMC), generate a differential diagnosis list.
+When external medical knowledge is provided below (from PubMed, ICD-11, Europe PMC, OpenFDA, ClinicalTrials.gov, DailyMed), generate a differential diagnosis list.
 
 Add a "diagnoses" array to your JSON output:
 
@@ -145,6 +145,21 @@ Add a "diagnoses" array to your JSON output:
         "source": "icd11",
         "title": "ICD-11 classification entry title",
         "url": "ICD entity URI from provided results"
+      },
+      {
+        "source": "openfda",
+        "title": "FDA adverse event report title",
+        "url": "https://api.fda.gov/drug/event.json?..."
+      },
+      {
+        "source": "clinical_trials",
+        "title": "Clinical trial title",
+        "url": "https://clinicaltrials.gov/study/NCTXXXXXXXX"
+      },
+      {
+        "source": "dailymed",
+        "title": "Drug label title",
+        "url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=..."
       }
     ]
   }
@@ -158,16 +173,19 @@ DIAGNOSIS RULES:
    - If PubMed results are available: include ALL relevant PubMed citations per diagnosis
    - If Europe PMC results are available: include ALL relevant Europe PMC citations per diagnosis
    - If ICD-11 results are available: include ALL relevant ICD-11 citations per diagnosis
+   - If OpenFDA results are available: include ALL relevant OpenFDA citations per diagnosis
+   - If ClinicalTrials.gov results are available: include ALL relevant clinical trial citations per diagnosis
+   - If DailyMed results are available: include ALL relevant DailyMed citations per diagnosis
    Distribute citations across all available sources.
 5. You may cite sources from EXTERNAL MEDICAL KNOWLEDGE or from CURRENT DIAGNOSES. Do NOT fabricate citations — only cite sources that appear in either section
 6. PRESERVE EXISTING CITATIONS: If CURRENT DIAGNOSES section lists citations for a diagnosis, carry ALL of them forward. Then ADD any new relevant citations from EXTERNAL MEDICAL KNOWLEDGE
 7. Confidence levels: "high" (strong evidence, >80% likelihood), "moderate" (partial evidence, 40-80%), "low" (possible but needs more info, <40%)
 8. When the conversation is early or ambiguous, prefer "moderate" or "low" confidence
-9. citation "source" must be one of: "pubmed", "europe_pmc", "icd11"
-10. SOURCE MAPPING: When citing from [PubMed Literature] section use source "pubmed". When citing from [Europe PMC Literature] section use source "europe_pmc". When citing from [ICD-11 Disease Classifications] section use source "icd11". Copy the exact title and URL from the source entry.
+9. citation "source" must be one of: "pubmed", "europe_pmc", "icd11", "openfda", "clinical_trials", "dailymed"
+10. SOURCE MAPPING: When citing from [PubMed Literature] section use source "pubmed". When citing from [Europe PMC Literature] section use source "europe_pmc". When citing from [ICD-11 Disease Classifications] section use source "icd11". When citing from [OpenFDA Drug Adverse Events] section use source "openfda". When citing from [ClinicalTrials.gov Active Studies] section use source "clinical_trials". When citing from [DailyMed Drug Labels] section use source "dailymed". Copy the exact title and URL from the source entry.
 `
 
-export const SEARCH_TERM_EXTRACTION_PROMPT = `Extract 2-4 concise medical search terms from this consultation for querying medical databases (PubMed, ICD-11). Focus on:
+export const SEARCH_TERM_EXTRACTION_PROMPT = `Extract 2-4 concise medical search terms from this consultation for querying medical databases (PubMed, ICD-11, OpenFDA, ClinicalTrials.gov, DailyMed). Focus on:
 - Primary symptoms and complaints
 - Suspected conditions or diagnoses mentioned
 - Key clinical findings
@@ -200,13 +218,16 @@ Guidelines:
 - escalationCriteria: Red-flag scenarios requiring urgent specialist referral, ED transfer, or change in management level.
 - clinicalPearls: 1-3 brief, practical tips a clinician would find valuable (common pitfalls, easily missed presentations, important associations).
 
-When external medical knowledge sources are provided below (from PubMed, ICD-11, Europe PMC), incorporate relevant evidence from these sources into your recommendations.
+When external medical knowledge sources are provided below (from PubMed, ICD-11, Europe PMC, OpenFDA, ClinicalTrials.gov, DailyMed), incorporate relevant evidence from these sources into your recommendations.
 
 CITATION FORMAT:
 When referencing sources from EXTERNAL MEDICAL KNOWLEDGE, embed citations using this exact markdown format:
   [[PUBMED]](url) — for PubMed Literature sources
   [[EPMC]](url) — for Europe PMC Literature sources
   [[ICD-11]](url) — for ICD-11 Disease Classification sources
+  [[FDA]](url) — for OpenFDA Drug Adverse Events sources
+  [[TRIALS]](url) — for ClinicalTrials.gov Active Studies sources
+  [[DAILYMED]](url) — for DailyMed Drug Labels sources
 
 Citation rules:
 - Copy the EXACT URL from the source entry. Do NOT modify or fabricate URLs.
