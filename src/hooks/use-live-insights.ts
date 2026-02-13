@@ -13,15 +13,6 @@ export function useLiveInsights() {
   const lastAnalysisTimeRef = useRef<number>(0)
   const abortControllerRef = useRef<AbortController | null>(null)
   const isAnalyzingRef = useRef(false)
-  const titleGeneratedRef = useRef(false)
-
-  const activeSession = useSessionStore((s) => s.activeSession)
-
-  // Reset title-generated flag when session changes
-  useEffect(() => {
-    titleGeneratedRef.current = false
-  }, [activeSession?.id])
-
   const runAnalysis = useCallback(
     async (forceRun: boolean = false) => {
       const session = useSessionStore.getState().activeSession
@@ -130,13 +121,8 @@ export function useLiveInsights() {
           setWordCountAtLastUpdate(currentWordCount)
           lastAnalysisTimeRef.current = Date.now()
 
-          // Auto-save title once from the first insights response
-          if (
-            !titleGeneratedRef.current &&
-            session.title === "New Consultation" &&
-            parsed.title
-          ) {
-            titleGeneratedRef.current = true
+          // Auto-update title from every insights response
+          if (parsed.title) {
             const title = parsed.title.replace(/^["']|["']$/g, "")
             useSessionStore.getState().updateSession(session.id, { title })
             fetch(`/api/sessions/${session.id}`, {

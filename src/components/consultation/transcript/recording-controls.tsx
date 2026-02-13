@@ -14,13 +14,18 @@ import {
 } from "@tabler/icons-react"
 
 export function RecordingControls() {
-  const { isRecording, isPaused, duration, setDuration } = useRecordingStore()
+  const { isRecording, isPaused, duration, setDuration, isSimulating, simulationControls } =
+    useRecordingStore()
   const activeSession = useSessionStore((s) => s.activeSession)
   const { startListening, stopListening, pauseListening, resumeListening } =
     useDeepgram()
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Duration timer — only for live recording mode.
+  // Simulation manages its own duration timer in the hook.
   useEffect(() => {
+    if (isSimulating) return
+
     if (isRecording && !isPaused) {
       timerRef.current = setInterval(() => {
         setDuration(duration + 1)
@@ -31,7 +36,7 @@ export function RecordingControls() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [isRecording, isPaused, duration, setDuration])
+  }, [isRecording, isPaused, duration, setDuration, isSimulating])
 
   const handleStart = useCallback(async () => {
     if (!activeSession) return
@@ -39,16 +44,28 @@ export function RecordingControls() {
   }, [activeSession, startListening])
 
   const handleStop = useCallback(() => {
-    stopListening()
-  }, [stopListening])
+    if (isSimulating && simulationControls) {
+      simulationControls.stop()
+    } else {
+      stopListening()
+    }
+  }, [isSimulating, simulationControls, stopListening])
 
   const handlePauseResume = useCallback(() => {
-    if (isPaused) {
-      resumeListening()
+    if (isSimulating && simulationControls) {
+      if (isPaused) {
+        simulationControls.resume()
+      } else {
+        simulationControls.pause()
+      }
     } else {
-      pauseListening()
+      if (isPaused) {
+        resumeListening()
+      } else {
+        pauseListening()
+      }
     }
-  }, [isPaused, pauseListening, resumeListening])
+  }, [isPaused, isSimulating, simulationControls, pauseListening, resumeListening])
 
   return (
     <div className="flex items-center gap-2 border-b px-4 py-3">

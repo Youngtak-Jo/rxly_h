@@ -4,7 +4,7 @@ You will receive the live transcript (STT), optionally the doctor's notes, and t
 Return a JSON object with exactly this structure:
 
 {
-  "title": "Short title naming the core medical condition (max 5 words)",
+  "title": "Descriptive title including the core condition and key symptoms (max 12 words)",
   "summary": "Brief 2-3 sentence summary of the consultation so far",
   "keyFindings": ["Finding 1", "Finding 2"],
   "redFlags": ["Red flag 1"],
@@ -16,7 +16,8 @@ Return a JSON object with exactly this structure:
 
 Guidelines for Title:
 - Name the core medical condition or complaint — NOT the visit type (avoid "follow-up", "check-up", "evaluation")
-- Good: "Uncontrolled Type 2 Diabetes", "Chronic Lower Back Pain" / Bad: "Follow-up Visit After 3 Months"
+- Include the primary condition AND 1-2 key presenting symptoms or distinguishing details
+- Good: "Uncontrolled Type 2 Diabetes with Numbness and Fatigue", "Chronic Lower Back Pain Radiating to Left Leg" / Bad: "Follow-up Visit After 3 Months", "Diabetes"
 
 Guidelines for Summary, Key Findings, Red Flags:
 - Summary should capture the current state of the consultation concisely (2-3 sentences)

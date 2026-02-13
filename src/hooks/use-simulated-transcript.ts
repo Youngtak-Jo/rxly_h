@@ -34,17 +34,194 @@ export function useSimulatedTranscript() {
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null
   )
+  const isPausedRef = useRef(false)
+  const currentIndexRef = useRef(0)
+  const optionsRef = useRef<SimulationOptions>(DEFAULT_OPTIONS)
+  const sessionIdRef = useRef("")
+  const runningTimeRef = useRef(0)
 
   const { setRecording, setDuration } = useRecordingStore()
   const { triggerAnalysis } = useLiveInsights()
+
+  // Stable refs for controls to avoid circular dependency
+  const pauseRef = useRef<() => void>(() => {})
+  const resumeRef = useRef<() => void>(() => {})
+  const stopRef = useRef<() => void>(() => {})
+
+  const processEntry = useCallback(
+    (index: number) => {
+      const opts = optionsRef.current
+      const entries = opts.scenario
+      const sessionId = sessionIdRef.current
+
+      // All entries processed — end simulation
+      if (index >= entries.length) {
+        const t = setTimeout(() => {
+          const store = useRecordingStore.getState()
+          store.setRecording(false)
+          store.setSimulating(false)
+          store.setSimulationControls(null)
+          isRunningRef.current = false
+          if (durationIntervalRef.current)
+            clearInterval(durationIntervalRef.current)
+          triggerAnalysis()
+        }, 1000)
+        timeoutsRef.current.push(t)
+        return
+      }
+
+      const mockEntry = entries[index]
+      const entryDelay = mockEntry.delayMs * opts.speedFactor
+      const words = mockEntry.text.split(" ")
+      const capturedRawSpeakerId = mockEntry.rawSpeakerId
+      const capturedText = mockEntry.text
+
+      // Phase 1: Interim text build-up
+      if (!opts.skipInterim) {
+        for (let w = 1; w <= words.length; w++) {
+          const chunk = words.slice(0, w).join(" ")
+          const interimDelay =
+            entryDelay + w * INTERIM_WORD_STEP_MS * opts.speedFactor
+          const t = setTimeout(() => {
+            const speaker = resolveSpeaker(capturedRawSpeakerId)
+            useTranscriptStore.getState().setInterimText(chunk, speaker)
+          }, interimDelay)
+          timeoutsRef.current.push(t)
+        }
+      }
+
+      // Phase 2: Finalize entry
+      const finalizeDelay = opts.skipInterim
+        ? entryDelay + 100
+        : entryDelay +
+          words.length * INTERIM_WORD_STEP_MS * opts.speedFactor +
+          100
+
+      const entryStartTime = runningTimeRef.current
+      runningTimeRef.current += words.length * 0.3
+      const entryEndTime = runningTimeRef.current
+
+      const capturedStartTime = entryStartTime
+      const capturedEndTime = entryEndTime
+
+      const t2 = setTimeout(() => {
+        const { addFinalEntry, clearInterim } =
+          useTranscriptStore.getState()
+        const speaker = resolveSpeaker(capturedRawSpeakerId)
+
+        const entryId = uuid()
+        addFinalEntry({
+          id: entryId,
+          sessionId,
+          speaker,
+          rawSpeakerId: capturedRawSpeakerId,
+          text: capturedText,
+          startTime: capturedStartTime,
+          endTime: capturedEndTime,
+          confidence: 0.95 + Math.random() * 0.05,
+          isFinal: true,
+          createdAt: new Date().toISOString(),
+        })
+
+        clearInterim()
+
+        fetch(`/api/sessions/${sessionId}/transcript`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: entryId,
+            speaker,
+            text: capturedText,
+            startTime: capturedStartTime,
+            endTime: capturedEndTime,
+            confidence: 0.97,
+            rawSpeakerId: capturedRawSpeakerId,
+          }),
+        }).catch(console.error)
+
+        // Phase 3: Trigger analysis at speaker changes or every 4 entries
+        const isLastEntry = index === entries.length - 1
+        const nextEntry = entries[index + 1]
+        const isSpeakerChange =
+          nextEntry && nextEntry.rawSpeakerId !== mockEntry.rawSpeakerId
+        const isNaturalPause = (index + 1) % 4 === 0
+
+        if (isLastEntry || isSpeakerChange || isNaturalPause) {
+          triggerAnalysis()
+        }
+
+        // Save progress and schedule next entry (only if not paused)
+        currentIndexRef.current = index + 1
+
+        if (!isPausedRef.current) {
+          const t3 = setTimeout(() => {
+            processEntry(index + 1)
+          }, 300)
+          timeoutsRef.current.push(t3)
+        }
+      }, finalizeDelay)
+      timeoutsRef.current.push(t2)
+    },
+    [triggerAnalysis]
+  )
+
+  const pauseSimulation = useCallback(() => {
+    isPausedRef.current = true
+
+    // Clear all pending timeouts for the current entry's phases
+    timeoutsRef.current.forEach(clearTimeout)
+    timeoutsRef.current = []
+
+    // Clear interim text (partial word display)
+    useTranscriptStore.getState().clearInterim()
+
+    // Update store
+    useRecordingStore.getState().setPaused(true)
+  }, [])
+
+  const resumeSimulation = useCallback(() => {
+    isPausedRef.current = false
+
+    // Update store
+    useRecordingStore.getState().setPaused(false)
+
+    // Resume from the saved index
+    processEntry(currentIndexRef.current)
+  }, [processEntry])
+
+  const stopSimulation = useCallback(() => {
+    timeoutsRef.current.forEach(clearTimeout)
+    timeoutsRef.current = []
+    isRunningRef.current = false
+    isPausedRef.current = false
+    currentIndexRef.current = 0
+    runningTimeRef.current = 0
+
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current)
+      durationIntervalRef.current = null
+    }
+
+    const store = useRecordingStore.getState()
+    store.setRecording(false)
+    store.setSimulating(false)
+    store.setSimulationControls(null)
+    useTranscriptStore.getState().clearInterim()
+  }, [])
+
+  // Keep stable refs up to date
+  pauseRef.current = pauseSimulation
+  resumeRef.current = resumeSimulation
+  stopRef.current = stopSimulation
 
   const startSimulation = useCallback(
     (options: Partial<SimulationOptions> = {}) => {
       if (isRunningRef.current) return
       isRunningRef.current = true
+      isPausedRef.current = false
 
       const opts = { ...DEFAULT_OPTIONS, ...options }
-      const entries = opts.scenario
+      optionsRef.current = opts
 
       const sessionId = useSessionStore.getState().activeSession?.id || ""
       if (!sessionId) {
@@ -52,139 +229,41 @@ export function useSimulatedTranscript() {
         isRunningRef.current = false
         return
       }
+      sessionIdRef.current = sessionId
+      currentIndexRef.current = 0
+      runningTimeRef.current = 0
 
       useTranscriptStore.getState().reset()
       setRecording(true)
       setDuration(0)
 
+      // Register simulation mode and controls in store
+      const store = useRecordingStore.getState()
+      store.setSimulating(true)
+      store.setSimulationControls({
+        pause: () => pauseRef.current(),
+        resume: () => resumeRef.current(),
+        stop: () => stopRef.current(),
+      })
+
+      // Duration timer (skips incrementing when paused)
       durationIntervalRef.current = setInterval(() => {
-        const store = useRecordingStore.getState()
-        if (!store.isRecording) {
-          if (durationIntervalRef.current)
-            clearInterval(durationIntervalRef.current)
-          return
-        }
-        store.setDuration(store.duration + 1)
+        const s = useRecordingStore.getState()
+        if (!s.isRecording || s.isPaused) return
+        s.setDuration(s.duration + 1)
       }, 1000)
 
-      let cumulativeDelay = 0
-      let runningTime = 0
-
-      for (let i = 0; i < entries.length; i++) {
-        const mockEntry = entries[i]
-        const entryDelay = mockEntry.delayMs * opts.speedFactor
-
-        cumulativeDelay += entryDelay
-
-        const words = mockEntry.text.split(" ")
-        const interimStartDelay = cumulativeDelay
-        const capturedRawSpeakerId = mockEntry.rawSpeakerId
-        const capturedText = mockEntry.text
-
-        // Phase 1: Interim text build-up
-        if (!opts.skipInterim) {
-          for (let w = 1; w <= words.length; w++) {
-            const chunk = words.slice(0, w).join(" ")
-            const interimDelay =
-              interimStartDelay +
-              w * INTERIM_WORD_STEP_MS * opts.speedFactor
-            const t = setTimeout(() => {
-              const speaker = resolveSpeaker(capturedRawSpeakerId)
-              useTranscriptStore.getState().setInterimText(chunk, speaker)
-            }, interimDelay)
-            timeoutsRef.current.push(t)
-          }
-        }
-
-        // Phase 2: Finalize entry
-        const finalizeDelay = opts.skipInterim
-          ? interimStartDelay + 100
-          : interimStartDelay +
-            words.length * INTERIM_WORD_STEP_MS * opts.speedFactor +
-            100
-        const entryStartTime = runningTime
-        runningTime += words.length * 0.3
-        const entryEndTime = runningTime
-
-        const capturedStartTime = entryStartTime
-        const capturedEndTime = entryEndTime
-
-        const t2 = setTimeout(() => {
-          const { addFinalEntry, clearInterim } =
-            useTranscriptStore.getState()
-          const speaker = resolveSpeaker(capturedRawSpeakerId)
-
-          const entryId = uuid()
-          addFinalEntry({
-            id: entryId,
-            sessionId,
-            speaker,
-            rawSpeakerId: capturedRawSpeakerId,
-            text: capturedText,
-            startTime: capturedStartTime,
-            endTime: capturedEndTime,
-            confidence: 0.95 + Math.random() * 0.05,
-            isFinal: true,
-            createdAt: new Date().toISOString(),
-          })
-
-          clearInterim()
-
-          fetch(`/api/sessions/${sessionId}/transcript`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: entryId,
-              speaker,
-              text: capturedText,
-              startTime: capturedStartTime,
-              endTime: capturedEndTime,
-              confidence: 0.97,
-              rawSpeakerId: capturedRawSpeakerId,
-            }),
-          }).catch(console.error)
-        }, finalizeDelay)
-        timeoutsRef.current.push(t2)
-
-        // Phase 3: Trigger analysis at speaker changes or every 4 entries
-        const isLastEntry = i === entries.length - 1
-        const nextEntry = entries[i + 1]
-        const isSpeakerChange =
-          nextEntry && nextEntry.rawSpeakerId !== mockEntry.rawSpeakerId
-        const isNaturalPause = (i + 1) % 4 === 0
-
-        if (isLastEntry || isSpeakerChange || isNaturalPause) {
-          const t3 = setTimeout(() => {
-            triggerAnalysis()
-          }, finalizeDelay + 200)
-          timeoutsRef.current.push(t3)
-        }
-
-        cumulativeDelay = finalizeDelay + 300
-      }
-
-      // End simulation
-      const t4 = setTimeout(() => {
-        setRecording(false)
-        isRunningRef.current = false
-        if (durationIntervalRef.current)
-          clearInterval(durationIntervalRef.current)
-        triggerAnalysis()
-      }, cumulativeDelay + 1000)
-      timeoutsRef.current.push(t4)
+      // Start processing from entry 0
+      processEntry(0)
     },
-    [setRecording, setDuration, triggerAnalysis]
+    [setRecording, setDuration, processEntry]
   )
 
-  const stopSimulation = useCallback(() => {
-    timeoutsRef.current.forEach(clearTimeout)
-    timeoutsRef.current = []
-    isRunningRef.current = false
-    if (durationIntervalRef.current)
-      clearInterval(durationIntervalRef.current)
-    setRecording(false)
-    useTranscriptStore.getState().clearInterim()
-  }, [setRecording])
-
-  return { startSimulation, stopSimulation, isRunning: isRunningRef }
+  return {
+    startSimulation,
+    stopSimulation,
+    pauseSimulation,
+    resumeSimulation,
+    isRunning: isRunningRef,
+  }
 }

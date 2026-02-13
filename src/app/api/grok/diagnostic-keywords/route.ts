@@ -23,7 +23,8 @@ export async function POST(req: Request) {
       maxOutputTokens: 1000,
     })
 
-    const parsed = JSON.parse(text)
+    const cleaned = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
+    const parsed = JSON.parse(cleaned)
 
     if (!Array.isArray(parsed)) {
       return new Response("Invalid response format", { status: 500 })

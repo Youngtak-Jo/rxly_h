@@ -51,7 +51,7 @@ function SimulationDialog() {
 
   const activeSession = useSessionStore((s) => s.activeSession)
   const { addSession, setActiveSession } = useSessionStore()
-  const { isRecording } = useRecordingStore()
+  const { isRecording, isSimulating } = useRecordingStore()
   const { startSimulation, stopSimulation } = useSimulatedTranscript()
 
   const selectedScenario = useMemo(
@@ -220,12 +220,14 @@ function SimulationDialog() {
         </div>
 
         <DialogFooter>
-          {isRecording ? (
+          {isSimulating ? (
             <Button variant="destructive" onClick={handleStop}>
               Stop Simulation
             </Button>
           ) : (
-            <Button onClick={handleStart}>Start Simulation</Button>
+            <Button onClick={handleStart} disabled={isRecording}>
+              Start Simulation
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>

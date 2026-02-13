@@ -279,9 +279,9 @@ export function NavSessions() {
               <SidebarMenuButton
                 isActive={activeSession?.id === session.id}
                 onClick={() => loadSession(session.id)}
-                className="group/session"
+                className="group/session h-auto items-start py-2"
               >
-                <span className="truncate">
+                <span className="line-clamp-2">
                   {session.title || "Untitled Session"}
                 </span>
                 <DropdownMenu>
