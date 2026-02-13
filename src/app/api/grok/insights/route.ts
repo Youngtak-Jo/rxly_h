@@ -8,14 +8,20 @@ export async function POST(req: Request) {
     const {
       transcript,
       doctorNotes,
-      imageUrls,
+      newImageUrls,
+      previousImageFindings,
+      mode,
+      previousSummary,
       currentInsights,
     } = await req.json()
+
+    const hasNewImages = newImageUrls && newImageUrls.length > 0
+    const hasPreviousImages = previousImageFindings && previousImageFindings.length > 0
 
     if (
       !transcript?.trim() &&
       !doctorNotes?.trim() &&
-      (!imageUrls || imageUrls.length === 0)
+      !hasNewImages
     ) {
       return new Response("No transcript, notes, or images provided", {
         status: 400,
@@ -24,7 +30,7 @@ export async function POST(req: Request) {
 
     const model = xai(DEFAULT_MODEL)
 
-    // Format existing checklist so the AI can see current state
+    // Format existing checklist with IDs so the AI can preserve item identity
     const checklistItems = currentInsights?.checklistItems || []
     const uncheckedItems = checklistItems.filter(
       (i: { isChecked: boolean }) => !i.isChecked
@@ -36,23 +42,31 @@ export async function POST(req: Request) {
     let existingChecklistText = ""
     if (checklistItems.length > 0) {
       existingChecklistText =
-        "\n\n--- CURRENT CHECKLIST (output the full updated checklist in your response) ---"
+        "\n\n--- DOCTOR-MODIFIED CHECKLIST ITEMS (preserve these items and their IDs in your full checklist output) ---"
       if (uncheckedItems.length > 0) {
         existingChecklistText += "\nPending:"
-        uncheckedItems.forEach((item: { label: string }) => {
-          existingChecklistText += `\n  [ ] ${item.label}`
+        uncheckedItems.forEach((item: { id: string; label: string }) => {
+          existingChecklistText += `\n  [id:${item.id}] [ ] ${item.label}`
         })
       }
       if (checkedItems.length > 0) {
         existingChecklistText += "\nCompleted:"
-        checkedItems.forEach((item: { label: string }) => {
-          existingChecklistText += `\n  [x] ${item.label}`
+        checkedItems.forEach((item: { id: string; label: string }) => {
+          existingChecklistText += `\n  [id:${item.id}] [x] ${item.label}`
         })
       }
       existingChecklistText += "\n--- END CURRENT CHECKLIST ---"
     }
 
-    let textContent = `Current summary: ${currentInsights?.summary || "(none yet)"}\nCurrent key findings: ${JSON.stringify(currentInsights?.keyFindings || [])}\nCurrent red flags: ${JSON.stringify(currentInsights?.redFlags || [])}${existingChecklistText}\n\nFull transcript:\n${transcript || "(No speech recorded yet)"}`
+    // Build transcript section based on mode (full vs delta)
+    let transcriptSection: string
+    if (mode === "delta" && previousSummary) {
+      transcriptSection = `Previous analysis summary: ${previousSummary}\n\nNew dialogue since last analysis:\n${transcript || "(No new speech)"}`
+    } else {
+      transcriptSection = `Full transcript:\n${transcript || "(No speech recorded yet)"}`
+    }
+
+    let textContent = `Current summary: ${currentInsights?.summary || "(none yet)"}\nCurrent key findings: ${JSON.stringify(currentInsights?.keyFindings || [])}\nCurrent red flags: ${JSON.stringify(currentInsights?.redFlags || [])}${existingChecklistText}\n\n${transcriptSection}`
     if (doctorNotes?.trim()) {
       textContent += `\n\nDoctor's notes (from chat):\n${doctorNotes}`
     }
@@ -60,16 +74,30 @@ export async function POST(req: Request) {
     // Build multimodal content: text + images
     const content: UserContent = [{ type: "text", text: textContent }]
 
-    if (imageUrls && imageUrls.length > 0) {
+    // Append previously analyzed image findings as text (no vision tokens)
+    if (hasPreviousImages) {
+      let prevImageText = "\n\n--- PREVIOUSLY ANALYZED IMAGES (text summaries, do not re-analyze) ---"
+      previousImageFindings.forEach(
+        (img: { storagePath: string; findings: string }, i: number) => {
+          prevImageText += `\nImage ${i + 1}:\n${img.findings}`
+        }
+      )
+      prevImageText += "\n--- END PREVIOUSLY ANALYZED IMAGES ---"
+      content[0] = { type: "text", text: textContent + prevImageText }
+    }
+
+    // Send only NEW images as actual multimodal content (vision tokens)
+    if (hasNewImages) {
       const findingsSummary = (currentInsights?.keyFindings || []).join("; ") || "None yet"
       const flagsSummary = (currentInsights?.redFlags || []).join("; ") || "None"
+      const currentText = (content[0] as { type: "text"; text: string }).text
       content[0] = {
         type: "text",
         text:
-          textContent +
-          `\n\n--- UPLOADED MEDICAL IMAGES ---\nThe doctor has uploaded ${imageUrls.length} medical image(s) during this consultation.\n\nCRITICAL: Analyze each image IN THE CONTEXT of this consultation. The patient's current clinical picture:\n- Current assessment: ${currentInsights?.summary || "Not yet established"}\n- Key findings so far: ${findingsSummary}\n- Red flags identified: ${flagsSummary}\n\nCorrelate what you see in the image(s) with the transcript discussion, doctor's notes, and findings above. Do NOT provide a generic assessment disconnected from the consultation context.\nIncorporate your contextual image analysis into the summary, key findings, red flags, and checklist.\n--- END IMAGE INSTRUCTIONS ---`,
+          currentText +
+          `\n\n--- NEW MEDICAL IMAGES (${newImageUrls.length}) ---\nCRITICAL: Analyze each NEW image IN THE CONTEXT of this consultation. The patient's current clinical picture:\n- Current assessment: ${currentInsights?.summary || "Not yet established"}\n- Key findings so far: ${findingsSummary}\n- Red flags identified: ${flagsSummary}\n\nCorrelate what you see in the image(s) with the transcript discussion, doctor's notes, and findings above. Do NOT provide a generic assessment disconnected from the consultation context.\nIncorporate your contextual image analysis into the summary, key findings, red flags, and checklist.\n--- END NEW IMAGES ---`,
       }
-      for (const url of imageUrls) {
+      for (const url of newImageUrls) {
         content.push({ type: "image", image: new URL(url) })
       }
     }

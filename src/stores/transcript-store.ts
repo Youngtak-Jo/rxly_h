@@ -24,6 +24,8 @@ interface TranscriptState {
   loadEntries: (entries: TranscriptEntry[]) => void
   reset: () => void
   getFullTranscript: () => string
+  getTranscriptSince: (entryIndex: number) => string
+  getEntryCount: () => number
   setIdentificationStatus: (status: IdentificationStatus) => void
   incrementIdentificationAttempt: () => void
   relabelSpeakers: (mapping: Record<number, Speaker>) => void
@@ -80,6 +82,16 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
     const { entries } = get()
     return entries.map((e) => `[${e.speaker}]: ${e.text}`).join("\n")
   },
+
+  getTranscriptSince: (entryIndex: number) => {
+    const { entries } = get()
+    return entries
+      .slice(entryIndex)
+      .map((e) => `[${e.speaker}]: ${e.text}`)
+      .join("\n")
+  },
+
+  getEntryCount: () => get().entries.length,
 
   setIdentificationStatus: (status) =>
     set({ identificationStatus: status }),

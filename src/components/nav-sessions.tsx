@@ -2,9 +2,14 @@
 
 import { useState, useRef, useEffect } from "react"
 import {
+  IconBulb,
   IconDots,
+  IconFileText,
+  IconLoader2,
   IconPencil,
   IconPlus,
+  IconSearch,
+  IconStethoscope,
   IconTrash,
 } from "@tabler/icons-react"
 import { v4 as uuidv4 } from "uuid"
@@ -31,6 +36,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 function formatShortTimeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
@@ -56,6 +64,14 @@ export function NavSessions() {
   const noteStore = useNoteStore()
   const ddxStore = useDdxStore()
   const researchStore = useResearchStore()
+
+  // Tab state for sub-items
+  const { activeTab, setActiveTab, unseenUpdates } = useConsultationTabStore()
+  const diagnosisCount = useDdxStore((s) => s.diagnoses.length)
+  const isDdxProcessing = useDdxStore((s) => s.isProcessing)
+  const isInsightsProcessing = useInsightsStore((s) => s.isProcessing)
+  const isRecordGenerating = useRecordStore((s) => s.isGenerating)
+  const isResearchStreaming = useResearchStore((s) => s.isStreaming)
 
   const createSession = async () => {
     const tempId = uuidv4()
@@ -284,65 +300,153 @@ export function NavSessions() {
             No sessions yet. Click + to start.
           </div>
         )}
-        {sessions.map((session) => (
-          <SidebarMenuItem key={session.id}>
-            {editingId === session.id ? (
-              <input
-                ref={inputRef}
-                value={editingTitle}
-                onChange={(e) => setEditingTitle(e.target.value)}
-                onBlur={commitRename}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commitRename()
-                  if (e.key === "Escape") setEditingId(null)
-                }}
-                className="h-8 w-full rounded-md border bg-background px-2 text-sm outline-none"
-              />
-            ) : (
-              <SidebarMenuButton
-                isActive={activeSession?.id === session.id}
-                onClick={() => loadSession(session.id)}
-                className="group/session h-auto items-start py-2"
-              >
-                <span className="line-clamp-2">
-                  {session.title || "Untitled Session"}
-                </span>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    asChild
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <span className="ml-auto flex-shrink-0">
-                      <span className="text-xs text-muted-foreground group-hover/session:hidden">
-                        {formatShortTimeAgo(new Date(session.startedAt))}
-                      </span>
-                      <span className="hidden group-hover/session:flex items-center justify-center rounded-md hover:bg-sidebar-accent size-5">
-                        <IconDots className="size-4" />
-                      </span>
-                    </span>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent side="right" align="start">
-                    <DropdownMenuItem
-                      onClick={() =>
-                        startRename(session.id, session.title ?? "")
-                      }
+        {sessions.map((session) => {
+          const isActive = activeSession?.id === session.id
+          return (
+            <SidebarMenuItem key={session.id}>
+              {editingId === session.id ? (
+                <input
+                  ref={inputRef}
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  onBlur={commitRename}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitRename()
+                    if (e.key === "Escape") setEditingId(null)
+                  }}
+                  className="h-8 w-full rounded-md border bg-background px-2 text-sm outline-none"
+                />
+              ) : (
+                <SidebarMenuButton
+                  isActive={isActive}
+                  onClick={() => loadSession(session.id)}
+                  className="group/session h-auto items-start py-2"
+                >
+                  <span className="line-clamp-2">
+                    {session.title || "Untitled Session"}
+                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      asChild
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <IconPencil className="mr-2 size-4" />
-                      Rename
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => deleteSession(session.id)}
-                      className="text-destructive"
+                      <span className="ml-auto flex-shrink-0">
+                        <span className="text-xs text-muted-foreground group-hover/session:hidden">
+                          {formatShortTimeAgo(new Date(session.startedAt))}
+                        </span>
+                        <span className="hidden group-hover/session:flex items-center justify-center rounded-md hover:bg-sidebar-accent size-5">
+                          <IconDots className="size-4" />
+                        </span>
+                      </span>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="right" align="start">
+                      <DropdownMenuItem
+                        onClick={() =>
+                          startRename(session.id, session.title ?? "")
+                        }
+                      >
+                        <IconPencil className="mr-2 size-4" />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => deleteSession(session.id)}
+                        className="text-destructive"
+                      >
+                        <IconTrash className="mr-2 size-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </SidebarMenuButton>
+              )}
+              {isActive && (
+                <SidebarMenuSub>
+                  {/* Live Insights */}
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={activeTab === "insights"}
                     >
-                      <IconTrash className="mr-2 size-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </SidebarMenuButton>
-            )}
-          </SidebarMenuItem>
-        ))}
+                      <button onClick={() => setActiveTab("insights")}>
+                        <IconBulb className="size-4" />
+                        <span className="truncate">Live Insights</span>
+                        {isInsightsProcessing ? (
+                          <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
+                        ) : unseenUpdates.insights && activeTab !== "insights" ? (
+                          <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                        ) : null}
+                      </button>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+
+                  {/* Differential Dx */}
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={activeTab === "ddx"}
+                    >
+                      <button onClick={() => setActiveTab("ddx")}>
+                        <IconStethoscope className="size-4" />
+                        <span className="truncate">Differential Dx</span>
+                        {isDdxProcessing && diagnosisCount === 0 ? (
+                          <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
+                        ) : diagnosisCount > 0 ? (
+                          <span className="ml-auto flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                            {isDdxProcessing && (
+                              <IconLoader2 className="size-3 animate-spin" />
+                            )}
+                            {!isDdxProcessing && unseenUpdates.ddx && activeTab !== "ddx" && (
+                              <span className="h-2 w-2 rounded-full bg-green-500" />
+                            )}
+                            {diagnosisCount}
+                          </span>
+                        ) : unseenUpdates.ddx && activeTab !== "ddx" ? (
+                          <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                        ) : null}
+                      </button>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+
+                  {/* Consultation Record */}
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={activeTab === "record"}
+                    >
+                      <button onClick={() => setActiveTab("record")}>
+                        <IconFileText className="size-4" />
+                        <span className="truncate">Consultation Record</span>
+                        {isRecordGenerating ? (
+                          <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
+                        ) : unseenUpdates.record && activeTab !== "record" ? (
+                          <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                        ) : null}
+                      </button>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+
+                  {/* Research */}
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={activeTab === "research"}
+                    >
+                      <button onClick={() => setActiveTab("research")}>
+                        <IconSearch className="size-4" />
+                        <span className="truncate">Research</span>
+                        {isResearchStreaming ? (
+                          <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
+                        ) : unseenUpdates.research && activeTab !== "research" ? (
+                          <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                        ) : null}
+                      </button>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                </SidebarMenuSub>
+              )}
+            </SidebarMenuItem>
+          )
+        })}
       </SidebarMenu>
     </SidebarGroup>
   )

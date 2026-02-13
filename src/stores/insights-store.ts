@@ -5,40 +5,6 @@ import type {
 } from "@/types/insights"
 import { v4 as uuid } from "uuid"
 
-/**
- * Normalize a checklist label for fuzzy comparison.
- * Strips filler words, lowercases, removes punctuation, and sorts key terms.
- */
-function normalizeLabel(label: string): string {
-  return label
-    .toLowerCase()
-    .replace(/\(e\.g\..*?\)/g, "") // remove example parentheticals
-    .replace(/[^a-z0-9\s]/g, "") // remove punctuation
-    .replace(/\b(the|a|an|and|or|if|for|with|to|of|in|on|at|by|is|are|was|were|be|been|being|current|currently)\b/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-/**
- * Check if two checklist labels are semantically similar enough to be considered duplicates.
- * Uses normalized word overlap ratio.
- */
-function isSimilarLabel(a: string, b: string): boolean {
-  if (a === b) return true
-  const normA = normalizeLabel(a)
-  const normB = normalizeLabel(b)
-  if (normA === normB) return true
-
-  const wordsA = new Set(normA.split(" ").filter(Boolean))
-  const wordsB = new Set(normB.split(" ").filter(Boolean))
-  if (wordsA.size === 0 || wordsB.size === 0) return false
-
-  const intersection = [...wordsA].filter((w) => wordsB.has(w)).length
-  const smaller = Math.min(wordsA.size, wordsB.size)
-  // If 70%+ of the smaller set's words appear in the other, consider it a duplicate
-  return intersection / smaller >= 0.7
-}
-
 interface InsightsState {
   summary: string
   keyFindings: string[]
@@ -47,6 +13,9 @@ interface InsightsState {
   isProcessing: boolean
   lastUpdated: Date | null
   wordCountAtLastUpdate: number
+  entryCountAtLastUpdate: number
+  analysisCount: number
+  analyzedImages: Record<string, string> // storagePath → findings summary
   // Global callback for triggering analysis from note submission
   _noteTrigger: (() => void) | null
   setNoteTrigger: (fn: (() => void) | null) => void
@@ -64,6 +33,9 @@ interface InsightsState {
   removeChecklistItem: (id: string) => void
   updateChecklistNote: (id: string, note: string) => void
   setWordCountAtLastUpdate: (count: number) => void
+  setEntryCountAtLastUpdate: (count: number) => void
+  incrementAnalysisCount: () => void
+  addAnalyzedImages: (newImages: Record<string, string>) => void
   reset: () => void
 }
 
@@ -75,6 +47,9 @@ export const useInsightsStore = create<InsightsState>((set) => ({
   isProcessing: false,
   lastUpdated: null,
   wordCountAtLastUpdate: 0,
+  entryCountAtLastUpdate: 0,
+  analysisCount: 0,
+  analyzedImages: {},
   _noteTrigger: null,
   setNoteTrigger: (fn) => set({ _noteTrigger: fn }),
 
@@ -82,30 +57,27 @@ export const useInsightsStore = create<InsightsState>((set) => ({
 
   updateFromResponse: (response, sessionId) =>
     set((state) => {
-      const existingItems = [...state.checklistItems]
-      const matchedExistingIds = new Set<string>()
+      const existingById = new Map(
+        state.checklistItems.map((item) => [item.id, item])
+      )
 
-      // Reconcile: for each AI checklist item, find best match in existing items
+      // Reconcile: match by ID (model echoes back existing IDs)
+      const returnedIds = new Set<string>()
       const reconciledItems = response.checklist.map((aiItem, index) => {
-        // Try to find a matching existing item (fuzzy match)
-        const match = existingItems.find(
-          (existing) =>
-            !matchedExistingIds.has(existing.id) &&
-            isSimilarLabel(existing.label, aiItem.label)
-        )
-
-        if (match) {
-          matchedExistingIds.add(match.id)
+        if (aiItem.id && existingById.has(aiItem.id)) {
+          // Existing item — preserve manual state
+          const existing = existingById.get(aiItem.id)!
+          returnedIds.add(aiItem.id)
           return {
-            ...match,
-            label: aiItem.label, // Update to AI's latest wording
-            isChecked: aiItem.checked || match.isChecked, // Keep checked if manually checked
+            ...existing,
+            label: aiItem.label,
+            isChecked: aiItem.checked || existing.isChecked, // Keep checked if manually checked
             isAutoChecked: aiItem.checked,
             sortOrder: index,
           }
         }
 
-        // New item from AI
+        // New item from AI (no id or unrecognized id)
         return {
           id: uuid(),
           sessionId,
@@ -119,9 +91,9 @@ export const useInsightsStore = create<InsightsState>((set) => ({
       })
 
       // Preserve manually added items that the AI didn't include
-      const manualItems = existingItems.filter(
+      const manualItems = state.checklistItems.filter(
         (item) =>
-          item.source === "MANUAL" && !matchedExistingIds.has(item.id)
+          item.source === "MANUAL" && !returnedIds.has(item.id)
       )
 
       return {
@@ -185,6 +157,17 @@ export const useInsightsStore = create<InsightsState>((set) => ({
   setWordCountAtLastUpdate: (count) =>
     set({ wordCountAtLastUpdate: count }),
 
+  setEntryCountAtLastUpdate: (count) =>
+    set({ entryCountAtLastUpdate: count }),
+
+  incrementAnalysisCount: () =>
+    set((state) => ({ analysisCount: state.analysisCount + 1 })),
+
+  addAnalyzedImages: (newImages) =>
+    set((state) => ({
+      analyzedImages: { ...state.analyzedImages, ...newImages },
+    })),
+
   reset: () =>
     set({
       summary: "",
@@ -194,5 +177,8 @@ export const useInsightsStore = create<InsightsState>((set) => ({
       isProcessing: false,
       lastUpdated: null,
       wordCountAtLastUpdate: 0,
+      entryCountAtLastUpdate: 0,
+      analysisCount: 0,
+      analyzedImages: {},
     }),
 }))

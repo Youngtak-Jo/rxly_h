@@ -19,6 +19,7 @@ export interface Insights {
 }
 
 export interface ChecklistOutputItem {
+  id?: string // present for existing items, absent for new items
   label: string
   checked: boolean
 }

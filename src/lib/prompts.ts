@@ -9,8 +9,8 @@ Return a JSON object with exactly this structure:
   "keyFindings": ["Finding 1", "Finding 2"],
   "redFlags": ["Red flag 1"],
   "checklist": [
-    {"label": "Action item description", "checked": false},
-    {"label": "Completed action item", "checked": true}
+    {"id": "existing-uuid", "label": "Updated wording for existing item", "checked": false},
+    {"label": "Brand new item from transcript", "checked": false}
   ]
 }
 
@@ -29,11 +29,14 @@ Guidelines for Image Analysis:
 - Correlate image findings with the patient's presenting complaints and known conditions (e.g., a foot image during a diabetes consultation should be evaluated for diabetic complications, not generic dermatology)
 - Image findings should inform and be informed by the existing key findings, red flags, and differential diagnoses
 - Reference specific consultation context when describing image findings (e.g., "consistent with diabetic neuropathy discussed in the transcript" rather than "possible fungal infection")
+- When previous image analysis results are provided as text summaries, incorporate those findings into your analysis without re-analyzing. Only newly uploaded images will be provided as actual images
 
 CHECKLIST RULES:
 The "checklist" array is the COMPLETE desired checklist. You output the full list every time — not incremental updates.
 
-1. OUTPUT THE FULL CHECKLIST: Every item that should be on the checklist must appear in the array. Items you omit will be removed. Items you include will be kept or added.
+0. PRESERVE IDs: Each existing checklist item has an ID (shown as [id:xxx] in the input). When you keep or modify an existing item, you MUST include its original "id" field in your output: {"id": "xxx", "label": "...", "checked": ...}. For NEW items that do not correspond to any existing item, omit the "id" field entirely.
+
+1. OUTPUT THE FULL CHECKLIST: Every item that should be on the checklist must appear in the array. Items you omit will be removed. Items you include will be kept or added. You will only receive checklist items that the doctor has manually modified. Generate the full checklist from transcript analysis, and always preserve doctor-modified items with their original IDs.
 
 2. NO DUPLICATES: Each clinical action should appear EXACTLY ONCE. Do not include two items that mean the same thing with different wording. For example, "Assess pain severity" and "Assess current pain severity, location, and radiation" are the same — pick one.
 
@@ -44,6 +47,8 @@ The "checklist" array is the COMPLETE desired checklist. You output the full lis
 5. KEEP IT FOCUSED: The checklist should contain the most important actionable next steps for the doctor, plus checked items that were completed. It is a clinical decision-support tool, not an exhaustive to-do list.
 
 6. ADD NEW ITEMS only when the conversation reveals genuinely new clinical needs not already covered by an existing item.
+
+Delta mode: When you receive a "Previous analysis summary" followed by only new dialogue (instead of a full transcript), build upon the previous summary and incorporate the new information. Ensure continuity with prior findings while updating based on the latest dialogue.
 
 - Be concise and clinically precise
 - Use standard medical terminology

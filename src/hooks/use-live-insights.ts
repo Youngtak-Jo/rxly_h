@@ -8,6 +8,7 @@ import type { InsightsResponse } from "@/types/insights"
 
 const MIN_NEW_WORDS = 30
 const MIN_INTERVAL_MS = 12000
+const CHECKPOINT_INTERVAL = 5 // Send full transcript every N analyses
 
 export function useLiveInsights() {
   const lastAnalysisTimeRef = useRef<number>(0)
@@ -24,25 +25,40 @@ export function useLiveInsights() {
         redFlags,
         checklistItems,
         wordCountAtLastUpdate,
+        entryCountAtLastUpdate,
+        analysisCount,
         setProcessing,
         updateFromResponse,
         setWordCountAtLastUpdate,
+        setEntryCountAtLastUpdate,
+        incrementAnalysisCount,
       } = useInsightsStore.getState()
 
-      const transcript = useTranscriptStore.getState().getFullTranscript()
-      const currentWordCount = transcript.split(/\s+/).length
+      const transcriptStore = useTranscriptStore.getState()
+      const currentEntryCount = transcriptStore.getEntryCount()
+      const fullTranscript = transcriptStore.getFullTranscript()
+      const currentWordCount = fullTranscript.split(/\s+/).length
       const newWords = currentWordCount - wordCountAtLastUpdate
       const timeSinceLastAnalysis = Date.now() - lastAnalysisTimeRef.current
 
       // When not forced, require transcript with enough new content
       if (!forceRun) {
-        if (!transcript.trim()) return
+        if (!fullTranscript.trim()) return
         if (
           newWords < MIN_NEW_WORDS &&
           timeSinceLastAnalysis < MIN_INTERVAL_MS
         )
           return
       }
+
+      // Decide whether to send full transcript or delta
+      const isCheckpoint =
+        analysisCount === 0 || analysisCount % CHECKPOINT_INTERVAL === 0
+      const transcript = isCheckpoint
+        ? fullTranscript
+        : transcriptStore.getTranscriptSince(entryCountAtLastUpdate)
+      const mode = isCheckpoint ? "full" : ("delta" as const)
+      const previousSummary = isCheckpoint ? undefined : summary
 
       // Abort any in-flight analysis
       if (abortControllerRef.current) {
@@ -57,7 +73,9 @@ export function useLiveInsights() {
       try {
         // Fetch doctor notes for context (including image URLs for vision)
         let doctorNotes = ""
-        let imageUrls: string[] = []
+        let newImageUrls: string[] = []
+        let newImageStoragePaths: string[] = []
+        let previousImageFindings: { storagePath: string; findings: string }[] = []
         try {
           const notesRes = await fetch(
             `/api/sessions/${session.id}/notes`,
@@ -70,9 +88,34 @@ export function useLiveInsights() {
                 .map((n: { content: string }) => n.content)
                 .filter(Boolean)
                 .join("\n")
-              imageUrls = notes.flatMap(
-                (n: { imageUrls: string[] }) => n.imageUrls || []
+
+              // Pair imageUrls with storagePaths for stable identification
+              const { analyzedImages } = useInsightsStore.getState()
+              const imageEntries: { storagePath: string; imageUrl: string }[] = []
+              notes.forEach(
+                (n: { imageUrls: string[]; storagePaths: string[] }) => {
+                  const urls = n.imageUrls || []
+                  const paths = n.storagePaths || []
+                  urls.forEach((url: string, i: number) => {
+                    if (paths[i]) {
+                      imageEntries.push({ storagePath: paths[i], imageUrl: url })
+                    }
+                  })
+                }
               )
+
+              // Separate new images from already-analyzed ones
+              const newEntries = imageEntries.filter(
+                (e) => !analyzedImages[e.storagePath]
+              )
+              newImageUrls = newEntries.map((e) => e.imageUrl)
+              newImageStoragePaths = newEntries.map((e) => e.storagePath)
+              previousImageFindings = imageEntries
+                .filter((e) => analyzedImages[e.storagePath])
+                .map((e) => ({
+                  storagePath: e.storagePath,
+                  findings: analyzedImages[e.storagePath],
+                }))
             }
           }
         } catch {
@@ -85,15 +128,27 @@ export function useLiveInsights() {
           body: JSON.stringify({
             transcript,
             doctorNotes,
-            imageUrls,
+            newImageUrls,
+            previousImageFindings,
+            mode,
+            previousSummary,
             currentInsights: {
               summary,
               keyFindings,
               redFlags,
-              checklistItems: checklistItems.map((item) => ({
-                label: item.label,
-                isChecked: item.isChecked,
-              })),
+              // Only send doctor-modified items; AI regenerates its own from transcript
+              checklistItems: checklistItems
+                .filter(
+                  (item) =>
+                    item.source === "MANUAL" ||
+                    item.isChecked !== item.isAutoChecked ||
+                    item.doctorNote !== null
+                )
+                .map((item) => ({
+                  id: item.id,
+                  label: item.label,
+                  isChecked: item.isChecked,
+                })),
             },
           }),
           signal: abortController.signal,
@@ -119,7 +174,23 @@ export function useLiveInsights() {
           const parsed: InsightsResponse = JSON.parse(cleaned)
           updateFromResponse(parsed, session.id)
           setWordCountAtLastUpdate(currentWordCount)
+          setEntryCountAtLastUpdate(currentEntryCount)
+          incrementAnalysisCount()
           lastAnalysisTimeRef.current = Date.now()
+
+          // Cache findings for newly analyzed images to avoid re-sending them
+          if (newImageStoragePaths.length > 0) {
+            const findingsText = [
+              `Summary: ${parsed.summary}`,
+              `Key Findings: ${parsed.keyFindings.join("; ")}`,
+              `Red Flags: ${parsed.redFlags.join("; ")}`,
+            ].join("\n")
+            const newAnalyzed: Record<string, string> = {}
+            for (const path of newImageStoragePaths) {
+              newAnalyzed[path] = findingsText
+            }
+            useInsightsStore.getState().addAnalyzedImages(newAnalyzed)
+          }
 
           // Auto-update title from every insights response
           if (parsed.title) {
