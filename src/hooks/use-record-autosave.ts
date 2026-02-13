@@ -13,18 +13,24 @@ export function useRecordAutoSave() {
     const unsubscribe = useRecordStore.subscribe((state, prevState) => {
       if (state.lastUpdated === prevState.lastUpdated) return
 
+      // Always clear pending timer first (even on reset) to prevent
+      // stale saves after session switch
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+        autoSaveTimerRef.current = null
+      }
+
       const session = useSessionStore.getState().activeSession
       if (!session || !state.lastUpdated || !state.record) return
 
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current)
-      }
+      const scheduledSessionId = session.id
 
       autoSaveTimerRef.current = setTimeout(() => {
+        const currentSession = useSessionStore.getState().activeSession
         const currentRecord = useRecordStore.getState().record
-        if (!currentRecord) return
+        if (!currentRecord || !currentSession || currentSession.id !== scheduledSessionId) return
 
-        fetch(`/api/sessions/${session.id}/record`, {
+        fetch(`/api/sessions/${currentSession.id}/record`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

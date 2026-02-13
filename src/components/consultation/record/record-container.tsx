@@ -79,7 +79,7 @@ export function RecordContainer() {
       // Parse the final accumulated JSON
       try {
         const parsed = JSON.parse(accumulated)
-        setRecord({
+        const newRecord = {
           id: record?.id || "temp",
           sessionId: activeSession.id,
           date: new Date().toISOString(),
@@ -96,7 +96,29 @@ export function RecordContainer() {
           labsStudies: parsed.labsStudies || null,
           assessment: parsed.assessment || null,
           plan: parsed.plan || null,
-        })
+        }
+        setRecord(newRecord)
+
+        // Immediately persist to DB (fire-and-forget)
+        fetch(`/api/sessions/${activeSession.id}/record`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            patientName: newRecord.patientName,
+            chiefComplaint: newRecord.chiefComplaint,
+            hpiText: newRecord.hpiText,
+            medications: newRecord.medications,
+            rosText: newRecord.rosText,
+            pmh: newRecord.pmh,
+            socialHistory: newRecord.socialHistory,
+            familyHistory: newRecord.familyHistory,
+            vitals: newRecord.vitals,
+            physicalExam: newRecord.physicalExam,
+            labsStudies: newRecord.labsStudies,
+            assessment: newRecord.assessment,
+            plan: newRecord.plan,
+          }),
+        }).catch((err) => console.error("Failed to persist record:", err))
       } catch {
         console.error("Failed to parse record response")
         setGenerating(false)
