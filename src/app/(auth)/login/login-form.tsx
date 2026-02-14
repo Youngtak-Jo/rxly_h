@@ -31,8 +31,15 @@ export function LoginForm() {
 
   useEffect(() => {
     const error = searchParams.get("error")
-    if (error === "auth_callback_failed") {
-      toast.error("Authentication failed. Please try again.")
+    if (error) {
+      const description = searchParams.get("error_description")
+      if (description) {
+        toast.error(decodeURIComponent(description))
+      } else if (error === "auth_callback_failed") {
+        toast.error("Authentication failed. Please try again.")
+      } else {
+        toast.error("Authentication failed. Please try again.")
+      }
     }
   }, [searchParams])
 
