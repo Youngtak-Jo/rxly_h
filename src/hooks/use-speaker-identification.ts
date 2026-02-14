@@ -28,21 +28,46 @@ export function useSpeakerIdentification() {
   const relabelSpeakers = useTranscriptStore((s) => s.relabelSpeakers)
   const activeSession = useSessionStore((s) => s.activeSession)
 
+  // Single-speaker detection state
+  const singleSpeakerDetected = useTranscriptStore(
+    (s) => s.singleSpeakerDetected
+  )
+  const singleSpeakerPromptDismissed = useTranscriptStore(
+    (s) => s.singleSpeakerPromptDismissed
+  )
+  const singleSpeakerMode = useTranscriptStore((s) => s.singleSpeakerMode)
+  const setSingleSpeakerDetected = useTranscriptStore(
+    (s) => s.setSingleSpeakerDetected
+  )
+
   useEffect(() => {
     // Already identified or currently identifying
     if (identificationStatus === "identified" || isIdentifyingRef.current) {
       return
     }
 
+    // Compute unique speaker IDs once for all checks below
+    const uniqueSpeakerIds = [
+      ...new Set(
+        entries
+          .map((e) => e.rawSpeakerId)
+          .filter((id): id is number => id !== undefined)
+      ),
+    ]
+
+    // If in single-speaker mode but a second speaker appeared, exit and resume normal flow
+    if (singleSpeakerMode && uniqueSpeakerIds.length >= 2) {
+      setSingleSpeakerDetected(false)
+      // Fall through to normal identification logic below
+    }
+
+    // Skip normal identification if in single-speaker mode (content-based classification handles it)
+    if (singleSpeakerMode && uniqueSpeakerIds.length < 2) {
+      return
+    }
+
     // Max attempts reached — force-label based on best guess (first = DOCTOR)
     if (identificationAttempt >= MAX_ATTEMPTS) {
-      const uniqueSpeakerIds = [
-        ...new Set(
-          entries
-            .map((e) => e.rawSpeakerId)
-            .filter((id): id is number => id !== undefined)
-        ),
-      ]
       if (uniqueSpeakerIds.length >= 2) {
         const fallback: Record<number, Speaker> = {}
         fallback[uniqueSpeakerIds[0]] = "DOCTOR"
@@ -59,14 +84,17 @@ export function useSpeakerIdentification() {
     if (entries.length < requiredEntries) return
 
     // Need at least 2 unique speakers to identify
-    const uniqueSpeakerIds = [
-      ...new Set(
-        entries
-          .map((e) => e.rawSpeakerId)
-          .filter((id): id is number => id !== undefined)
-      ),
-    ]
-    if (uniqueSpeakerIds.length < 2) return
+    if (uniqueSpeakerIds.length < 2) {
+      // Single-speaker detection: after 5 entries with only 1 speaker
+      if (
+        entries.length >= 5 &&
+        !singleSpeakerDetected &&
+        !singleSpeakerPromptDismissed
+      ) {
+        setSingleSpeakerDetected(true)
+      }
+      return
+    }
 
     // Trigger identification
     const identify = async () => {
@@ -125,6 +153,10 @@ export function useSpeakerIdentification() {
     incrementIdentificationAttempt,
     relabelSpeakers,
     activeSession,
+    singleSpeakerDetected,
+    singleSpeakerPromptDismissed,
+    singleSpeakerMode,
+    setSingleSpeakerDetected,
   ])
 }
 

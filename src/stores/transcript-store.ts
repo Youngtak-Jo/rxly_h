@@ -18,6 +18,13 @@ interface TranscriptState {
   diagnosticKeywords: DiagnosticKeyword[]
   highlightStatus: HighlightStatus
 
+  // Single-speaker mode state
+  singleSpeakerDetected: boolean
+  singleSpeakerPromptDismissed: boolean
+  singleSpeakerMode: boolean
+  lastClassifiedEntryIndex: number
+  classifyingEntries: boolean
+
   addFinalEntry: (entry: TranscriptEntry) => void
   setInterimText: (text: string, speaker: Speaker) => void
   clearInterim: () => void
@@ -31,6 +38,14 @@ interface TranscriptState {
   relabelSpeakers: (mapping: Record<number, Speaker>) => void
   setDiagnosticKeywords: (keywords: DiagnosticKeyword[]) => void
   setHighlightStatus: (status: HighlightStatus) => void
+
+  // Single-speaker mode actions
+  setSingleSpeakerDetected: (detected: boolean) => void
+  dismissSingleSpeakerPrompt: () => void
+  activateSingleSpeakerMode: () => void
+  setLastClassifiedEntryIndex: (index: number) => void
+  setClassifyingEntries: (classifying: boolean) => void
+  relabelEntriesIndividually: (mapping: Record<string, Speaker>) => void
 }
 
 export const useTranscriptStore = create<TranscriptState>((set, get) => ({
@@ -42,6 +57,13 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
   speakerRoleMap: {},
   diagnosticKeywords: [],
   highlightStatus: "idle",
+
+  // Single-speaker mode defaults
+  singleSpeakerDetected: false,
+  singleSpeakerPromptDismissed: false,
+  singleSpeakerMode: false,
+  lastClassifiedEntryIndex: 0,
+  classifyingEntries: false,
 
   addFinalEntry: (entry) =>
     set((state) => ({
@@ -76,6 +98,11 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
       speakerRoleMap: {},
       diagnosticKeywords: [],
       highlightStatus: "idle",
+      singleSpeakerDetected: false,
+      singleSpeakerPromptDismissed: false,
+      singleSpeakerMode: false,
+      lastClassifiedEntryIndex: 0,
+      classifyingEntries: false,
     }),
 
   getFullTranscript: () => {
@@ -120,4 +147,31 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
     set({ diagnosticKeywords: keywords, highlightStatus: "done" }),
 
   setHighlightStatus: (status) => set({ highlightStatus: status }),
+
+  // Single-speaker mode actions
+  setSingleSpeakerDetected: (detected) =>
+    set({ singleSpeakerDetected: detected }),
+
+  dismissSingleSpeakerPrompt: () =>
+    set({ singleSpeakerPromptDismissed: true, singleSpeakerDetected: false }),
+
+  activateSingleSpeakerMode: () =>
+    set({ singleSpeakerMode: true }),
+
+  setLastClassifiedEntryIndex: (index) =>
+    set({ lastClassifiedEntryIndex: index }),
+
+  setClassifyingEntries: (classifying) =>
+    set({ classifyingEntries: classifying }),
+
+  relabelEntriesIndividually: (mapping) =>
+    set((state) => ({
+      entries: state.entries.map((entry) => {
+        if (mapping[entry.id]) {
+          return { ...entry, speaker: mapping[entry.id] }
+        }
+        return entry
+      }),
+      identificationStatus: "identified",
+    })),
 }))

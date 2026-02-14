@@ -21,6 +21,7 @@ import { useLiveDdx } from "@/hooks/use-live-ddx"
 import { useLiveRecord } from "@/hooks/use-live-record"
 import { useUnseenUpdateTracker } from "@/hooks/use-unseen-update-tracker"
 import { useSpeakerIdentification } from "@/hooks/use-speaker-identification"
+import { useSingleSpeakerClassification } from "@/hooks/use-single-speaker-classification"
 import { useDiagnosticHighlights } from "@/hooks/use-diagnostic-highlights"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useAiDoctorStt } from "@/hooks/use-ai-doctor-stt"
@@ -48,6 +49,7 @@ export function ConsultationLayout() {
 
   // These hooks were in RightPanel but need to run on mobile too
   useSpeakerIdentification()
+  useSingleSpeakerClassification()
   useDiagnosticHighlights()
 
   // AI Doctor STT hook — manages voice input WebSocket lifecycle

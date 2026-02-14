@@ -4,8 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useNoteStore, type NoteEntry } from "@/stores/note-store"
 import { cn } from "@/lib/utils"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, AlertCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
+import { useSessionStore } from "@/stores/session-store"
+import { useSettingsStore } from "@/stores/settings-store"
+import { classifyAllEntries } from "@/hooks/use-single-speaker-classification"
 import { ModeSelector } from "./mode-selector"
 import type { Speaker, DiagnosticKeyword, TranscriptEntry } from "@/types/session"
 
@@ -127,6 +131,10 @@ export function TranscriptViewer() {
   const notes = useNoteStore((s) => s.notes)
   const isAiResponding = useConsultationModeStore((s) => s.isAiResponding)
   const consultationMode = useConsultationModeStore((s) => s.mode)
+  const singleSpeakerDetected = useTranscriptStore((s) => s.singleSpeakerDetected)
+  const singleSpeakerPromptDismissed = useTranscriptStore((s) => s.singleSpeakerPromptDismissed)
+  const singleSpeakerMode = useTranscriptStore((s) => s.singleSpeakerMode)
+  const classifyingEntries = useTranscriptStore((s) => s.classifyingEntries)
   const scrollRef = useRef<HTMLDivElement>(null)
   const isAtBottom = useRef(true)
   const [showScrollButton, setShowScrollButton] = useState(false)
@@ -369,6 +377,63 @@ export function TranscriptViewer() {
                 typing...
               </span>
             </div>
+          </div>
+
+          {/* Single-speaker notification banner */}
+          {singleSpeakerDetected && !singleSpeakerPromptDismissed && !singleSpeakerMode && (
+            <div className="flex justify-center mt-4">
+              <div className="w-full max-w-sm rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20 p-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500 mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-amber-900 dark:text-amber-100">
+                      Only one speaker detected
+                    </p>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
+                      Are you playing both doctor and patient roles?
+                    </p>
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={classifyingEntries}
+                        className="h-7 text-xs"
+                        onClick={async () => {
+                          const store = useTranscriptStore.getState()
+                          const session = useSessionStore.getState().activeSession
+                          const aiModel = useSettingsStore.getState().aiModel.speakerIdModel
+                          if (!session?.id) return
+                          store.activateSingleSpeakerMode()
+                          try {
+                            await classifyAllEntries(store.entries, session.id, aiModel)
+                          } catch (error) {
+                            console.error("Failed to classify entries:", error)
+                          }
+                        }}
+                      >
+                        {classifyingEntries ? "Classifying..." : "Yes, I am"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          useTranscriptStore.getState().dismissSingleSpeakerPrompt()
+                        }}
+                      >
+                        Dismiss
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className={cn("flex justify-center mt-3", !classifyingEntries && "hidden")}>
+            <span className="text-[10px] px-3 py-1 rounded-full bg-muted/50 text-muted-foreground animate-pulse">
+              Classifying roles...
+            </span>
           </div>
 
           <div className={cn("flex justify-center mt-3", identificationStatus !== "identifying" && "hidden")}>

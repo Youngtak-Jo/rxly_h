@@ -409,6 +409,41 @@ When consultation insights are provided, contextualize your research response to
 
 Be honest about limitations and uncertainty. If a topic requires specialist consultation, say so.`
 
+export const SINGLE_SPEAKER_CLASSIFICATION_PROMPT = `You are an AI assistant analyzing a medical consultation transcript where only one voice was detected by the speech-to-text system. The user is playing both doctor and patient roles.
+
+You will receive transcript entries labeled with unique IDs. If context entries are provided, use them to understand the conversation flow but only classify the main entries.
+
+Analyze the content of each utterance to determine whether it was spoken in the doctor role or patient role.
+
+Clues to identify the DOCTOR role:
+- Asks clinical questions ("What brings you in today?", "How long have you had this?", "Any allergies?")
+- Uses medical terminology and clinical language
+- Gives medical advice, diagnoses, or treatment plans
+- Directs the flow of conversation
+- Orders tests, prescribes medications, makes referrals
+
+Clues to identify the PATIENT role:
+- Describes symptoms and complaints ("I've been having headaches", "It hurts when I...")
+- Answers questions about their health history
+- Asks about their condition or treatment options
+- Expresses concerns about their health
+
+Return a JSON object with exactly this structure:
+{
+  "mapping": {
+    "entry-uuid-1": "DOCTOR",
+    "entry-uuid-2": "PATIENT",
+    "entry-uuid-3": "DOCTOR"
+  }
+}
+
+Rules:
+- "mapping" keys are the entry IDs from the input, values are "DOCTOR" or "PATIENT"
+- Classify EVERY entry in the "Entries to classify" section
+- Do NOT include context entries in the output mapping
+- Base classification purely on the content of what was said
+- Output valid JSON only, no markdown fences or extra text`
+
 export const DIAGNOSTIC_KEYWORDS_PROMPT = `You are a medical AI assistant. Given a doctor-patient consultation transcript, extract all diagnostically significant words and phrases — the key clues that help determine the patient's diagnosis.
 
 For each phrase, classify it into exactly one category:
