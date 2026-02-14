@@ -29,61 +29,35 @@ function GoogleIcon() {
   )
 }
 
-function AppleIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className ?? "size-5"}
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-    </svg>
-  )
-}
-
 export function SocialLoginButtons() {
-  const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  const handleOAuth = async (provider: "google" | "apple") => {
-    setLoadingProvider(provider)
+  const handleGoogleLogin = async () => {
+    setLoading(true)
     try {
-      await signInWithOAuth(provider)
+      await signInWithOAuth("google")
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Authentication failed"
       )
-      setLoadingProvider(null)
+      setLoading(false)
     }
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid gap-4">
       <Button
         variant="outline"
         className="w-full"
-        onClick={() => handleOAuth("google")}
-        disabled={loadingProvider !== null}
+        onClick={handleGoogleLogin}
+        disabled={loading}
       >
-        {loadingProvider === "google" ? (
+        {loading ? (
           <Loader2 className="size-4 animate-spin" />
         ) : (
           <GoogleIcon />
         )}
-        Google
-      </Button>
-      <Button
-        variant="outline"
-        className="w-full"
-        onClick={() => handleOAuth("apple")}
-        disabled={loadingProvider !== null}
-      >
-        {loadingProvider === "apple" ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <AppleIcon />
-        )}
-        Apple
+        Continue with Google
       </Button>
     </div>
   )
