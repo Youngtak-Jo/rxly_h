@@ -3,9 +3,8 @@ import type { Scenario } from "./index"
 export const ironDeficiencyAnemiaScenario: Scenario = {
   id: "iron-deficiency-anemia",
   name: "Iron Deficiency Anemia",
-  nameKo: "철결핍성 빈혈",
   description:
-    "수주간 어지러움, 피로감, 창백함으로 내원한 환자. 결막 창백 확인, CBC/철분검사를 통해 철결핍성 빈혈 진단 후 철분제 처방 및 원인 조사.",
+    "Weeks of dizziness, fatigue, and pallor. Conjunctival pallor noted, CBC/iron studies confirm iron deficiency anemia. Iron supplementation and cause investigation.",
   tags: ["hematology", "chronic", "diagnostic", "medication"],
   entries: [
     // — Opening & Chief Complaint —

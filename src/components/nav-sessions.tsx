@@ -98,6 +98,23 @@ export function NavSessions() {
   const ddxStore = useDdxStore()
   const researchStore = useResearchStore()
 
+  // Prefetch session data on hover (debounced)
+  const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const prefetchingRef = useRef<Set<string>>(new Set())
+
+  const prefetchSession = (sessionId: string) => {
+    if (activeSession?.id === sessionId) return
+    if (getCachedSession(sessionId)) return
+    if (prefetchingRef.current.has(sessionId)) return
+
+    prefetchingRef.current.add(sessionId)
+    fetch(`/api/sessions/${sessionId}/full`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => setCachedSession(sessionId, data))
+      .catch(() => {})
+      .finally(() => prefetchingRef.current.delete(sessionId))
+  }
+
   // Tab state for sub-items
   const { activeTab, setActiveTab, unseenUpdates } = useConsultationTabStore()
   const diagnosisCount = useDdxStore((s) => s.diagnoses.length)
@@ -107,6 +124,12 @@ export function NavSessions() {
   const isResearchStreaming = useResearchStore((s) => s.isStreaming)
 
   const createSession = async () => {
+    // Stop any running simulation BEFORE resetting stores
+    const recState = useRecordingStore.getState()
+    if (recState.isSimulating && recState.simulationControls) {
+      recState.simulationControls.stop({ skipFinalAnalysis: true })
+    }
+
     const tempId = uuidv4()
     const now = new Date().toISOString()
     const optimisticSession = {
@@ -159,6 +182,12 @@ export function NavSessions() {
   const loadSession = async (sessionId: string) => {
     if (activeSession?.id === sessionId) return
 
+    // Stop any running simulation BEFORE resetting stores
+    const recState = useRecordingStore.getState()
+    if (recState.isSimulating && recState.simulationControls) {
+      recState.simulationControls.stop({ skipFinalAnalysis: true })
+    }
+
     const cached = getCachedSession(sessionId)
     const store = useSessionStore.getState()
 
@@ -189,27 +218,25 @@ export function NavSessions() {
         setCachedSession(sessionId, { session, transcriptEntries, notes, researchMessages })
       }
 
-      transcriptStore.reset()
-      insightsStore.reset()
-      ddxStore.reset()
-      recordStore.reset()
-      recordingStore.reset()
-      noteStore.reset()
-      researchStore.reset()
+      // Batch reset+load per store to minimize empty-state renders.
+      // React 19 auto-batching merges these into fewer re-renders.
       useConsultationTabStore.getState().clearAllUnseenUpdates()
+      recordingStore.reset()
 
       setActiveSession(session)
 
+      // Transcript: reset then immediately load
+      transcriptStore.reset()
       if (transcriptEntries?.length > 0) {
         transcriptStore.loadEntries(transcriptEntries)
       }
-
-      // Restore diagnostic keyword highlights from DB
       const savedKeywords = session.insights?.diagnosticKeywords
       if (Array.isArray(savedKeywords) && savedKeywords.length > 0) {
         transcriptStore.setDiagnosticKeywords(savedKeywords)
       }
 
+      // Insights: reset then immediately load
+      insightsStore.reset()
       if (session.insights) {
         insightsStore.loadFromDB({
           summary: session.insights.summary,
@@ -219,6 +246,8 @@ export function NavSessions() {
         })
       }
 
+      // DDx: reset then immediately load
+      ddxStore.reset()
       if (session.diagnoses && session.diagnoses.length > 0) {
         ddxStore.loadFromDB(
           session.diagnoses.map(
@@ -250,10 +279,14 @@ export function NavSessions() {
         )
       }
 
+      // Record: reset then immediately load
+      recordStore.reset()
       if (session.record) {
         recordStore.loadFromDB(session.record)
       }
 
+      // Notes: reset then immediately load
+      noteStore.reset()
       if (notes?.length > 0) {
         noteStore.loadNotes(
           notes.map((n: { id: string; content: string; imageUrls: string[]; source: string; createdAt: string }) => ({
@@ -267,6 +300,8 @@ export function NavSessions() {
         )
       }
 
+      // Research: reset then immediately load
+      researchStore.reset()
       if (researchMessages?.length > 0) {
         researchStore.loadFromDB(
           researchMessages.map(
@@ -294,6 +329,12 @@ export function NavSessions() {
       await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" })
       setSessions(sessions.filter((s) => s.id !== sessionId))
       if (activeSession?.id === sessionId) {
+        // Stop any running simulation BEFORE resetting stores
+        const recState = useRecordingStore.getState()
+        if (recState.isSimulating && recState.simulationControls) {
+          recState.simulationControls.stop({ skipFinalAnalysis: true })
+        }
+
         setActiveSession(null)
         transcriptStore.reset()
         insightsStore.reset()
@@ -378,6 +419,16 @@ export function NavSessions() {
                 <SidebarMenuButton
                   isActive={isActive}
                   onClick={() => loadSession(session.id)}
+                  onMouseEnter={() => {
+                    if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current)
+                    prefetchTimerRef.current = setTimeout(() => prefetchSession(session.id), 300)
+                  }}
+                  onMouseLeave={() => {
+                    if (prefetchTimerRef.current) {
+                      clearTimeout(prefetchTimerRef.current)
+                      prefetchTimerRef.current = null
+                    }
+                  }}
                   className="group/session h-auto items-start py-2"
                 >
                   <span className="line-clamp-2">
@@ -389,10 +440,10 @@ export function NavSessions() {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <span className="ml-auto flex-shrink-0">
-                        <span className="text-xs text-muted-foreground group-hover/session:hidden">
+                        <span className="text-xs text-muted-foreground hidden md:inline group-hover/session:hidden">
                           {formatShortTimeAgo(new Date(session.startedAt))}
                         </span>
-                        <span className="hidden group-hover/session:flex items-center justify-center rounded-md hover:bg-sidebar-accent size-5">
+                        <span className="flex md:hidden group-hover/session:flex items-center justify-center rounded-md hover:bg-sidebar-accent size-5">
                           <IconDots className="size-4" />
                         </span>
                       </span>

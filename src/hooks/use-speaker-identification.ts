@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
+import { useSettingsStore } from "@/stores/settings-store"
 import type { Speaker } from "@/types/session"
 
 const ENTRIES_PER_ATTEMPT = 3
@@ -82,7 +83,10 @@ export function useSpeakerIdentification() {
         const res = await fetch("/api/grok/identify-speakers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ utterances }),
+          body: JSON.stringify({
+            utterances,
+            model: useSettingsStore.getState().aiModel.speakerIdModel,
+          }),
         })
 
         if (!res.ok) throw new Error("Identification failed")

@@ -10,6 +10,9 @@ import {
 import { NavSessions } from "@/components/nav-sessions"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
+import { SettingsDialog } from "@/components/settings-dialog"
+import { useSettingsDialogStore } from "@/stores/settings-store"
+import { useTourStore } from "@/stores/tour-store"
 import {
   Sidebar,
   SidebarContent,
@@ -22,23 +25,9 @@ import {
 import { useUser } from "@/hooks/use-user"
 import { Skeleton } from "@/components/ui/skeleton"
 
-const data = {
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: IconSettings,
-    },
-    {
-      title: "Help",
-      url: "#",
-      icon: IconHelp,
-    },
-  ],
-}
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, loading } = useUser()
+  const openSettings = useSettingsDialogStore((s) => s.openSettings)
 
   const userData = {
     name:
@@ -48,6 +37,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     email: user?.email || "",
     avatar: user?.user_metadata?.avatar_url || "",
   }
+
+  const navSecondary = [
+    {
+      title: "Settings",
+      url: "#",
+      icon: IconSettings,
+      onClick: () => openSettings(),
+      dataTour: "settings-btn",
+    },
+    {
+      title: "Help",
+      url: "#",
+      icon: IconHelp,
+      onClick: () => useTourStore.getState().startTour(),
+    },
+  ]
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -70,7 +75,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <div className="flex-1 min-h-0 overflow-y-auto">
           <NavSessions />
         </div>
-        <NavSecondary items={data.navSecondary} />
+        <NavSecondary items={navSecondary} />
       </SidebarContent>
       <SidebarFooter>
         {loading ? (
@@ -85,6 +90,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <NavUser user={userData} />
         )}
       </SidebarFooter>
+      <SettingsDialog />
     </Sidebar>
   )
 }

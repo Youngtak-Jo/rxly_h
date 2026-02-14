@@ -1,0 +1,707 @@
+"use client"
+
+import * as React from "react"
+import { useTheme } from "next-themes"
+import {
+  IconBrain,
+  IconChartBar,
+  IconChevronLeft,
+  IconMicrophone,
+  IconPalette,
+  IconPlug,
+  IconRefresh,
+  IconX,
+} from "@tabler/icons-react"
+
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+} from "@/components/ui/sidebar"
+import { Switch } from "@/components/ui/switch"
+import {
+  useSettingsStore,
+  useSettingsDialogStore,
+  NOVA3_LANGUAGES,
+  AI_MODELS,
+  DEFAULT_AI_MODEL,
+} from "@/stores/settings-store"
+import type { SettingsPage } from "@/stores/settings-store"
+import { useConnectorStore } from "@/stores/connector-store"
+import type { ConnectorState } from "@/types/insights"
+
+const CONNECTORS: {
+  key: keyof ConnectorState
+  label: string
+  description: string
+}[] = [
+    {
+      key: "pubmed",
+      label: "PubMed",
+      description: "NCBI biomedical literature search (36M+ articles)",
+    },
+    {
+      key: "icd11",
+      label: "ICD-11",
+      description: "WHO International Classification of Diseases",
+    },
+    {
+      key: "europe_pmc",
+      label: "Europe PMC",
+      description: "European biomedical literature (33M+ publications)",
+    },
+    {
+      key: "openfda",
+      label: "OpenFDA",
+      description: "FDA drug adverse events & safety reports",
+    },
+    {
+      key: "clinical_trials",
+      label: "ClinicalTrials.gov",
+      description: "NIH clinical trial database (440K+ studies)",
+    },
+    {
+      key: "dailymed",
+      label: "DailyMed",
+      description: "FDA-approved drug labeling information",
+    },
+  ]
+
+const NAV_ITEMS = [
+  { key: "speech" as const, label: "Transcription", icon: IconMicrophone },
+  { key: "analysis" as const, label: "Analysis", icon: IconChartBar },
+  { key: "models" as const, label: "AI Models", icon: IconBrain },
+  { key: "connectors" as const, label: "Knowledge Connectors", icon: IconPlug },
+  { key: "appearance" as const, label: "Appearance", icon: IconPalette },
+]
+
+export function SettingsDialog() {
+  const { open, activePage, closeSettings } = useSettingsDialogStore()
+  const setActivePage = (page: SettingsPage) =>
+    useSettingsDialogStore.setState({ activePage: page })
+  const [mobileView, setMobileView] = React.useState<"menu" | "detail">("menu")
+
+  const handleNavClick = (key: SettingsPage) => {
+    setActivePage(key)
+    setMobileView("detail")
+  }
+
+  const handleBack = () => {
+    setMobileView("menu")
+  }
+
+  // Reset mobile view when dialog opens
+  React.useEffect(() => {
+    if (open) setMobileView("menu")
+  }, [open])
+
+  const settingsContent = (
+    <>
+      {activePage === "speech" && <TranscriptionSettings />}
+      {activePage === "analysis" && <AnalysisSettings />}
+      {activePage === "models" && <ModelSettings />}
+      {activePage === "connectors" && <ConnectorsSettings />}
+      {activePage === "appearance" && <AppearanceSettings />}
+    </>
+  )
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && closeSettings()}>
+      <DialogContent
+        className="overflow-hidden p-0 max-h-[85dvh] md:max-h-[500px] md:max-w-[700px] lg:max-w-[800px]"
+        showCloseButton={false}
+      >
+        <DialogTitle className="sr-only">Settings</DialogTitle>
+        <DialogDescription className="sr-only">
+          Configure transcription, analysis, AI models, knowledge connectors,
+          and appearance settings.
+        </DialogDescription>
+
+        {/* Desktop layout */}
+        <SidebarProvider className="hidden md:flex items-start">
+          <Sidebar collapsible="none" className="flex">
+            <SidebarContent>
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {NAV_ITEMS.map((item) => (
+                      <SidebarMenuItem key={item.key}>
+                        <SidebarMenuButton
+                          isActive={activePage === item.key}
+                          onClick={() => setActivePage(item.key)}
+                        >
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </SidebarContent>
+            <SidebarFooter>
+              <button
+                onClick={() => {
+                  useSettingsStore.getState().resetToDefaults()
+                }}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors w-full"
+              >
+                <IconRefresh className="size-3.5" />
+                <span>Reset to Defaults</span>
+              </button>
+            </SidebarFooter>
+          </Sidebar>
+          <main className="flex h-[480px] flex-1 flex-col overflow-hidden">
+            <header className="flex h-16 shrink-0 items-center gap-2">
+              <div className="flex items-center gap-2 px-4">
+                <Breadcrumb>
+                  <BreadcrumbList>
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>Settings</BreadcrumbPage>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>
+                        {NAV_ITEMS.find((i) => i.key === activePage)?.label}
+                      </BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </BreadcrumbList>
+                </Breadcrumb>
+              </div>
+            </header>
+            <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4 pt-0">
+              {settingsContent}
+            </div>
+          </main>
+        </SidebarProvider>
+
+        {/* Mobile layout */}
+        <div className="flex flex-col md:hidden min-h-0 max-h-[85dvh]">
+          {mobileView === "menu" ? (
+            <>
+              <header className="flex h-14 shrink-0 items-center justify-between px-4 border-b">
+                <h2 className="text-base font-semibold">Settings</h2>
+                <button
+                  onClick={closeSettings}
+                  className="rounded-sm opacity-70 hover:opacity-100 transition-opacity"
+                >
+                  <IconX className="size-5" />
+                  <span className="sr-only">Close</span>
+                </button>
+              </header>
+              <nav className="flex flex-1 flex-col overflow-y-auto p-2">
+                {NAV_ITEMS.map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => handleNavClick(item.key)}
+                    className="flex items-center gap-3 rounded-md px-3 py-3 text-sm hover:bg-accent transition-colors text-left"
+                  >
+                    <item.icon className="size-5 text-muted-foreground" />
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </nav>
+              <div className="border-t px-4 py-3">
+                <button
+                  onClick={() => {
+                    useSettingsStore.getState().resetToDefaults()
+                  }}
+                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <IconRefresh className="size-3.5" />
+                  <span>Reset to Defaults</span>
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <header className="flex h-14 shrink-0 items-center justify-between px-4 border-b">
+                <button
+                  onClick={handleBack}
+                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <IconChevronLeft className="size-4" />
+                  <span>Settings</span>
+                </button>
+                <h2 className="text-base font-semibold">
+                  {NAV_ITEMS.find((i) => i.key === activePage)?.label}
+                </h2>
+                <button
+                  onClick={closeSettings}
+                  className="rounded-sm opacity-70 hover:opacity-100 transition-opacity"
+                >
+                  <IconX className="size-5" />
+                  <span className="sr-only">Close</span>
+                </button>
+              </header>
+              <div className="flex-1 overflow-y-auto p-4">
+                {settingsContent}
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function SettingRow({
+  label,
+  description,
+  children,
+}: {
+  label: string
+  description: string
+  children: React.ReactNode
+}) {
+  return (
+    <>
+      <div className="flex items-center justify-between gap-4">
+        <div className="space-y-0.5">
+          <Label className="text-sm font-medium">{label}</Label>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+        {children}
+      </div>
+      <Separator />
+    </>
+  )
+}
+
+function TranscriptionSettings() {
+  const {
+    stt,
+    setSttLanguage,
+    setSttSmartFormat,
+    setSttDiarize,
+    audio,
+    setNoiseSuppression,
+    setEchoCancellation,
+    setEndpointing,
+    setUtteranceEndMs,
+  } = useSettingsStore()
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Changes apply to the next recording session.
+      </p>
+
+      <SettingRow
+        label="Language"
+        description="Select the language for speech recognition."
+      >
+        <Select value={stt.language} onValueChange={setSttLanguage}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {NOVA3_LANGUAGES.map((lang) => (
+              <SelectItem key={lang.value} value={lang.value}>
+                {lang.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SettingRow>
+
+      <SettingRow
+        label="Smart Formatting"
+        description="Automatically format dates, numbers, and currency."
+      >
+        <Switch
+          checked={stt.smartFormat}
+          onCheckedChange={setSttSmartFormat}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Speaker Diarization"
+        description="Identify and label different speakers."
+      >
+        <Switch checked={stt.diarize} onCheckedChange={setSttDiarize} />
+      </SettingRow>
+
+      <SettingRow
+        label="Noise Suppression"
+        description="Reduce background noise from the microphone."
+      >
+        <Switch
+          checked={audio.noiseSuppression}
+          onCheckedChange={setNoiseSuppression}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Echo Cancellation"
+        description="Prevent audio feedback loops."
+      >
+        <Switch
+          checked={audio.echoCancellation}
+          onCheckedChange={setEchoCancellation}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Endpointing Sensitivity"
+        description="How quickly silence is detected as end of speech."
+      >
+        <Select
+          value={String(audio.endpointing)}
+          onValueChange={(v) => setEndpointing(Number(v))}
+        >
+          <SelectTrigger className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="200">Fast (200ms)</SelectItem>
+            <SelectItem value="400">Balanced (400ms)</SelectItem>
+            <SelectItem value="600">Clinical (600ms)</SelectItem>
+            <SelectItem value="800">Relaxed (800ms)</SelectItem>
+          </SelectContent>
+        </Select>
+      </SettingRow>
+
+      <SettingRow
+        label="Utterance End Timeout"
+        description="Time to wait before finalizing an utterance."
+      >
+        <Select
+          value={String(audio.utteranceEndMs)}
+          onValueChange={(v) => setUtteranceEndMs(Number(v))}
+        >
+          <SelectTrigger className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="800">Short (800ms)</SelectItem>
+            <SelectItem value="1200">Standard (1200ms)</SelectItem>
+            <SelectItem value="1800">Clinical (1800ms)</SelectItem>
+            <SelectItem value="2500">Extended (2500ms)</SelectItem>
+          </SelectContent>
+        </Select>
+      </SettingRow>
+    </div>
+  )
+}
+
+function AnalysisSettings() {
+  const {
+    analysis,
+    setInsightsMinWords,
+    setInsightsMinInterval,
+    setDdxMinWords,
+    setDdxMinInterval,
+  } = useSettingsStore()
+
+  const handleInsightsSensitivity = (preset: string) => {
+    switch (preset) {
+      case "frequent":
+        setInsightsMinWords(15)
+        setInsightsMinInterval(6000)
+        break
+      case "balanced":
+        setInsightsMinWords(30)
+        setInsightsMinInterval(12000)
+        break
+      case "conservative":
+        setInsightsMinWords(60)
+        setInsightsMinInterval(20000)
+        break
+    }
+  }
+
+  const handleDdxSensitivity = (preset: string) => {
+    switch (preset) {
+      case "frequent":
+        setDdxMinWords(25)
+        setDdxMinInterval(10000)
+        break
+      case "balanced":
+        setDdxMinWords(50)
+        setDdxMinInterval(20000)
+        break
+      case "conservative":
+        setDdxMinWords(80)
+        setDdxMinInterval(30000)
+        break
+    }
+  }
+
+  const getInsightsPreset = () => {
+    if (
+      analysis.insightsMinWords === 15 &&
+      analysis.insightsMinInterval === 6000
+    )
+      return "frequent"
+    if (
+      analysis.insightsMinWords === 60 &&
+      analysis.insightsMinInterval === 20000
+    )
+      return "conservative"
+    return "balanced"
+  }
+
+  const getDdxPreset = () => {
+    if (analysis.ddxMinWords === 25 && analysis.ddxMinInterval === 10000)
+      return "frequent"
+    if (analysis.ddxMinWords === 80 && analysis.ddxMinInterval === 30000)
+      return "conservative"
+    return "balanced"
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Higher frequency increases API usage and cost.
+      </p>
+
+      <SettingRow
+        label="Insights Frequency"
+        description="How often real-time insights are generated during recording."
+      >
+        <Select
+          value={getInsightsPreset()}
+          onValueChange={handleInsightsSensitivity}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="frequent">Frequent (15w / 6s)</SelectItem>
+            <SelectItem value="balanced">Balanced (30w / 12s)</SelectItem>
+            <SelectItem value="conservative">
+              Conservative (60w / 20s)
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </SettingRow>
+
+      <SettingRow
+        label="Differential Dx Frequency"
+        description="How often differential diagnosis is updated during recording."
+      >
+        <Select value={getDdxPreset()} onValueChange={handleDdxSensitivity}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="frequent">Frequent (25w / 10s)</SelectItem>
+            <SelectItem value="balanced">Balanced (50w / 20s)</SelectItem>
+            <SelectItem value="conservative">
+              Conservative (80w / 30s)
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </SettingRow>
+    </div>
+  )
+}
+
+function ModelSelector({
+  value,
+  onValueChange,
+  recommendedModel,
+}: {
+  value: string
+  onValueChange: (value: string) => void
+  recommendedModel: string
+}) {
+  return (
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger className="w-[250px]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {AI_MODELS.map((model) => (
+          <SelectItem key={model.value} value={model.value}>
+            {model.label}
+            {model.value === recommendedModel ? " (Recommended)" : ""}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+function ModelSettings() {
+  const {
+    aiModel,
+    setInsightsModel,
+    setRecordModel,
+    setDdxModel,
+    setResearchModel,
+    setSpeakerIdModel,
+    setDiagnosticKeywordsModel,
+    setClinicalSupportModel,
+  } = useSettingsStore()
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Changing models may affect quality and response speed.
+      </p>
+
+      <SettingRow
+        label="Insights Model"
+        description="Used for real-time clinical insights."
+      >
+        <ModelSelector
+          value={aiModel.insightsModel}
+          onValueChange={setInsightsModel}
+          recommendedModel={DEFAULT_AI_MODEL.insightsModel}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Record Model"
+        description="Used for medical record generation."
+      >
+        <ModelSelector
+          value={aiModel.recordModel}
+          onValueChange={setRecordModel}
+          recommendedModel={DEFAULT_AI_MODEL.recordModel}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="DDx Model"
+        description="Used for differential diagnosis."
+      >
+        <ModelSelector
+          value={aiModel.ddxModel}
+          onValueChange={setDdxModel}
+          recommendedModel={DEFAULT_AI_MODEL.ddxModel}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Research Model"
+        description="Used for medical research."
+      >
+        <ModelSelector
+          value={aiModel.researchModel}
+          onValueChange={setResearchModel}
+          recommendedModel={DEFAULT_AI_MODEL.researchModel}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Speaker Identification Model"
+        description="Used for identifying doctor/patient speakers."
+      >
+        <ModelSelector
+          value={aiModel.speakerIdModel}
+          onValueChange={setSpeakerIdModel}
+          recommendedModel={DEFAULT_AI_MODEL.speakerIdModel}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Diagnostic Keywords Model"
+        description="Used for extracting diagnostic keywords."
+      >
+        <ModelSelector
+          value={aiModel.diagnosticKeywordsModel}
+          onValueChange={setDiagnosticKeywordsModel}
+          recommendedModel={DEFAULT_AI_MODEL.diagnosticKeywordsModel}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Clinical Support Model"
+        description="Used for clinical decision support on diagnoses."
+      >
+        <ModelSelector
+          value={aiModel.clinicalSupportModel}
+          onValueChange={setClinicalSupportModel}
+          recommendedModel={DEFAULT_AI_MODEL.clinicalSupportModel}
+        />
+      </SettingRow>
+    </div>
+  )
+}
+
+function ConnectorsSettings() {
+  const { connectors, toggleConnector } = useConnectorStore()
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Enable external medical databases for evidence-based diagnosis support.
+      </p>
+
+      {CONNECTORS.map((connector) => (
+        <SettingRow
+          key={connector.key}
+          label={connector.label}
+          description={connector.description}
+        >
+          <Switch
+            id={`connector-${connector.key}`}
+            checked={connectors[connector.key]}
+            onCheckedChange={() => toggleConnector(connector.key)}
+          />
+        </SettingRow>
+      ))}
+    </div>
+  )
+}
+
+function AppearanceSettings() {
+  const { appearance, setTheme } = useSettingsStore()
+  const { setTheme: setNextTheme } = useTheme()
+
+  const handleThemeChange = (theme: "light" | "dark" | "system") => {
+    setTheme(theme)
+    setNextTheme(theme)
+  }
+
+  return (
+    <div className="space-y-4">
+      <SettingRow
+        label="Theme"
+        description="Select the color theme for the interface."
+      >
+        <Select value={appearance.theme} onValueChange={handleThemeChange}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="light">Light</SelectItem>
+            <SelectItem value="dark">Dark</SelectItem>
+            <SelectItem value="system">System</SelectItem>
+          </SelectContent>
+        </Select>
+      </SettingRow>
+    </div>
+  )
+}

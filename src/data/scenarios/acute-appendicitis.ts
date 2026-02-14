@@ -3,9 +3,8 @@ import type { Scenario } from "./index"
 export const acuteAppendicitisScenario: Scenario = {
   id: "acute-appendicitis",
   name: "Acute Appendicitis",
-  nameKo: "급성충수염",
   description:
-    "배꼽 주위에서 시작해 우하복부로 이동한 복통으로 내원한 환자. McBurney 압통, 반발통 확인 후 CT로 충수염 진단, 외과 수술 의뢰.",
+    "Periumbilical pain migrating to RLQ. McBurney's tenderness and rebound confirmed, CT-diagnosed appendicitis with surgical referral.",
   tags: ["surgery", "acute", "urgent", "diagnostic"],
   entries: [
     // — Opening & Chief Complaint —

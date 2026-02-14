@@ -1,5 +1,6 @@
 import { streamText } from "ai"
-import { xai, DEFAULT_MODEL } from "@/lib/grok"
+import { DEFAULT_MODEL } from "@/lib/grok"
+import { getModel } from "@/lib/ai-provider"
 import { RECORD_SYSTEM_PROMPT } from "@/lib/prompts"
 import type { UserContent } from "ai"
 
@@ -12,13 +13,14 @@ export async function POST(req: Request) {
       insights,
       sessionId,
       existingRecord,
+      model: modelOverride,
     } = await req.json()
 
     if (!transcript?.trim() && !doctorNotes?.trim() && (!imageUrls || imageUrls.length === 0)) {
       return new Response("No transcript, notes, or images provided", { status: 400 })
     }
 
-    const model = xai(DEFAULT_MODEL)
+    const model = getModel(modelOverride || DEFAULT_MODEL)
 
     let textContent = [
       transcript?.trim()

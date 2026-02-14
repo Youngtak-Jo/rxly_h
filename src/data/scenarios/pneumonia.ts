@@ -3,9 +3,8 @@ import type { Scenario } from "./index"
 export const pneumoniaScenario: Scenario = {
   id: "pneumonia",
   name: "Community-Acquired Pneumonia",
-  nameKo: "폐렴 진단",
   description:
-    "5일간 기침, 발열, 호흡곤란으로 내원한 환자. 청진, 흉부 X-ray, 혈액검사를 통해 지역사회 획득 폐렴 진단 후 항생제 처방.",
+    "5-day cough, fever, and dyspnea. Auscultation, chest X-ray, and blood work leading to community-acquired pneumonia diagnosis and antibiotic therapy.",
   tags: ["pulmonology", "acute", "infection", "imaging"],
   entries: [
     // — Opening & Chief Complaint —

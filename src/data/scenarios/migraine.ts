@@ -3,9 +3,8 @@ import type { Scenario } from "./index"
 export const migraineScenario: Scenario = {
   id: "migraine",
   name: "Migraine Diagnosis",
-  nameKo: "편두통 진단",
   description:
-    "2주간 지속된 편측 두통으로 내원한 환자. 고혈압 병력, 가족력 양성. 신경학적 검사, MRI, 약물 처방까지.",
+    "2-week unilateral headache with hypertension history and positive family history. Neurological exam, MRI, and triptan prescription.",
   tags: ["neurology", "new-diagnosis", "imaging", "medication"],
   entries: [
     // — Opening & Chief Complaint —

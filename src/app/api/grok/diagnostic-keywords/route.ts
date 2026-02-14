@@ -1,17 +1,18 @@
 import { generateText } from "ai"
-import { xai, DEFAULT_MODEL } from "@/lib/grok"
+import { DEFAULT_MODEL } from "@/lib/grok"
+import { getModel } from "@/lib/ai-provider"
 import { DIAGNOSTIC_KEYWORDS_PROMPT } from "@/lib/prompts"
 
 export async function POST(req: Request) {
   try {
-    const { transcript } = await req.json()
+    const { transcript, model: modelOverride } = await req.json()
 
     if (!transcript?.trim()) {
       return new Response("No transcript provided", { status: 400 })
     }
 
     const { text } = await generateText({
-      model: xai(DEFAULT_MODEL),
+      model: getModel(modelOverride || DEFAULT_MODEL),
       system: DIAGNOSTIC_KEYWORDS_PROMPT,
       messages: [
         {

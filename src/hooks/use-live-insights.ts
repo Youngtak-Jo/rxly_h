@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useRef } from "react"
 import { useInsightsStore } from "@/stores/insights-store"
+import { useSettingsStore } from "@/stores/settings-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
 import type { InsightsResponse } from "@/types/insights"
 
-const MIN_NEW_WORDS = 30
-const MIN_INTERVAL_MS = 12000
 const CHECKPOINT_INTERVAL = 5 // Send full transcript every N analyses
 
 export function useLiveInsights() {
@@ -44,11 +43,13 @@ export function useLiveInsights() {
       const timeSinceLastAnalysis = Date.now() - lastAnalysisTimeRef.current
 
       // When not forced, require transcript with enough new content
+      const { insightsMinWords, insightsMinInterval } =
+        useSettingsStore.getState().analysis
       if (!forceRun) {
         if (!fullTranscript.trim()) return
         if (
-          newWords < MIN_NEW_WORDS &&
-          timeSinceLastAnalysis < MIN_INTERVAL_MS
+          newWords < insightsMinWords &&
+          timeSinceLastAnalysis < insightsMinInterval
         )
           return
       }
@@ -124,6 +125,8 @@ export function useLiveInsights() {
           // Ignore notes fetch failure
         }
 
+        const { insightsModel } = useSettingsStore.getState().aiModel
+
         const res = await fetch("/api/grok/insights", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -134,6 +137,7 @@ export function useLiveInsights() {
             previousImageFindings,
             mode,
             previousSummary,
+            model: insightsModel,
             inlineComments: pendingComments.length > 0 ? pendingComments : undefined,
             currentInsights: {
               summary,
@@ -209,6 +213,8 @@ export function useLiveInsights() {
         } catch {
           console.error("Failed to parse insights response:", accumulated)
           setProcessing(false)
+          // Update lastUpdated so reactive subscribers (DDx) don't silently skip
+          useInsightsStore.setState({ lastUpdated: new Date() })
         }
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
@@ -228,13 +234,14 @@ export function useLiveInsights() {
   }, [runAnalysis])
 
   const triggerAnalysis = useCallback(() => {
+    const { insightsMinInterval } = useSettingsStore.getState().analysis
     const timeSinceLastAnalysis = Date.now() - lastAnalysisTimeRef.current
-    if (timeSinceLastAnalysis >= MIN_INTERVAL_MS) {
+    if (timeSinceLastAnalysis >= insightsMinInterval) {
       analyzeTranscript()
     } else {
       setTimeout(
         () => analyzeTranscript(),
-        MIN_INTERVAL_MS - timeSinceLastAnalysis
+        insightsMinInterval - timeSinceLastAnalysis
       )
     }
   }, [analyzeTranscript])

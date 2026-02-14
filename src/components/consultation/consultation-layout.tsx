@@ -10,6 +10,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { CenterPanel } from "./center-panel"
 import { RightPanel } from "./right-panel"
+import { NoteInputBar } from "./note-input/note-input-bar"
+import { MobileTranscriptSection } from "./transcript/mobile-transcript-section"
 import { useSessionStore } from "@/stores/session-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useRecordAutoSave } from "@/hooks/use-record-autosave"
@@ -18,6 +20,9 @@ import { useDdxAutoSave } from "@/hooks/use-ddx-autosave"
 import { useLiveDdx } from "@/hooks/use-live-ddx"
 import { useLiveRecord } from "@/hooks/use-live-record"
 import { useUnseenUpdateTracker } from "@/hooks/use-unseen-update-tracker"
+import { useSpeakerIdentification } from "@/hooks/use-speaker-identification"
+import { useDiagnosticHighlights } from "@/hooks/use-diagnostic-highlights"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { IconStethoscope, IconLoader2 } from "@tabler/icons-react"
 import { v4 as uuidv4 } from "uuid"
 import { cn } from "@/lib/utils"
@@ -30,6 +35,7 @@ export function ConsultationLayout() {
   const { setTranscriptCollapsed, setToggleTranscript } =
     useConsultationTabStore()
   const rightPanelRef = useRef<PanelImperativeHandle | null>(null)
+  const isMobile = useIsMobile()
 
   useRecordAutoSave()
   useInsightsAutoSave()
@@ -37,6 +43,10 @@ export function ConsultationLayout() {
   useLiveDdx()
   useLiveRecord()
   useUnseenUpdateTracker()
+
+  // These hooks were in RightPanel but need to run on mobile too
+  useSpeakerIdentification()
+  useDiagnosticHighlights()
 
   const toggleRightPanel = useCallback(() => {
     const panel = rightPanelRef.current
@@ -48,11 +58,15 @@ export function ConsultationLayout() {
     }
   }, [])
 
-  // Register toggle function in store so SiteHeader can call it
+  // Register toggle function in store so SiteHeader can call it (desktop only)
   useEffect(() => {
-    setToggleTranscript(toggleRightPanel)
-    return () => setToggleTranscript(null)
-  }, [toggleRightPanel, setToggleTranscript])
+    if (!isMobile) {
+      setToggleTranscript(toggleRightPanel)
+      return () => setToggleTranscript(null)
+    } else {
+      setToggleTranscript(null)
+    }
+  }, [toggleRightPanel, setToggleTranscript, isMobile])
 
   const createSession = async () => {
     const tempId = uuidv4()
@@ -125,9 +139,34 @@ export function ConsultationLayout() {
     )
   }
 
+  // Mobile layout: vertical stack
+  if (isMobile) {
+    return (
+      <div className="relative flex-1 min-h-0 min-w-0 flex flex-col">
+        {isSwitching && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 transition-opacity duration-150">
+            <IconLoader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        <div className={cn(
+          "flex flex-col flex-1 min-h-0 transition-opacity duration-200",
+          isSwitching ? "opacity-40 pointer-events-none" : "opacity-100"
+        )}>
+          <MobileTranscriptSection />
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <CenterPanel />
+          </div>
+          <div className="shrink-0 pb-[env(safe-area-inset-bottom)]">
+            <NoteInputBar />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Desktop layout: resizable panels
   return (
     <div className="relative flex-1 min-h-0 min-w-0">
-      {/* Switching overlay - dims content with subtle spinner */}
       {isSwitching && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 transition-opacity duration-150">
           <IconLoader2 className="h-6 w-6 animate-spin text-muted-foreground" />

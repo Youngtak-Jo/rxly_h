@@ -5,7 +5,7 @@ import { ResearchInput } from "./research-input"
 
 export function ResearchContainer() {
   return (
-    <div className="flex flex-col h-full">
+    <div data-tour="research-panel" className="flex flex-col h-full">
       <ResearchMessageList />
       <ResearchInput />
     </div>

@@ -7,9 +7,8 @@ import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useConnectorStore } from "@/stores/connector-store"
 import { useRecordingStore } from "@/stores/recording-store"
+import { useSettingsStore } from "@/stores/settings-store"
 
-const MIN_NEW_WORDS = 50
-const MIN_INTERVAL_MS = 20000
 const INSIGHTS_DEBOUNCE_MS = 3000
 
 export function useLiveDdx() {
@@ -48,11 +47,13 @@ export function useLiveDdx() {
       const timeSinceLastDdx = Date.now() - lastDdxTimeRef.current
 
       // When not forced, require enough new content
+      const { ddxMinWords, ddxMinInterval } =
+        useSettingsStore.getState().analysis
       if (!forceRun) {
         if (!transcript.trim()) return
         if (
-          newWords < MIN_NEW_WORDS &&
-          timeSinceLastDdx < MIN_INTERVAL_MS
+          newWords < ddxMinWords &&
+          timeSinceLastDdx < ddxMinInterval
         )
           return
       }
@@ -89,6 +90,7 @@ export function useLiveDdx() {
         }
 
         const enabledConnectors = useConnectorStore.getState().connectors
+        const { ddxModel } = useSettingsStore.getState().aiModel
 
         const res = await fetch("/api/grok/ddx", {
           method: "POST",
@@ -96,6 +98,7 @@ export function useLiveDdx() {
           body: JSON.stringify({
             transcript,
             doctorNotes,
+            model: ddxModel,
             currentInsights: { summary, keyFindings, redFlags },
             currentDiagnoses: diagnoses.map((dx) => ({
               icdCode: dx.icdCode,
@@ -171,6 +174,37 @@ export function useLiveDdx() {
         clearTimeout(insightsDebounceRef.current)
       }
     }
+  }, [runDdx])
+
+  // Direct DDx trigger when recording/simulation stops
+  // Mirrors the pattern used in useLiveRecord for reliable end-of-session updates
+  useEffect(() => {
+    let prevIsRecording = useRecordingStore.getState().isRecording
+
+    const unsubscribe = useRecordingStore.subscribe((state) => {
+      const wasRecording = prevIsRecording
+      prevIsRecording = state.isRecording
+
+      // Detect recording stop (true → false)
+      if (wasRecording && !state.isRecording) {
+        // Wait for insights to finish, then force DDx
+        const { isProcessing } = useInsightsStore.getState()
+        if (!isProcessing) {
+          runDdx(true)
+          return
+        }
+
+        // Insights still processing — subscribe and wait
+        const unsub = useInsightsStore.subscribe((s) => {
+          if (!s.isProcessing) {
+            unsub()
+            runDdx(true)
+          }
+        })
+      }
+    })
+
+    return () => unsubscribe()
   }, [runDdx])
 
   // Clean up on session change

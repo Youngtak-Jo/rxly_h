@@ -2,6 +2,7 @@
 
 import { useCallback, useRef } from "react"
 import { useRecordingStore } from "@/stores/recording-store"
+import { useSettingsStore } from "@/stores/settings-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useLiveInsights } from "@/hooks/use-live-insights"
@@ -9,6 +10,11 @@ import { v4 as uuid } from "uuid"
 import type { Speaker } from "@/types/session"
 
 const SAMPLE_RATE = 16000
+
+/** Languages supported by Deepgram Nova-3 Medical (English only) */
+const MEDICAL_MODEL_LANGUAGES = [
+  "en", "en-US", "en-AU", "en-CA", "en-GB", "en-IE", "en-IN", "en-NZ",
+]
 
 /**
  * Resolve speaker label from raw Deepgram speaker ID.
@@ -77,6 +83,7 @@ export function useDeepgram() {
   const workletNodeRef = useRef<AudioWorkletNode | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const sessionStartTimeRef = useRef<number>(0)
+  const finalAnalysisCalledRef = useRef(false)
 
   const { setRecording, setPaused, setError, setDuration } = useRecordingStore()
   const { triggerAnalysis, runFinalAnalysis } = useLiveInsights()
@@ -88,13 +95,16 @@ export function useDeepgram() {
       if (!tokenRes.ok) throw new Error("Failed to get Deepgram token")
       const { token } = await tokenRes.json()
 
+      // Read settings at connection time
+      const settings = useSettingsStore.getState()
+
       // Get microphone access
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
           sampleRate: SAMPLE_RATE,
-          echoCancellation: true,
-          noiseSuppression: true,
+          echoCancellation: settings.audio.echoCancellation,
+          noiseSuppression: settings.audio.noiseSuppression,
         },
       })
       streamRef.current = stream
@@ -117,17 +127,21 @@ export function useDeepgram() {
       const sessionId = useSessionStore.getState().activeSession?.id || ""
 
       // Open WebSocket to Deepgram
+      const model = MEDICAL_MODEL_LANGUAGES.includes(settings.stt.language)
+        ? "nova-3-medical"
+        : "nova-3"
+
       const params = new URLSearchParams({
-        model: "nova-3",
+        model,
         encoding: "linear16",
         sample_rate: String(SAMPLE_RATE),
         channels: "1",
-        diarize: "true",
-        smart_format: "true",
-        language: "en",
+        diarize: String(settings.stt.diarize),
+        smart_format: String(settings.stt.smartFormat),
+        language: settings.stt.language,
         interim_results: "true",
-        endpointing: "400",
-        utterance_end_ms: "1200",
+        endpointing: String(settings.audio.endpointing),
+        utterance_end_ms: String(settings.audio.utteranceEndMs),
         vad_events: "true",
       })
 
@@ -240,7 +254,12 @@ export function useDeepgram() {
       }
 
       ws.onclose = () => {
-        runFinalAnalysis()
+        // Only run final analysis on unexpected disconnects;
+        // stopListening() already calls it explicitly
+        if (!finalAnalysisCalledRef.current) {
+          runFinalAnalysis()
+        }
+        finalAnalysisCalledRef.current = false
         setRecording(false)
       }
     } catch (error) {
@@ -252,6 +271,9 @@ export function useDeepgram() {
   }, [setRecording, setDuration, setPaused, setError, triggerAnalysis, runFinalAnalysis])
 
   const stopListening = useCallback(() => {
+    // Mark that we're calling runFinalAnalysis from stopListening
+    // so ws.onclose won't call it again
+    finalAnalysisCalledRef.current = true
     if (wsRef.current) {
       wsRef.current.close()
       wsRef.current = null

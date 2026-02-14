@@ -48,7 +48,7 @@ export function useSimulatedTranscript() {
   // Stable refs for controls to avoid circular dependency
   const pauseRef = useRef<() => void>(() => {})
   const resumeRef = useRef<() => void>(() => {})
-  const stopRef = useRef<() => void>(() => {})
+  const stopRef = useRef<(options?: { skipFinalAnalysis?: boolean }) => void>(() => {})
 
   const processEntry = useCallback(
     (index: number) => {
@@ -59,6 +59,10 @@ export function useSimulatedTranscript() {
       // All entries processed — end simulation
       if (index >= entries.length) {
         const t = setTimeout(() => {
+          // Safety net: abort if session has changed since this timeout was scheduled
+          const currentSession = useSessionStore.getState().activeSession
+          if (!currentSession || currentSession.id !== sessionId) return
+
           // Run forced final analysis FIRST (sets isProcessing gate synchronously)
           // so waitForInsightsToComplete() in useLiveRecord will block until done
           runFinalAnalysis()
@@ -110,6 +114,10 @@ export function useSimulatedTranscript() {
       const capturedEndTime = entryEndTime
 
       const t2 = setTimeout(() => {
+        // Safety net: abort if session has changed since this timeout was scheduled
+        const currentSession = useSessionStore.getState().activeSession
+        if (!currentSession || currentSession.id !== sessionId) return
+
         const { addFinalEntry, clearInterim } =
           useTranscriptStore.getState()
         const speaker = resolveSpeaker(capturedRawSpeakerId)
@@ -194,28 +202,34 @@ export function useSimulatedTranscript() {
     processEntry(currentIndexRef.current)
   }, [processEntry])
 
-  const stopSimulation = useCallback(() => {
-    timeoutsRef.current.forEach(clearTimeout)
-    timeoutsRef.current = []
-    isRunningRef.current = false
-    isPausedRef.current = false
-    currentIndexRef.current = 0
-    runningTimeRef.current = 0
+  const stopSimulation = useCallback(
+    (options?: { skipFinalAnalysis?: boolean }) => {
+      timeoutsRef.current.forEach(clearTimeout)
+      timeoutsRef.current = []
+      isRunningRef.current = false
+      isPausedRef.current = false
+      currentIndexRef.current = 0
+      runningTimeRef.current = 0
 
-    if (durationIntervalRef.current) {
-      clearInterval(durationIntervalRef.current)
-      durationIntervalRef.current = null
-    }
+      if (durationIntervalRef.current) {
+        clearInterval(durationIntervalRef.current)
+        durationIntervalRef.current = null
+      }
 
-    // Run forced final analysis BEFORE stopping recording
-    runFinalAnalysis()
+      // Run forced final analysis BEFORE stopping recording
+      // Skip when stopping due to session switch to avoid race conditions
+      if (!options?.skipFinalAnalysis) {
+        runFinalAnalysis()
+      }
 
-    const store = useRecordingStore.getState()
-    store.setRecording(false)
-    store.setSimulating(false)
-    store.setSimulationControls(null)
-    useTranscriptStore.getState().clearInterim()
-  }, [runFinalAnalysis])
+      const store = useRecordingStore.getState()
+      store.setRecording(false)
+      store.setSimulating(false)
+      store.setSimulationControls(null)
+      useTranscriptStore.getState().clearInterim()
+    },
+    [runFinalAnalysis]
+  )
 
   // Keep stable refs up to date
   pauseRef.current = pauseSimulation
@@ -317,7 +331,7 @@ export function useSimulatedTranscript() {
       store.setSimulationControls({
         pause: () => pauseRef.current(),
         resume: () => resumeRef.current(),
-        stop: () => stopRef.current(),
+        stop: (options) => stopRef.current(options),
       })
 
       // Instant insert: dump all entries at once

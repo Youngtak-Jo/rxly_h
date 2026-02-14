@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
+import { useSettingsStore } from "@/stores/settings-store"
 
 export function useDiagnosticHighlights() {
   const isRecording = useRecordingStore((s) => s.isRecording)
@@ -26,7 +27,10 @@ export function useDiagnosticHighlights() {
           const res = await fetch("/api/grok/diagnostic-keywords", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ transcript }),
+            body: JSON.stringify({
+              transcript,
+              model: useSettingsStore.getState().aiModel.diagnosticKeywordsModel,
+            }),
           })
 
           if (!res.ok) throw new Error("Keyword extraction failed")

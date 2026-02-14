@@ -50,6 +50,7 @@ model TranscriptEntry {
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, startTime])
+  @@index([sessionId, isFinal, startTime])
   @@map("transcript_entries")
 }
 

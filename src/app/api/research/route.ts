@@ -1,5 +1,6 @@
 import { generateText, streamText } from "ai"
-import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic"
+import { CLAUDE_MODEL } from "@/lib/anthropic"
+import { getModel } from "@/lib/ai-provider"
 import {
   RESEARCH_SYSTEM_PROMPT,
   SEARCH_TERM_EXTRACTION_PROMPT,
@@ -13,7 +14,7 @@ import type { ConnectorState } from "@/types/insights"
 
 async function extractSearchTerms(question: string): Promise<string[]> {
   try {
-    const model = anthropic(CLAUDE_MODEL)
+    const model = getModel(CLAUDE_MODEL)
     const { text } = await generateText({
       model,
       system: SEARCH_TERM_EXTRACTION_PROMPT,
@@ -36,14 +37,14 @@ async function extractSearchTerms(question: string): Promise<string[]> {
 
 export async function POST(req: Request) {
   try {
-    const { question, conversationHistory, enabledConnectors, insightsContext } =
+    const { question, conversationHistory, enabledConnectors, insightsContext, model: modelOverride } =
       await req.json()
 
     if (!question?.trim()) {
       return new Response("No question provided", { status: 400 })
     }
 
-    const model = anthropic(CLAUDE_MODEL)
+    const model = getModel(modelOverride || CLAUDE_MODEL)
 
     // Check if any connectors are enabled
     const hasConnectorsEnabled =

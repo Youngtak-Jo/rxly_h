@@ -6,6 +6,7 @@ import { useRecordingStore } from "@/stores/recording-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useSessionStore } from "@/stores/session-store"
+import { useSettingsStore } from "@/stores/settings-store"
 
 const WAIT_TIMEOUT_MS = 60000
 
@@ -45,6 +46,8 @@ export async function generateRecord(
   // Need at least transcript, notes, or images to generate
   if (!transcript.trim() && !doctorNotes.trim() && imageUrls.length === 0) return
 
+  const { recordModel } = useSettingsStore.getState().aiModel
+
   setGenerating(true)
   try {
     const res = await fetch("/api/grok/record", {
@@ -57,6 +60,7 @@ export async function generateRecord(
         insights: { summary, keyFindings },
         sessionId,
         existingRecord,
+        model: recordModel,
       }),
       signal,
     })

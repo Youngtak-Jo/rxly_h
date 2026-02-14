@@ -184,7 +184,7 @@ export function TranscriptViewer() {
   }
 
   return (
-    <div className="relative h-full">
+    <div data-tour="transcript-viewer" className="relative h-full">
       <div
         ref={scrollRef}
         onScroll={handleScroll}

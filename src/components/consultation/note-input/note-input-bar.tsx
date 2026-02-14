@@ -155,7 +155,7 @@ export function NoteInputBar() {
   }
 
   return (
-    <div className="border-t p-3">
+    <div data-tour="note-input" className="border-t p-3">
       {attachments.length > 0 && (
         <div className="flex gap-2 mb-2 flex-wrap">
           {attachments.map((attachment, i) => (

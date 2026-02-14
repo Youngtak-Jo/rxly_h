@@ -1,5 +1,6 @@
 import { generateText } from "ai"
-import { xai, DEFAULT_MODEL } from "@/lib/grok"
+import { DEFAULT_MODEL } from "@/lib/grok"
+import { getModel } from "@/lib/ai-provider"
 import { CLINICAL_SUPPORT_PROMPT } from "@/lib/prompts"
 import {
   fetchRAGContext,
@@ -125,6 +126,7 @@ export async function POST(req: Request) {
       evidence,
       citations,
       enabledConnectors,
+      model: modelOverride,
     } = (await req.json()) as {
       diseaseName: string
       icdCode: string
@@ -132,6 +134,7 @@ export async function POST(req: Request) {
       evidence: string
       citations: DiagnosisCitation[]
       enabledConnectors?: ConnectorState
+      model?: string
     }
 
     let prompt = `Diagnosis: ${diseaseName} (ICD-11: ${icdCode})
@@ -167,7 +170,7 @@ Evidence from consultation: ${evidence}`
         // Run Grok generation + source enrichment in parallel
         const [grokResult, enrichedSources] = await Promise.all([
           generateText({
-            model: xai(DEFAULT_MODEL),
+            model: getModel(modelOverride || DEFAULT_MODEL),
             system: CLINICAL_SUPPORT_PROMPT,
             prompt,
             temperature: 0.2,
@@ -191,7 +194,7 @@ Evidence from consultation: ${evidence}`
 
     // Fallback: no connectors or RAG failed — run Grok alone
     const { text } = await generateText({
-      model: xai(DEFAULT_MODEL),
+      model: getModel(modelOverride || DEFAULT_MODEL),
       system: CLINICAL_SUPPORT_PROMPT,
       prompt,
       temperature: 0.2,

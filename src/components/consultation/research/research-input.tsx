@@ -14,6 +14,7 @@ import {
 import { useSessionStore } from "@/stores/session-store"
 import { useResearchStore } from "@/stores/research-store"
 import { useConnectorStore } from "@/stores/connector-store"
+import { useSettingsStore } from "@/stores/settings-store"
 import { useInsightsStore } from "@/stores/insights-store"
 import { IconSlash, IconSend, IconPlayerStop, IconTrash } from "@tabler/icons-react"
 import type { ResearchCitation } from "@/stores/research-store"
@@ -90,10 +91,13 @@ export function ResearchInput() {
         content: m.content,
       }))
 
+      const { researchModel } = useSettingsStore.getState().aiModel
+
       const body: Record<string, unknown> = {
         question,
         conversationHistory,
         enabledConnectors: connectors,
+        model: researchModel,
         insightsContext: includeInsights
           ? {
               summary: insights.summary,
@@ -194,7 +198,7 @@ export function ResearchInput() {
               <IconSlash className="size-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="w-64">
+          <DropdownMenuContent side="top" align="start" className="w-56 sm:w-64">
             <DropdownMenuItem
               onSelect={(e) => e.preventDefault()}
               className="flex items-center justify-between gap-3 py-2"

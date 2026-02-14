@@ -3,9 +3,8 @@ import type { Scenario } from "./index"
 export const pediatricFeverScenario: Scenario = {
   id: "pediatric-fever",
   name: "Pediatric Fever Evaluation",
-  nameKo: "소아 발열 평가",
   description:
-    "3일간 고열이 지속되는 3세 아이. 보호자(엄마)와 의사 간 대화. 급성 인두염 진단, 항생제 처방 결정.",
+    "3-year-old with 3 days of persistent high fever. Doctor-parent conversation leading to strep pharyngitis diagnosis and antibiotic decision.",
   tags: ["pediatrics", "acute", "infection", "parent-counseling"],
   entries: [
     // — Opening —

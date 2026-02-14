@@ -3,9 +3,8 @@ import type { Scenario } from "./index"
 export const anxietyScenario: Scenario = {
   id: "anxiety",
   name: "Generalized Anxiety Disorder",
-  nameKo: "불안장애 상담",
   description:
-    "2개월간 지속된 불안, 수면 장애, 신체 증상으로 내원. GAD-7 문진, 치료 옵션(CBT/SSRI) 논의, 안전 평가.",
+    "2-month history of persistent anxiety, insomnia, and somatic symptoms. GAD-7 screening, treatment options (CBT/SSRI), and safety assessment.",
   tags: ["psychiatry", "mental-health", "new-diagnosis", "counseling"],
   entries: [
     // — Opening —

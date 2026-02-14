@@ -1,10 +1,11 @@
 import { generateText } from "ai"
-import { xai, DEFAULT_MODEL } from "@/lib/grok"
+import { DEFAULT_MODEL } from "@/lib/grok"
+import { getModel } from "@/lib/ai-provider"
 import { SPEAKER_IDENTIFICATION_PROMPT } from "@/lib/prompts"
 
 export async function POST(req: Request) {
   try {
-    const { utterances } = await req.json()
+    const { utterances, model: modelOverride } = await req.json()
 
     if (!utterances?.length) {
       return new Response("No utterances provided", { status: 400 })
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
       .join("\n")
 
     const { text } = await generateText({
-      model: xai(DEFAULT_MODEL),
+      model: getModel(modelOverride || DEFAULT_MODEL),
       system: SPEAKER_IDENTIFICATION_PROMPT,
       messages: [
         {

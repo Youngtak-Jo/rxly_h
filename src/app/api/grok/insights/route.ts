@@ -1,5 +1,6 @@
 import { streamText } from "ai"
-import { xai, DEFAULT_MODEL } from "@/lib/grok"
+import { DEFAULT_MODEL } from "@/lib/grok"
+import { getModel } from "@/lib/ai-provider"
 import { INSIGHTS_SYSTEM_PROMPT } from "@/lib/prompts"
 import type { UserContent } from "ai"
 
@@ -14,6 +15,7 @@ export async function POST(req: Request) {
       previousSummary,
       inlineComments,
       currentInsights,
+      model: modelOverride,
     } = await req.json()
 
     const hasNewImages = newImageUrls && newImageUrls.length > 0
@@ -31,7 +33,7 @@ export async function POST(req: Request) {
       })
     }
 
-    const model = xai(DEFAULT_MODEL)
+    const model = getModel(modelOverride || DEFAULT_MODEL)
 
     // Format existing checklist with IDs so the AI can preserve item identity
     const checklistItems = currentInsights?.checklistItems || []

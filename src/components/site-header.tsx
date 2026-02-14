@@ -16,24 +16,40 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 import { useSessionStore } from "@/stores/session-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useSimulatedTranscript } from "@/hooks/use-simulated-transcript"
 import { SCENARIOS } from "@/data/scenarios"
 import {
   IconTestPipe,
+  IconPlug,
   IconLayoutSidebarRightExpand,
   IconLayoutSidebarRightCollapse,
+  IconDotsVertical,
+  IconFileTypePdf,
+  IconMail,
+  IconLoader2,
 } from "@tabler/icons-react"
-import { ConnectorsDialog } from "@/components/consultation/note-input/connectors-dialog"
 import { ExportDropdown } from "@/components/consultation/export-dropdown"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
+import { useConnectorStore } from "@/stores/connector-store"
+import { useSettingsDialogStore } from "@/stores/settings-store"
+import { toast } from "sonner"
+import { generatePdf, getActiveTabExportHtml } from "@/lib/export-utils"
 
 function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -41,10 +57,14 @@ function formatDuration(seconds: number) {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
 }
 
-function SimulationDialog() {
-  const [open, setOpen] = useState(false)
+function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange?: (open: boolean) => void }) {
+  const [internalOpen, setInternalOpen] = useState(false)
   const [speed, setSpeed] = useState("0.5")
   const [scenarioId, setScenarioId] = useState(SCENARIOS[0].id)
+
+  const isControlled = open !== undefined
+  const isOpen = isControlled ? open : internalOpen
+  const setIsOpen = isControlled ? (onOpenChange ?? (() => {})) : setInternalOpen
 
   const activeSession = useSessionStore((s) => s.activeSession)
   const { addSession, setActiveSession } = useSessionStore()
@@ -78,7 +98,6 @@ function SimulationDialog() {
 
     const isInstant = speed === "instant"
 
-    // Small delay to let session state propagate
     setTimeout(() => {
       startSimulation({
         speedFactor: isInstant ? 0.1 : parseFloat(speed),
@@ -86,7 +105,7 @@ function SimulationDialog() {
         scenario: selectedScenario.entries,
         instantInsert: isInstant,
       })
-      setOpen(false)
+      setIsOpen(false)
     }, 100)
   }
 
@@ -95,16 +114,18 @@ function SimulationDialog() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 text-muted-foreground hover:text-foreground"
-        >
-          <IconTestPipe className="size-4" />
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 text-muted-foreground hover:text-foreground"
+          >
+            <IconTestPipe className="size-4" />
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Simulation</DialogTitle>
@@ -115,7 +136,6 @@ function SimulationDialog() {
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
-          {/* Scenario selector */}
           <div className="grid gap-2">
             <Label>Scenario</Label>
             <Select value={scenarioId} onValueChange={setScenarioId}>
@@ -125,14 +145,13 @@ function SimulationDialog() {
               <SelectContent>
                 {SCENARIOS.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.nameKo} — {s.name}
+                    {s.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Speed */}
           <div className="grid gap-2">
             <Label>Speed</Label>
             <Select value={speed} onValueChange={setSpeed}>
@@ -167,6 +186,140 @@ function SimulationDialog() {
   )
 }
 
+const TAB_LABELS: Record<string, string> = {
+  insights: "Live Insights",
+  ddx: "Differential Diagnosis",
+  record: "Consultation Record",
+  research: "Research",
+}
+
+function MobileHeaderMenu() {
+  const activeSession = useSessionStore((s) => s.activeSession)
+  const connectors = useConnectorStore((s) => s.connectors)
+  const openSettings = useSettingsDialogStore((s) => s.openSettings)
+  const enabledCount = Object.values(connectors).filter(Boolean).length
+  const activeTab = useConsultationTabStore((s) => s.activeTab)
+
+  const [simDialogOpen, setSimDialogOpen] = useState(false)
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false)
+  const [email, setEmail] = useState("")
+  const [isSending, setIsSending] = useState(false)
+
+  const handlePdfExport = async () => {
+    try {
+      const { blob, filename } = await generatePdf()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success("PDF downloaded successfully")
+    } catch (err) {
+      console.error("PDF export error:", err)
+      toast.error("Failed to generate PDF")
+    }
+  }
+
+  const handleEmailSend = async () => {
+    if (!email) return
+    setIsSending(true)
+    try {
+      const { html, tabLabel } = getActiveTabExportHtml()
+      const subject = `Rxly — ${tabLabel}: ${activeSession?.title || "Consultation"}`
+
+      const res = await fetch("/api/export/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: email, subject, html }),
+      })
+
+      if (!res.ok) throw new Error()
+
+      toast.success(`Email sent to ${email}`)
+      setEmailDialogOpen(false)
+      setEmail("")
+    } catch {
+      toast.error("Failed to send email")
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 text-muted-foreground hover:text-foreground"
+          >
+            <IconDotsVertical className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handlePdfExport} disabled={!activeSession}>
+            <IconFileTypePdf className="size-4" />
+            Export PDF
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={!activeSession}>
+            <IconMail className="size-4" />
+            Send via Email
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => openSettings("connectors")} disabled={!activeSession}>
+            <IconPlug className="size-4" />
+            Connectors
+            {enabledCount > 0 && (
+              <Badge variant="secondary" className="ml-auto text-[10px] h-5 px-1.5">
+                {enabledCount}
+              </Badge>
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setSimDialogOpen(true)}>
+            <IconTestPipe className="size-4" />
+            Simulation
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send via Email</DialogTitle>
+            <DialogDescription>
+              Send the current {TAB_LABELS[activeTab]} content to an email address.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="mobile-export-email">Recipient Email</Label>
+              <Input
+                id="mobile-export-email"
+                type="email"
+                placeholder="doctor@hospital.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleEmailSend()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleEmailSend} disabled={!email || isSending}>
+              {isSending && <IconLoader2 className="size-4 animate-spin" />}
+              {isSending ? "Sending..." : "Send Email"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <SimulationDialog open={simDialogOpen} onOpenChange={setSimDialogOpen} />
+    </>
+  )
+}
+
 export function SiteHeader() {
   const activeSession = useSessionStore((s) => s.activeSession)
   const { isRecording, isPaused, duration } = useRecordingStore()
@@ -176,6 +329,9 @@ export function SiteHeader() {
   const _toggleTranscript = useConsultationTabStore(
     (s) => s._toggleTranscript
   )
+  const connectors = useConnectorStore((s) => s.connectors)
+  const openSettings = useSettingsDialogStore((s) => s.openSettings)
+  const enabledCount = Object.values(connectors).filter(Boolean).length
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -185,7 +341,7 @@ export function SiteHeader() {
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
         />
-        <h1 className="text-base font-medium">
+        <h1 className="text-sm font-medium truncate min-w-0">
           {activeSession?.title || "Rxly Consultation"}
         </h1>
         {isRecording && (
@@ -199,12 +355,13 @@ export function SiteHeader() {
             </Badge>
           </div>
         )}
-        <div className="ml-auto flex items-center gap-1">
+        <div data-tour="header-actions" className="ml-auto flex items-center gap-1">
+          {/* Transcript toggle - desktop only */}
           {_toggleTranscript && (
             <Button
               variant="ghost"
               size="icon"
-              className="size-8 text-muted-foreground hover:text-foreground"
+              className="hidden md:inline-flex size-8 text-muted-foreground hover:text-foreground"
               onClick={_toggleTranscript}
               title={isTranscriptCollapsed ? "Show transcript" : "Hide transcript"}
             >
@@ -215,9 +372,31 @@ export function SiteHeader() {
               )}
             </Button>
           )}
-          <ExportDropdown />
-          <ConnectorsDialog />
-          <SimulationDialog />
+
+          {/* Desktop: individual buttons */}
+          <div className="hidden md:flex items-center gap-1">
+            <ExportDropdown />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0 relative"
+              disabled={!activeSession}
+              onClick={() => openSettings("connectors")}
+            >
+              <IconPlug className="size-4" />
+              {enabledCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-primary text-[9px] font-medium text-primary-foreground flex items-center justify-center">
+                  {enabledCount}
+                </span>
+              )}
+            </Button>
+            <SimulationDialog />
+          </div>
+
+          {/* Mobile: combined dropdown */}
+          <div className="md:hidden">
+            <MobileHeaderMenu />
+          </div>
         </div>
       </div>
     </header>

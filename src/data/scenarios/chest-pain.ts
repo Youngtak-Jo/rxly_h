@@ -3,9 +3,8 @@ import type { Scenario } from "./index"
 export const chestPainScenario: Scenario = {
   id: "chest-pain",
   name: "Chest Pain Evaluation",
-  nameKo: "흉통 평가",
   description:
-    "운동 시 악화되는 흉통으로 내원한 55세 남성. 심혈관 위험인자 다수. ECG, cardiac enzyme, stress test 계획.",
+    "55-year-old male with exertional chest pain and multiple cardiovascular risk factors. ECG, cardiac enzymes, and stress test planning.",
   tags: ["cardiology", "urgent", "risk-assessment", "diagnostic"],
   entries: [
     // — Opening & Chief Complaint —

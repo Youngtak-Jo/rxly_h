@@ -3,9 +3,8 @@ import type { Scenario } from "./index"
 export const hypothyroidismScenario: Scenario = {
   id: "hypothyroidism",
   name: "Hypothyroidism",
-  nameKo: "갑상선기능저하증",
   description:
-    "수개월간 피로, 체중 증가, 추위 민감으로 내원한 환자. 갑상선 촉진, TSH/T4 검사를 통해 갑상선기능저하증 진단 후 levothyroxine 처방.",
+    "Months of fatigue, weight gain, and cold sensitivity. Thyroid palpation, TSH/T4 testing leading to hypothyroidism diagnosis and levothyroxine initiation.",
   tags: ["endocrine", "chronic", "new-diagnosis", "medication"],
   entries: [
     // — Opening & Chief Complaint —

@@ -1,5 +1,6 @@
 import { generateText } from "ai"
-import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic"
+import { CLAUDE_MODEL } from "@/lib/anthropic"
+import { getModel } from "@/lib/ai-provider"
 import {
   DDX_SYSTEM_PROMPT,
   SEARCH_TERM_EXTRACTION_PROMPT,
@@ -16,7 +17,7 @@ async function extractSearchTerms(
   doctorNotes: string
 ): Promise<string[]> {
   try {
-    const model = anthropic(CLAUDE_MODEL)
+    const model = getModel(CLAUDE_MODEL)
     const { text } = await generateText({
       model,
       system: SEARCH_TERM_EXTRACTION_PROMPT,
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
       currentInsights,
       currentDiagnoses,
       enabledConnectors,
+      model: modelOverride,
     } = await req.json()
 
     if (!transcript?.trim() && !doctorNotes?.trim()) {
@@ -54,7 +56,7 @@ export async function POST(req: Request) {
       return new Response("No insights context available yet", { status: 400 })
     }
 
-    const model = anthropic(CLAUDE_MODEL)
+    const model = getModel(modelOverride || CLAUDE_MODEL)
 
     // Check if any connectors are enabled
     const hasConnectorsEnabled =

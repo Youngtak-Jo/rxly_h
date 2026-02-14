@@ -3,9 +3,8 @@ import type { Scenario } from "./index"
 export const diabetesScenario: Scenario = {
   id: "diabetes",
   name: "Type 2 Diabetes Management",
-  nameKo: "제2형 당뇨병 관리",
   description:
-    "HbA1c 8.2%로 혈당 조절 불량인 당뇨 환자 추적 진료. 약물 증량, 합병증 스크리닝, 생활습관 교정.",
+    "Poorly controlled diabetic follow-up with HbA1c 8.2%. Medication escalation, complication screening, and lifestyle counseling.",
   tags: ["chronic", "endocrine", "medication-adjustment", "lifestyle"],
   entries: [
     // — Opening —

@@ -44,7 +44,7 @@ export function RecordContainer() {
   ] as const
 
   return (
-    <div className="space-y-4">
+    <div data-tour="record-panel" className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-medium">Consultation Record</h3>
@@ -98,7 +98,7 @@ export function RecordContainer() {
               <h4 className="text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wide">
                 Vitals
               </h4>
-              <div className="grid grid-cols-5 gap-2 text-sm">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-sm">
                 {Object.entries(record.vitals).map(([key, value]) => (
                   <div key={key} className="text-center">
                     <p className="text-[10px] text-muted-foreground uppercase">

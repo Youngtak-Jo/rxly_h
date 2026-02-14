@@ -9,7 +9,7 @@ export function DdxContainer() {
   const hasContent = diagnoses.length > 0
 
   return (
-    <div className="space-y-6">
+    <div data-tour="ddx-panel" className="space-y-6">
       {isProcessing && !hasContent && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
           <span className="h-2 w-2 rounded-full bg-orange-500" />

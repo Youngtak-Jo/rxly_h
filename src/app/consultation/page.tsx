@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/site-header"
 import { ConsultationLayout } from "@/components/consultation/consultation-layout"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { useSessionStore } from "@/stores/session-store"
+import { TourProvider } from "@/components/tour/tour-provider"
 
 export default function ConsultationPage() {
   const { setSessions, setLoading } = useSessionStore()
@@ -43,6 +44,7 @@ export default function ConsultationPage() {
         <SiteHeader />
         <ConsultationLayout />
       </SidebarInset>
+      <TourProvider />
     </SidebarProvider>
   )
 }

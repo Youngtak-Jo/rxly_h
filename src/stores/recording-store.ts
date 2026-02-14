@@ -3,7 +3,7 @@ import { create } from "zustand"
 export interface SimulationControls {
   pause: () => void
   resume: () => void
-  stop: () => void
+  stop: (options?: { skipFinalAnalysis?: boolean }) => void
 }
 
 interface RecordingState {

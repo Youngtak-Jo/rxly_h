@@ -73,7 +73,7 @@ export function InsightsContainer() {
   )
 
   return (
-    <div ref={containerRef} className={`space-y-6 ${isProcessing && hasContent ? "animate-breathe insights-shimmer-overlay" : ""}`}>
+    <div ref={containerRef} data-tour="insights-panel" className={`space-y-6 ${isProcessing && hasContent ? "animate-breathe insights-shimmer-overlay" : ""}`}>
       {isProcessing && !hasContent && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
           <span className="h-2 w-2 rounded-full bg-blue-500" />
@@ -209,7 +209,7 @@ export function InsightsContainer() {
               {uploadedImages.length}
             </Badge>
           </h3>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {uploadedImages.map((img, i) => (
               <button
                 key={`${img.noteId}-${i}`}
@@ -244,7 +244,7 @@ export function InsightsContainer() {
         open={!!selectedImage}
         onOpenChange={() => setSelectedImage(null)}
       >
-        <DialogContent className="max-w-3xl p-2">
+        <DialogContent className="max-w-[95vw] md:max-w-3xl p-2">
           <DialogTitle className="sr-only">Medical Image</DialogTitle>
           {selectedImage && (
             <img
