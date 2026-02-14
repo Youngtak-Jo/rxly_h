@@ -35,41 +35,57 @@ export function InlineCommentPopover({
   const [comment, setComment] = useState("")
   const popoverRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const close = useCallback(() => {
     setPopover(null)
     setComment("")
   }, [])
 
-  // Handle text selection
+  // Shared selection processing logic (used by both mouseup and selectionchange)
+  const processSelection = useCallback(() => {
+    const container = containerRef.current
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed) return
+
+    // Verify the selection is within our container
+    if (
+      container &&
+      selection.anchorNode &&
+      !container.contains(selection.anchorNode)
+    ) {
+      return
+    }
+
+    const text = selection.toString().trim()
+    if (!text) return
+
+    const anchorSection = findSection(selection.anchorNode)
+    const focusSection = findSection(selection.focusNode)
+
+    // Ignore cross-section selections or selections outside insight sections
+    if (!anchorSection || !focusSection || anchorSection !== focusSection)
+      return
+
+    const range = selection.getRangeAt(0)
+    const rect = range.getBoundingClientRect()
+
+    setPopover({
+      selectedText: text,
+      section: anchorSection,
+      top: rect.bottom + 8,
+      left: Math.max(8, rect.left + rect.width / 2 - 140),
+    })
+    setComment("")
+  }, [containerRef])
+
+  // Desktop: detect text selection via mouseup
   const handleMouseUp = useCallback(() => {
     // Small delay to let the selection finalize
     requestAnimationFrame(() => {
-      const selection = window.getSelection()
-      if (!selection || selection.isCollapsed) return
-
-      const text = selection.toString().trim()
-      if (!text) return
-
-      const anchorSection = findSection(selection.anchorNode)
-      const focusSection = findSection(selection.focusNode)
-
-      // Ignore cross-section selections or selections outside insight sections
-      if (!anchorSection || !focusSection || anchorSection !== focusSection)
-        return
-
-      const range = selection.getRangeAt(0)
-      const rect = range.getBoundingClientRect()
-
-      setPopover({
-        selectedText: text,
-        section: anchorSection,
-        top: rect.bottom + 8,
-        left: Math.max(8, rect.left + rect.width / 2 - 140),
-      })
-      setComment("")
+      processSelection()
     })
-  }, [])
+  }, [processSelection])
 
   useEffect(() => {
     const container = containerRef.current
@@ -79,7 +95,33 @@ export function InlineCommentPopover({
     return () => container.removeEventListener("mouseup", handleMouseUp)
   }, [containerRef, handleMouseUp])
 
-  // Close on Escape or click outside
+  // Mobile: detect text selection via selectionchange (handles long-press selection)
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleSelectionChange = () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+      }
+
+      // Debounce to wait for selection handles to settle
+      debounceRef.current = setTimeout(() => {
+        processSelection()
+      }, 400)
+    }
+
+    document.addEventListener("selectionchange", handleSelectionChange)
+
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionChange)
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+      }
+    }
+  }, [processSelection])
+
+  // Close on Escape or click/touch outside
   useEffect(() => {
     if (!popover) return
 
@@ -87,7 +129,7 @@ export function InlineCommentPopover({
       if (e.key === "Escape") close()
     }
 
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (
         popoverRef.current &&
         !popoverRef.current.contains(e.target as Node)
@@ -97,22 +139,27 @@ export function InlineCommentPopover({
     }
 
     document.addEventListener("keydown", handleKeyDown)
-    // Use setTimeout to avoid the same click that opens the popover from closing it
+    // Use setTimeout to avoid the same click/touch that opens the popover from closing it
     const timer = setTimeout(() => {
       document.addEventListener("mousedown", handleClickOutside)
+      document.addEventListener("touchstart", handleClickOutside)
     }, 0)
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown)
       document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener("touchstart", handleClickOutside)
       clearTimeout(timer)
     }
   }, [popover, close])
 
-  // Auto-focus textarea when popover opens
+  // Auto-focus textarea when popover opens (skip on touch devices to preserve selection)
   useEffect(() => {
     if (popover) {
-      setTimeout(() => textareaRef.current?.focus(), 50)
+      const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0
+      if (!isTouch) {
+        setTimeout(() => textareaRef.current?.focus(), 50)
+      }
     }
   }, [popover])
 
@@ -177,7 +224,7 @@ export function InlineCommentPopover({
 
       {/* Actions */}
       <div className="flex items-center justify-between mt-2">
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-[10px] text-muted-foreground hidden sm:inline">
           {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to send
         </span>
         <div className="flex gap-1.5">

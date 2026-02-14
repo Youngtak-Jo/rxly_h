@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
+import { requireAuth, requireSessionOwnership } from "@/lib/auth"
+import { logAudit } from "@/lib/audit"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 export async function GET(
   req: Request,
@@ -7,6 +11,12 @@ export async function GET(
 ) {
   const { id } = await params
   try {
+    const user = await requireAuth()
+    await requireSessionOwnership(id, user.id)
+
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
+
     const [insights, checklistItems] = await Promise.all([
       prisma.insights.findUnique({
         where: { sessionId: id },
@@ -16,9 +26,11 @@ export async function GET(
         orderBy: { sortOrder: "asc" },
       }),
     ])
+    logAudit({ userId: user.id, action: "READ", resource: "insights", sessionId: id })
     return NextResponse.json({ ...insights, checklistItems })
   } catch (error) {
-    console.error("Failed to fetch insights:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to fetch insights:", error)
     return NextResponse.json(null, { status: 500 })
   }
 }
@@ -29,6 +41,12 @@ export async function PUT(
 ) {
   const { id } = await params
   try {
+    const user = await requireAuth()
+    await requireSessionOwnership(id, user.id)
+
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
+
     const body = await req.json()
 
     const diagnosticKeywords = body.diagnosticKeywords !== undefined
@@ -91,9 +109,11 @@ export async function PUT(
       return result
     })
 
+    logAudit({ userId: user.id, action: "UPDATE", resource: "insights", sessionId: id })
     return NextResponse.json(insights)
   } catch (error) {
-    console.error("Failed to update insights:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to update insights:", error)
     return NextResponse.json(
       { error: "Failed to update insights" },
       { status: 500 }

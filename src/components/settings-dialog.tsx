@@ -15,6 +15,17 @@ import {
 } from "@tabler/icons-react"
 
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
@@ -150,7 +161,7 @@ export function SettingsDialog() {
         </DialogDescription>
 
         {/* Desktop layout */}
-        <SidebarProvider className="hidden md:flex items-start">
+        <SidebarProvider className="hidden md:flex items-start min-h-0">
           <Sidebar collapsible="none" className="flex">
             <SidebarContent>
               <SidebarGroup>
@@ -172,15 +183,7 @@ export function SettingsDialog() {
               </SidebarGroup>
             </SidebarContent>
             <SidebarFooter>
-              <button
-                onClick={() => {
-                  useSettingsStore.getState().resetToDefaults()
-                }}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors w-full"
-              >
-                <IconRefresh className="size-3.5" />
-                <span>Reset to Defaults</span>
-              </button>
+              <ResetToDefaultsButton />
             </SidebarFooter>
           </Sidebar>
           <main className="flex h-[480px] flex-1 flex-col overflow-hidden">
@@ -234,15 +237,7 @@ export function SettingsDialog() {
                 ))}
               </nav>
               <div className="border-t px-4 py-3">
-                <button
-                  onClick={() => {
-                    useSettingsStore.getState().resetToDefaults()
-                  }}
-                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <IconRefresh className="size-3.5" />
-                  <span>Reset to Defaults</span>
-                </button>
+                <ResetToDefaultsButton />
               </div>
             </>
           ) : (
@@ -324,7 +319,7 @@ function TranscriptionSettings() {
         description="Select the language for speech recognition."
       >
         <Select value={stt.language} onValueChange={setSttLanguage}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[200px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -382,7 +377,7 @@ function TranscriptionSettings() {
           value={String(audio.endpointing)}
           onValueChange={(v) => setEndpointing(Number(v))}
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-[160px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -402,7 +397,7 @@ function TranscriptionSettings() {
           value={String(audio.utteranceEndMs)}
           onValueChange={(v) => setUtteranceEndMs(Number(v))}
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-[160px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -496,7 +491,7 @@ function AnalysisSettings() {
           value={getInsightsPreset()}
           onValueChange={handleInsightsSensitivity}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -514,7 +509,7 @@ function AnalysisSettings() {
         description="How often differential diagnosis is updated during recording."
       >
         <Select value={getDdxPreset()} onValueChange={handleDdxSensitivity}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -541,7 +536,7 @@ function ModelSelector({
 }) {
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className="w-[250px]">
+      <SelectTrigger className="w-[250px] text-xs">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -754,6 +749,40 @@ function ConnectorsSettings() {
   )
 }
 
+function ResetToDefaultsButton() {
+  const { setTheme: setNextTheme } = useTheme()
+
+  const handleReset = () => {
+    useSettingsStore.getState().resetToDefaults()
+    useConnectorStore.getState().reset()
+    setNextTheme("system")
+  }
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <button className="flex items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors w-full">
+          <IconRefresh className="size-3.5" />
+          <span>Reset to Defaults</span>
+        </button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Reset to Defaults</AlertDialogTitle>
+          <AlertDialogDescription>
+            All settings will be restored to their default values. This action
+            cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleReset}>Reset</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
 function AppearanceSettings() {
   const { appearance, setTheme } = useSettingsStore()
   const { setTheme: setNextTheme } = useTheme()
@@ -770,7 +799,7 @@ function AppearanceSettings() {
         description="Select the color theme for the interface."
       >
         <Select value={appearance.theme} onValueChange={handleThemeChange}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-[160px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

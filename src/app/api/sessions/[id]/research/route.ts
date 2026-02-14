@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
+import { requireAuth, requireSessionOwnership } from "@/lib/auth"
+import { logAudit } from "@/lib/audit"
+import { logger } from "@/lib/logger"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 export async function POST(
   req: Request,
@@ -8,23 +11,11 @@ export async function POST(
 ) {
   const { id } = await params
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const user = await requireAuth()
+    await requireSessionOwnership(id, user.id)
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const session = await prisma.session.findUnique({
-      where: { id, userId: user.id },
-      select: { id: true },
-    })
-
-    if (!session) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 })
-    }
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
 
     const { messages } = await req.json()
 
@@ -46,9 +37,11 @@ export async function POST(
       ),
     })
 
+    logAudit({ userId: user.id, action: "CREATE", resource: "research", sessionId: id })
     return NextResponse.json({ count: created.count })
   } catch (error) {
-    console.error("Failed to save research messages:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to save research messages:", error)
     return NextResponse.json(
       { error: "Failed to save research messages" },
       { status: 500 }
@@ -62,31 +55,21 @@ export async function DELETE(
 ) {
   const { id } = await params
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const user = await requireAuth()
+    await requireSessionOwnership(id, user.id)
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const session = await prisma.session.findUnique({
-      where: { id, userId: user.id },
-      select: { id: true },
-    })
-
-    if (!session) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 })
-    }
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
 
     await prisma.researchMessage.deleteMany({
       where: { sessionId: id },
     })
 
+    logAudit({ userId: user.id, action: "DELETE", resource: "research", sessionId: id })
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Failed to delete research messages:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to delete research messages:", error)
     return NextResponse.json(
       { error: "Failed to delete research messages" },
       { status: 500 }

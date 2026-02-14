@@ -29,20 +29,34 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Public paths accessible without authentication
+  const publicPaths = [
+    "/login",
+    "/signup",
+    "/forgot-password",
+    "/reset-password",
+    "/auth",
+    "/api",
+    "/export",
+  ]
+
   // Redirect unauthenticated users to /login
   if (
     !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth") &&
-    !request.nextUrl.pathname.startsWith("/api")
+    !publicPaths.some((path) => request.nextUrl.pathname.startsWith(path))
   ) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)
   }
 
-  // Redirect authenticated users away from /login
-  if (user && request.nextUrl.pathname.startsWith("/login")) {
+  // Redirect authenticated users away from auth pages
+  // (exclude /reset-password since it requires an active session)
+  const authPages = ["/login", "/signup", "/forgot-password"]
+  if (
+    user &&
+    authPages.some((path) => request.nextUrl.pathname.startsWith(path))
+  ) {
     const url = request.nextUrl.clone()
     url.pathname = "/consultation"
     return NextResponse.redirect(url)

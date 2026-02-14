@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes"
 import { Toaster } from "sonner"
 import { Analytics } from "@vercel/analytics/next"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { SessionTimeoutDialog } from "@/components/session-timeout-dialog"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -20,6 +21,29 @@ export const metadata: Metadata = {
   title: "Rxly - AI Medical Consultation Assistant",
   description:
     "Real-time AI-powered medical consultation assistant with live transcription and insights",
+  openGraph: {
+    title: "Rxly - AI Medical Consultation Assistant",
+    description:
+      "Real-time AI-powered medical consultation assistant with live transcription and insights",
+    url: "https://rxly.ai",
+    siteName: "Rxly",
+    images: [
+      {
+        url: "https://rxly.ai/og-image.jpeg",
+        width: 1200,
+        height: 630,
+        alt: "Rxly.ai",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Rxly - AI Medical Consultation Assistant",
+    description:
+      "Real-time AI-powered medical consultation assistant with live transcription and insights",
+    images: ["https://rxly.ai/og-image.jpeg"],
+  },
 }
 
 export default function RootLayout({
@@ -40,6 +64,7 @@ export default function RootLayout({
         >
           <TooltipProvider>
             {children}
+            <SessionTimeoutDialog />
             <Toaster position="bottom-right" richColors />
             <Analytics />
           </TooltipProvider>

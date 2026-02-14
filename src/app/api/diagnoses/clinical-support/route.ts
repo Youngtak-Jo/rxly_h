@@ -1,7 +1,11 @@
+import { NextResponse } from "next/server"
 import { generateText } from "ai"
 import { DEFAULT_MODEL } from "@/lib/grok"
 import { getModel } from "@/lib/ai-provider"
 import { CLINICAL_SUPPORT_PROMPT } from "@/lib/prompts"
+import { requireAuth } from "@/lib/auth"
+import { logAudit } from "@/lib/audit"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import {
   fetchRAGContext,
   formatRAGContextForPrompt,
@@ -16,6 +20,7 @@ import type {
   ConnectorState,
   EnrichedSource,
 } from "@/types/insights"
+import { logger } from "@/lib/logger"
 
 async function enrichSources(
   ragContext: RAGContext
@@ -119,6 +124,11 @@ async function enrichSources(
 
 export async function POST(req: Request) {
   try {
+    const user = await requireAuth()
+
+    const { allowed } = checkRateLimit(user.id, "ai")
+    if (!allowed) return rateLimitResponse()
+
     const {
       diseaseName,
       icdCode,
@@ -186,9 +196,10 @@ Evidence from consultation: ${evidence}`
           .trim()
         const result = JSON.parse(cleaned) as ClinicalDecisionSupport
 
+        logAudit({ userId: user.id, action: "READ", resource: "clinical_support" })
         return Response.json({ support: result, sources })
       } catch (error) {
-        console.error("[clinical-support] RAG context fetch failed:", error)
+        logger.error("[clinical-support] RAG context fetch failed:", error)
       }
     }
 
@@ -206,9 +217,11 @@ Evidence from consultation: ${evidence}`
       .trim()
     const result = JSON.parse(cleaned) as ClinicalDecisionSupport
 
+    logAudit({ userId: user.id, action: "READ", resource: "clinical_support" })
     return Response.json({ support: result, sources })
   } catch (err) {
-    console.error("[clinical-support] Generation failed:", err)
+    if (err instanceof NextResponse) return err
+    logger.error("[clinical-support] Generation failed:", err)
     return Response.json(null, { status: 500 })
   }
 }

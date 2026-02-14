@@ -4,7 +4,6 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useRecordingStore } from "@/stores/recording-store"
-import { cn } from "@/lib/utils"
 import { IconChevronDown, IconChevronUp } from "@tabler/icons-react"
 import { RecordingControls } from "./recording-controls"
 import { TranscriptViewer } from "./transcript-viewer"
@@ -62,7 +61,7 @@ export function MobileTranscriptSection() {
       {/* Expanded: full transcript viewer */}
       {expanded && (
         <div className="relative">
-          <div className={cn("max-h-[50vh] overflow-hidden")}>
+          <div className="h-[50vh]">
             <TranscriptViewer />
           </div>
           <div className="flex justify-center border-t">

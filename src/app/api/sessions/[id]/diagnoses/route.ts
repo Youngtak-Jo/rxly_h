@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
+import { requireAuth, requireSessionOwnership } from "@/lib/auth"
+import { logAudit } from "@/lib/audit"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 export async function GET(
   req: Request,
@@ -7,13 +11,21 @@ export async function GET(
 ) {
   const { id } = await params
   try {
+    const user = await requireAuth()
+    await requireSessionOwnership(id, user.id)
+
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
+
     const diagnoses = await prisma.diagnosis.findMany({
       where: { sessionId: id },
       orderBy: { sortOrder: "asc" },
     })
+    logAudit({ userId: user.id, action: "READ", resource: "diagnosis", sessionId: id })
     return NextResponse.json(diagnoses)
   } catch (error) {
-    console.error("Failed to fetch diagnoses:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to fetch diagnoses:", error)
     return NextResponse.json([], { status: 500 })
   }
 }
@@ -24,6 +36,12 @@ export async function PUT(
 ) {
   const { id } = await params
   try {
+    const user = await requireAuth()
+    await requireSessionOwnership(id, user.id)
+
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
+
     const { diagnoses } = await req.json()
 
     await prisma.$transaction(async (tx) => {
@@ -65,9 +83,11 @@ export async function PUT(
       }
     })
 
+    logAudit({ userId: user.id, action: "UPDATE", resource: "diagnosis", sessionId: id })
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error("Failed to update diagnoses:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to update diagnoses:", error)
     return NextResponse.json(
       { error: "Failed to update diagnoses" },
       { status: 500 }

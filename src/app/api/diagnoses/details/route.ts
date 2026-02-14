@@ -1,6 +1,11 @@
+import { NextResponse } from "next/server"
 import { getIcd11EntityDetails } from "@/lib/connectors/icd11"
+import { logger } from "@/lib/logger"
+import { requireAuth } from "@/lib/auth"
+import { logAudit } from "@/lib/audit"
 import { fetchPubMedAbstracts } from "@/lib/connectors/pubmed"
 import { fetchEuropePMCDetails } from "@/lib/connectors/europe-pmc"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import type {
   DiagnosisCitation,
   DiagnosisDetails,
@@ -49,6 +54,11 @@ function extractIcdCodeFromTitle(title: string): string | null {
 
 export async function POST(req: Request) {
   try {
+    const user = await requireAuth()
+
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
+
     const { icdCode, citations } = (await req.json()) as {
       icdCode: string
       citations: DiagnosisCitation[]
@@ -57,7 +67,7 @@ export async function POST(req: Request) {
     const icd11Citations = citations.filter((c) => c.source === "icd11")
     const articleCitations = citations.filter((c) => c.source !== "icd11")
 
-    console.log(
+    logger.info(
       `[diagnosis-details] Fetching for ICD: ${icdCode}, icd11 citations: ${icd11Citations.length}, article citations: ${articleCitations.length}`
     )
 
@@ -87,7 +97,7 @@ export async function POST(req: Request) {
           if (msg.includes("credentials")) status = "no_credentials"
           else if (msg === "timeout") status = "timeout"
           fetchStatus.icd11.push({ url: cite.url, status })
-          console.error(
+          logger.error(
             `[diagnosis-details] ICD-11 fetch failed for ${code}:`,
             err
           )
@@ -114,7 +124,7 @@ export async function POST(req: Request) {
     pubmedEntries
       .filter((e) => !e.pmid)
       .forEach((e) => {
-        console.warn(
+        logger.warn(
           `[diagnosis-details] Could not extract PMID from: ${e.cite.url}`
         )
         fetchStatus.articles.push({
@@ -144,7 +154,7 @@ export async function POST(req: Request) {
                 })
               }
             })
-            console.error(
+            logger.error(
               `[diagnosis-details] PubMed batch fetch failed:`,
               err
             )
@@ -160,7 +170,7 @@ export async function POST(req: Request) {
         try {
           const id = extractEpmcIdFromUrl(cite.url)
           if (!id) {
-            console.warn(
+            logger.warn(
               `[diagnosis-details] Could not extract EPMC ID from: ${cite.url}`
             )
             fetchStatus.articles.push({
@@ -202,7 +212,7 @@ export async function POST(req: Request) {
             url: cite.url,
             status: isTimeout ? "timeout" : "failed",
           })
-          console.error(
+          logger.error(
             `[diagnosis-details] EPMC article fetch failed:`,
             err
           )
@@ -257,13 +267,15 @@ export async function POST(req: Request) {
       fetchStatus,
     }
 
-    console.log(
+    logger.info(
       `[diagnosis-details] Result: icd11=${icd11Results.filter(Boolean).length}/${icd11Results.length}, articles=${details.articles.length}`
     )
 
+    logAudit({ userId: user.id, action: "READ", resource: "diagnosis_details" })
     return Response.json(details)
   } catch (error) {
-    console.error("Diagnosis details fetch error:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Diagnosis details fetch error:", error)
     return Response.json(
       {
         icd11Details: [],

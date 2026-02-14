@@ -1,6 +1,11 @@
+import { NextResponse } from "next/server"
 import { generateText } from "ai"
+import { logger } from "@/lib/logger"
 import { CLAUDE_MODEL } from "@/lib/anthropic"
 import { getModel } from "@/lib/ai-provider"
+import { requireAuth } from "@/lib/auth"
+import { logAudit } from "@/lib/audit"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import {
   DDX_SYSTEM_PROMPT,
   SEARCH_TERM_EXTRACTION_PROMPT,
@@ -38,6 +43,11 @@ async function extractSearchTerms(
 
 export async function POST(req: Request) {
   try {
+    const user = await requireAuth()
+
+    const { allowed } = checkRateLimit(user.id, "ai")
+    if (!allowed) return rateLimitResponse()
+
     const {
       transcript,
       doctorNotes,
@@ -81,19 +91,13 @@ export async function POST(req: Request) {
         )
 
         const meta = getRAGSourceMeta(ragContext)
-        console.log(
-          `[DDx RAG] Search terms: ${JSON.stringify(searchTerms)} | ` +
-          `PubMed: ${meta.pubmedCount} | ` +
-          `Europe PMC: ${meta.europePmcCount} | ` +
-          `ICD-11: ${meta.icd11Count} | ` +
-          `OpenFDA: ${meta.openfdaCount} | ` +
-          `ClinicalTrials: ${meta.clinicalTrialsCount} | ` +
-          `DailyMed: ${meta.dailymedCount}`
+        logger.info(
+          `[DDx RAG] Sources: PubMed=${meta.pubmedCount} EPMC=${meta.europePmcCount} ICD-11=${meta.icd11Count} OpenFDA=${meta.openfdaCount} ClinicalTrials=${meta.clinicalTrialsCount} DailyMed=${meta.dailymedCount}`
         )
 
         ragContextText = formatRAGContextForPrompt(ragContext)
       } catch (error) {
-        console.error("DDx RAG context fetch failed:", error)
+        logger.error("DDx RAG context fetch failed:", error)
       }
     }
 
@@ -159,9 +163,11 @@ ${(transcript || "").slice(-3000)}
       return Response.json({ diagnoses: [] })
     }
 
+    logAudit({ userId: user.id, action: "READ", resource: "ai_ddx" })
     return Response.json(parsed)
   } catch (error) {
-    console.error("DDx generation error:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("DDx generation error:", error)
     return new Response("Failed to generate differential diagnosis", {
       status: 500,
     })

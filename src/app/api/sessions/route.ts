@@ -1,40 +1,37 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
+import { requireAuth } from "@/lib/auth"
+import { logAudit } from "@/lib/audit"
+import { logger } from "@/lib/logger"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 export async function GET() {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const user = await requireAuth()
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
 
     const sessions = await prisma.session.findMany({
       where: { userId: user.id },
       orderBy: { startedAt: "desc" },
       take: 50,
     })
+    logAudit({ userId: user.id, action: "READ", resource: "session" })
     return NextResponse.json(sessions)
   } catch (error) {
-    console.error("Failed to fetch sessions:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to fetch sessions:", error)
     return NextResponse.json([], { status: 500 })
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const user = await requireAuth()
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
 
     const body = await req.json()
 
@@ -62,9 +59,11 @@ export async function POST(req: Request) {
       },
     })
 
+    logAudit({ userId: user.id, action: "CREATE", resource: "session", resourceId: session.id })
     return NextResponse.json(session, { status: 201 })
   } catch (error) {
-    console.error("Failed to create session:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to create session:", error)
     return NextResponse.json(
       { error: "Failed to create session" },
       { status: 500 }

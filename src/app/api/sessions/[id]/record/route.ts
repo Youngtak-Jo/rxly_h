@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
+import { requireAuth, requireSessionOwnership } from "@/lib/auth"
+import { logAudit } from "@/lib/audit"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 export async function GET(
   req: Request,
@@ -7,12 +11,20 @@ export async function GET(
 ) {
   const { id } = await params
   try {
+    const user = await requireAuth()
+    await requireSessionOwnership(id, user.id)
+
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
+
     const record = await prisma.consultationRecord.findUnique({
       where: { sessionId: id },
     })
+    logAudit({ userId: user.id, action: "READ", resource: "record", sessionId: id })
     return NextResponse.json(record)
   } catch (error) {
-    console.error("Failed to fetch record:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to fetch record:", error)
     return NextResponse.json(null, { status: 500 })
   }
 }
@@ -23,6 +35,12 @@ export async function PUT(
 ) {
   const { id } = await params
   try {
+    const user = await requireAuth()
+    await requireSessionOwnership(id, user.id)
+
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
+
     const body = await req.json()
 
     const record = await prisma.consultationRecord.upsert({
@@ -61,9 +79,11 @@ export async function PUT(
       },
     })
 
+    logAudit({ userId: user.id, action: "UPDATE", resource: "record", sessionId: id })
     return NextResponse.json(record)
   } catch (error) {
-    console.error("Failed to update record:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to update record:", error)
     return NextResponse.json(
       { error: "Failed to update record" },
       { status: 500 }

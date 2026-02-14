@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
+import { requireAuth } from "@/lib/auth"
+import { logAudit } from "@/lib/audit"
 import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { logger } from "@/lib/logger"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,14 +17,10 @@ export async function GET(
 ) {
   const { id } = await params
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const user = await requireAuth()
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
 
     const [session, transcriptEntries, notes, researchMessages] = await Promise.all([
       prisma.session.findUnique({
@@ -86,6 +85,7 @@ export async function GET(
       }
     })
 
+    logAudit({ userId: user.id, action: "READ", resource: "session_full", sessionId: id })
     return NextResponse.json({
       session,
       transcriptEntries,
@@ -93,7 +93,8 @@ export async function GET(
       researchMessages,
     })
   } catch (error) {
-    console.error("Failed to fetch full session:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to fetch full session:", error)
     return NextResponse.json(
       { error: "Failed to fetch full session" },
       { status: 500 }

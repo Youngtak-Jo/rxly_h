@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { createClient } from "@supabase/supabase-js"
+import { logger } from "@/lib/logger"
+import { requireAuth, requireSessionOwnership } from "@/lib/auth"
+import { logAudit } from "@/lib/audit"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,6 +17,12 @@ export async function GET(
 ) {
   const { id } = await params
   try {
+    const user = await requireAuth()
+    await requireSessionOwnership(id, user.id)
+
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
+
     const notes = await prisma.note.findMany({
       where: { sessionId: id },
       orderBy: { createdAt: "asc" },
@@ -53,9 +63,11 @@ export async function GET(
       }
     })
 
+    logAudit({ userId: user.id, action: "READ", resource: "note", sessionId: id })
     return NextResponse.json(notesWithFreshUrls)
   } catch (error) {
-    console.error("Failed to fetch notes:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to fetch notes:", error)
     return NextResponse.json([], { status: 500 })
   }
 }
@@ -66,6 +78,12 @@ export async function POST(
 ) {
   const { id } = await params
   try {
+    const user = await requireAuth()
+    await requireSessionOwnership(id, user.id)
+
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
+
     const body = await req.json()
 
     const note = await prisma.note.create({
@@ -78,9 +96,11 @@ export async function POST(
       },
     })
 
+    logAudit({ userId: user.id, action: "CREATE", resource: "note", resourceId: note.id, sessionId: id })
     return NextResponse.json(note, { status: 201 })
   } catch (error) {
-    console.error("Failed to create note:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to create note:", error)
     return NextResponse.json(
       { error: "Failed to create note" },
       { status: 500 }

@@ -1,11 +1,21 @@
+import { NextResponse } from "next/server"
 import { streamText } from "ai"
 import { DEFAULT_MODEL } from "@/lib/grok"
 import { getModel } from "@/lib/ai-provider"
 import { RECORD_SYSTEM_PROMPT } from "@/lib/prompts"
+import { requireAuth } from "@/lib/auth"
+import { logAudit } from "@/lib/audit"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import type { UserContent } from "ai"
+import { logger } from "@/lib/logger"
 
 export async function POST(req: Request) {
   try {
+    const user = await requireAuth()
+
+    const { allowed } = checkRateLimit(user.id, "ai")
+    if (!allowed) return rateLimitResponse()
+
     const {
       transcript,
       doctorNotes,
@@ -70,9 +80,11 @@ export async function POST(req: Request) {
       temperature: 0.2,
     })
 
+    logAudit({ userId: user.id, action: "READ", resource: "ai_record" })
     return result.toTextStreamResponse()
   } catch (error) {
-    console.error("Record generation error:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Record generation error:", error)
     return new Response("Failed to generate record", { status: 500 })
   }
 }

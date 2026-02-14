@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import type { Speaker } from "@prisma/client"
+import { logger } from "@/lib/logger"
+import { requireAuth, requireSessionOwnership } from "@/lib/auth"
+import { logAudit } from "@/lib/audit"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 export async function PATCH(
   req: Request,
@@ -8,6 +12,12 @@ export async function PATCH(
 ) {
   const { id } = await params
   try {
+    const user = await requireAuth()
+    await requireSessionOwnership(id, user.id)
+
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
+
     const { updates } = await req.json() as {
       updates: { id: string; speaker: Speaker }[]
     }
@@ -35,9 +45,11 @@ export async function PATCH(
       )
     )
 
+    logAudit({ userId: user.id, action: "UPDATE", resource: "transcript", sessionId: id })
     return NextResponse.json({ updated: updates.length })
   } catch (error) {
-    console.error("Failed to update transcript speakers:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to update transcript speakers:", error)
     return NextResponse.json(
       { error: "Failed to update speakers" },
       { status: 500 }
@@ -51,13 +63,21 @@ export async function GET(
 ) {
   const { id } = await params
   try {
+    const user = await requireAuth()
+    await requireSessionOwnership(id, user.id)
+
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
+
     const entries = await prisma.transcriptEntry.findMany({
       where: { sessionId: id, isFinal: true },
       orderBy: { startTime: "asc" },
     })
+    logAudit({ userId: user.id, action: "READ", resource: "transcript", sessionId: id })
     return NextResponse.json(entries)
   } catch (error) {
-    console.error("Failed to fetch transcript:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to fetch transcript:", error)
     return NextResponse.json([], { status: 500 })
   }
 }
@@ -68,6 +88,12 @@ export async function POST(
 ) {
   const { id } = await params
   try {
+    const user = await requireAuth()
+    await requireSessionOwnership(id, user.id)
+
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
+
     const body = await req.json()
 
     const entry = await prisma.transcriptEntry.create({
@@ -83,9 +109,11 @@ export async function POST(
       },
     })
 
+    logAudit({ userId: user.id, action: "CREATE", resource: "transcript", resourceId: entry.id, sessionId: id })
     return NextResponse.json(entry, { status: 201 })
   } catch (error) {
-    console.error("Failed to save transcript entry:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Failed to save transcript entry:", error)
     return NextResponse.json(
       { error: "Failed to save transcript entry" },
       { status: 500 }

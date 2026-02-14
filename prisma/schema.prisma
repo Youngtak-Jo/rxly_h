@@ -153,6 +153,36 @@ model ResearchMessage {
   @@map("research_messages")
 }
 
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  action     String   // CREATE, READ, UPDATE, DELETE
+  resource   String   // session, transcript, record, insights, diagnosis, note, research, upload, etc.
+  resourceId String?  @map("resource_id")
+  sessionId  String?  @map("session_id")
+  metadata   Json?
+  success    Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([resource, action])
+  @@map("audit_logs")
+}
+
+model ExportLink {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  sessionId   String   @map("session_id")
+  content     String   // encrypted HTML content
+  expiresAt   DateTime @map("expires_at")
+  accessCount Int      @default(0) @map("access_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("export_links")
+}
+
 enum DiagnosisConfidence {
   HIGH
   MODERATE

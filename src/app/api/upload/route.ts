@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { v4 as uuid } from "uuid"
 import { createClient } from "@supabase/supabase-js"
+import { logger } from "@/lib/logger"
+import { requireAuth } from "@/lib/auth"
+import { logAudit } from "@/lib/audit"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,6 +13,11 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: Request) {
   try {
+    const user = await requireAuth()
+
+    const { allowed } = checkRateLimit(user.id, "upload")
+    if (!allowed) return rateLimitResponse()
+
     const formData = await req.formData()
     const file = formData.get("file") as File
     const sessionId = formData.get("sessionId") as string | null
@@ -47,7 +56,7 @@ export async function POST(req: Request) {
       })
 
     if (uploadError) {
-      console.error("Supabase upload error:", uploadError)
+      logger.error("Supabase upload error:", uploadError)
       return NextResponse.json(
         { error: "Failed to upload file" },
         { status: 500 }
@@ -61,19 +70,21 @@ export async function POST(req: Request) {
         .createSignedUrl(storagePath, 3600)
 
     if (signedUrlError || !signedUrlData?.signedUrl) {
-      console.error("Signed URL error:", signedUrlError)
+      logger.error("Signed URL error:", signedUrlError)
       return NextResponse.json(
         { error: "File uploaded but failed to generate URL" },
         { status: 500 }
       )
     }
 
+    logAudit({ userId: user.id, action: "CREATE", resource: "upload", metadata: { storagePath } })
     return NextResponse.json({
       url: signedUrlData.signedUrl,
       path: storagePath,
     })
   } catch (error) {
-    console.error("Upload error:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Upload error:", error)
     return NextResponse.json(
       { error: "Failed to upload file" },
       { status: 500 }

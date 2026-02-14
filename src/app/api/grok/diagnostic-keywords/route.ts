@@ -1,10 +1,20 @@
+import { NextResponse } from "next/server"
 import { generateText } from "ai"
 import { DEFAULT_MODEL } from "@/lib/grok"
 import { getModel } from "@/lib/ai-provider"
 import { DIAGNOSTIC_KEYWORDS_PROMPT } from "@/lib/prompts"
+import { requireAuth } from "@/lib/auth"
+import { logAudit } from "@/lib/audit"
+import { logger } from "@/lib/logger"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 export async function POST(req: Request) {
   try {
+    const user = await requireAuth()
+
+    const { allowed } = checkRateLimit(user.id, "ai")
+    if (!allowed) return rateLimitResponse()
+
     const { transcript, model: modelOverride } = await req.json()
 
     if (!transcript?.trim()) {
@@ -31,9 +41,11 @@ export async function POST(req: Request) {
       return new Response("Invalid response format", { status: 500 })
     }
 
+    logAudit({ userId: user.id, action: "READ", resource: "ai_keywords" })
     return Response.json(parsed)
   } catch (error) {
-    console.error("Diagnostic keyword extraction error:", error)
+    if (error instanceof NextResponse) return error
+    logger.error("Diagnostic keyword extraction error:", error)
     return new Response("Failed to extract keywords", { status: 500 })
   }
 }

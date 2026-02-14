@@ -501,12 +501,11 @@ export function NavSessions() {
                           <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
                         ) : diagnosisCount > 0 ? (
                           <span className="ml-auto flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                            {isDdxProcessing && (
-                              <IconLoader2 className="size-3 animate-spin" />
-                            )}
-                            {!isDdxProcessing && unseenUpdates.ddx && activeTab !== "ddx" && (
-                              <span className="h-2 w-2 rounded-full bg-green-500" />
-                            )}
+                            {isDdxProcessing ? (
+                              <IconLoader2 key="ddx-icon" className="size-3 animate-spin" />
+                            ) : unseenUpdates.ddx && activeTab !== "ddx" ? (
+                              <span key="ddx-icon" className="h-2 w-2 rounded-full bg-green-500" />
+                            ) : null}
                             {diagnosisCount}
                           </span>
                         ) : unseenUpdates.ddx && activeTab !== "ddx" ? (
