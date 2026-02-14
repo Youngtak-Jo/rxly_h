@@ -12,16 +12,19 @@ export async function POST(req: Request) {
       previousImageFindings,
       mode,
       previousSummary,
+      inlineComments,
       currentInsights,
     } = await req.json()
 
     const hasNewImages = newImageUrls && newImageUrls.length > 0
     const hasPreviousImages = previousImageFindings && previousImageFindings.length > 0
+    const hasInlineComments = inlineComments && inlineComments.length > 0
 
     if (
       !transcript?.trim() &&
       !doctorNotes?.trim() &&
-      !hasNewImages
+      !hasNewImages &&
+      !hasInlineComments
     ) {
       return new Response("No transcript, notes, or images provided", {
         status: 400,
@@ -69,6 +72,19 @@ export async function POST(req: Request) {
     let textContent = `Current summary: ${currentInsights?.summary || "(none yet)"}\nCurrent key findings: ${JSON.stringify(currentInsights?.keyFindings || [])}\nCurrent red flags: ${JSON.stringify(currentInsights?.redFlags || [])}${existingChecklistText}\n\n${transcriptSection}`
     if (doctorNotes?.trim()) {
       textContent += `\n\nDoctor's notes (from chat):\n${doctorNotes}`
+    }
+
+    // Append inline comments from the doctor
+    if (inlineComments && inlineComments.length > 0) {
+      textContent += "\n\n--- DOCTOR'S INLINE COMMENTS ---"
+      textContent += "\nThe doctor has annotated specific parts of the current insights. Address each comment:"
+      for (const c of inlineComments) {
+        textContent += `\n\n[Section: ${c.section}]`
+        textContent += `\nSelected text: "${c.selectedText}"`
+        textContent += `\nDoctor's comment: "${c.comment}"`
+      }
+      textContent += "\n\nIMPORTANT: Prioritize these comments — they are authoritative corrections or requests from the clinician. Modify the relevant sections accordingly."
+      textContent += "\n--- END DOCTOR'S INLINE COMMENTS ---"
     }
 
     // Build multimodal content: text + images

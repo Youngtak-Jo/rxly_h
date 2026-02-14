@@ -18,6 +18,7 @@ import {
   IconChecklist,
   IconPhoto,
 } from "@tabler/icons-react"
+import { InlineCommentPopover } from "./inline-comment-popover"
 
 export function InsightsContainer() {
   const {
@@ -30,6 +31,9 @@ export function InsightsContainer() {
   } = useInsightsStore()
   const notes = useNoteStore((s) => s.notes)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+
+  const pendingComments = useInsightsStore((s) => s.pendingComments)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const hasContent = summary || keyFindings.length > 0 || redFlags.length > 0
   const checkedCount = checklistItems.filter((item) => item.isChecked).length
@@ -69,7 +73,7 @@ export function InsightsContainer() {
   )
 
   return (
-    <div className={`space-y-6 ${isProcessing && hasContent ? "animate-breathe insights-shimmer-overlay" : ""}`}>
+    <div ref={containerRef} className={`space-y-6 ${isProcessing && hasContent ? "animate-breathe insights-shimmer-overlay" : ""}`}>
       {isProcessing && !hasContent && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
           <span className="h-2 w-2 rounded-full bg-blue-500" />
@@ -79,7 +83,7 @@ export function InsightsContainer() {
 
 
       {/* Summary */}
-      <section>
+      <section data-section="summary">
         <h3 className="flex items-center gap-2 text-sm font-medium mb-2">
           <IconFileText className="size-4 text-blue-500" />
           Summary
@@ -96,7 +100,7 @@ export function InsightsContainer() {
       </section>
 
       {/* Key Findings */}
-      <section>
+      <section data-section="keyFindings">
         <h3 className="flex items-center gap-2 text-sm font-medium mb-2">
           <IconSearch className="size-4 text-emerald-500" />
           Key Findings
@@ -127,7 +131,7 @@ export function InsightsContainer() {
 
       {/* Red Flags */}
       {redFlags.length > 0 && (
-        <section>
+        <section data-section="redFlags">
           <h3 className="flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400 mb-2">
             <IconAlertTriangle className="size-4" />
             Red Flags
@@ -223,6 +227,17 @@ export function InsightsContainer() {
           </div>
         </section>
       )}
+
+      {/* Pending Comments Indicator */}
+      {pendingComments.length > 0 && (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-pulse">
+          <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+          {pendingComments.length} comment{pendingComments.length > 1 ? "s" : ""} pending...
+        </div>
+      )}
+
+      {/* Inline Comment Popover */}
+      <InlineCommentPopover containerRef={containerRef} />
 
       {/* Image Lightbox */}
       <Dialog

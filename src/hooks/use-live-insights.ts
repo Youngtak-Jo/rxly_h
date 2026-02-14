@@ -27,11 +27,13 @@ export function useLiveInsights() {
         wordCountAtLastUpdate,
         entryCountAtLastUpdate,
         analysisCount,
+        pendingComments,
         setProcessing,
         updateFromResponse,
         setWordCountAtLastUpdate,
         setEntryCountAtLastUpdate,
         incrementAnalysisCount,
+        clearComments,
       } = useInsightsStore.getState()
 
       const transcriptStore = useTranscriptStore.getState()
@@ -132,6 +134,7 @@ export function useLiveInsights() {
             previousImageFindings,
             mode,
             previousSummary,
+            inlineComments: pendingComments.length > 0 ? pendingComments : undefined,
             currentInsights: {
               summary,
               keyFindings,
@@ -173,6 +176,7 @@ export function useLiveInsights() {
           const cleaned = accumulated.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
           const parsed: InsightsResponse = JSON.parse(cleaned)
           updateFromResponse(parsed, session.id)
+          clearComments()
           setWordCountAtLastUpdate(currentWordCount)
           setEntryCountAtLastUpdate(currentEntryCount)
           incrementAnalysisCount()
@@ -239,6 +243,29 @@ export function useLiveInsights() {
     runAnalysis(true)
   }, [runAnalysis])
 
+  // Forced final analysis for session/simulation end.
+  // Sets isProcessing gate synchronously so waitForInsightsToComplete() blocks
+  // until the analysis completes.
+  const runFinalAnalysis = useCallback(async () => {
+    useInsightsStore.getState().setProcessing(true)
+
+    // If an analysis is already in flight, abort it so we can run fresh
+    if (isAnalyzingRef.current && abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      const start = Date.now()
+      while (isAnalyzingRef.current && Date.now() - start < 2000) {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+    }
+
+    await runAnalysis(true)
+
+    // If runAnalysis returned early (no session, etc.), release the gate
+    if (!isAnalyzingRef.current) {
+      useInsightsStore.getState().setProcessing(false)
+    }
+  }, [runAnalysis])
+
   // Register triggerFromNote globally so NoteInputBar can call it
   useEffect(() => {
     useInsightsStore.getState().setNoteTrigger(triggerFromNote)
@@ -247,5 +274,5 @@ export function useLiveInsights() {
     }
   }, [triggerFromNote])
 
-  return { triggerAnalysis, analyzeTranscript, triggerFromNote }
+  return { triggerAnalysis, analyzeTranscript, triggerFromNote, runFinalAnalysis }
 }

@@ -20,10 +20,12 @@ import { useLiveRecord } from "@/hooks/use-live-record"
 import { useUnseenUpdateTracker } from "@/hooks/use-unseen-update-tracker"
 import { IconStethoscope, IconLoader2 } from "@tabler/icons-react"
 import { v4 as uuidv4 } from "uuid"
+import { cn } from "@/lib/utils"
 
 export function ConsultationLayout() {
   const activeSession = useSessionStore((s) => s.activeSession)
   const isLoading = useSessionStore((s) => s.isLoading)
+  const isSwitching = useSessionStore((s) => s.isSwitching)
   const { addSession, setActiveSession } = useSessionStore()
   const { setTranscriptCollapsed, setToggleTranscript } =
     useConsultationTabStore()
@@ -94,7 +96,8 @@ export function ConsultationLayout() {
     }
   }
 
-  if (isLoading) {
+  // Initial loading (no session yet)
+  if (isLoading && !activeSession) {
     return (
       <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-3">
         <IconLoader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -103,7 +106,7 @@ export function ConsultationLayout() {
     )
   }
 
-  if (!activeSession) {
+  if (!activeSession && !isSwitching) {
     return (
       <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-4 p-8 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
@@ -124,7 +127,16 @@ export function ConsultationLayout() {
 
   return (
     <div className="relative flex-1 min-h-0 min-w-0">
-      <div className="absolute inset-0">
+      {/* Switching overlay - dims content with subtle spinner */}
+      {isSwitching && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 transition-opacity duration-150">
+          <IconLoader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      <div className={cn(
+        "absolute inset-0 transition-opacity duration-200",
+        isSwitching ? "opacity-40 pointer-events-none" : "opacity-100"
+      )}>
         <ResizablePanelGroup orientation="horizontal">
           <ResizablePanel defaultSize="55" minSize="30">
             <CenterPanel />

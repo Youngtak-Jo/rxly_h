@@ -43,7 +43,7 @@ export function useSimulatedTranscript() {
   const runningTimeRef = useRef(0)
 
   const { setRecording, setDuration } = useRecordingStore()
-  const { triggerAnalysis } = useLiveInsights()
+  const { triggerAnalysis, runFinalAnalysis } = useLiveInsights()
 
   // Stable refs for controls to avoid circular dependency
   const pauseRef = useRef<() => void>(() => {})
@@ -59,6 +59,10 @@ export function useSimulatedTranscript() {
       // All entries processed — end simulation
       if (index >= entries.length) {
         const t = setTimeout(() => {
+          // Run forced final analysis FIRST (sets isProcessing gate synchronously)
+          // so waitForInsightsToComplete() in useLiveRecord will block until done
+          runFinalAnalysis()
+
           const store = useRecordingStore.getState()
           store.setRecording(false)
           store.setSimulating(false)
@@ -66,7 +70,6 @@ export function useSimulatedTranscript() {
           isRunningRef.current = false
           if (durationIntervalRef.current)
             clearInterval(durationIntervalRef.current)
-          triggerAnalysis()
         }, 1000)
         timeoutsRef.current.push(t)
         return
@@ -164,7 +167,7 @@ export function useSimulatedTranscript() {
       }, finalizeDelay)
       timeoutsRef.current.push(t2)
     },
-    [triggerAnalysis]
+    [triggerAnalysis, runFinalAnalysis]
   )
 
   const pauseSimulation = useCallback(() => {
@@ -204,12 +207,15 @@ export function useSimulatedTranscript() {
       durationIntervalRef.current = null
     }
 
+    // Run forced final analysis BEFORE stopping recording
+    runFinalAnalysis()
+
     const store = useRecordingStore.getState()
     store.setRecording(false)
     store.setSimulating(false)
     store.setSimulationControls(null)
     useTranscriptStore.getState().clearInterim()
-  }, [])
+  }, [runFinalAnalysis])
 
   // Keep stable refs up to date
   pauseRef.current = pauseSimulation
@@ -267,8 +273,8 @@ export function useSimulatedTranscript() {
         )
       )
 
-      // Trigger analysis once at the end
-      triggerAnalysis()
+      // Run forced final analysis BEFORE stopping recording
+      runFinalAnalysis()
 
       // End simulation
       const store = useRecordingStore.getState()
@@ -279,7 +285,7 @@ export function useSimulatedTranscript() {
         clearInterval(durationIntervalRef.current)
       isRunningRef.current = false
     },
-    [triggerAnalysis]
+    [runFinalAnalysis]
   )
 
   const startSimulation = useCallback(

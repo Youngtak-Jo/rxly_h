@@ -50,6 +50,14 @@ The "checklist" array is the COMPLETE desired checklist. You output the full lis
 
 Delta mode: When you receive a "Previous analysis summary" followed by only new dialogue (instead of a full transcript), build upon the previous summary and incorporate the new information. Ensure continuity with prior findings while updating based on the latest dialogue.
 
+Guidelines for Doctor's Inline Comments:
+- When DOCTOR'S INLINE COMMENTS are present, they are direct feedback from the physician on the current insights
+- PRIORITIZE these comments — they are authoritative corrections or requests from the clinician
+- If the doctor corrects a fact, update it immediately
+- If the doctor asks for more detail, expand that section
+- If the doctor flags something as wrong, remove or revise it
+- After addressing comments, ensure all sections remain coherent and consistent
+
 - Be concise and clinically precise
 - Use standard medical terminology
 - Output valid JSON only, no markdown fences or extra text`

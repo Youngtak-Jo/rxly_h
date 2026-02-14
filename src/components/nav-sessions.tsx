@@ -40,6 +40,39 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
+// In-memory session data cache for fast re-visits
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+interface CachedSessionData {
+  session: any
+  transcriptEntries: any[]
+  notes: any[]
+  researchMessages: any[]
+  timestamp: number
+}
+
+const sessionCache = new Map<string, CachedSessionData>()
+const MAX_CACHE_SIZE = 5
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+function getCachedSession(sessionId: string): CachedSessionData | null {
+  const cached = sessionCache.get(sessionId)
+  if (!cached) return null
+  if (Date.now() - cached.timestamp > CACHE_TTL_MS) {
+    sessionCache.delete(sessionId)
+    return null
+  }
+  return cached
+}
+
+function setCachedSession(sessionId: string, data: Omit<CachedSessionData, "timestamp">) {
+  // Evict oldest if at capacity
+  if (sessionCache.size >= MAX_CACHE_SIZE && !sessionCache.has(sessionId)) {
+    const oldestKey = sessionCache.keys().next().value
+    if (oldestKey) sessionCache.delete(oldestKey)
+  }
+  sessionCache.set(sessionId, { ...data, timestamp: Date.now() })
+}
+
 function formatShortTimeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
   if (seconds < 60) return `${seconds}s`
@@ -126,12 +159,35 @@ export function NavSessions() {
   const loadSession = async (sessionId: string) => {
     if (activeSession?.id === sessionId) return
 
-    useSessionStore.getState().setLoading(true)
+    const cached = getCachedSession(sessionId)
+    const store = useSessionStore.getState()
+
+    // Use isSwitching for transition (keeps previous UI visible), isLoading only for initial load
+    if (activeSession) {
+      store.setSwitching(true)
+    } else {
+      store.setLoading(true)
+    }
 
     try {
-      const res = await fetch(`/api/sessions/${sessionId}/full`)
-      if (!res.ok) throw new Error("Failed to load session")
-      const { session, transcriptEntries, notes, researchMessages } = await res.json()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let session: any
+      let transcriptEntries: any[]
+      let notes: any[]
+      let researchMessages: any[]
+
+      if (cached) {
+        // Cache hit - use cached data
+        ;({ session, transcriptEntries, notes, researchMessages } = cached)
+      } else {
+        // Cache miss - fetch from API
+        const res = await fetch(`/api/sessions/${sessionId}/full`)
+        if (!res.ok) throw new Error("Failed to load session")
+        ;({ session, transcriptEntries, notes, researchMessages } = await res.json())
+
+        // Store in cache for re-visits
+        setCachedSession(sessionId, { session, transcriptEntries, notes, researchMessages })
+      }
 
       transcriptStore.reset()
       insightsStore.reset()
@@ -227,7 +283,9 @@ export function NavSessions() {
     } catch (error) {
       console.error("Failed to load session:", error)
     } finally {
-      useSessionStore.getState().setLoading(false)
+      const s = useSessionStore.getState()
+      s.setLoading(false)
+      s.setSwitching(false)
     }
   }
 

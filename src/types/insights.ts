@@ -1,3 +1,13 @@
+export type InsightSection = "summary" | "keyFindings" | "redFlags"
+
+export interface InlineComment {
+  id: string
+  section: InsightSection
+  selectedText: string
+  comment: string
+  createdAt: number
+}
+
 export interface ChecklistItem {
   id: string
   sessionId: string

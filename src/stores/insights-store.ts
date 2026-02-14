@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import type {
   ChecklistItem,
+  InlineComment,
   InsightsResponse,
 } from "@/types/insights"
 import { v4 as uuid } from "uuid"
@@ -16,9 +17,12 @@ interface InsightsState {
   entryCountAtLastUpdate: number
   analysisCount: number
   analyzedImages: Record<string, string> // storagePath → findings summary
+  pendingComments: InlineComment[]
   // Global callback for triggering analysis from note submission
   _noteTrigger: (() => void) | null
   setNoteTrigger: (fn: (() => void) | null) => void
+  addComment: (comment: InlineComment) => void
+  clearComments: () => void
 
   setProcessing: (processing: boolean) => void
   updateFromResponse: (response: InsightsResponse, sessionId: string) => void
@@ -50,8 +54,12 @@ export const useInsightsStore = create<InsightsState>((set) => ({
   entryCountAtLastUpdate: 0,
   analysisCount: 0,
   analyzedImages: {},
+  pendingComments: [],
   _noteTrigger: null,
   setNoteTrigger: (fn) => set({ _noteTrigger: fn }),
+  addComment: (comment) =>
+    set((state) => ({ pendingComments: [...state.pendingComments, comment] })),
+  clearComments: () => set({ pendingComments: [] }),
 
   setProcessing: (isProcessing) => set({ isProcessing }),
 
@@ -180,5 +188,6 @@ export const useInsightsStore = create<InsightsState>((set) => ({
       entryCountAtLastUpdate: 0,
       analysisCount: 0,
       analyzedImages: {},
+      pendingComments: [],
     }),
 }))

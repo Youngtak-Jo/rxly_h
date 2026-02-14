@@ -6,6 +6,7 @@ import { useInsightsStore } from "@/stores/insights-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useConnectorStore } from "@/stores/connector-store"
+import { useRecordingStore } from "@/stores/recording-store"
 
 const MIN_NEW_WORDS = 50
 const MIN_INTERVAL_MS = 20000
@@ -158,7 +159,9 @@ export function useLiveDdx() {
       insightsDebounceRef.current = setTimeout(() => {
         const session = useSessionStore.getState().activeSession
         if (!session) return
-        runDdx(false)
+        // Force DDx when recording has stopped (final analysis scenario)
+        const isRecording = useRecordingStore.getState().isRecording
+        runDdx(!isRecording)
       }, INSIGHTS_DEBOUNCE_MS)
     })
 

@@ -79,7 +79,7 @@ export function useDeepgram() {
   const sessionStartTimeRef = useRef<number>(0)
 
   const { setRecording, setPaused, setError, setDuration } = useRecordingStore()
-  const { triggerAnalysis } = useLiveInsights()
+  const { triggerAnalysis, runFinalAnalysis } = useLiveInsights()
 
   const startListening = useCallback(async () => {
     try {
@@ -240,6 +240,7 @@ export function useDeepgram() {
       }
 
       ws.onclose = () => {
+        runFinalAnalysis()
         setRecording(false)
       }
     } catch (error) {
@@ -248,7 +249,7 @@ export function useDeepgram() {
       console.error("Failed to start listening:", error)
       setError(message)
     }
-  }, [setRecording, setDuration, setPaused, setError, triggerAnalysis])
+  }, [setRecording, setDuration, setPaused, setError, triggerAnalysis, runFinalAnalysis])
 
   const stopListening = useCallback(() => {
     if (wsRef.current) {
@@ -267,10 +268,11 @@ export function useDeepgram() {
       streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
+    runFinalAnalysis()
     setRecording(false)
     const { clearInterim } = useTranscriptStore.getState()
     clearInterim()
-  }, [setRecording])
+  }, [setRecording, runFinalAnalysis])
 
   const pauseListening = useCallback(() => {
     if (streamRef.current) {
