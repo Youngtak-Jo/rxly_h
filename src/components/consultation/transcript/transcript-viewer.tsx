@@ -212,7 +212,7 @@ export function TranscriptViewer() {
                           <img
                             key={j}
                             src={url}
-                            alt=""
+                            alt={`Medical image ${j + 1} from note`}
                             className="h-12 w-12 rounded object-cover border"
                           />
                         ))}
@@ -325,54 +325,49 @@ export function TranscriptViewer() {
             )
           })}
 
-          {interimText && (
+          <div
+            className={cn(
+              "flex mt-1 opacity-60",
+              !interimText && "hidden",
+              !isIdentified
+                ? "justify-center"
+                : interimSpeaker === "PATIENT"
+                  ? "justify-start"
+                  : interimSpeaker === "DOCTOR"
+                    ? "justify-end"
+                    : "justify-center"
+            )}
+          >
             <div
               className={cn(
-                "flex mt-1 opacity-60",
+                "max-w-[80%] px-3 py-2 rounded-2xl",
                 !isIdentified
-                  ? "justify-center"
+                  ? "bg-muted/50"
                   : interimSpeaker === "PATIENT"
-                    ? "justify-start"
+                    ? "bg-muted rounded-tl-sm"
                     : interimSpeaker === "DOCTOR"
-                      ? "justify-end"
-                      : "justify-center"
+                      ? "bg-primary text-primary-foreground rounded-tr-sm"
+                      : "bg-muted/50"
               )}
             >
-              <div
-                className={cn(
-                  "max-w-[80%] px-3 py-2 rounded-2xl",
-                  !isIdentified
-                    ? "bg-muted/50"
-                    : interimSpeaker === "PATIENT"
-                      ? "bg-muted rounded-tl-sm"
-                      : interimSpeaker === "DOCTOR"
-                        ? "bg-primary text-primary-foreground rounded-tr-sm"
-                        : "bg-muted/50"
-                )}
-              >
-                <p className="text-sm leading-relaxed italic">{interimText}</p>
-                <span className="text-[10px] text-muted-foreground/60">
-                  typing...
-                </span>
-              </div>
-            </div>
-          )}
-
-          {identificationStatus === "identifying" && (
-            <div className="flex justify-center mt-3">
-              <span className="text-[10px] px-3 py-1 rounded-full bg-muted/50 text-muted-foreground animate-pulse">
-                Identifying speakers...
+              <p className="text-sm leading-relaxed italic">{interimText}</p>
+              <span className="text-[10px] text-muted-foreground/60">
+                typing...
               </span>
             </div>
-          )}
+          </div>
 
-          {highlightStatus === "loading" && (
-            <div className="flex justify-center mt-3">
-              <span className="text-[10px] px-3 py-1 rounded-full bg-muted/50 text-muted-foreground animate-pulse">
-                Analyzing diagnostic keywords...
-              </span>
-            </div>
-          )}
+          <div className={cn("flex justify-center mt-3", identificationStatus !== "identifying" && "hidden")}>
+            <span className="text-[10px] px-3 py-1 rounded-full bg-muted/50 text-muted-foreground animate-pulse">
+              Identifying speakers...
+            </span>
+          </div>
+
+          <div className={cn("flex justify-center mt-3", highlightStatus !== "loading" && "hidden")}>
+            <span className="text-[10px] px-3 py-1 rounded-full bg-muted/50 text-muted-foreground animate-pulse">
+              Analyzing diagnostic keywords...
+            </span>
+          </div>
         </div>
       </div>
 

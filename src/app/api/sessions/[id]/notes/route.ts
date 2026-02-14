@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger"
 import { requireAuth, requireSessionOwnership } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { noteCreateSchema } from "@/lib/validations"
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -84,15 +85,19 @@ export async function POST(
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
-    const body = await req.json()
+    const raw = await req.json()
+    const parsed = noteCreateSchema.safeParse(raw)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
 
     const note = await prisma.note.create({
       data: {
         sessionId: id,
-        content: body.content || "",
-        imageUrls: body.imageUrls || [],
-        storagePaths: body.storagePaths || [],
-        source: body.source || "MANUAL",
+        content: parsed.data.content,
+        imageUrls: parsed.data.imageUrls,
+        storagePaths: parsed.data.storagePaths,
+        source: parsed.data.source,
       },
     })
 

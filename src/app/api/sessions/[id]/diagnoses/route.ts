@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
 import { requireAuth, requireSessionOwnership } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { diagnosesUpdateSchema } from "@/lib/validations"
 
 export async function GET(
   req: Request,
@@ -42,7 +44,12 @@ export async function PUT(
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
-    const { diagnoses } = await req.json()
+    const raw = await req.json()
+    const parsed = diagnosesUpdateSchema.safeParse(raw)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
+    const { diagnoses } = parsed.data
 
     await prisma.$transaction(async (tx) => {
       await tx.diagnosis.deleteMany({
@@ -53,16 +60,8 @@ export async function PUT(
         await tx.diagnosis.createMany({
           data: diagnoses.map(
             (
-              dx: {
-                icdCode: string
-                icdUri?: string
-                diseaseName: string
-                confidence: string
-                evidence: string
-                citations: unknown[]
-                sortOrder: number
-              },
-              index: number
+              dx,
+              index
             ) => ({
               sessionId: id,
               icdCode: dx.icdCode,
@@ -75,7 +74,7 @@ export async function PUT(
                     ? "LOW"
                     : "MODERATE",
               evidence: dx.evidence,
-              citations: dx.citations || [],
+              citations: (dx.citations || []) as Prisma.InputJsonValue,
               sortOrder: dx.sortOrder ?? index,
             })
           ),

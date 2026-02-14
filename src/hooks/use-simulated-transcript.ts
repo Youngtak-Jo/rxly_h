@@ -9,7 +9,7 @@ import { SCENARIOS, type MockEntry } from "@/data/scenarios"
 import { v4 as uuid } from "uuid"
 import type { Speaker } from "@/types/session"
 
-const INTERIM_WORD_STEP_MS = 80
+const INTERIM_WORD_STEP_MS = 300
 
 export interface SimulationOptions {
   speedFactor: number
@@ -19,8 +19,8 @@ export interface SimulationOptions {
 }
 
 const DEFAULT_OPTIONS: SimulationOptions = {
-  speedFactor: 0.5,
-  skipInterim: true,
+  speedFactor: 1.0,
+  skipInterim: false,
   scenario: SCENARIOS[0].entries,
   instantInsert: false,
 }
@@ -198,8 +198,13 @@ export function useSimulatedTranscript() {
     // Update store
     useRecordingStore.getState().setPaused(false)
 
-    // Resume from the saved index
-    processEntry(currentIndexRef.current)
+    // Wait for React to finish reconciling the DOM after clearInterim()
+    // before scheduling new state updates
+    requestAnimationFrame(() => {
+      if (!isPausedRef.current) {
+        processEntry(currentIndexRef.current)
+      }
+    })
   }, [processEntry])
 
   const stopSimulation = useCallback(

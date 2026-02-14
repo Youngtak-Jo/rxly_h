@@ -4,9 +4,11 @@ import { logger } from "@/lib/logger"
 import { DEFAULT_MODEL } from "@/lib/grok"
 import { getModel } from "@/lib/ai-provider"
 import { INSIGHTS_SYSTEM_PROMPT } from "@/lib/prompts"
+import { buildSystemPrompt } from "@/lib/prompt-sanitizer"
 import { requireAuth } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { errorResponse } from "@/lib/api-response"
 import type { UserContent } from "ai"
 
 export async function POST(req: Request) {
@@ -39,9 +41,7 @@ export async function POST(req: Request) {
       !hasNewImages &&
       !hasInlineComments
     ) {
-      return new Response("No transcript, notes, or images provided", {
-        status: 400,
-      })
+      return errorResponse("No transcript, notes, or images provided", 400)
     }
 
     const model = getModel(modelOverride || DEFAULT_MODEL)
@@ -131,9 +131,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const systemPrompt = customInstructions?.trim()
-      ? `${INSIGHTS_SYSTEM_PROMPT}\n\n--- DOCTOR'S CUSTOM INSTRUCTIONS ---\n${customInstructions}\n--- END CUSTOM INSTRUCTIONS ---`
-      : INSIGHTS_SYSTEM_PROMPT
+    const systemPrompt = buildSystemPrompt(INSIGHTS_SYSTEM_PROMPT, customInstructions)
 
     const result = streamText({
       model,
@@ -152,6 +150,6 @@ export async function POST(req: Request) {
   } catch (error) {
     if (error instanceof NextResponse) return error
     logger.error("Insights generation error:", error)
-    return new Response("Failed to generate insights", { status: 500 })
+    return errorResponse("Failed to generate insights", 500)
   }
 }

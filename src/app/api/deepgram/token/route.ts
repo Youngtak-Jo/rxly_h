@@ -54,9 +54,12 @@ export async function POST() {
       return NextResponse.json({ token: data.key })
     }
 
-    // Fallback: return API key directly (not recommended for production)
-    logAudit({ userId: user.id, action: "READ", resource: "deepgram_token" })
-    return NextResponse.json({ token: apiKey })
+    // Fail closed: never expose the raw API key to the client
+    logger.error("DEEPGRAM_PROJECT_ID not configured. Cannot create temporary key.")
+    return NextResponse.json(
+      { error: "Speech-to-text is not configured properly. Contact support." },
+      { status: 503 }
+    )
   } catch (error) {
     if (error instanceof NextResponse) return error
     logger.error("Deepgram token error:", error)

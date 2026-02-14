@@ -6,10 +6,12 @@ import { getModel } from "@/lib/ai-provider"
 import { requireAuth } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { errorResponse } from "@/lib/api-response"
 import {
   RESEARCH_SYSTEM_PROMPT,
   SEARCH_TERM_EXTRACTION_PROMPT,
 } from "@/lib/prompts"
+import { buildSystemPrompt } from "@/lib/prompt-sanitizer"
 import {
   fetchRAGContext,
   formatRAGContextForPrompt,
@@ -51,7 +53,7 @@ export async function POST(req: Request) {
       await req.json()
 
     if (!question?.trim()) {
-      return new Response("No question provided", { status: 400 })
+      return errorResponse("No question provided", 400)
     }
 
     const model = getModel(modelOverride || CLAUDE_MODEL)
@@ -112,9 +114,7 @@ Red Flags: ${JSON.stringify(insightsContext.redFlags || [])}
     // Add the current enriched question as the final user message
     messages.push({ role: "user", content: userPrompt })
 
-    const systemPrompt = customInstructions?.trim()
-      ? `${RESEARCH_SYSTEM_PROMPT}\n\n--- DOCTOR'S CUSTOM INSTRUCTIONS ---\n${customInstructions}\n--- END CUSTOM INSTRUCTIONS ---`
-      : RESEARCH_SYSTEM_PROMPT
+    const systemPrompt = buildSystemPrompt(RESEARCH_SYSTEM_PROMPT, customInstructions)
 
     const result = streamText({
       model,
@@ -128,8 +128,6 @@ Red Flags: ${JSON.stringify(insightsContext.redFlags || [])}
   } catch (error) {
     if (error instanceof NextResponse) return error
     logger.error("Research generation error:", error)
-    return new Response("Failed to generate research response", {
-      status: 500,
-    })
+    return errorResponse("Failed to generate research response", 500)
   }
 }

@@ -13,8 +13,12 @@ import {
   IconTrash,
 } from "@tabler/icons-react"
 import { v4 as uuidv4 } from "uuid"
+import { toast } from "sonner"
 
 import { useSessionStore } from "@/stores/session-store"
+import type { Session, TranscriptEntry, DiagnosticKeyword } from "@/types/session"
+import type { ChecklistItem, DiagnosisCitation } from "@/types/insights"
+import type { ConsultationRecord } from "@/types/record"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useInsightsStore } from "@/stores/insights-store"
@@ -41,12 +45,55 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 // In-memory session data cache for fast re-visits
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// Session from API includes extra fields (insights, diagnoses, record, checklistItems)
+interface SessionInsights {
+  summary?: string
+  keyFindings?: string[]
+  redFlags?: string[]
+  diagnosticKeywords?: DiagnosticKeyword[]
+  [key: string]: unknown
+}
+
+interface SessionDiagnosis {
+  id: string
+  sessionId: string
+  icdCode: string
+  icdUri?: string
+  diseaseName: string
+  confidence: string
+  evidence: string
+  citations: unknown
+  sortOrder: number
+}
+
+interface FullSessionResponse extends Session {
+  insights?: SessionInsights | null
+  diagnoses?: SessionDiagnosis[]
+  record?: ConsultationRecord | null
+  checklistItems?: ChecklistItem[]
+}
+
+interface NoteData {
+  id: string
+  content: string
+  imageUrls: string[]
+  source: string
+  createdAt: string
+}
+
+interface ResearchMessageData {
+  id: string
+  role: string
+  content: string
+  citations: unknown
+  createdAt: string
+}
+
 interface CachedSessionData {
-  session: any
-  transcriptEntries: any[]
-  notes: any[]
-  researchMessages: any[]
+  session: FullSessionResponse
+  transcriptEntries: TranscriptEntry[]
+  notes: NoteData[]
+  researchMessages: ResearchMessageData[]
   timestamp: number
 }
 
@@ -171,6 +218,7 @@ export function NavSessions() {
       }
     } catch (error) {
       console.error("Failed to create session:", error)
+      toast.error("Failed to create session")
       const store = useSessionStore.getState()
       store.setSessions(store.sessions.filter((s) => s.id !== tempId))
       if (store.activeSession?.id === tempId) {
@@ -199,11 +247,10 @@ export function NavSessions() {
     }
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let session: any
-      let transcriptEntries: any[]
-      let notes: any[]
-      let researchMessages: any[]
+      let session: FullSessionResponse
+      let transcriptEntries: TranscriptEntry[]
+      let notes: NoteData[]
+      let researchMessages: ResearchMessageData[]
 
       if (cached) {
         // Cache hit - use cached data
@@ -239,9 +286,9 @@ export function NavSessions() {
       insightsStore.reset()
       if (session.insights) {
         insightsStore.loadFromDB({
-          summary: session.insights.summary,
-          keyFindings: session.insights.keyFindings,
-          redFlags: session.insights.redFlags,
+          summary: session.insights.summary || "",
+          keyFindings: session.insights.keyFindings || [],
+          redFlags: session.insights.redFlags || [],
           checklistItems: session.checklistItems || [],
         })
       }
@@ -251,17 +298,7 @@ export function NavSessions() {
       if (session.diagnoses && session.diagnoses.length > 0) {
         ddxStore.loadFromDB(
           session.diagnoses.map(
-            (dx: {
-              id: string
-              sessionId: string
-              icdCode: string
-              icdUri?: string
-              diseaseName: string
-              confidence: string
-              evidence: string
-              citations: unknown
-              sortOrder: number
-            }) => ({
+            (dx) => ({
               id: dx.id,
               sessionId: dx.sessionId,
               icdCode: dx.icdCode,
@@ -272,7 +309,7 @@ export function NavSessions() {
                 | "moderate"
                 | "low",
               evidence: dx.evidence,
-              citations: dx.citations || [],
+              citations: (dx.citations || []) as DiagnosisCitation[],
               sortOrder: dx.sortOrder,
             })
           )
@@ -289,7 +326,7 @@ export function NavSessions() {
       noteStore.reset()
       if (notes?.length > 0) {
         noteStore.loadNotes(
-          notes.map((n: { id: string; content: string; imageUrls: string[]; source: string; createdAt: string }) => ({
+          notes.map((n) => ({
             id: n.id,
             content: n.content,
             imageUrls: n.imageUrls || [],
@@ -305,7 +342,7 @@ export function NavSessions() {
       if (researchMessages?.length > 0) {
         researchStore.loadFromDB(
           researchMessages.map(
-            (m: { id: string; role: string; content: string; citations: unknown; createdAt: string }) => ({
+            (m) => ({
               id: m.id,
               role: m.role as "user" | "assistant",
               content: m.content,
@@ -317,6 +354,7 @@ export function NavSessions() {
       }
     } catch (error) {
       console.error("Failed to load session:", error)
+      toast.error("Failed to load session")
     } finally {
       const s = useSessionStore.getState()
       s.setLoading(false)
@@ -346,6 +384,7 @@ export function NavSessions() {
       }
     } catch (error) {
       console.error("Failed to delete session:", error)
+      toast.error("Failed to delete session")
     }
   }
 
@@ -382,6 +421,7 @@ export function NavSessions() {
         }
       } catch (error) {
         console.error("Failed to rename session:", error)
+        toast.error("Failed to rename session")
       }
     }
     setEditingId(null)

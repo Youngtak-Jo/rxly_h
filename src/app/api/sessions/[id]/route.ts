@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { logger } from "@/lib/logger"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { sessionPatchSchema } from "@/lib/validations"
 
 export async function GET(
   req: Request,
@@ -57,12 +58,16 @@ export async function PATCH(
       return NextResponse.json({ error: "Session not found" }, { status: 404 })
     }
 
-    const body = await req.json()
+    const raw = await req.json()
+    const parsed = sessionPatchSchema.safeParse(raw)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
     const session = await prisma.session.update({
       where: { id },
       data: {
-        title: body.title,
-        patientName: body.patientName,
+        title: parsed.data.title,
+        patientName: parsed.data.patientName,
       },
     })
     logAudit({ userId: user.id, action: "UPDATE", resource: "session", resourceId: id })

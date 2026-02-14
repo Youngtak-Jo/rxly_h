@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useSessionStore } from "@/stores/session-store"
@@ -27,6 +27,14 @@ export function NoteInputBar() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const activeSession = useSessionStore((s) => s.activeSession)
+
+  // Cleanup object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      attachments.forEach((a) => URL.revokeObjectURL(a.preview))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleFileSelect = useCallback(
     (files: FileList | null) => {

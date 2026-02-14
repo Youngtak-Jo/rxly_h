@@ -6,10 +6,12 @@ import { getModel } from "@/lib/ai-provider"
 import { requireAuth } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { errorResponse } from "@/lib/api-response"
 import {
   DDX_SYSTEM_PROMPT,
   SEARCH_TERM_EXTRACTION_PROMPT,
 } from "@/lib/prompts"
+import { buildSystemPrompt } from "@/lib/prompt-sanitizer"
 import {
   fetchRAGContext,
   formatRAGContextForPrompt,
@@ -59,12 +61,12 @@ export async function POST(req: Request) {
     } = await req.json()
 
     if (!transcript?.trim() && !doctorNotes?.trim()) {
-      return new Response("No transcript or notes provided", { status: 400 })
+      return errorResponse("No transcript or notes provided", 400)
     }
 
     // Need at least some clinical context (insights) to generate meaningful DDx
     if (!currentInsights?.summary && !currentInsights?.keyFindings?.length) {
-      return new Response("No insights context available yet", { status: 400 })
+      return errorResponse("No insights context available yet", 400)
     }
 
     const model = getModel(modelOverride || CLAUDE_MODEL)
@@ -145,9 +147,7 @@ ${(transcript || "").slice(-3000)}
       userPrompt += `\n\n--- EXTERNAL MEDICAL KNOWLEDGE (use for diagnosis citations) ---${ragContextText}\n--- END EXTERNAL KNOWLEDGE ---`
     }
 
-    const systemPrompt = customInstructions?.trim()
-      ? `${DDX_SYSTEM_PROMPT}\n\n--- DOCTOR'S CUSTOM INSTRUCTIONS ---\n${customInstructions}\n--- END CUSTOM INSTRUCTIONS ---`
-      : DDX_SYSTEM_PROMPT
+    const systemPrompt = buildSystemPrompt(DDX_SYSTEM_PROMPT, customInstructions)
 
     const { text } = await generateText({
       model,
@@ -157,8 +157,14 @@ ${(transcript || "").slice(-3000)}
     })
 
     // Parse and validate response (strip markdown code fences if present)
-    const cleaned = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
-    const parsed = JSON.parse(cleaned)
+    let parsed: { diagnoses?: unknown[] }
+    try {
+      const cleaned = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
+      parsed = JSON.parse(cleaned)
+    } catch {
+      logger.error("DDx: AI returned invalid JSON")
+      return NextResponse.json({ error: "AI returned invalid response format" }, { status: 502 })
+    }
     if (!parsed.diagnoses || !Array.isArray(parsed.diagnoses)) {
       return Response.json({ diagnoses: [] })
     }
@@ -168,8 +174,6 @@ ${(transcript || "").slice(-3000)}
   } catch (error) {
     if (error instanceof NextResponse) return error
     logger.error("DDx generation error:", error)
-    return new Response("Failed to generate differential diagnosis", {
-      status: 500,
-    })
+    return errorResponse("Failed to generate differential diagnosis", 500)
   }
 }

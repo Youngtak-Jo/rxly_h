@@ -112,7 +112,12 @@ export function useLiveDdx() {
           signal: abortController.signal,
         })
 
-        if (!res.ok) throw new Error("DDx generation failed")
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}))
+          throw new Error(
+            `DDx generation failed (${res.status}): ${errBody.error || "Unknown error"}`
+          )
+        }
 
         const parsed = await res.json()
 

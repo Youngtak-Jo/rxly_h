@@ -59,7 +59,7 @@ function formatDuration(seconds: number) {
 
 function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange?: (open: boolean) => void }) {
   const [internalOpen, setInternalOpen] = useState(false)
-  const [speed, setSpeed] = useState("0.5")
+  const [speed, setSpeed] = useState("1.0")
   const [scenarioId, setScenarioId] = useState(SCENARIOS[0].id)
 
   const isControlled = open !== undefined
@@ -101,7 +101,6 @@ function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange
     setTimeout(() => {
       startSimulation({
         speedFactor: isInstant ? 0.1 : parseFloat(speed),
-        skipInterim: true,
         scenario: selectedScenario.entries,
         instantInsert: isInstant,
       })

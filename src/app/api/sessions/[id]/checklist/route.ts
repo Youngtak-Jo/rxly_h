@@ -4,6 +4,7 @@ import { logger } from "@/lib/logger"
 import { requireAuth, requireSessionOwnership } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { checklistCreateSchema, checklistPatchSchema } from "@/lib/validations"
 
 export async function GET(
   req: Request,
@@ -42,22 +43,27 @@ export async function POST(
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
-    const body = await req.json()
+    const raw = await req.json()
+    const parsed = checklistCreateSchema.safeParse(raw)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
 
-    const count = await prisma.checklistItem.count({
-      where: { sessionId: id },
-    })
-
-    const item = await prisma.checklistItem.create({
-      data: {
-        sessionId: id,
-        label: body.label,
-        isChecked: body.isChecked || false,
-        isAutoChecked: body.isAutoChecked || false,
-        doctorNote: body.doctorNote || null,
-        sortOrder: count,
-        source: body.source || "MANUAL",
-      },
+    const item = await prisma.$transaction(async (tx) => {
+      const count = await tx.checklistItem.count({
+        where: { sessionId: id },
+      })
+      return tx.checklistItem.create({
+        data: {
+          sessionId: id,
+          label: parsed.data.label,
+          isChecked: parsed.data.isChecked,
+          isAutoChecked: parsed.data.isAutoChecked,
+          doctorNote: parsed.data.doctorNote || null,
+          sortOrder: count,
+          source: parsed.data.source,
+        },
+      })
     })
 
     logAudit({ userId: user.id, action: "CREATE", resource: "checklist", resourceId: item.id, sessionId: id })
@@ -84,22 +90,19 @@ export async function PATCH(
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
-    const body = await req.json()
-
-    if (!body.itemId) {
-      return NextResponse.json(
-        { error: "itemId is required" },
-        { status: 400 }
-      )
+    const raw = await req.json()
+    const parsed = checklistPatchSchema.safeParse(raw)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
     }
 
     const item = await prisma.checklistItem.update({
-      where: { id: body.itemId },
+      where: { id: parsed.data.itemId, sessionId: id },
       data: {
-        isChecked: body.isChecked,
-        isAutoChecked: body.isAutoChecked,
-        doctorNote: body.doctorNote,
-        sortOrder: body.sortOrder,
+        isChecked: parsed.data.isChecked,
+        isAutoChecked: parsed.data.isAutoChecked,
+        doctorNote: parsed.data.doctorNote,
+        sortOrder: parsed.data.sortOrder,
       },
     })
 

@@ -1,24 +1,28 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { signupSchema } from "@/lib/validations"
 
 export async function signup(formData: FormData) {
-  const supabase = await createClient()
+  const parsed = signupSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
+  })
 
-  const password = formData.get("password") as string
-  const confirmPassword = formData.get("confirmPassword") as string
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message || "Invalid input" }
+  }
 
-  if (password !== confirmPassword) {
+  if (parsed.data.password !== parsed.data.confirmPassword) {
     return { error: "Passwords do not match" }
   }
 
-  if (password.length < 6) {
-    return { error: "Password must be at least 6 characters" }
-  }
+  const supabase = await createClient()
 
   const { data, error } = await supabase.auth.signUp({
-    email: formData.get("email") as string,
-    password,
+    email: parsed.data.email,
+    password: parsed.data.password,
   })
 
   if (error) {

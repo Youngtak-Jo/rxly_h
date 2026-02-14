@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
 import { decryptField } from "@/lib/encryption"
+import sanitizeHtml from "sanitize-html"
 
 export default async function ExportViewerPage({
   params,
@@ -67,8 +68,12 @@ export default async function ExportViewerPage({
     )
   }
 
-  // Decrypt content and increment access count
-  const decryptedContent = decryptField(exportLink.content) || ""
+  // Decrypt content, sanitize HTML, and increment access count
+  const rawContent = decryptField(exportLink.content) || ""
+  const decryptedContent = sanitizeHtml(rawContent, {
+    allowedTags: ["h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "ul", "ol", "li", "strong", "em", "b", "i", "table", "thead", "tbody", "tr", "th", "td", "span", "div", "hr", "a", "pre", "code"],
+    allowedAttributes: { "*": ["class", "style"], a: ["href", "target", "rel"] },
+  })
 
   await prisma.exportLink.update({
     where: { id },

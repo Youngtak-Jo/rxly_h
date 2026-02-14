@@ -190,11 +190,17 @@ Evidence from consultation: ${evidence}`
 
         sources = enrichedSources
 
-        const cleaned = grokResult.text
-          .replace(/```json\s*/g, "")
-          .replace(/```\s*/g, "")
-          .trim()
-        const result = JSON.parse(cleaned) as ClinicalDecisionSupport
+        let result: ClinicalDecisionSupport
+        try {
+          const cleaned = grokResult.text
+            .replace(/```json\s*/g, "")
+            .replace(/```\s*/g, "")
+            .trim()
+          result = JSON.parse(cleaned) as ClinicalDecisionSupport
+        } catch {
+          logger.error("[clinical-support] AI returned invalid JSON (with RAG)")
+          return NextResponse.json({ error: "AI returned invalid response format" }, { status: 502 })
+        }
 
         logAudit({ userId: user.id, action: "READ", resource: "clinical_support" })
         return Response.json({ support: result, sources })
@@ -211,11 +217,17 @@ Evidence from consultation: ${evidence}`
       temperature: 0.2,
     })
 
-    const cleaned = text
-      .replace(/```json\s*/g, "")
-      .replace(/```\s*/g, "")
-      .trim()
-    const result = JSON.parse(cleaned) as ClinicalDecisionSupport
+    let result: ClinicalDecisionSupport
+    try {
+      const cleaned = text
+        .replace(/```json\s*/g, "")
+        .replace(/```\s*/g, "")
+        .trim()
+      result = JSON.parse(cleaned) as ClinicalDecisionSupport
+    } catch {
+      logger.error("[clinical-support] AI returned invalid JSON")
+      return NextResponse.json({ error: "AI returned invalid response format" }, { status: 502 })
+    }
 
     logAudit({ userId: user.id, action: "READ", resource: "clinical_support" })
     return Response.json({ support: result, sources })

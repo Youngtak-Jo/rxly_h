@@ -74,6 +74,7 @@ export function InsightsContainer() {
 
   return (
     <div ref={containerRef} data-tour="insights-panel" className={`space-y-6 ${isProcessing && hasContent ? "animate-breathe insights-shimmer-overlay" : ""}`}>
+      <h1 className="sr-only">Live Insights</h1>
       {isProcessing && !hasContent && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
           <span className="h-2 w-2 rounded-full bg-blue-500" />
@@ -112,9 +113,9 @@ export function InsightsContainer() {
         </h3>
         {keyFindings.length > 0 ? (
           <ul className="space-y-1.5">
-            {keyFindings.map((finding, i) => (
+            {keyFindings.map((finding) => (
               <li
-                key={i}
+                key={finding}
                 className="flex items-start gap-2 text-sm text-muted-foreground"
               >
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
@@ -140,9 +141,9 @@ export function InsightsContainer() {
             </Badge>
           </h3>
           <ul className="space-y-1.5">
-            {redFlags.map((flag, i) => (
+            {redFlags.map((flag) => (
               <li
-                key={i}
+                key={flag}
                 className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400"
               >
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />

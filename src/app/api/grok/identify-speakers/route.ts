@@ -7,6 +7,7 @@ import { requireAuth } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { logger } from "@/lib/logger"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { errorResponse } from "@/lib/api-response"
 
 export async function POST(req: Request) {
   try {
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
     const { utterances, model: modelOverride } = await req.json()
 
     if (!utterances?.length) {
-      return new Response("No utterances provided", { status: 400 })
+      return errorResponse("No utterances provided", 400)
     }
 
     // Format utterances with raw speaker IDs for analysis
@@ -41,13 +42,20 @@ export async function POST(req: Request) {
       temperature: 0.1,
     })
 
-    const parsed = JSON.parse(text)
+    let parsed: unknown
+    try {
+      const cleaned = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
+      parsed = JSON.parse(cleaned)
+    } catch {
+      logger.error("Speaker identification: AI returned invalid JSON")
+      return NextResponse.json({ error: "AI returned invalid response format" }, { status: 502 })
+    }
 
     logAudit({ userId: user.id, action: "READ", resource: "ai_speakers" })
     return Response.json(parsed)
   } catch (error) {
     if (error instanceof NextResponse) return error
     logger.error("Speaker identification error:", error)
-    return new Response("Failed to identify speakers", { status: 500 })
+    return errorResponse("Failed to identify speakers", 500)
   }
 }

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
+import { logger } from "@/lib/logger"
 
 export type AuditAction = "CREATE" | "READ" | "UPDATE" | "DELETE"
 
@@ -27,7 +28,11 @@ export function logAudit(entry: AuditEntry): void {
         success: entry.success ?? true,
       },
     })
-    .catch(() => {
-      // Silently ignore audit logging failures to avoid breaking main requests
+    .catch((error) => {
+      // HIPAA: audit failures must be logged to a secondary channel
+      logger.error("[AUDIT FAILURE] Failed to write audit log:", {
+        entry: { userId: entry.userId, action: entry.action, resource: entry.resource },
+        error: error instanceof Error ? error.message : String(error),
+      })
     })
 }
