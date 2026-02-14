@@ -6,6 +6,7 @@ import {
   IconBrain,
   IconChartBar,
   IconChevronLeft,
+  IconMessageChatbot,
   IconMicrophone,
   IconPalette,
   IconPlug,
@@ -47,6 +48,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
 import {
   useSettingsStore,
   useSettingsDialogStore,
@@ -99,6 +101,7 @@ const NAV_ITEMS = [
   { key: "speech" as const, label: "Transcription", icon: IconMicrophone },
   { key: "analysis" as const, label: "Analysis", icon: IconChartBar },
   { key: "models" as const, label: "AI Models", icon: IconBrain },
+  { key: "instructions" as const, label: "Custom Instructions", icon: IconMessageChatbot },
   { key: "connectors" as const, label: "Knowledge Connectors", icon: IconPlug },
   { key: "appearance" as const, label: "Appearance", icon: IconPalette },
 ]
@@ -128,6 +131,7 @@ export function SettingsDialog() {
       {activePage === "speech" && <TranscriptionSettings />}
       {activePage === "analysis" && <AnalysisSettings />}
       {activePage === "models" && <ModelSettings />}
+      {activePage === "instructions" && <CustomInstructionsSettings />}
       {activePage === "connectors" && <ConnectorsSettings />}
       {activePage === "appearance" && <AppearanceSettings />}
     </>
@@ -646,6 +650,80 @@ function ModelSettings() {
           recommendedModel={DEFAULT_AI_MODEL.clinicalSupportModel}
         />
       </SettingRow>
+    </div>
+  )
+}
+
+const INSTRUCTION_FIELDS = [
+  {
+    key: "insights" as const,
+    label: "Live Insights",
+    description: "Custom instructions for real-time clinical insight generation.",
+    placeholder:
+      "e.g., Always highlight medication interactions. Focus on pediatric considerations. Summarize in bullet points.",
+  },
+  {
+    key: "ddx" as const,
+    label: "Differential Dx",
+    description: "Custom instructions for differential diagnosis generation.",
+    placeholder:
+      "e.g., Prioritize rare diseases when common ones are ruled out. Always include ICD codes. Consider autoimmune conditions.",
+  },
+  {
+    key: "record" as const,
+    label: "Consultation Record",
+    description: "Custom instructions for medical record generation.",
+    placeholder:
+      "e.g., Use SOAP format strictly. Include detailed ROS. Always document allergies prominently.",
+  },
+  {
+    key: "research" as const,
+    label: "Research",
+    description: "Custom instructions for medical research assistance.",
+    placeholder:
+      "e.g., Focus on recent studies (last 5 years). Prefer systematic reviews and meta-analyses. Include dosage recommendations.",
+  },
+]
+
+function CustomInstructionsSettings() {
+  const {
+    customInstructions,
+    setInsightsInstructions,
+    setDdxInstructions,
+    setRecordInstructions,
+    setResearchInstructions,
+  } = useSettingsStore()
+
+  const setters = {
+    insights: setInsightsInstructions,
+    ddx: setDdxInstructions,
+    record: setRecordInstructions,
+    research: setResearchInstructions,
+  }
+
+  return (
+    <div className="space-y-5">
+      <p className="text-xs text-muted-foreground">
+        Add custom instructions for each AI feature. These will be included in
+        every request to guide the AI&apos;s behavior.
+      </p>
+
+      {INSTRUCTION_FIELDS.map((field) => (
+        <div key={field.key} className="space-y-2">
+          <div className="space-y-0.5">
+            <Label className="text-sm font-medium">{field.label}</Label>
+            <p className="text-xs text-muted-foreground">
+              {field.description}
+            </p>
+          </div>
+          <Textarea
+            value={customInstructions[field.key]}
+            onChange={(e) => setters[field.key](e.target.value)}
+            placeholder={field.placeholder}
+            className="min-h-[80px] resize-y text-sm"
+          />
+        </div>
+      ))}
     </div>
   )
 }

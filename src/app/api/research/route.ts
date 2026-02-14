@@ -37,7 +37,7 @@ async function extractSearchTerms(question: string): Promise<string[]> {
 
 export async function POST(req: Request) {
   try {
-    const { question, conversationHistory, enabledConnectors, insightsContext, model: modelOverride } =
+    const { question, conversationHistory, enabledConnectors, insightsContext, model: modelOverride, customInstructions } =
       await req.json()
 
     if (!question?.trim()) {
@@ -108,9 +108,13 @@ Red Flags: ${JSON.stringify(insightsContext.redFlags || [])}
     // Add the current enriched question as the final user message
     messages.push({ role: "user", content: userPrompt })
 
+    const systemPrompt = customInstructions?.trim()
+      ? `${RESEARCH_SYSTEM_PROMPT}\n\n--- DOCTOR'S CUSTOM INSTRUCTIONS ---\n${customInstructions}\n--- END CUSTOM INSTRUCTIONS ---`
+      : RESEARCH_SYSTEM_PROMPT
+
     const result = streamText({
       model,
-      system: RESEARCH_SYSTEM_PROMPT,
+      system: systemPrompt,
       messages,
       temperature: 0.3,
     })

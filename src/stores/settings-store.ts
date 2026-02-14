@@ -100,6 +100,13 @@ interface AiModelSettings {
   clinicalSupportModel: string
 }
 
+interface CustomInstructionsSettings {
+  insights: string
+  ddx: string
+  record: string
+  research: string
+}
+
 interface AppearanceSettings {
   theme: "light" | "dark" | "system"
 }
@@ -108,6 +115,7 @@ export type SettingsPage =
   | "speech"
   | "analysis"
   | "models"
+  | "instructions"
   | "appearance"
   | "connectors"
 
@@ -130,6 +138,7 @@ interface SettingsState {
   audio: AudioSettings
   analysis: AnalysisSettings
   aiModel: AiModelSettings
+  customInstructions: CustomInstructionsSettings
   appearance: AppearanceSettings
   setSttLanguage: (language: string) => void
   setSttSmartFormat: (enabled: boolean) => void
@@ -149,6 +158,10 @@ interface SettingsState {
   setSpeakerIdModel: (model: string) => void
   setDiagnosticKeywordsModel: (model: string) => void
   setClinicalSupportModel: (model: string) => void
+  setInsightsInstructions: (instructions: string) => void
+  setDdxInstructions: (instructions: string) => void
+  setRecordInstructions: (instructions: string) => void
+  setResearchInstructions: (instructions: string) => void
   setTheme: (theme: "light" | "dark" | "system") => void
   resetToDefaults: () => void
 }
@@ -185,6 +198,13 @@ const DEFAULT_AI_MODEL: AiModelSettings = {
 
 export { DEFAULT_AI_MODEL }
 
+const DEFAULT_CUSTOM_INSTRUCTIONS: CustomInstructionsSettings = {
+  insights: "",
+  ddx: "",
+  record: "",
+  research: "",
+}
+
 const DEFAULT_APPEARANCE: AppearanceSettings = {
   theme: "system",
 }
@@ -196,6 +216,7 @@ export const useSettingsStore = create<SettingsState>()(
       audio: { ...DEFAULT_AUDIO },
       analysis: { ...DEFAULT_ANALYSIS },
       aiModel: { ...DEFAULT_AI_MODEL },
+      customInstructions: { ...DEFAULT_CUSTOM_INSTRUCTIONS },
       appearance: { ...DEFAULT_APPEARANCE },
 
       setSttLanguage: (language) =>
@@ -238,6 +259,15 @@ export const useSettingsStore = create<SettingsState>()(
       setClinicalSupportModel: (clinicalSupportModel) =>
         set((state) => ({ aiModel: { ...state.aiModel, clinicalSupportModel } })),
 
+      setInsightsInstructions: (insights) =>
+        set((state) => ({ customInstructions: { ...state.customInstructions, insights } })),
+      setDdxInstructions: (ddx) =>
+        set((state) => ({ customInstructions: { ...state.customInstructions, ddx } })),
+      setRecordInstructions: (record) =>
+        set((state) => ({ customInstructions: { ...state.customInstructions, record } })),
+      setResearchInstructions: (research) =>
+        set((state) => ({ customInstructions: { ...state.customInstructions, research } })),
+
       setTheme: (theme) =>
         set((state) => ({ appearance: { ...state.appearance, theme } })),
 
@@ -247,6 +277,7 @@ export const useSettingsStore = create<SettingsState>()(
           audio: { ...DEFAULT_AUDIO },
           analysis: { ...DEFAULT_ANALYSIS },
           aiModel: { ...DEFAULT_AI_MODEL },
+          customInstructions: { ...DEFAULT_CUSTOM_INSTRUCTIONS },
           appearance: { ...DEFAULT_APPEARANCE },
         }),
     }),
@@ -261,6 +292,7 @@ export const useSettingsStore = create<SettingsState>()(
           audio: { ...current.audio, ...p?.audio },
           analysis: { ...current.analysis, ...p?.analysis },
           aiModel: { ...current.aiModel, ...p?.aiModel },
+          customInstructions: { ...current.customInstructions, ...p?.customInstructions },
           appearance: { ...current.appearance, ...p?.appearance },
         }
       },

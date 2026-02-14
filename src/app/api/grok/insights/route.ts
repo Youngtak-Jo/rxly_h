@@ -16,6 +16,7 @@ export async function POST(req: Request) {
       inlineComments,
       currentInsights,
       model: modelOverride,
+      customInstructions,
     } = await req.json()
 
     const hasNewImages = newImageUrls && newImageUrls.length > 0
@@ -120,9 +121,13 @@ export async function POST(req: Request) {
       }
     }
 
+    const systemPrompt = customInstructions?.trim()
+      ? `${INSIGHTS_SYSTEM_PROMPT}\n\n--- DOCTOR'S CUSTOM INSTRUCTIONS ---\n${customInstructions}\n--- END CUSTOM INSTRUCTIONS ---`
+      : INSIGHTS_SYSTEM_PROMPT
+
     const result = streamText({
       model,
-      system: INSIGHTS_SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [
         {
           role: "user",

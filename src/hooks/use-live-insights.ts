@@ -125,7 +125,7 @@ export function useLiveInsights() {
           // Ignore notes fetch failure
         }
 
-        const { insightsModel } = useSettingsStore.getState().aiModel
+        const { aiModel, customInstructions } = useSettingsStore.getState()
 
         const res = await fetch("/api/grok/insights", {
           method: "POST",
@@ -137,7 +137,8 @@ export function useLiveInsights() {
             previousImageFindings,
             mode,
             previousSummary,
-            model: insightsModel,
+            model: aiModel.insightsModel,
+            customInstructions: customInstructions.insights || undefined,
             inlineComments: pendingComments.length > 0 ? pendingComments : undefined,
             currentInsights: {
               summary,

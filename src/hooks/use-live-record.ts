@@ -46,7 +46,7 @@ export async function generateRecord(
   // Need at least transcript, notes, or images to generate
   if (!transcript.trim() && !doctorNotes.trim() && imageUrls.length === 0) return
 
-  const { recordModel } = useSettingsStore.getState().aiModel
+  const { aiModel, customInstructions } = useSettingsStore.getState()
 
   setGenerating(true)
   try {
@@ -60,7 +60,8 @@ export async function generateRecord(
         insights: { summary, keyFindings },
         sessionId,
         existingRecord,
-        model: recordModel,
+        model: aiModel.recordModel,
+        customInstructions: customInstructions.record || undefined,
       }),
       signal,
     })

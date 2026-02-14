@@ -90,7 +90,7 @@ export function useLiveDdx() {
         }
 
         const enabledConnectors = useConnectorStore.getState().connectors
-        const { ddxModel } = useSettingsStore.getState().aiModel
+        const { aiModel, customInstructions } = useSettingsStore.getState()
 
         const res = await fetch("/api/grok/ddx", {
           method: "POST",
@@ -98,7 +98,8 @@ export function useLiveDdx() {
           body: JSON.stringify({
             transcript,
             doctorNotes,
-            model: ddxModel,
+            model: aiModel.ddxModel,
+            customInstructions: customInstructions.ddx || undefined,
             currentInsights: { summary, keyFindings, redFlags },
             currentDiagnoses: diagnoses.map((dx) => ({
               icdCode: dx.icdCode,

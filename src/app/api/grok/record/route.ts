@@ -14,6 +14,7 @@ export async function POST(req: Request) {
       sessionId,
       existingRecord,
       model: modelOverride,
+      customInstructions,
     } = await req.json()
 
     if (!transcript?.trim() && !doctorNotes?.trim() && (!imageUrls || imageUrls.length === 0)) {
@@ -53,9 +54,13 @@ export async function POST(req: Request) {
       }
     }
 
+    const systemPrompt = customInstructions?.trim()
+      ? `${RECORD_SYSTEM_PROMPT}\n\n--- DOCTOR'S CUSTOM INSTRUCTIONS ---\n${customInstructions}\n--- END CUSTOM INSTRUCTIONS ---`
+      : RECORD_SYSTEM_PROMPT
+
     const result = streamText({
       model,
-      system: RECORD_SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [
         {
           role: "user",

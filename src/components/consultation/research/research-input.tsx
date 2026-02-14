@@ -91,13 +91,14 @@ export function ResearchInput() {
         content: m.content,
       }))
 
-      const { researchModel } = useSettingsStore.getState().aiModel
+      const { aiModel, customInstructions } = useSettingsStore.getState()
 
       const body: Record<string, unknown> = {
         question,
         conversationHistory,
         enabledConnectors: connectors,
-        model: researchModel,
+        model: aiModel.researchModel,
+        customInstructions: customInstructions.research || undefined,
         insightsContext: includeInsights
           ? {
               summary: insights.summary,

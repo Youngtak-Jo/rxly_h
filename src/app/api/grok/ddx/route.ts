@@ -45,6 +45,7 @@ export async function POST(req: Request) {
       currentDiagnoses,
       enabledConnectors,
       model: modelOverride,
+      customInstructions,
     } = await req.json()
 
     if (!transcript?.trim() && !doctorNotes?.trim()) {
@@ -140,9 +141,13 @@ ${(transcript || "").slice(-3000)}
       userPrompt += `\n\n--- EXTERNAL MEDICAL KNOWLEDGE (use for diagnosis citations) ---${ragContextText}\n--- END EXTERNAL KNOWLEDGE ---`
     }
 
+    const systemPrompt = customInstructions?.trim()
+      ? `${DDX_SYSTEM_PROMPT}\n\n--- DOCTOR'S CUSTOM INSTRUCTIONS ---\n${customInstructions}\n--- END CUSTOM INSTRUCTIONS ---`
+      : DDX_SYSTEM_PROMPT
+
     const { text } = await generateText({
       model,
-      system: DDX_SYSTEM_PROMPT,
+      system: systemPrompt,
       prompt: userPrompt,
       temperature: 0.3,
     })
