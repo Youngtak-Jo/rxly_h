@@ -9,7 +9,7 @@ export default function AuthLayout({
     <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
       <div className="flex justify-center">
         <a href="/">
-          <Image src="/logo.png" alt="Rxly" width={120} height={36} />
+          <Image src="/logo.svg" alt="Rxly" width={120} height={36} />
         </a>
       </div>
       <div className="w-full max-w-sm">{children}</div>
