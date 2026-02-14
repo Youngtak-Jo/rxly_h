@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import type {
   ChecklistItem,
+  DiagnosisItem,
   InlineComment,
   InsightsResponse,
 } from "@/types/insights"
@@ -11,6 +12,7 @@ interface InsightsState {
   keyFindings: string[]
   redFlags: string[]
   checklistItems: ChecklistItem[]
+  diagnoses: DiagnosisItem[]
   isProcessing: boolean
   lastUpdated: Date | null
   wordCountAtLastUpdate: number
@@ -31,6 +33,7 @@ interface InsightsState {
     keyFindings: string[]
     redFlags: string[]
     checklistItems: ChecklistItem[]
+    diagnoses?: DiagnosisItem[]
   }) => void
   toggleChecklistItem: (id: string) => void
   addChecklistItem: (label: string, sessionId: string) => void
@@ -48,6 +51,7 @@ export const useInsightsStore = create<InsightsState>((set) => ({
   keyFindings: [],
   redFlags: [],
   checklistItems: [],
+  diagnoses: [],
   isProcessing: false,
   lastUpdated: null,
   wordCountAtLastUpdate: 0,
@@ -104,11 +108,25 @@ export const useInsightsStore = create<InsightsState>((set) => ({
           item.source === "MANUAL" && !returnedIds.has(item.id)
       )
 
+      const diagnoses: DiagnosisItem[] = (response.diagnoses ?? []).map(
+        (dx, index) => ({
+          id: uuid(),
+          sessionId,
+          icdCode: dx.icdCode,
+          diseaseName: dx.diseaseName,
+          confidence: dx.confidence,
+          evidence: dx.evidence,
+          citations: dx.citations,
+          sortOrder: index,
+        })
+      )
+
       return {
         summary: response.summary,
         keyFindings: response.keyFindings,
         redFlags: response.redFlags,
         checklistItems: [...reconciledItems, ...manualItems],
+        diagnoses,
         isProcessing: false,
         lastUpdated: new Date(),
       }
@@ -120,6 +138,7 @@ export const useInsightsStore = create<InsightsState>((set) => ({
       keyFindings: data.keyFindings || [],
       redFlags: data.redFlags || [],
       checklistItems: data.checklistItems || [],
+      diagnoses: data.diagnoses || [],
     }),
 
   toggleChecklistItem: (id) =>
@@ -182,6 +201,7 @@ export const useInsightsStore = create<InsightsState>((set) => ({
       keyFindings: [],
       redFlags: [],
       checklistItems: [],
+      diagnoses: [],
       isProcessing: false,
       lastUpdated: null,
       wordCountAtLastUpdate: 0,
