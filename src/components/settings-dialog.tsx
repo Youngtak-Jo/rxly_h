@@ -561,6 +561,7 @@ function ModelSettings() {
     setSpeakerIdModel,
     setDiagnosticKeywordsModel,
     setClinicalSupportModel,
+    setAiDoctorModel,
   } = useSettingsStore()
 
   return (
@@ -643,6 +644,17 @@ function ModelSettings() {
           value={aiModel.clinicalSupportModel}
           onValueChange={setClinicalSupportModel}
           recommendedModel={DEFAULT_AI_MODEL.clinicalSupportModel}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="AI Doctor Model"
+        description="Used for AI doctor consultations."
+      >
+        <ModelSelector
+          value={aiModel.aiDoctorModel}
+          onValueChange={setAiDoctorModel}
+          recommendedModel={DEFAULT_AI_MODEL.aiDoctorModel}
         />
       </SettingRow>
     </div>

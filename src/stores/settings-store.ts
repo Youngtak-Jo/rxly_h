@@ -98,6 +98,7 @@ interface AiModelSettings {
   speakerIdModel: string
   diagnosticKeywordsModel: string
   clinicalSupportModel: string
+  aiDoctorModel: string
 }
 
 interface CustomInstructionsSettings {
@@ -158,6 +159,7 @@ interface SettingsState {
   setSpeakerIdModel: (model: string) => void
   setDiagnosticKeywordsModel: (model: string) => void
   setClinicalSupportModel: (model: string) => void
+  setAiDoctorModel: (model: string) => void
   setInsightsInstructions: (instructions: string) => void
   setDdxInstructions: (instructions: string) => void
   setRecordInstructions: (instructions: string) => void
@@ -194,6 +196,7 @@ const DEFAULT_AI_MODEL: AiModelSettings = {
   speakerIdModel: "grok-4-1-fast-non-reasoning",
   diagnosticKeywordsModel: "grok-4-1-fast-non-reasoning",
   clinicalSupportModel: "grok-4-1-fast-non-reasoning",
+  aiDoctorModel: "grok-4-1-fast-non-reasoning",
 }
 
 export { DEFAULT_AI_MODEL }
@@ -258,6 +261,8 @@ export const useSettingsStore = create<SettingsState>()(
         set((state) => ({ aiModel: { ...state.aiModel, diagnosticKeywordsModel } })),
       setClinicalSupportModel: (clinicalSupportModel) =>
         set((state) => ({ aiModel: { ...state.aiModel, clinicalSupportModel } })),
+      setAiDoctorModel: (aiDoctorModel) =>
+        set((state) => ({ aiModel: { ...state.aiModel, aiDoctorModel } })),
 
       setInsightsInstructions: (insights) =>
         set((state) => ({ customInstructions: { ...state.customInstructions, insights } })),

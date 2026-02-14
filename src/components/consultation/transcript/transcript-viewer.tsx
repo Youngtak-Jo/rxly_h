@@ -5,6 +5,8 @@ import { useTranscriptStore } from "@/stores/transcript-store"
 import { useNoteStore, type NoteEntry } from "@/stores/note-store"
 import { cn } from "@/lib/utils"
 import { ChevronDown } from "lucide-react"
+import { useConsultationModeStore } from "@/stores/consultation-mode-store"
+import { ModeSelector } from "./mode-selector"
 import type { Speaker, DiagnosticKeyword, TranscriptEntry } from "@/types/session"
 
 type TimelineItem =
@@ -123,6 +125,8 @@ export function TranscriptViewer() {
   const diagnosticKeywords = useTranscriptStore((s) => s.diagnosticKeywords)
   const highlightStatus = useTranscriptStore((s) => s.highlightStatus)
   const notes = useNoteStore((s) => s.notes)
+  const isAiResponding = useConsultationModeStore((s) => s.isAiResponding)
+  const consultationMode = useConsultationModeStore((s) => s.mode)
   const scrollRef = useRef<HTMLDivElement>(null)
   const isAtBottom = useRef(true)
   const [showScrollButton, setShowScrollButton] = useState(false)
@@ -192,9 +196,7 @@ export function TranscriptViewer() {
       >
         <div className="p-4 flex flex-col">
           {timeline.length === 0 && !interimText && (
-            <p className="text-sm text-muted-foreground/50 italic text-center py-8">
-              Transcript will appear here when recording starts...
-            </p>
+            <ModeSelector />
           )}
 
           {timeline.map((item, i) => {
@@ -324,6 +326,18 @@ export function TranscriptViewer() {
               </div>
             )
           })}
+
+          {isAiResponding && consultationMode === "ai-doctor" && (
+            <div className="flex justify-end mt-2">
+              <div className="max-w-[80%] px-3 py-2 rounded-2xl rounded-tr-sm bg-primary text-primary-foreground">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground/60 animate-bounce [animation-delay:0ms]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground/60 animate-bounce [animation-delay:150ms]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground/60 animate-bounce [animation-delay:300ms]" />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div
             className={cn(

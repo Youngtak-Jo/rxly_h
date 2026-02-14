@@ -23,6 +23,8 @@ import { useUnseenUpdateTracker } from "@/hooks/use-unseen-update-tracker"
 import { useSpeakerIdentification } from "@/hooks/use-speaker-identification"
 import { useDiagnosticHighlights } from "@/hooks/use-diagnostic-highlights"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useAiDoctorStt } from "@/hooks/use-ai-doctor-stt"
+import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import { IconStethoscope, IconLoader2 } from "@tabler/icons-react"
 import { v4 as uuidv4 } from "uuid"
 import { cn } from "@/lib/utils"
@@ -47,6 +49,9 @@ export function ConsultationLayout() {
   // These hooks were in RightPanel but need to run on mobile too
   useSpeakerIdentification()
   useDiagnosticHighlights()
+
+  // AI Doctor STT hook — manages voice input WebSocket lifecycle
+  useAiDoctorStt()
 
   const toggleRightPanel = useCallback(() => {
     const panel = rightPanelRef.current
@@ -80,6 +85,9 @@ export function ConsultationLayout() {
       createdAt: now,
       updatedAt: now,
     }
+
+    // Reset AI doctor mode for new session
+    useConsultationModeStore.getState().reset()
 
     addSession(optimisticSession)
     setActiveSession(optimisticSession)

@@ -27,6 +27,7 @@ import { useRecordingStore } from "@/stores/recording-store"
 import { useNoteStore } from "@/stores/note-store"
 import { useDdxStore } from "@/stores/ddx-store"
 import { useResearchStore } from "@/stores/research-store"
+import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -198,6 +199,7 @@ export function NavSessions() {
     recordingStore.reset()
     noteStore.reset()
     researchStore.reset()
+    useConsultationModeStore.getState().reset()
     useConsultationTabStore.getState().clearAllUnseenUpdates()
 
     try {
@@ -268,6 +270,7 @@ export function NavSessions() {
       // Batch reset+load per store to minimize empty-state renders.
       // React 19 auto-batching merges these into fewer re-renders.
       useConsultationTabStore.getState().clearAllUnseenUpdates()
+      useConsultationModeStore.getState().reset()
       recordingStore.reset()
 
       setActiveSession(session)
@@ -380,6 +383,7 @@ export function NavSessions() {
         recordStore.reset()
         noteStore.reset()
         researchStore.reset()
+        useConsultationModeStore.getState().reset()
         useConsultationTabStore.getState().clearAllUnseenUpdates()
       }
     } catch (error) {

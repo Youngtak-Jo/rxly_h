@@ -7,13 +7,18 @@ import { useSessionStore } from "@/stores/session-store"
 import { useNoteStore } from "@/stores/note-store"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useDdxStore } from "@/stores/ddx-store"
+import { useConsultationModeStore } from "@/stores/consultation-mode-store"
+import { useAiDoctor } from "@/hooks/use-ai-doctor"
 import {
   IconPaperclip,
   IconSend,
   IconX,
   IconLoader2,
+  IconMicrophone,
+  IconMicrophoneOff,
 } from "@tabler/icons-react"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 interface Attachment {
   file: File
@@ -27,6 +32,19 @@ export function NoteInputBar() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const activeSession = useSessionStore((s) => s.activeSession)
+
+  const mode = useConsultationModeStore((s) => s.mode)
+  const consultationStarted = useConsultationModeStore(
+    (s) => s.consultationStarted
+  )
+  const isAiResponding = useConsultationModeStore((s) => s.isAiResponding)
+  const isMicActive = useConsultationModeStore((s) => s.isMicActive)
+  const setMicActive = useConsultationModeStore((s) => s.setMicActive)
+
+  const { sendMessage } = useAiDoctor()
+
+  const isAiDoctorMode = mode === "ai-doctor"
+  const isAiDoctorActive = isAiDoctorMode && consultationStarted
 
   // Cleanup object URLs on unmount to prevent memory leaks
   useEffect(() => {
@@ -86,7 +104,7 @@ export function NoteInputBar() {
     [handleFileSelect]
   )
 
-  const handleSend = async () => {
+  const handleSendNote = async () => {
     if ((!text.trim() && attachments.length === 0) || !activeSession) return
     setIsSending(true)
 
@@ -155,12 +173,71 @@ export function NoteInputBar() {
     }
   }
 
+  const handleSendAiDoctor = async () => {
+    if ((!text.trim() && attachments.length === 0) || !activeSession || isAiResponding) return
+    setIsSending(true)
+
+    try {
+      // Upload images first (reuse same Supabase upload flow)
+      const imageUrls: string[] = []
+      for (const attachment of attachments) {
+        const formData = new FormData()
+        formData.append("file", attachment.file)
+        formData.append("sessionId", activeSession.id)
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        })
+        if (res.ok) {
+          const data = await res.json()
+          imageUrls.push(data.url)
+        }
+      }
+
+      const message = text.trim()
+      setText("")
+      setAttachments((prev) => {
+        prev.forEach((a) => URL.revokeObjectURL(a.preview))
+        return []
+      })
+      textareaRef.current?.focus()
+
+      await sendMessage(message, imageUrls.length > 0 ? imageUrls : undefined)
+    } catch (error) {
+      console.error("Failed to send AI doctor message:", error)
+      toast.error("Failed to send message")
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  const handleSend = () => {
+    if (isAiDoctorActive) {
+      handleSendAiDoctor()
+    } else {
+      handleSendNote()
+    }
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
   }
+
+  const getPlaceholder = () => {
+    if (!activeSession) return "Start a session first..."
+    if (isAiDoctorActive) return "Type your message..."
+    if (isAiDoctorMode) return "Start the AI consultation first..."
+    return "Add a note to the consultation..."
+  }
+
+  const isSendDisabled =
+    (!text.trim() && attachments.length === 0) ||
+    !activeSession ||
+    isSending ||
+    (isAiDoctorActive && isAiResponding)
 
   return (
     <div data-tour="note-input" className="border-t p-3">
@@ -203,16 +280,17 @@ export function NoteInputBar() {
         </Button>
         <Textarea
           ref={textareaRef}
-          placeholder={
-            activeSession
-              ? "Add a note to the consultation..."
-              : "Start a session first..."
-          }
+          placeholder={getPlaceholder()}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          disabled={!activeSession || isSending}
+          disabled={
+            !activeSession ||
+            isSending ||
+            (isAiDoctorMode && !consultationStarted) ||
+            isAiResponding
+          }
           className="min-h-[36px] max-h-[120px] resize-none text-sm"
           rows={1}
         />
@@ -220,18 +298,34 @@ export function NoteInputBar() {
           onClick={handleSend}
           size="icon"
           className="h-9 w-9 shrink-0"
-          disabled={
-            (!text.trim() && attachments.length === 0) ||
-            !activeSession ||
-            isSending
-          }
+          disabled={isSendDisabled}
         >
-          {isSending ? (
+          {isSending || isAiResponding ? (
             <IconLoader2 className="size-4 animate-spin" />
           ) : (
             <IconSend className="size-4" />
           )}
         </Button>
+
+        {/* Mic toggle button - only in AI doctor mode when consultation started */}
+        {isAiDoctorActive && (
+          <Button
+            variant={isMicActive ? "default" : "ghost"}
+            size="icon"
+            className={cn(
+              "h-9 w-9 shrink-0",
+              isMicActive && "bg-primary text-primary-foreground"
+            )}
+            onClick={() => setMicActive(!isMicActive)}
+            disabled={isAiResponding}
+          >
+            {isMicActive ? (
+              <IconMicrophone className="size-4 animate-pulse" />
+            ) : (
+              <IconMicrophoneOff className="size-4" />
+            )}
+          </Button>
+        )}
       </div>
     </div>
   )
