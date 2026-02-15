@@ -38,6 +38,7 @@ export async function updateSession(request: NextRequest) {
     "/auth",
     "/api",
     "/export",
+    "/manifest.json",
   ]
 
   // Redirect unauthenticated users to /login
