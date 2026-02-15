@@ -100,19 +100,24 @@ const globalForPrisma = globalThis as unknown as {
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function createPrismaClient() {
-  const isPgBouncer = process.env.DATABASE_URL?.includes("pgbouncer=true")
-
   const base = new PrismaClient({
     datasourceUrl: process.env.DATABASE_URL,
     log:
       process.env.NODE_ENV !== "production"
         ? ["warn", "error"]
         : ["error"],
-    // When using PgBouncer, keep Prisma's internal pool small
-    // to avoid exhausting the external pooler's connection limit.
-    ...(isPgBouncer
-      ? {}
-      : {}),
+  })
+
+  // Prevent idle-in-transaction zombies: auto-kill connections stuck in
+  // BEGIN for more than 5 minutes (300 000 ms).
+  base.$connect().then(async () => {
+    try {
+      await base.$executeRawUnsafe(
+        `SET idle_in_transaction_session_timeout = '300000'`
+      )
+    } catch {
+      // non-fatal — some providers may not support this
+    }
   })
 
   return base.$extends({
