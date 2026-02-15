@@ -136,7 +136,7 @@ export function useLiveDdx() {
           )
         }
 
-        const parsed = await res.json()
+        const parsed = await res!.json()
 
         if (parsed.diagnoses && Array.isArray(parsed.diagnoses)) {
           updateFromResponse(parsed.diagnoses, session.id)
