@@ -74,6 +74,30 @@ export const EMR_PROVIDERS = [
   { value: "medplum" as const, label: "Medplum" },
 ] as const
 
+export const FONT_SIZE_OPTIONS = [
+  { value: "small" as const, label: "Small" },
+  { value: "default" as const, label: "Default" },
+  { value: "large" as const, label: "Large" },
+  { value: "extra-large" as const, label: "Extra Large" },
+] as const
+
+export const UI_DENSITY_OPTIONS = [
+  { value: "compact" as const, label: "Compact" },
+  { value: "default" as const, label: "Default" },
+  { value: "comfortable" as const, label: "Comfortable" },
+] as const
+
+export const BORDER_RADIUS_OPTIONS = [
+  { value: "none" as const, label: "None" },
+  { value: "small" as const, label: "Small" },
+  { value: "default" as const, label: "Default" },
+  { value: "large" as const, label: "Large" },
+] as const
+
+export type FontSize = (typeof FONT_SIZE_OPTIONS)[number]["value"]
+export type UiDensity = (typeof UI_DENSITY_OPTIONS)[number]["value"]
+export type BorderRadius = (typeof BORDER_RADIUS_OPTIONS)[number]["value"]
+
 interface SttSettings {
   language: string
   smartFormat: boolean
@@ -119,6 +143,17 @@ interface EmrSettings {
 
 interface AppearanceSettings {
   theme: "light" | "dark" | "system"
+  fontSize: FontSize
+  uiDensity: UiDensity
+  borderRadius: BorderRadius
+}
+
+interface AccessibilitySettings {
+  reducedMotion: boolean
+  highContrast: boolean
+  enhancedFocusIndicators: boolean
+  textSpacing: boolean
+  largeClickTargets: boolean
 }
 
 export type SettingsPage =
@@ -129,6 +164,7 @@ export type SettingsPage =
   | "appearance"
   | "connectors"
   | "emr"
+  | "accessibility"
 
 interface SettingsDialogState {
   open: boolean
@@ -152,6 +188,7 @@ interface SettingsState {
   customInstructions: CustomInstructionsSettings
   emr: EmrSettings
   appearance: AppearanceSettings
+  accessibility: AccessibilitySettings
   setSttLanguage: (language: string) => void
   setSttSmartFormat: (enabled: boolean) => void
   setSttDiarize: (enabled: boolean) => void
@@ -178,6 +215,14 @@ interface SettingsState {
   setResearchInstructions: (instructions: string) => void
   setEmrProvider: (provider: EmrSettings["provider"]) => void
   setTheme: (theme: "light" | "dark" | "system") => void
+  setFontSize: (fontSize: FontSize) => void
+  setUiDensity: (uiDensity: UiDensity) => void
+  setBorderRadius: (borderRadius: BorderRadius) => void
+  setReducedMotion: (enabled: boolean) => void
+  setHighContrast: (enabled: boolean) => void
+  setEnhancedFocusIndicators: (enabled: boolean) => void
+  setTextSpacing: (enabled: boolean) => void
+  setLargeClickTargets: (enabled: boolean) => void
   resetToDefaults: () => void
 }
 
@@ -228,6 +273,17 @@ const DEFAULT_EMR: EmrSettings = {
 
 const DEFAULT_APPEARANCE: AppearanceSettings = {
   theme: "system",
+  fontSize: "default",
+  uiDensity: "default",
+  borderRadius: "default",
+}
+
+const DEFAULT_ACCESSIBILITY: AccessibilitySettings = {
+  reducedMotion: false,
+  highContrast: false,
+  enhancedFocusIndicators: false,
+  textSpacing: false,
+  largeClickTargets: false,
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -240,6 +296,7 @@ export const useSettingsStore = create<SettingsState>()(
       customInstructions: { ...DEFAULT_CUSTOM_INSTRUCTIONS },
       emr: { ...DEFAULT_EMR },
       appearance: { ...DEFAULT_APPEARANCE },
+      accessibility: { ...DEFAULT_ACCESSIBILITY },
 
       setSttLanguage: (language) =>
         set((state) => ({ stt: { ...state.stt, language } })),
@@ -299,6 +356,23 @@ export const useSettingsStore = create<SettingsState>()(
 
       setTheme: (theme) =>
         set((state) => ({ appearance: { ...state.appearance, theme } })),
+      setFontSize: (fontSize) =>
+        set((state) => ({ appearance: { ...state.appearance, fontSize } })),
+      setUiDensity: (uiDensity) =>
+        set((state) => ({ appearance: { ...state.appearance, uiDensity } })),
+      setBorderRadius: (borderRadius) =>
+        set((state) => ({ appearance: { ...state.appearance, borderRadius } })),
+
+      setReducedMotion: (reducedMotion) =>
+        set((state) => ({ accessibility: { ...state.accessibility, reducedMotion } })),
+      setHighContrast: (highContrast) =>
+        set((state) => ({ accessibility: { ...state.accessibility, highContrast } })),
+      setEnhancedFocusIndicators: (enhancedFocusIndicators) =>
+        set((state) => ({ accessibility: { ...state.accessibility, enhancedFocusIndicators } })),
+      setTextSpacing: (textSpacing) =>
+        set((state) => ({ accessibility: { ...state.accessibility, textSpacing } })),
+      setLargeClickTargets: (largeClickTargets) =>
+        set((state) => ({ accessibility: { ...state.accessibility, largeClickTargets } })),
 
       resetToDefaults: () =>
         set({
@@ -309,6 +383,7 @@ export const useSettingsStore = create<SettingsState>()(
           customInstructions: { ...DEFAULT_CUSTOM_INSTRUCTIONS },
           emr: { ...DEFAULT_EMR },
           appearance: { ...DEFAULT_APPEARANCE },
+          accessibility: { ...DEFAULT_ACCESSIBILITY },
         }),
     }),
     {
@@ -325,6 +400,7 @@ export const useSettingsStore = create<SettingsState>()(
           customInstructions: { ...current.customInstructions, ...p?.customInstructions },
           emr: { ...current.emr, ...p?.emr },
           appearance: { ...current.appearance, ...p?.appearance },
+          accessibility: { ...current.accessibility, ...p?.accessibility },
         }
       },
     }

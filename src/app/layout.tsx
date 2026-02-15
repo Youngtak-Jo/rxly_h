@@ -5,6 +5,7 @@ import { Toaster } from "sonner"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { AppearanceProvider } from "@/components/appearance-provider"
 import { SessionTimeoutDialog } from "@/components/session-timeout-dialog"
 import "./globals.css"
 
@@ -66,6 +67,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <AppearanceProvider />
           <TooltipProvider>
             {children}
             <SessionTimeoutDialog />

@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useTheme } from "next-themes"
 import {
+  IconAccessible,
   IconBrain,
   IconBuildingHospital,
   IconChartBar,
@@ -68,8 +69,22 @@ import {
   AI_MODELS,
   DEFAULT_AI_MODEL,
   EMR_PROVIDERS,
+  FONT_SIZE_OPTIONS,
+  UI_DENSITY_OPTIONS,
+  BORDER_RADIUS_OPTIONS,
 } from "@/stores/settings-store"
-import type { SettingsPage } from "@/stores/settings-store"
+import type {
+  SettingsPage,
+  FontSize,
+  UiDensity,
+  BorderRadius,
+} from "@/stores/settings-store"
+import {
+  applyFontSize,
+  applyUiDensity,
+  applyBorderRadius,
+  applyAllAppearanceSettings,
+} from "@/lib/apply-appearance"
 import { useConnectorStore } from "@/stores/connector-store"
 import type { ConnectorState } from "@/types/insights"
 
@@ -117,6 +132,7 @@ const NAV_ITEMS = [
   { key: "instructions" as const, label: "Custom Instructions", icon: IconMessageChatbot },
   { key: "connectors" as const, label: "Knowledge Connectors", icon: IconPlug },
   { key: "emr" as const, label: "EMR/EHR", icon: IconBuildingHospital },
+  { key: "accessibility" as const, label: "Accessibility", icon: IconAccessible },
   { key: "appearance" as const, label: "Appearance", icon: IconPalette },
 ]
 
@@ -148,6 +164,7 @@ export function SettingsDialog() {
       {activePage === "instructions" && <CustomInstructionsSettings />}
       {activePage === "connectors" && <ConnectorsSettings />}
       {activePage === "emr" && <EMRSettings />}
+      {activePage === "accessibility" && <AccessibilitySettings />}
       {activePage === "appearance" && <AppearanceSettings />}
     </>
   )
@@ -161,7 +178,7 @@ export function SettingsDialog() {
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <DialogDescription className="sr-only">
           Configure transcription, analysis, AI models, EMR/EHR,
-          knowledge connectors, and appearance settings.
+          knowledge connectors, accessibility, and appearance settings.
         </DialogDescription>
 
         {/* Desktop layout */}
@@ -784,6 +801,11 @@ function ResetToDefaultsButton() {
     useSettingsStore.getState().resetToDefaults()
     useConnectorStore.getState().reset()
     setNextTheme("system")
+    applyAllAppearanceSettings({
+      fontSize: "default",
+      uiDensity: "default",
+      borderRadius: "default",
+    })
   }
 
   return (
@@ -842,13 +864,104 @@ function EMRSettings() {
   )
 }
 
+function AccessibilitySettings() {
+  const {
+    accessibility,
+    setReducedMotion,
+    setHighContrast,
+    setEnhancedFocusIndicators,
+    setTextSpacing,
+    setLargeClickTargets,
+  } = useSettingsStore()
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Adjust settings for improved readability and interaction. These
+        preferences are saved locally and apply immediately.
+      </p>
+
+      <SettingRow
+        label="Reduced Motion"
+        description="Disable animations and transitions throughout the interface."
+      >
+        <Switch
+          checked={accessibility.reducedMotion}
+          onCheckedChange={setReducedMotion}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="High Contrast"
+        description="Increase text and border contrast for better readability."
+      >
+        <Switch
+          checked={accessibility.highContrast}
+          onCheckedChange={setHighContrast}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Enhanced Focus Indicators"
+        description="Show larger, more visible focus rings when navigating with keyboard."
+      >
+        <Switch
+          checked={accessibility.enhancedFocusIndicators}
+          onCheckedChange={setEnhancedFocusIndicators}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Text Spacing"
+        description="Increase line height, letter spacing, and word spacing for easier reading."
+      >
+        <Switch
+          checked={accessibility.textSpacing}
+          onCheckedChange={setTextSpacing}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Large Click Targets"
+        description="Enforce minimum 44px touch targets on all interactive elements."
+      >
+        <Switch
+          checked={accessibility.largeClickTargets}
+          onCheckedChange={setLargeClickTargets}
+        />
+      </SettingRow>
+    </div>
+  )
+}
+
 function AppearanceSettings() {
-  const { appearance, setTheme } = useSettingsStore()
+  const {
+    appearance,
+    setTheme,
+    setFontSize,
+    setUiDensity,
+    setBorderRadius,
+  } = useSettingsStore()
   const { setTheme: setNextTheme } = useTheme()
 
   const handleThemeChange = (theme: "light" | "dark" | "system") => {
     setTheme(theme)
     setNextTheme(theme)
+  }
+
+  const handleFontSizeChange = (fontSize: FontSize) => {
+    setFontSize(fontSize)
+    applyFontSize(fontSize)
+  }
+
+  const handleUiDensityChange = (uiDensity: UiDensity) => {
+    setUiDensity(uiDensity)
+    applyUiDensity(uiDensity)
+  }
+
+  const handleBorderRadiusChange = (borderRadius: BorderRadius) => {
+    setBorderRadius(borderRadius)
+    applyBorderRadius(borderRadius)
   }
 
   return (
@@ -865,6 +978,60 @@ function AppearanceSettings() {
             <SelectItem value="light">Light</SelectItem>
             <SelectItem value="dark">Dark</SelectItem>
             <SelectItem value="system">System</SelectItem>
+          </SelectContent>
+        </Select>
+      </SettingRow>
+
+      <SettingRow
+        label="Font Size"
+        description="Adjust the text size across the interface."
+      >
+        <Select value={appearance.fontSize} onValueChange={handleFontSizeChange}>
+          <SelectTrigger className="w-[160px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FONT_SIZE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SettingRow>
+
+      <SettingRow
+        label="UI Density"
+        description="Control the spacing and padding of interface elements."
+      >
+        <Select value={appearance.uiDensity} onValueChange={handleUiDensityChange}>
+          <SelectTrigger className="w-[160px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {UI_DENSITY_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SettingRow>
+
+      <SettingRow
+        label="Border Radius"
+        description="Set the corner roundness for UI elements."
+      >
+        <Select value={appearance.borderRadius} onValueChange={handleBorderRadiusChange}>
+          <SelectTrigger className="w-[160px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {BORDER_RADIUS_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </SettingRow>

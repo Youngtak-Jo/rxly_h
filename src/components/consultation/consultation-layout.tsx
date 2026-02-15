@@ -26,7 +26,8 @@ import { useDiagnosticHighlights } from "@/hooks/use-diagnostic-highlights"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useAiDoctorStt } from "@/hooks/use-ai-doctor-stt"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
-import { IconStethoscope, IconLoader2 } from "@tabler/icons-react"
+import { IconLoader2 } from "@tabler/icons-react"
+import Image from "next/image"
 import { v4 as uuidv4 } from "uuid"
 import { cn } from "@/lib/utils"
 
@@ -133,8 +134,8 @@ export function ConsultationLayout() {
   if (!activeSession && !isSwitching) {
     return (
       <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-4 p-8 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
-          <IconStethoscope className="h-8 w-8 text-muted-foreground" />
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl">
+          <Image src="/icon1.png" alt="Rxly logo" width={64} height={64} className="rounded-2xl" />
         </div>
         <div>
           <h2 className="text-lg font-semibold">No Active Consultation</h2>

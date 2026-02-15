@@ -39,6 +39,9 @@ export function useSpeakerIdentification() {
   const setSingleSpeakerDetected = useTranscriptStore(
     (s) => s.setSingleSpeakerDetected
   )
+  const speakerCheckBaseIndex = useTranscriptStore(
+    (s) => s.speakerCheckBaseIndex
+  )
 
   useEffect(() => {
     // Already identified or currently identifying
@@ -46,10 +49,14 @@ export function useSpeakerIdentification() {
       return
     }
 
-    // Compute unique speaker IDs once for all checks below
+    // Only consider entries from the current recording segment
+    const recentEntries = entries.slice(speakerCheckBaseIndex)
+    const newEntryCount = recentEntries.length
+
+    // Compute unique speaker IDs from current segment only
     const uniqueSpeakerIds = [
       ...new Set(
-        entries
+        recentEntries
           .map((e) => e.rawSpeakerId)
           .filter((id): id is number => id !== undefined)
       ),
@@ -78,16 +85,16 @@ export function useSpeakerIdentification() {
       return
     }
 
-    // Check if we have enough entries for this attempt
+    // Check if we have enough entries for this attempt (relative to current segment)
     const requiredEntries = ENTRIES_PER_ATTEMPT * (identificationAttempt + 1)
 
-    if (entries.length < requiredEntries) return
+    if (newEntryCount < requiredEntries) return
 
     // Need at least 2 unique speakers to identify
     if (uniqueSpeakerIds.length < 2) {
       // Single-speaker detection: after 5 entries with only 1 speaker
       if (
-        entries.length >= 5 &&
+        newEntryCount >= 5 &&
         !singleSpeakerDetected &&
         !singleSpeakerPromptDismissed
       ) {
@@ -103,7 +110,7 @@ export function useSpeakerIdentification() {
       incrementIdentificationAttempt()
 
       try {
-        const utterances = entries.slice(0, requiredEntries).map((e) => ({
+        const utterances = recentEntries.slice(0, requiredEntries).map((e) => ({
           speakerId: e.rawSpeakerId ?? 0,
           text: e.text,
         }))
@@ -157,6 +164,7 @@ export function useSpeakerIdentification() {
     singleSpeakerPromptDismissed,
     singleSpeakerMode,
     setSingleSpeakerDetected,
+    speakerCheckBaseIndex,
   ])
 }
 

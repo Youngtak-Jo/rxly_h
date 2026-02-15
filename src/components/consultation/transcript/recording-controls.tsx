@@ -108,11 +108,6 @@ export function RecordingControls() {
             className="gap-1.5 h-8"
             disabled={!activeSession}
           >
-            {isAiDoctorMode ? (
-              <IconStethoscope className="size-3.5" />
-            ) : (
-              <IconMicrophone className="size-3.5" />
-            )}
             {isAiDoctorMode ? "Start AI Consultation" : "Start Recording"}
           </Button>
         ) : (

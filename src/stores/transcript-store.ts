@@ -24,6 +24,7 @@ interface TranscriptState {
   singleSpeakerMode: boolean
   lastClassifiedEntryIndex: number
   classifyingEntries: boolean
+  speakerCheckBaseIndex: number
 
   addFinalEntry: (entry: TranscriptEntry) => void
   setInterimText: (text: string, speaker: Speaker) => void
@@ -46,6 +47,7 @@ interface TranscriptState {
   setLastClassifiedEntryIndex: (index: number) => void
   setClassifyingEntries: (classifying: boolean) => void
   relabelEntriesIndividually: (mapping: Record<string, Speaker>) => void
+  resetSpeakerIdentification: () => void
 }
 
 export const useTranscriptStore = create<TranscriptState>((set, get) => ({
@@ -64,6 +66,7 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
   singleSpeakerMode: false,
   lastClassifiedEntryIndex: 0,
   classifyingEntries: false,
+  speakerCheckBaseIndex: 0,
 
   addFinalEntry: (entry) =>
     set((state) => ({
@@ -103,6 +106,7 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
       singleSpeakerMode: false,
       lastClassifiedEntryIndex: 0,
       classifyingEntries: false,
+      speakerCheckBaseIndex: 0,
     }),
 
   getFullTranscript: () => {
@@ -173,5 +177,18 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
         return entry
       }),
       identificationStatus: "identified",
+    })),
+
+  resetSpeakerIdentification: () =>
+    set((state) => ({
+      identificationStatus: "unidentified",
+      identificationAttempt: 0,
+      speakerRoleMap: {},
+      singleSpeakerDetected: false,
+      singleSpeakerPromptDismissed: false,
+      singleSpeakerMode: false,
+      lastClassifiedEntryIndex: state.entries.length,
+      classifyingEntries: false,
+      speakerCheckBaseIndex: state.entries.length,
     })),
 }))

@@ -90,6 +90,9 @@ export function useDeepgram() {
 
   const startListening = useCallback(async () => {
     try {
+      // Reset speaker identification state so detection re-triggers for the new recording segment
+      useTranscriptStore.getState().resetSpeakerIdentification()
+
       // Get temporary token
       const tokenRes = await fetch("/api/deepgram/token", { method: "POST" })
       if (!tokenRes.ok) throw new Error("Failed to get Deepgram token")

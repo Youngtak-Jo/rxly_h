@@ -250,7 +250,7 @@ export function TranscriptViewer() {
                   ? "right"
                   : "center"
 
-            const isDarkBubble = align === "right"
+            const isDarkBubble = false
 
             return (
               <div
@@ -272,7 +272,7 @@ export function TranscriptViewer() {
                     align === "center" && "rounded-2xl",
                     // colors
                     align === "left" && "bg-muted",
-                    align === "right" && "bg-primary text-primary-foreground",
+                    align === "right" && "bg-primary/10 text-foreground backdrop-blur-sm border border-primary/15",
                     align === "center" && "bg-muted/50"
                   )}
                 >
@@ -312,7 +312,7 @@ export function TranscriptViewer() {
                         className={cn(
                           "text-[10px] font-medium",
                           align === "right"
-                            ? "text-primary-foreground/60"
+                            ? "text-primary/70"
                             : "text-muted-foreground"
                         )}
                       >
@@ -322,7 +322,7 @@ export function TranscriptViewer() {
                         className={cn(
                           "text-[10px] font-mono",
                           align === "right"
-                            ? "text-primary-foreground/40"
+                            ? "text-muted-foreground/60"
                             : "text-muted-foreground/60"
                         )}
                       >
@@ -337,11 +337,11 @@ export function TranscriptViewer() {
 
           {isAiResponding && consultationMode === "ai-doctor" && (
             <div className="flex justify-end mt-2">
-              <div className="max-w-[80%] px-3 py-2 rounded-2xl rounded-tr-sm bg-primary text-primary-foreground">
+              <div className="max-w-[80%] px-3 py-2 rounded-2xl rounded-tr-sm bg-primary/10 backdrop-blur-sm border border-primary/15">
                 <div className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground/60 animate-bounce [animation-delay:0ms]" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground/60 animate-bounce [animation-delay:150ms]" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground/60 animate-bounce [animation-delay:300ms]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary/40 animate-bounce [animation-delay:0ms]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary/40 animate-bounce [animation-delay:150ms]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary/40 animate-bounce [animation-delay:300ms]" />
                 </div>
               </div>
             </div>
@@ -368,7 +368,7 @@ export function TranscriptViewer() {
                   : interimSpeaker === "PATIENT"
                     ? "bg-muted rounded-tl-sm"
                     : interimSpeaker === "DOCTOR"
-                      ? "bg-primary text-primary-foreground rounded-tr-sm"
+                      ? "bg-primary/10 text-foreground backdrop-blur-sm border border-primary/15 rounded-tr-sm"
                       : "bg-muted/50"
               )}
             >

@@ -64,7 +64,7 @@ export function RecordContainer() {
           {isGenerating ? (
             <IconLoader2 key="loader" className="size-3.5 animate-spin" />
           ) : (
-            <IconSparkles key="sparkles" className="size-3.5" />
+            ''
           )}
           {isGenerating ? "Generating..." : record ? "Regenerate" : "Generate Record"}
         </Button>
