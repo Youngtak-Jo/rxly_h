@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { AppearanceProvider } from "@/components/appearance-provider"
 import { SessionTimeoutDialog } from "@/components/session-timeout-dialog"
+import { ServiceWorkerRegister } from "@/components/service-worker-register"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -23,7 +24,10 @@ export const metadata: Metadata = {
   description:
     "Real-time AI-powered medical consultation assistant with live transcription and insights",
   other: {
-    "apple-mobile-web-app-title": "MyWebSite",
+    "apple-mobile-web-app-title": "Rxly",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "default",
+    "mobile-web-app-capable": "yes",
   },
   openGraph: {
     title: "Rxly - AI Medical Consultation Assistant",
@@ -72,6 +76,7 @@ export default function RootLayout({
             <SessionTimeoutDialog />
             <Toaster position="bottom-right" richColors />
             <Analytics />
+            <ServiceWorkerRegister />
           </TooltipProvider>
         </ThemeProvider>
       </body>
