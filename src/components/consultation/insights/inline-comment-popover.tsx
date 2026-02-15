@@ -26,6 +26,77 @@ function findSection(node: Node | null): InsightSection | null {
   return null
 }
 
+/**
+ * Wrap each text node in the given Range with a <mark> element
+ * so the selection stays visually highlighted while the popover is open.
+ */
+function highlightRange(range: Range): HTMLElement[] {
+  const marks: HTMLElement[] = []
+
+  // Simple case: selection is within a single text node
+  if (
+    range.startContainer === range.endContainer &&
+    range.startContainer.nodeType === Node.TEXT_NODE
+  ) {
+    const mark = document.createElement("mark")
+    mark.className = "inline-comment-highlight"
+    range.surroundContents(mark)
+    marks.push(mark)
+    return marks
+  }
+
+  // Cross-node selection: highlight each text node individually
+  const walker = document.createTreeWalker(
+    range.commonAncestorContainer,
+    NodeFilter.SHOW_TEXT,
+  )
+
+  const textNodes: Text[] = []
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text
+    if (range.intersectsNode(node) && node.textContent?.trim()) {
+      textNodes.push(node)
+    }
+  }
+
+  // Iterate in reverse so earlier DOM offsets stay valid
+  for (let i = textNodes.length - 1; i >= 0; i--) {
+    const textNode = textNodes[i]
+    const nodeRange = document.createRange()
+
+    if (textNode === range.startContainer) {
+      nodeRange.setStart(textNode, range.startOffset)
+      nodeRange.setEnd(textNode, textNode.length)
+    } else if (textNode === range.endContainer) {
+      nodeRange.setStart(textNode, 0)
+      nodeRange.setEnd(textNode, range.endOffset)
+    } else {
+      nodeRange.selectNodeContents(textNode)
+    }
+
+    const mark = document.createElement("mark")
+    mark.className = "inline-comment-highlight"
+    nodeRange.surroundContents(mark)
+    marks.unshift(mark) // maintain DOM order
+  }
+
+  return marks
+}
+
+/** Remove all <mark> highlights and restore original text nodes. */
+function removeHighlights(marks: HTMLElement[]) {
+  for (const mark of marks) {
+    const parent = mark.parentNode
+    if (parent) {
+      while (mark.firstChild) {
+        parent.insertBefore(mark.firstChild, mark)
+      }
+      parent.removeChild(mark)
+      parent.normalize()
+    }
+  }
+}
+
 export function InlineCommentPopover({
   containerRef,
 }: {
@@ -36,8 +107,11 @@ export function InlineCommentPopover({
   const popoverRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const highlightMarksRef = useRef<HTMLElement[]>([])
 
   const close = useCallback(() => {
+    removeHighlights(highlightMarksRef.current)
+    highlightMarksRef.current = []
     setPopover(null)
     setComment("")
   }, [])
@@ -69,6 +143,21 @@ export function InlineCommentPopover({
 
     const range = selection.getRangeAt(0)
     const rect = range.getBoundingClientRect()
+
+    // Clear any previous highlights before applying new ones
+    removeHighlights(highlightMarksRef.current)
+    highlightMarksRef.current = []
+
+    // Wrap selected text with <mark> elements so the highlight persists
+    try {
+      const clonedRange = range.cloneRange()
+      highlightMarksRef.current = highlightRange(clonedRange)
+    } catch {
+      // Fallback: if DOM manipulation fails, just proceed without highlight
+    }
+
+    // Clear native selection — the <mark> now provides the visual cue
+    selection.removeAllRanges()
 
     setPopover({
       selectedText: text,
