@@ -94,83 +94,102 @@ function decryptArray(
   return records.map((r) => processData(model, r, "decrypt"))
 }
 
-const basePrisma = new PrismaClient()
+const globalForPrisma = globalThis as unknown as {
+  __prisma?: PrismaClient
+}
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export const prisma = basePrisma.$extends({
-  query: {
-    $allModels: {
-      async create({ model, args, query }: any) {
-        if (model && args.data && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
-          args.data = encryptData(model, args.data)
-        }
-        const result = await query(args)
-        if (model && result && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
-          return decryptRecord(model, result)
-        }
-        return result
-      },
-      async update({ model, args, query }: any) {
-        if (model && args.data && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
-          args.data = encryptData(model, args.data)
-        }
-        const result = await query(args)
-        if (model && result && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
-          return decryptRecord(model, result)
-        }
-        return result
-      },
-      async upsert({ model, args, query }: any) {
-        if (model && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
-          if (args.create) {
-            args.create = encryptData(model, args.create)
-          }
-          if (args.update) {
-            args.update = encryptData(model, args.update)
-          }
-        }
-        const result = await query(args)
-        if (model && result && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
-          return decryptRecord(model, result)
-        }
-        return result
-      },
-      async findUnique({ model, args, query }: any) {
-        const result = await query(args)
-        if (model && result && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
-          return decryptRecord(model, result)
-        }
-        return result
-      },
-      async findFirst({ model, args, query }: any) {
-        const result = await query(args)
-        if (model && result && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
-          return decryptRecord(model, result)
-        }
-        return result
-      },
-      async findMany({ model, args, query }: any) {
-        const results = await query(args)
-        if (model && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
-          return decryptArray(model, results)
-        }
-        return results
-      },
-      async createMany({ model, args, query }: any) {
-        if (model && args.data && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
-          if (Array.isArray(args.data)) {
-            args.data = args.data.map((d: any) => encryptData(model, d))
-          } else {
+function createPrismaClient() {
+  const isPgBouncer = process.env.DATABASE_URL?.includes("pgbouncer=true")
+
+  const base = new PrismaClient({
+    datasourceUrl: process.env.DATABASE_URL,
+    log:
+      process.env.NODE_ENV !== "production"
+        ? ["warn", "error"]
+        : ["error"],
+    // When using PgBouncer, keep Prisma's internal pool small
+    // to avoid exhausting the external pooler's connection limit.
+    ...(isPgBouncer
+      ? {}
+      : {}),
+  })
+
+  return base.$extends({
+    query: {
+      $allModels: {
+        async create({ model, args, query }: any) {
+          if (model && args.data && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
             args.data = encryptData(model, args.data)
           }
-        }
-        return query(args)
+          const result = await query(args)
+          if (model && result && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
+            return decryptRecord(model, result)
+          }
+          return result
+        },
+        async update({ model, args, query }: any) {
+          if (model && args.data && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
+            args.data = encryptData(model, args.data)
+          }
+          const result = await query(args)
+          if (model && result && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
+            return decryptRecord(model, result)
+          }
+          return result
+        },
+        async upsert({ model, args, query }: any) {
+          if (model && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
+            if (args.create) {
+              args.create = encryptData(model, args.create)
+            }
+            if (args.update) {
+              args.update = encryptData(model, args.update)
+            }
+          }
+          const result = await query(args)
+          if (model && result && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
+            return decryptRecord(model, result)
+          }
+          return result
+        },
+        async findUnique({ model, args, query }: any) {
+          const result = await query(args)
+          if (model && result && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
+            return decryptRecord(model, result)
+          }
+          return result
+        },
+        async findFirst({ model, args, query }: any) {
+          const result = await query(args)
+          if (model && result && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
+            return decryptRecord(model, result)
+          }
+          return result
+        },
+        async findMany({ model, args, query }: any) {
+          const results = await query(args)
+          if (model && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
+            return decryptArray(model, results)
+          }
+          return results
+        },
+        async createMany({ model, args, query }: any) {
+          if (model && args.data && (PHI_STRING_FIELDS[model] || PHI_JSON_FIELDS[model])) {
+            if (Array.isArray(args.data)) {
+              args.data = args.data.map((d: any) => encryptData(model, d))
+            } else {
+              args.data = encryptData(model, args.data)
+            }
+          }
+          return query(args)
+        },
       },
     },
-  },
-}) as unknown as PrismaClient
+  }) as unknown as PrismaClient
+}
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-const globalForPrisma = globalThis as unknown as { prisma: typeof prisma }
+export const prisma = globalForPrisma.__prisma ?? createPrismaClient()
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
+if (process.env.NODE_ENV !== "production") globalForPrisma.__prisma = prisma
