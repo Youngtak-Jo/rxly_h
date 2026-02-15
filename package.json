@@ -16,6 +16,8 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@medplum/core": "^5.0.14",
+    "@medplum/fhirtypes": "^5.0.14",
     "@prisma/client": "^6.19.2",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.95.3",

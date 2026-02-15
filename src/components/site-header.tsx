@@ -43,8 +43,10 @@ import {
   IconFileTypePdf,
   IconMail,
   IconLoader2,
+  IconCloudUpload,
 } from "@tabler/icons-react"
 import { ExportDropdown } from "@/components/consultation/export-dropdown"
+import { MedplumSyncButton } from "@/components/medplum-sync-button"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useConnectorStore } from "@/stores/connector-store"
 import { useSettingsDialogStore } from "@/stores/settings-store"
@@ -200,6 +202,7 @@ function MobileHeaderMenu() {
   const activeTab = useConsultationTabStore((s) => s.activeTab)
 
   const [simDialogOpen, setSimDialogOpen] = useState(false)
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false)
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
   const [email, setEmail] = useState("")
   const [isSending, setIsSending] = useState(false)
@@ -281,6 +284,10 @@ function MobileHeaderMenu() {
             <IconTestPipe className="size-4" />
             Simulation
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setSyncDialogOpen(true)} disabled={!activeSession}>
+            <IconCloudUpload className="size-4" />
+            Sync to Medplum
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -315,6 +322,7 @@ function MobileHeaderMenu() {
       </Dialog>
 
       <SimulationDialog open={simDialogOpen} onOpenChange={setSimDialogOpen} />
+      <MedplumSyncButton open={syncDialogOpen} onOpenChange={setSyncDialogOpen} />
     </>
   )
 }
@@ -390,6 +398,7 @@ export function SiteHeader() {
               )}
             </Button>
             <SimulationDialog />
+            <MedplumSyncButton />
           </div>
 
           {/* Mobile: combined dropdown */}
