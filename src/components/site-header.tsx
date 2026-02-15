@@ -307,7 +307,7 @@ function MobileHeaderMenu() {
                 ? "Review FHIR Data"
                 : syncStatus === "syncing"
                   ? "Syncing..."
-                  : "Sync to Medplum"}
+                  : "Sync to EMR"}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

@@ -4,6 +4,7 @@ import * as React from "react"
 import { useTheme } from "next-themes"
 import {
   IconBrain,
+  IconBuildingHospital,
   IconChartBar,
   IconChevronLeft,
   IconMessageChatbot,
@@ -66,6 +67,7 @@ import {
   NOVA3_LANGUAGES,
   AI_MODELS,
   DEFAULT_AI_MODEL,
+  EMR_PROVIDERS,
 } from "@/stores/settings-store"
 import type { SettingsPage } from "@/stores/settings-store"
 import { useConnectorStore } from "@/stores/connector-store"
@@ -114,6 +116,7 @@ const NAV_ITEMS = [
   { key: "models" as const, label: "AI Models", icon: IconBrain },
   { key: "instructions" as const, label: "Custom Instructions", icon: IconMessageChatbot },
   { key: "connectors" as const, label: "Knowledge Connectors", icon: IconPlug },
+  { key: "emr" as const, label: "EMR/EHR", icon: IconBuildingHospital },
   { key: "appearance" as const, label: "Appearance", icon: IconPalette },
 ]
 
@@ -144,6 +147,7 @@ export function SettingsDialog() {
       {activePage === "models" && <ModelSettings />}
       {activePage === "instructions" && <CustomInstructionsSettings />}
       {activePage === "connectors" && <ConnectorsSettings />}
+      {activePage === "emr" && <EMRSettings />}
       {activePage === "appearance" && <AppearanceSettings />}
     </>
   )
@@ -156,8 +160,8 @@ export function SettingsDialog() {
       >
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <DialogDescription className="sr-only">
-          Configure transcription, analysis, AI models, knowledge connectors,
-          and appearance settings.
+          Configure transcription, analysis, AI models, EMR/EHR,
+          knowledge connectors, and appearance settings.
         </DialogDescription>
 
         {/* Desktop layout */}
@@ -660,8 +664,8 @@ function ModelSettings() {
       </SettingRow>
 
       <SettingRow
-        label="Medplum FHIR Model"
-        description="Used to convert clinical data into FHIR R4 resources."
+        label="FHIR Mapping Model"
+        description="Used to convert clinical data into FHIR R4 resources for EMR/EHR export."
       >
         <ModelSelector
           value={aiModel.medplumModel}
@@ -804,6 +808,37 @@ function ResetToDefaultsButton() {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  )
+}
+
+function EMRSettings() {
+  const { emr, setEmrProvider } = useSettingsStore()
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Select which Electronic Medical Record (EMR/EHR) system to use for
+        exporting clinical data as FHIR resources.
+      </p>
+
+      <SettingRow
+        label="EMR Provider"
+        description="The EMR/EHR system that receives exported FHIR data."
+      >
+        <Select value={emr.provider} onValueChange={setEmrProvider}>
+          <SelectTrigger className="w-[200px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {EMR_PROVIDERS.map((p) => (
+              <SelectItem key={p.value} value={p.value}>
+                {p.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SettingRow>
+    </div>
   )
 }
 

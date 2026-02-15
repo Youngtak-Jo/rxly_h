@@ -106,7 +106,7 @@ export function MedplumSyncButton() {
             <DialogTitle>Review FHIR Data</DialogTitle>
             <DialogDescription>
               Review and edit the generated FHIR resources before sending to
-              Medplum.
+              your EMR.
             </DialogDescription>
           </DialogHeader>
 
@@ -131,7 +131,7 @@ export function MedplumSyncButton() {
                   {status === "syncing" && (
                     <IconLoader2 className="size-4 animate-spin" />
                   )}
-                  {status === "syncing" ? "Sending..." : "Send to Medplum"}
+                  {status === "syncing" ? "Sending..." : "Send to EMR"}
                 </Button>
               </>
             )}
@@ -145,7 +145,7 @@ export function MedplumSyncButton() {
 function getButtonTitle(status: MedplumSyncStatus): string {
   switch (status) {
     case "idle":
-      return "Sync to Medplum"
+      return "Sync to EMR"
     case "preparing":
       return "Preparing FHIR data..."
     case "ready":
@@ -153,7 +153,7 @@ function getButtonTitle(status: MedplumSyncStatus): string {
     case "reviewing":
       return "Reviewing FHIR data"
     case "syncing":
-      return "Sending to Medplum..."
+      return "Sending to EMR..."
     case "success":
       return "Sync complete (click to reset)"
     case "error":

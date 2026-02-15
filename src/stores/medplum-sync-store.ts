@@ -119,7 +119,7 @@ export const useMedplumSyncStore = create<MedplumSyncState>((set, get) => ({
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to prepare FHIR data"
       set({ status: "error", errorMessage: message })
-      toast.error(`Medplum prepare failed: ${message}`)
+      toast.error(`EMR prepare failed: ${message}`)
     }
   },
 
@@ -209,11 +209,11 @@ export const useMedplumSyncStore = create<MedplumSyncState>((set, get) => ({
       // Clear cache after successful sync
       if (sessionId) removeFromCache(sessionId)
       set({ status: "success", createdResources: data.resources || [] })
-      toast.success(`Medplum sync complete: ${data.resourceCount} resources created`)
+      toast.success(`EMR sync complete: ${data.resourceCount} resources created`)
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to sync to Medplum"
+      const message = err instanceof Error ? err.message : "Failed to sync to EMR"
       set({ status: "error", errorMessage: message })
-      toast.error(`Medplum sync failed: ${message}`)
+      toast.error(`EMR sync failed: ${message}`)
     }
   },
 

@@ -70,6 +70,10 @@ export const AI_MODELS = [
   { value: "claude-sonnet-4-5-20250929", label: "Claude Sonnet 4.5" },
 ] as const
 
+export const EMR_PROVIDERS = [
+  { value: "medplum" as const, label: "Medplum" },
+] as const
+
 interface SttSettings {
   language: string
   smartFormat: boolean
@@ -109,6 +113,10 @@ interface CustomInstructionsSettings {
   research: string
 }
 
+interface EmrSettings {
+  provider: (typeof EMR_PROVIDERS)[number]["value"]
+}
+
 interface AppearanceSettings {
   theme: "light" | "dark" | "system"
 }
@@ -120,6 +128,7 @@ export type SettingsPage =
   | "instructions"
   | "appearance"
   | "connectors"
+  | "emr"
 
 interface SettingsDialogState {
   open: boolean
@@ -141,6 +150,7 @@ interface SettingsState {
   analysis: AnalysisSettings
   aiModel: AiModelSettings
   customInstructions: CustomInstructionsSettings
+  emr: EmrSettings
   appearance: AppearanceSettings
   setSttLanguage: (language: string) => void
   setSttSmartFormat: (enabled: boolean) => void
@@ -166,6 +176,7 @@ interface SettingsState {
   setDdxInstructions: (instructions: string) => void
   setRecordInstructions: (instructions: string) => void
   setResearchInstructions: (instructions: string) => void
+  setEmrProvider: (provider: EmrSettings["provider"]) => void
   setTheme: (theme: "light" | "dark" | "system") => void
   resetToDefaults: () => void
 }
@@ -211,6 +222,10 @@ const DEFAULT_CUSTOM_INSTRUCTIONS: CustomInstructionsSettings = {
   research: "",
 }
 
+const DEFAULT_EMR: EmrSettings = {
+  provider: "medplum",
+}
+
 const DEFAULT_APPEARANCE: AppearanceSettings = {
   theme: "system",
 }
@@ -223,6 +238,7 @@ export const useSettingsStore = create<SettingsState>()(
       analysis: { ...DEFAULT_ANALYSIS },
       aiModel: { ...DEFAULT_AI_MODEL },
       customInstructions: { ...DEFAULT_CUSTOM_INSTRUCTIONS },
+      emr: { ...DEFAULT_EMR },
       appearance: { ...DEFAULT_APPEARANCE },
 
       setSttLanguage: (language) =>
@@ -278,6 +294,9 @@ export const useSettingsStore = create<SettingsState>()(
       setResearchInstructions: (research) =>
         set((state) => ({ customInstructions: { ...state.customInstructions, research } })),
 
+      setEmrProvider: (provider) =>
+        set((state) => ({ emr: { ...state.emr, provider } })),
+
       setTheme: (theme) =>
         set((state) => ({ appearance: { ...state.appearance, theme } })),
 
@@ -288,6 +307,7 @@ export const useSettingsStore = create<SettingsState>()(
           analysis: { ...DEFAULT_ANALYSIS },
           aiModel: { ...DEFAULT_AI_MODEL },
           customInstructions: { ...DEFAULT_CUSTOM_INSTRUCTIONS },
+          emr: { ...DEFAULT_EMR },
           appearance: { ...DEFAULT_APPEARANCE },
         }),
     }),
@@ -303,6 +323,7 @@ export const useSettingsStore = create<SettingsState>()(
           analysis: { ...current.analysis, ...p?.analysis },
           aiModel: { ...current.aiModel, ...p?.aiModel },
           customInstructions: { ...current.customInstructions, ...p?.customInstructions },
+          emr: { ...current.emr, ...p?.emr },
           appearance: { ...current.appearance, ...p?.appearance },
         }
       },
