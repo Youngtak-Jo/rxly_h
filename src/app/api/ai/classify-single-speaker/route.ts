@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { generateText } from "ai"
-import { DEFAULT_MODEL } from "@/lib/grok"
+import { DEFAULT_MODEL } from "@/lib/xai"
 import { getModel } from "@/lib/ai-provider"
 import { SINGLE_SPEAKER_CLASSIFICATION_PROMPT } from "@/lib/prompts"
 import { requireAuth } from "@/lib/auth"

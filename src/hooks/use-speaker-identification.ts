@@ -115,7 +115,7 @@ export function useSpeakerIdentification() {
           text: e.text,
         }))
 
-        const res = await fetch("/api/grok/identify-speakers", {
+        const res = await fetch("/api/ai/identify-speakers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

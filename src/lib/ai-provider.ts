@@ -1,4 +1,4 @@
-import { xai } from "@/lib/grok"
+import { xai } from "@/lib/xai"
 import { anthropic } from "@/lib/anthropic"
 
 export function getModel(modelId: string) {

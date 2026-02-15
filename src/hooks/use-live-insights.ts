@@ -127,7 +127,7 @@ export function useLiveInsights() {
 
         const { aiModel, customInstructions } = useSettingsStore.getState()
 
-        const res = await fetch("/api/grok/insights", {
+        const res = await fetch("/api/ai/insights", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

@@ -104,12 +104,12 @@ function mergeReferences(
         icd11Detail: src.icd11Detail ?? null,
         articleDetail: src.articleDetail
           ? {
-              source: src.citation.source as "pubmed" | "europe_pmc",
-              title: src.citation.title,
-              abstract: src.articleDetail.abstract,
-              authors: src.articleDetail.authors,
-              url: src.citation.url,
-            }
+            source: src.citation.source as "pubmed" | "europe_pmc",
+            title: src.citation.title,
+            abstract: src.articleDetail.abstract,
+            authors: src.articleDetail.authors,
+            url: src.citation.url,
+          }
           : null,
         isEnriched: hasEnrichedData,
       })
@@ -307,64 +307,64 @@ function ClinicalSupportSection({
       {(support.treatmentOptions.firstLine.length > 0 ||
         support.treatmentOptions.alternatives.length > 0 ||
         support.treatmentOptions.nonPharmacologic.length > 0) && (
-        <div className="space-y-1.5">
-          <p className="text-sm font-medium flex items-center gap-1.5">
-            <IconPill className="size-3.5 text-emerald-500" />
-            Treatment Options
-          </p>
-          {support.treatmentOptions.firstLine.length > 0 && (
-            <div className="ml-5">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                First-line
-              </p>
-              <ul className="space-y-0.5">
-                {support.treatmentOptions.firstLine.map((t, i) => (
-                  <li
-                    key={i}
-                    className="text-sm text-muted-foreground list-disc leading-relaxed"
-                  >
-                    {render(t)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {support.treatmentOptions.alternatives.length > 0 && (
-            <div className="ml-5 mt-1.5">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                Alternatives
-              </p>
-              <ul className="space-y-0.5">
-                {support.treatmentOptions.alternatives.map((t, i) => (
-                  <li
-                    key={i}
-                    className="text-sm text-muted-foreground list-disc leading-relaxed"
-                  >
-                    {render(t)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {support.treatmentOptions.nonPharmacologic.length > 0 && (
-            <div className="ml-5 mt-1.5">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                Non-pharmacologic
-              </p>
-              <ul className="space-y-0.5">
-                {support.treatmentOptions.nonPharmacologic.map((t, i) => (
-                  <li
-                    key={i}
-                    className="text-sm text-muted-foreground list-disc leading-relaxed"
-                  >
-                    {render(t)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium flex items-center gap-1.5">
+              <IconPill className="size-3.5 text-emerald-500" />
+              Treatment Options
+            </p>
+            {support.treatmentOptions.firstLine.length > 0 && (
+              <div className="ml-5">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                  First-line
+                </p>
+                <ul className="space-y-0.5">
+                  {support.treatmentOptions.firstLine.map((t, i) => (
+                    <li
+                      key={i}
+                      className="text-sm text-muted-foreground list-disc leading-relaxed"
+                    >
+                      {render(t)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {support.treatmentOptions.alternatives.length > 0 && (
+              <div className="ml-5 mt-1.5">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                  Alternatives
+                </p>
+                <ul className="space-y-0.5">
+                  {support.treatmentOptions.alternatives.map((t, i) => (
+                    <li
+                      key={i}
+                      className="text-sm text-muted-foreground list-disc leading-relaxed"
+                    >
+                      {render(t)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {support.treatmentOptions.nonPharmacologic.length > 0 && (
+              <div className="ml-5 mt-1.5">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                  Non-pharmacologic
+                </p>
+                <ul className="space-y-0.5">
+                  {support.treatmentOptions.nonPharmacologic.map((t, i) => (
+                    <li
+                      key={i}
+                      className="text-sm text-muted-foreground list-disc leading-relaxed"
+                    >
+                      {render(t)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
 
       {/* Differentiating Features */}
       {support.differentiatingFeatures.length > 0 && (
@@ -660,7 +660,7 @@ export function DiagnosisSection() {
         .finally(() => setIsLoading(false))
     }
 
-    // Fetch clinical support (Grok AI + RAG) — slow, independent
+    // Fetch clinical support (AI + RAG) — slow, independent
     if (!cachedClinical) {
       setIsClinicalLoading(true)
       fetch("/api/diagnoses/clinical-support", {

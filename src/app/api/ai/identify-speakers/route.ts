@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { generateText } from "ai"
-import { DEFAULT_MODEL } from "@/lib/grok"
+import { DEFAULT_MODEL } from "@/lib/xai"
 import { getModel } from "@/lib/ai-provider"
-import { DIAGNOSTIC_KEYWORDS_PROMPT } from "@/lib/prompts"
+import { SPEAKER_IDENTIFICATION_PROMPT } from "@/lib/prompts"
 import { requireAuth } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { logger } from "@/lib/logger"
@@ -16,23 +16,30 @@ export async function POST(req: Request) {
     const { allowed } = checkRateLimit(user.id, "ai")
     if (!allowed) return rateLimitResponse()
 
-    const { transcript, model: modelOverride } = await req.json()
+    const { utterances, model: modelOverride } = await req.json()
 
-    if (!transcript?.trim()) {
-      return errorResponse("No transcript provided", 400)
+    if (!utterances?.length) {
+      return errorResponse("No utterances provided", 400)
     }
+
+    // Format utterances with raw speaker IDs for analysis
+    const formatted = utterances
+      .map(
+        (u: { speakerId: number; text: string }) =>
+          `[speaker_${u.speakerId}]: ${u.text}`
+      )
+      .join("\n")
 
     const { text } = await generateText({
       model: getModel(modelOverride || DEFAULT_MODEL),
-      system: DIAGNOSTIC_KEYWORDS_PROMPT,
+      system: SPEAKER_IDENTIFICATION_PROMPT,
       messages: [
         {
           role: "user",
-          content: `Extract diagnostic keywords from this consultation transcript:\n\n${transcript}`,
+          content: `Analyze these transcript utterances and identify the doctor and patient:\n\n${formatted}`,
         },
       ],
       temperature: 0.1,
-      maxOutputTokens: 1000,
     })
 
     let parsed: unknown
@@ -40,19 +47,15 @@ export async function POST(req: Request) {
       const cleaned = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
       parsed = JSON.parse(cleaned)
     } catch {
-      logger.error("Diagnostic keywords: AI returned invalid JSON")
+      logger.error("Speaker identification: AI returned invalid JSON")
       return NextResponse.json({ error: "AI returned invalid response format" }, { status: 502 })
     }
 
-    if (!Array.isArray(parsed)) {
-      return NextResponse.json({ error: "Invalid response format" }, { status: 502 })
-    }
-
-    logAudit({ userId: user.id, action: "READ", resource: "ai_keywords" })
+    logAudit({ userId: user.id, action: "READ", resource: "ai_speakers" })
     return Response.json(parsed)
   } catch (error) {
     if (error instanceof NextResponse) return error
-    logger.error("Diagnostic keyword extraction error:", error)
-    return errorResponse("Failed to extract keywords", 500)
+    logger.error("Speaker identification error:", error)
+    return errorResponse("Failed to identify speakers", 500)
   }
 }

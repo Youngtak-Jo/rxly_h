@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { streamText } from "ai"
 import { logger } from "@/lib/logger"
-import { DEFAULT_MODEL } from "@/lib/grok"
+import { DEFAULT_MODEL } from "@/lib/xai"
 import { getModel } from "@/lib/ai-provider"
 import { INSIGHTS_SYSTEM_PROMPT } from "@/lib/prompts"
 import { buildSystemPrompt } from "@/lib/prompt-sanitizer"

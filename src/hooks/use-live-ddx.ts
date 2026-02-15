@@ -118,7 +118,7 @@ export function useLiveDdx() {
             if (abortController.signal.aborted) return
           }
 
-          res = await fetch("/api/grok/ddx", {
+          res = await fetch("/api/ai/ddx", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: ddxBody,

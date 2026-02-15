@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { generateText } from "ai"
-import { DEFAULT_MODEL } from "@/lib/grok"
+import { DEFAULT_MODEL } from "@/lib/xai"
 import { getModel } from "@/lib/ai-provider"
 import { CLINICAL_SUPPORT_PROMPT } from "@/lib/prompts"
 import { requireAuth } from "@/lib/auth"
@@ -177,8 +177,8 @@ Evidence from consultation: ${evidence}`
           prompt += `\n\n--- EXTERNAL MEDICAL KNOWLEDGE ---${ragText}\n--- END EXTERNAL KNOWLEDGE ---`
         }
 
-        // Run Grok generation + source enrichment in parallel
-        const [grokResult, enrichedSources] = await Promise.all([
+        // Run AI generation + source enrichment in parallel
+        const [aiResult, enrichedSources] = await Promise.all([
           generateText({
             model: getModel(modelOverride || DEFAULT_MODEL),
             system: CLINICAL_SUPPORT_PROMPT,
@@ -192,7 +192,7 @@ Evidence from consultation: ${evidence}`
 
         let result: ClinicalDecisionSupport
         try {
-          const cleaned = grokResult.text
+          const cleaned = aiResult.text
             .replace(/```json\s*/g, "")
             .replace(/```\s*/g, "")
             .trim()
@@ -209,7 +209,7 @@ Evidence from consultation: ${evidence}`
       }
     }
 
-    // Fallback: no connectors or RAG failed — run Grok alone
+    // Fallback: no connectors or RAG failed — run AI alone
     const { text } = await generateText({
       model: getModel(modelOverride || DEFAULT_MODEL),
       system: CLINICAL_SUPPORT_PROMPT,

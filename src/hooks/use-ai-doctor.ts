@@ -49,7 +49,7 @@ export function useAiDoctor() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(entry),
-      }).catch(() => {})
+      }).catch(() => { })
     },
     []
   )
@@ -158,7 +158,7 @@ export function useAiDoctor() {
       try {
         abortControllerRef.current = new AbortController()
 
-        const res = await fetch("/api/grok/ai-doctor", {
+        const res = await fetch("/api/ai/ai-doctor", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages, model: modelId }),

@@ -51,7 +51,7 @@ export function useSingleSpeakerClassification() {
           .slice(store.lastClassifiedEntryIndex)
           .map((e) => ({ id: e.id, text: e.text }))
 
-        const res = await fetch("/api/grok/classify-single-speaker", {
+        const res = await fetch("/api/ai/classify-single-speaker", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -95,7 +95,7 @@ export async function classifyAllEntries(
   store.setClassifyingEntries(true)
 
   try {
-    const res = await fetch("/api/grok/classify-single-speaker", {
+    const res = await fetch("/api/ai/classify-single-speaker", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

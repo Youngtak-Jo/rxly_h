@@ -24,7 +24,7 @@ export function useDiagnosticHighlights() {
         setHighlightStatus("loading")
 
         try {
-          const res = await fetch("/api/grok/diagnostic-keywords", {
+          const res = await fetch("/api/ai/diagnostic-keywords", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
