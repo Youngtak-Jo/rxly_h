@@ -100,6 +100,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Session not found" }, { status: 404 })
     }
 
+    // ExportLink has no FK cascade — manually clean up
+    await prisma.exportLink.deleteMany({ where: { sessionId: id } })
     await prisma.session.delete({ where: { id } })
     logAudit({ userId: user.id, action: "DELETE", resource: "session", resourceId: id })
     return NextResponse.json({ success: true })

@@ -402,7 +402,7 @@ export function SiteHeader() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 shrink-0 relative"
+              className="h-9 w-9 shrink-0 relative text-muted-foreground hover:text-foreground"
               disabled={!activeSession}
               onClick={() => openSettings("connectors")}
             >

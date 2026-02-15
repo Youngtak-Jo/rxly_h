@@ -108,18 +108,6 @@ function createPrismaClient() {
         : ["error"],
   })
 
-  // Prevent idle-in-transaction zombies: auto-kill connections stuck in
-  // BEGIN for more than 5 minutes (300 000 ms).
-  base.$connect().then(async () => {
-    try {
-      await base.$executeRawUnsafe(
-        `SET idle_in_transaction_session_timeout = '300000'`
-      )
-    } catch {
-      // non-fatal — some providers may not support this
-    }
-  })
-
   return base.$extends({
     query: {
       $allModels: {

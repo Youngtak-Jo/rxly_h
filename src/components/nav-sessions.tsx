@@ -159,7 +159,7 @@ export function NavSessions() {
     fetch(`/api/sessions/${sessionId}/full`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => setCachedSession(sessionId, data))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => prefetchingRef.current.delete(sessionId))
   }
 
@@ -256,12 +256,12 @@ export function NavSessions() {
 
       if (cached) {
         // Cache hit - use cached data
-        ;({ session, transcriptEntries, notes, researchMessages } = cached)
+        ; ({ session, transcriptEntries, notes, researchMessages } = cached)
       } else {
         // Cache miss - fetch from API
         const res = await fetch(`/api/sessions/${sessionId}/full`)
         if (!res.ok) throw new Error("Failed to load session")
-        ;({ session, transcriptEntries, notes, researchMessages } = await res.json())
+          ; ({ session, transcriptEntries, notes, researchMessages } = await res.json())
 
         // Store in cache for re-visits
         setCachedSession(sessionId, { session, transcriptEntries, notes, researchMessages })
@@ -365,30 +365,44 @@ export function NavSessions() {
     }
   }
 
-  const deleteSession = async (sessionId: string) => {
-    try {
-      await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" })
-      setSessions(sessions.filter((s) => s.id !== sessionId))
-      if (activeSession?.id === sessionId) {
-        // Stop any running simulation BEFORE resetting stores
-        const recState = useRecordingStore.getState()
-        if (recState.isSimulating && recState.simulationControls) {
-          recState.simulationControls.stop({ skipFinalAnalysis: true })
-        }
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
-        setActiveSession(null)
-        transcriptStore.reset()
-        insightsStore.reset()
-        ddxStore.reset()
-        recordStore.reset()
-        noteStore.reset()
-        researchStore.reset()
-        useConsultationModeStore.getState().reset()
-        useConsultationTabStore.getState().clearAllUnseenUpdates()
+  const deleteSession = async (sessionId: string) => {
+    setDeletingId(sessionId)
+
+    // 1. Abort in-flight analysis BEFORE delete to prevent race conditions
+    if (activeSession?.id === sessionId) {
+      const recState = useRecordingStore.getState()
+      if (recState.isSimulating && recState.simulationControls) {
+        recState.simulationControls.stop({ skipFinalAnalysis: true })
       }
+      setActiveSession(null) // Triggers hook cleanup → aborts in-flight AI calls
+      transcriptStore.reset()
+      insightsStore.reset()
+      ddxStore.reset()
+      recordStore.reset()
+      recordingStore.reset()
+      noteStore.reset()
+      researchStore.reset()
+      useConsultationModeStore.getState().reset()
+      useConsultationTabStore.getState().clearAllUnseenUpdates()
+    }
+
+    // 2. Optimistic UI removal
+    const previousSessions = sessions
+    setSessions(sessions.filter((s) => s.id !== sessionId))
+    sessionCache.delete(sessionId)
+
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Delete failed")
     } catch (error) {
+      // Rollback on failure
       console.error("Failed to delete session:", error)
+      setSessions(previousSessions)
       toast.error("Failed to delete session")
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -503,10 +517,15 @@ export function NavSessions() {
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => deleteSession(session.id)}
+                        disabled={!!deletingId}
                         className="text-destructive"
                       >
-                        <IconTrash className="mr-2 size-4" />
-                        Delete
+                        {deletingId === session.id ? (
+                          <IconLoader2 className="mr-2 size-4 animate-spin" />
+                        ) : (
+                          <IconTrash className="mr-2 size-4" />
+                        )}
+                        {deletingId === session.id ? "Deleting..." : "Delete"}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
