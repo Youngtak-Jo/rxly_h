@@ -14,10 +14,16 @@ export function useLiveInsights() {
   const lastAnalysisTimeRef = useRef<number>(0)
   const abortControllerRef = useRef<AbortController | null>(null)
   const isAnalyzingRef = useRef(false)
+  const pendingRetriggerRef = useRef(false)
   const runAnalysis = useCallback(
     async (forceRun: boolean = false) => {
       const session = useSessionStore.getState().activeSession
-      if (!session || isAnalyzingRef.current) return
+      if (!session) return
+      if (isAnalyzingRef.current) {
+        // Queue a re-trigger so newly added comments get picked up
+        if (forceRun) pendingRetriggerRef.current = true
+        return
+      }
 
       const {
         summary,
@@ -35,6 +41,9 @@ export function useLiveInsights() {
         incrementAnalysisCount,
         clearComments,
       } = useInsightsStore.getState()
+
+      // Snapshot comment IDs so we only clear these after analysis completes
+      const sentCommentIds = new Set(pendingComments.map((c) => c.id))
 
       const transcriptStore = useTranscriptStore.getState()
       const currentEntryCount = transcriptStore.getEntryCount()
@@ -187,7 +196,7 @@ export function useLiveInsights() {
           if (currentSessionId !== session.id) return
 
           updateFromResponse(parsed, session.id)
-          clearComments()
+          clearComments(sentCommentIds)
           setWordCountAtLastUpdate(currentWordCount)
           setEntryCountAtLastUpdate(currentEntryCount)
           incrementAnalysisCount()
@@ -231,6 +240,11 @@ export function useLiveInsights() {
         useInsightsStore.getState().setProcessing(false)
       } finally {
         isAnalyzingRef.current = false
+        if (pendingRetriggerRef.current) {
+          pendingRetriggerRef.current = false
+          // Pick up comments added during the in-flight analysis
+          setTimeout(() => runAnalysis(true), 100)
+        }
       }
     },
     []
@@ -261,6 +275,7 @@ export function useLiveInsights() {
   // Sets isProcessing gate synchronously so waitForInsightsToComplete() blocks
   // until the analysis completes.
   const runFinalAnalysis = useCallback(async () => {
+    pendingRetriggerRef.current = false // Don't re-trigger after forced final
     useInsightsStore.getState().setProcessing(true)
 
     // If an analysis is already in flight, abort it so we can run fresh

@@ -91,6 +91,12 @@ export function useLiveDdx() {
           // Ignore notes fetch failure
         }
 
+        // Bail out if there's no textual content to analyze
+        if (!transcript.trim() && !doctorNotes.trim()) {
+          setProcessing(false)
+          return
+        }
+
         const enabledConnectors = useConnectorStore.getState().connectors
         const { aiModel, customInstructions } = useSettingsStore.getState()
 

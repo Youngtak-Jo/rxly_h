@@ -21,14 +21,12 @@ import {
 import { InlineCommentPopover } from "./inline-comment-popover"
 
 export function InsightsContainer() {
-  const {
-    summary,
-    keyFindings,
-    redFlags,
-    checklistItems,
-    isProcessing,
-    toggleChecklistItem,
-  } = useInsightsStore()
+  const summary = useInsightsStore((s) => s.summary)
+  const keyFindings = useInsightsStore((s) => s.keyFindings)
+  const redFlags = useInsightsStore((s) => s.redFlags)
+  const checklistItems = useInsightsStore((s) => s.checklistItems)
+  const isProcessing = useInsightsStore((s) => s.isProcessing)
+  const toggleChecklistItem = useInsightsStore((s) => s.toggleChecklistItem)
   const notes = useNoteStore((s) => s.notes)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
@@ -181,11 +179,10 @@ export function InsightsContainer() {
                 />
                 <label
                   htmlFor={item.id}
-                  className={`text-sm cursor-pointer ${
-                    item.isChecked
-                      ? "line-through text-muted-foreground"
-                      : "text-foreground"
-                  }`}
+                  className={`text-sm cursor-pointer ${item.isChecked
+                    ? "line-through text-muted-foreground"
+                    : "text-foreground"
+                    }`}
                 >
                   {item.label}
                   {item.isAutoChecked && (
@@ -210,12 +207,12 @@ export function InsightsContainer() {
               {uploadedImages.length}
             </Badge>
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-1.5">
             {uploadedImages.map((img, i) => (
               <button
                 key={`${img.noteId}-${i}`}
                 onClick={() => setSelectedImage(img.url)}
-                className="group relative aspect-square rounded-md overflow-hidden border hover:ring-2 hover:ring-primary/50 transition-all"
+                className="group relative aspect-square rounded-md overflow-hidden border hover:ring-2 hover:ring-primary/50 transition-all max-w-16"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img

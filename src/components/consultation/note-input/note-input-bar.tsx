@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback, useEffect } from "react"
+import { useState, useRef, useCallback, useEffect, forwardRef, useImperativeHandle } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useSessionStore } from "@/stores/session-store"
@@ -25,7 +25,11 @@ interface Attachment {
   preview: string
 }
 
-export function NoteInputBar() {
+export interface NoteInputBarHandle {
+  addFiles: (files: FileList) => void
+}
+
+export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar(_props, ref) {
   const [text, setText] = useState("")
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [isSending, setIsSending] = useState(false)
@@ -76,6 +80,10 @@ export function NoteInputBar() {
     },
     []
   )
+
+  useImperativeHandle(ref, () => ({
+    addFiles: (files: FileList) => handleFileSelect(files),
+  }), [handleFileSelect])
 
   const removeAttachment = (index: number) => {
     setAttachments((prev) => {
@@ -330,4 +338,4 @@ export function NoteInputBar() {
       </div>
     </div>
   )
-}
+})

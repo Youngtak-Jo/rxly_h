@@ -26,74 +26,34 @@ function findSection(node: Node | null): InsightSection | null {
   return null
 }
 
-/**
- * Wrap each text node in the given Range with a <mark> element
- * so the selection stays visually highlighted while the popover is open.
- */
-function highlightRange(range: Range): HTMLElement[] {
-  const marks: HTMLElement[] = []
+const HIGHLIGHT_NAME = "inline-comment-selection"
 
-  // Simple case: selection is within a single text node
-  if (
-    range.startContainer === range.endContainer &&
-    range.startContainer.nodeType === Node.TEXT_NODE
-  ) {
-    const mark = document.createElement("mark")
-    mark.className = "inline-comment-highlight"
-    range.surroundContents(mark)
-    marks.push(mark)
-    return marks
-  }
-
-  // Cross-node selection: highlight each text node individually
-  const walker = document.createTreeWalker(
-    range.commonAncestorContainer,
-    NodeFilter.SHOW_TEXT,
-  )
-
-  const textNodes: Text[] = []
-  while (walker.nextNode()) {
-    const node = walker.currentNode as Text
-    if (range.intersectsNode(node) && node.textContent?.trim()) {
-      textNodes.push(node)
-    }
-  }
-
-  // Iterate in reverse so earlier DOM offsets stay valid
-  for (let i = textNodes.length - 1; i >= 0; i--) {
-    const textNode = textNodes[i]
-    const nodeRange = document.createRange()
-
-    if (textNode === range.startContainer) {
-      nodeRange.setStart(textNode, range.startOffset)
-      nodeRange.setEnd(textNode, textNode.length)
-    } else if (textNode === range.endContainer) {
-      nodeRange.setStart(textNode, 0)
-      nodeRange.setEnd(textNode, range.endOffset)
-    } else {
-      nodeRange.selectNodeContents(textNode)
-    }
-
-    const mark = document.createElement("mark")
-    mark.className = "inline-comment-highlight"
-    nodeRange.surroundContents(mark)
-    marks.unshift(mark) // maintain DOM order
-  }
-
-  return marks
+/** Inject ::highlight() styles at runtime (build tools can't parse this pseudo-element). */
+let styleInjected = false
+function ensureHighlightStyle(): void {
+  if (styleInjected || typeof document === "undefined") return
+  styleInjected = true
+  const style = document.createElement("style")
+  style.textContent = [
+    `::highlight(${HIGHLIGHT_NAME}){background-color:oklch(0.52 0.14 40/0.18)}`,
+    `.dark ::highlight(${HIGHLIGHT_NAME}){background-color:oklch(0.72 0.14 40/0.25)}`,
+  ].join("\n")
+  document.head.appendChild(style)
 }
 
-/** Remove all <mark> highlights and restore original text nodes. */
-function removeHighlights(marks: HTMLElement[]) {
-  for (const mark of marks) {
-    const parent = mark.parentNode
-    if (parent) {
-      while (mark.firstChild) {
-        parent.insertBefore(mark.firstChild, mark)
-      }
-      parent.removeChild(mark)
-      parent.normalize()
-    }
+/** Apply a CSS Custom Highlight to the given range (no DOM mutation). */
+function applyHighlight(range: Range): void {
+  if (typeof CSS === "undefined" || !("highlights" in CSS)) return
+  ensureHighlightStyle()
+  clearHighlight()
+  const highlight = new Highlight(range)
+  CSS.highlights.set(HIGHLIGHT_NAME, highlight)
+}
+
+/** Remove the CSS Custom Highlight. */
+function clearHighlight(): void {
+  if (typeof CSS !== "undefined" && "highlights" in CSS) {
+    CSS.highlights.delete(HIGHLIGHT_NAME)
   }
 }
 
@@ -107,17 +67,25 @@ export function InlineCommentPopover({
   const popoverRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const highlightMarksRef = useRef<HTMLElement[]>([])
+  const isOpenRef = useRef(false)
 
   const close = useCallback(() => {
-    removeHighlights(highlightMarksRef.current)
-    highlightMarksRef.current = []
+    clearHighlight()
+    isOpenRef.current = false
     setPopover(null)
     setComment("")
   }, [])
 
+  // Clean up highlight on unmount (e.g., tab switch)
+  useEffect(() => {
+    return () => clearHighlight()
+  }, [])
+
   // Shared selection processing logic (used by both mouseup and selectionchange)
   const processSelection = useCallback(() => {
+    // Don't process selections while popover is open (e.g., textarea cursor)
+    if (isOpenRef.current) return
+
     const container = containerRef.current
     const selection = window.getSelection()
     if (!selection || selection.isCollapsed) return
@@ -144,21 +112,18 @@ export function InlineCommentPopover({
     const range = selection.getRangeAt(0)
     const rect = range.getBoundingClientRect()
 
-    // Clear any previous highlights before applying new ones
-    removeHighlights(highlightMarksRef.current)
-    highlightMarksRef.current = []
-
-    // Wrap selected text with <mark> elements so the highlight persists
+    // Apply CSS Highlight API visual cue (no DOM mutation)
     try {
       const clonedRange = range.cloneRange()
-      highlightMarksRef.current = highlightRange(clonedRange)
+      applyHighlight(clonedRange)
     } catch {
-      // Fallback: if DOM manipulation fails, just proceed without highlight
+      // If highlight API fails, proceed without visual highlight
     }
 
-    // Clear native selection — the <mark> now provides the visual cue
+    // Clear native selection — the CSS highlight now provides the visual cue
     selection.removeAllRanges()
 
+    isOpenRef.current = true
     setPopover({
       selectedText: text,
       section: anchorSection,
@@ -170,6 +135,7 @@ export function InlineCommentPopover({
 
   // Desktop: detect text selection via mouseup
   const handleMouseUp = useCallback(() => {
+    if (isOpenRef.current) return
     // Small delay to let the selection finalize
     requestAnimationFrame(() => {
       processSelection()
@@ -190,6 +156,8 @@ export function InlineCommentPopover({
     if (!container) return
 
     const handleSelectionChange = () => {
+      if (isOpenRef.current) return // Skip when popover is open
+
       if (debounceRef.current) {
         clearTimeout(debounceRef.current)
       }

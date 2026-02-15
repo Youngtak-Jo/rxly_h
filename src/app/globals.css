@@ -338,19 +338,6 @@
   min-width: 44px;
 }
 
-/* Inline comment selection highlight */
-.inline-comment-highlight {
-  background: oklch(0.52 0.14 40 / 0.18);
-  border-radius: 2px;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-  transition: background 0.2s ease;
-}
-
-.dark .inline-comment-highlight {
-  background: oklch(0.72 0.14 40 / 0.25);
-}
-
 /* Insights update animations */
 @keyframes insights-breathe {
   0%, 100% { opacity: 1; filter: blur(0px); }

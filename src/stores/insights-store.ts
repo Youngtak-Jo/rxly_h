@@ -24,7 +24,7 @@ interface InsightsState {
   _noteTrigger: (() => void) | null
   setNoteTrigger: (fn: (() => void) | null) => void
   addComment: (comment: InlineComment) => void
-  clearComments: () => void
+  clearComments: (ids: Set<string>) => void
 
   setProcessing: (processing: boolean) => void
   updateFromResponse: (response: InsightsResponse, sessionId: string) => void
@@ -63,7 +63,10 @@ export const useInsightsStore = create<InsightsState>((set) => ({
   setNoteTrigger: (fn) => set({ _noteTrigger: fn }),
   addComment: (comment) =>
     set((state) => ({ pendingComments: [...state.pendingComments, comment] })),
-  clearComments: () => set({ pendingComments: [] }),
+  clearComments: (ids) =>
+    set((state) => ({
+      pendingComments: state.pendingComments.filter((c) => !ids.has(c.id)),
+    })),
 
   setProcessing: (isProcessing) => set({ isProcessing }),
 
