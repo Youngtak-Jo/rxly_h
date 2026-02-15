@@ -23,7 +23,6 @@ export async function POST(req: Request) {
       doctorNotes,
       imageUrls,
       insights,
-      sessionId,
       existingRecord,
       model: modelOverride,
       customInstructions,
@@ -35,7 +34,7 @@ export async function POST(req: Request) {
 
     const model = getModel(modelOverride || DEFAULT_MODEL)
 
-    let textContent = [
+    const textContent = [
       transcript?.trim()
         ? `Transcript:\n${(transcript as string).slice(-6000)}`
         : "Transcript:\n(No speech recorded yet)",

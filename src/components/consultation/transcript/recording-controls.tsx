@@ -9,11 +9,9 @@ import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import { useDeepgram } from "@/hooks/use-deepgram"
 import { useAiDoctor } from "@/hooks/use-ai-doctor"
 import {
-  IconMicrophone,
   IconPlayerPause,
   IconPlayerPlay,
   IconPlayerStop,
-  IconStethoscope,
 } from "@tabler/icons-react"
 
 export function RecordingControls() {

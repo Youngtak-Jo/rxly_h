@@ -119,7 +119,7 @@ export function InlineCommentPopover({
         clearTimeout(debounceRef.current)
       }
     }
-  }, [processSelection])
+  }, [processSelection, containerRef])
 
   // Close on Escape or click/touch outside
   useEffect(() => {

@@ -38,7 +38,7 @@ import type {
   FetchStatus,
   Icd11Detail,
 } from "@/types/insights"
-import { renderClinicalText, citationBadge } from "@/lib/citation-utils"
+import { renderClinicalText } from "@/lib/citation-utils"
 
 const confidenceColors: Record<string, string> = {
   high: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",

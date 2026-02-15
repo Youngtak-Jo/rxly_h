@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
@@ -46,6 +46,7 @@ export function useSimulatedTranscript() {
   const { triggerAnalysis, runFinalAnalysis } = useLiveInsights()
 
   // Stable refs for controls to avoid circular dependency
+  const processEntryRef = useRef<(index: number) => void>(() => {})
   const pauseRef = useRef<() => void>(() => {})
   const resumeRef = useRef<() => void>(() => {})
   const stopRef = useRef<(options?: { skipFinalAnalysis?: boolean }) => void>(() => {})
@@ -168,7 +169,7 @@ export function useSimulatedTranscript() {
 
         if (!isPausedRef.current) {
           const t3 = setTimeout(() => {
-            processEntry(index + 1)
+            processEntryRef.current(index + 1)
           }, 300)
           timeoutsRef.current.push(t3)
         }
@@ -177,6 +178,11 @@ export function useSimulatedTranscript() {
     },
     [triggerAnalysis, runFinalAnalysis]
   )
+
+  // Keep processEntry ref up to date for recursive calls
+  useEffect(() => {
+    processEntryRef.current = processEntry
+  }, [processEntry])
 
   const pauseSimulation = useCallback(() => {
     isPausedRef.current = true
@@ -237,9 +243,11 @@ export function useSimulatedTranscript() {
   )
 
   // Keep stable refs up to date
-  pauseRef.current = pauseSimulation
-  resumeRef.current = resumeSimulation
-  stopRef.current = stopSimulation
+  useEffect(() => {
+    pauseRef.current = pauseSimulation
+    resumeRef.current = resumeSimulation
+    stopRef.current = stopSimulation
+  }, [pauseSimulation, resumeSimulation, stopSimulation])
 
   const instantInsertAll = useCallback(
     async (entries: MockEntry[], sessionId: string) => {

@@ -245,6 +245,7 @@ export function NoteInputBar() {
         <div className="flex gap-2 mb-2 flex-wrap">
           {attachments.map((attachment, i) => (
             <div key={i} className="relative group">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={attachment.preview}
                 alt="Attachment"

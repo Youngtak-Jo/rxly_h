@@ -24,12 +24,11 @@ export async function POST(req: Request) {
 
     const model = getModel(modelOverride || DEFAULT_MODEL)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = streamText({
       model,
       system: AI_DOCTOR_SYSTEM_PROMPT,
       // content can be a plain string or multimodal array [{type:"text",...},{type:"image",...}]
-      messages: messages.map((m: { role: string; content: any }) => ({
+      messages: messages.map((m: { role: string; content: unknown }) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
       })),

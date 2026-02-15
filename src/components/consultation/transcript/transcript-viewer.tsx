@@ -219,7 +219,7 @@ export function TranscriptViewer() {
                     {note.imageUrls && note.imageUrls.length > 0 && (
                       <div className="flex gap-1.5 mt-1.5 flex-wrap">
                         {note.imageUrls.map((url, j) => (
-                          <img
+                          <img // eslint-disable-line @next/next/no-img-element
                             key={j}
                             src={url}
                             alt={`Medical image ${j + 1} from note`}

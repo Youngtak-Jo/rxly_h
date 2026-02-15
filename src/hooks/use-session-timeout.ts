@@ -17,9 +17,7 @@ export function useSessionTimeout() {
     window.location.href = "/login"
   }, [])
 
-  const resetTimers = useCallback(() => {
-    setShowWarning(false)
-
+  const startTimers = useCallback(() => {
     if (warningTimer.current) clearTimeout(warningTimer.current)
     if (logoutTimer.current) clearTimeout(logoutTimer.current)
 
@@ -31,6 +29,11 @@ export function useSessionTimeout() {
       logout()
     }, IDLE_LOGOUT_MS)
   }, [logout])
+
+  const resetTimers = useCallback(() => {
+    setShowWarning(false)
+    startTimers()
+  }, [startTimers])
 
   const extendSession = useCallback(() => {
     resetTimers()
@@ -46,7 +49,7 @@ export function useSessionTimeout() {
     }
 
     events.forEach((event) => window.addEventListener(event, handleActivity))
-    resetTimers()
+    startTimers()
 
     return () => {
       events.forEach((event) =>
@@ -55,7 +58,7 @@ export function useSessionTimeout() {
       if (warningTimer.current) clearTimeout(warningTimer.current)
       if (logoutTimer.current) clearTimeout(logoutTimer.current)
     }
-  }, [resetTimers, showWarning])
+  }, [resetTimers, startTimers, showWarning])
 
   return { showWarning, extendSession, logout }
 }

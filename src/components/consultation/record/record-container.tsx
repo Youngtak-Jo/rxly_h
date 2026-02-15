@@ -6,7 +6,7 @@ import { useRecordStore } from "@/stores/record-store"
 import { useSessionStore } from "@/stores/session-store"
 import { generateRecord } from "@/hooks/use-live-record"
 
-import { IconSparkles, IconLoader2 } from "@tabler/icons-react"
+import { IconLoader2 } from "@tabler/icons-react"
 
 export function RecordContainer() {
   const { record, isGenerating, updateField } = useRecordStore()

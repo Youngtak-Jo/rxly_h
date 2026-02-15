@@ -28,7 +28,9 @@ export function useAiDoctorStt() {
   const { sendMessage } = useAiDoctor()
   // Store sendMessage in a ref so the effect doesn't depend on it
   const sendMessageRef = useRef(sendMessage)
-  sendMessageRef.current = sendMessage
+  useEffect(() => {
+    sendMessageRef.current = sendMessage
+  }, [sendMessage])
 
   const cleanupResources = () => {
     if (sendTimeoutRef.current) {
@@ -226,6 +228,5 @@ export function useAiDoctorStt() {
       cancelled = true
       cleanupResources()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMicActive, consultationStarted])
 }

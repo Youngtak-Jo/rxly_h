@@ -10,6 +10,8 @@ import { useRecordingStore } from "@/stores/recording-store"
 import { useSettingsStore } from "@/stores/settings-store"
 
 const INSIGHTS_DEBOUNCE_MS = 3000
+const DDX_MAX_RETRIES = 1
+const DDX_RETRY_DELAY_MS = 1000
 
 export function useLiveDdx() {
   const lastDdxTimeRef = useRef<number>(0)
@@ -92,30 +94,45 @@ export function useLiveDdx() {
         const enabledConnectors = useConnectorStore.getState().connectors
         const { aiModel, customInstructions } = useSettingsStore.getState()
 
-        const res = await fetch("/api/grok/ddx", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            transcript,
-            doctorNotes,
-            model: aiModel.ddxModel,
-            customInstructions: customInstructions.ddx || undefined,
-            currentInsights: { summary, keyFindings, redFlags },
-            currentDiagnoses: diagnoses.map((dx) => ({
-              icdCode: dx.icdCode,
-              diseaseName: dx.diseaseName,
-              confidence: dx.confidence,
-              citations: dx.citations,
-            })),
-            enabledConnectors,
-          }),
-          signal: abortController.signal,
+        const ddxBody = JSON.stringify({
+          transcript,
+          doctorNotes,
+          model: aiModel.ddxModel,
+          customInstructions: customInstructions.ddx || undefined,
+          currentInsights: { summary, keyFindings, redFlags },
+          currentDiagnoses: diagnoses.map((dx) => ({
+            icdCode: dx.icdCode,
+            diseaseName: dx.diseaseName,
+            confidence: dx.confidence,
+            citations: dx.citations,
+          })),
+          enabledConnectors,
         })
 
-        if (!res.ok) {
-          const errBody = await res.json().catch(() => ({}))
+        let res: Response | null = null
+        for (let attempt = 0; attempt <= DDX_MAX_RETRIES; attempt++) {
+          if (abortController.signal.aborted) return
+
+          if (attempt > 0) {
+            await new Promise((r) => setTimeout(r, DDX_RETRY_DELAY_MS))
+            if (abortController.signal.aborted) return
+          }
+
+          res = await fetch("/api/grok/ddx", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: ddxBody,
+            signal: abortController.signal,
+          })
+
+          // Only retry on 502 (AI invalid response format)
+          if (res.ok || res.status !== 502) break
+        }
+
+        if (!res!.ok) {
+          const errBody = await res!.json().catch(() => ({}))
           throw new Error(
-            `DDx generation failed (${res.status}): ${errBody.error || "Unknown error"}`
+            `DDx generation failed (${res!.status}): ${errBody.error || "Unknown error"}`
           )
         }
 

@@ -33,6 +33,11 @@ export function ResearchMessageBubble({
   message,
   isStreaming,
 }: ResearchMessageProps) {
+  const processed = useMemo(
+    () => preprocessCitations(message.content),
+    [message.content]
+  )
+
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
@@ -42,11 +47,6 @@ export function ResearchMessageBubble({
       </div>
     )
   }
-
-  const processed = useMemo(
-    () => preprocessCitations(message.content),
-    [message.content]
-  )
 
   return (
     <div>

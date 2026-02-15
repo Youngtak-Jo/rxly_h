@@ -271,7 +271,7 @@ export function useDeepgram() {
       console.error("Failed to start listening:", error)
       setError(message)
     }
-  }, [setRecording, setDuration, setPaused, setError, triggerAnalysis, runFinalAnalysis])
+  }, [setRecording, setDuration, setError, triggerAnalysis, runFinalAnalysis])
 
   const stopListening = useCallback(() => {
     // Mark that we're calling runFinalAnalysis from stopListening

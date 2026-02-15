@@ -217,6 +217,7 @@ export function InsightsContainer() {
                 onClick={() => setSelectedImage(img.url)}
                 className="group relative aspect-square rounded-md overflow-hidden border hover:ring-2 hover:ring-primary/50 transition-all"
               >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img.url}
                   alt={img.noteContent || "Medical image"}
@@ -248,7 +249,7 @@ export function InsightsContainer() {
         <DialogContent className="max-w-[95vw] md:max-w-3xl p-2">
           <DialogTitle className="sr-only">Medical Image</DialogTitle>
           {selectedImage && (
-            <img
+            <img // eslint-disable-line @next/next/no-img-element
               src={selectedImage}
               alt="Medical image"
               className="w-full h-auto rounded-md"
