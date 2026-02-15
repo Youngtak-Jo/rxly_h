@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { streamText } from "ai"
+import { streamText, type Message } from "ai"
 import { logger } from "@/lib/logger"
 import { DEFAULT_MODEL } from "@/lib/grok"
 import { getModel } from "@/lib/ai-provider"
@@ -28,10 +28,7 @@ export async function POST(req: Request) {
       model,
       system: AI_DOCTOR_SYSTEM_PROMPT,
       // content can be a plain string or multimodal array [{type:"text",...},{type:"image",...}]
-      messages: messages.map((m: { role: string; content: unknown }) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
+      messages: messages as Message[],
       temperature: 0.4,
     })
 
