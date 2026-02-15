@@ -67,7 +67,7 @@ function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange
 
   const isControlled = open !== undefined
   const isOpen = isControlled ? open : internalOpen
-  const setIsOpen = isControlled ? (onOpenChange ?? (() => {})) : setInternalOpen
+  const setIsOpen = isControlled ? (onOpenChange ?? (() => { })) : setInternalOpen
 
   const activeSession = useSessionStore((s) => s.activeSession)
   const { addSession, setActiveSession } = useSessionStore()
@@ -99,13 +99,10 @@ function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange
 
     if (!sessionReady) return
 
-    const isInstant = speed === "instant"
-
     setTimeout(() => {
       startSimulation({
-        speedFactor: isInstant ? 0.1 : parseFloat(speed),
+        speedFactor: parseFloat(speed),
         scenario: selectedScenario.entries,
-        instantInsert: isInstant,
       })
       setIsOpen(false)
     }, 100)
@@ -164,9 +161,8 @@ function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange
                 <SelectItem value="1.0">1x (Real-time)</SelectItem>
                 <SelectItem value="0.5">2x</SelectItem>
                 <SelectItem value="0.25">4x</SelectItem>
-                <SelectItem value="0.1">10x (Fastest)</SelectItem>
-                <Separator className="my-1" />
-                <SelectItem value="instant">즉시삽입 (Instant)</SelectItem>
+                <SelectItem value="0.1">10x</SelectItem>
+                <SelectItem value="0.067">15x (Fastest)</SelectItem>
               </SelectContent>
             </Select>
           </div>

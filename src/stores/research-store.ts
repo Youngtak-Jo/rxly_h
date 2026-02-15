@@ -44,7 +44,7 @@ interface ResearchState {
   reset: () => void
 }
 
-export const useResearchStore = create<ResearchState>((set) => ({
+export const useResearchStore = create<ResearchState>((set, get) => ({
   messages: [],
   isStreaming: false,
   includeInsights: true,
@@ -108,11 +108,14 @@ export const useResearchStore = create<ResearchState>((set) => ({
 
   loadFromDB: (messages) => set({ messages }),
 
-  reset: () =>
+  reset: () => {
+    const { abortController } = get()
+    if (abortController) abortController.abort()
     set({
       messages: [],
       isStreaming: false,
       includeInsights: true,
       abortController: null,
-    }),
+    })
+  },
 }))

@@ -139,6 +139,10 @@ export function useLiveDdx() {
         const parsed = await res!.json()
 
         if (parsed.diagnoses && Array.isArray(parsed.diagnoses)) {
+          // Bail out if the session changed while we were waiting
+          const currentSessionId = useSessionStore.getState().activeSession?.id
+          if (currentSessionId !== session.id) return
+
           updateFromResponse(parsed.diagnoses, session.id)
           setWordCountAtLastUpdate(currentWordCount)
           lastDdxTimeRef.current = Date.now()
@@ -174,6 +178,7 @@ export function useLiveDdx() {
   useEffect(() => {
     const unsubscribe = useInsightsStore.subscribe((state, prevState) => {
       if (state.lastUpdated === prevState.lastUpdated) return
+      if (!state.lastUpdated) return // Skip reset-triggered events
       if (state.isProcessing) return // Wait until insights processing is done
 
       // Clear any pending debounce timer

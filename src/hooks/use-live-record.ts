@@ -86,6 +86,11 @@ export async function generateRecord(
         .replace(/^```(?:json)?\s*\n?/, "")
         .replace(/\n?```\s*$/, "")
       const parsed = JSON.parse(cleaned)
+
+      // Bail out if the session changed while we were streaming
+      const currentSessionId = useSessionStore.getState().activeSession?.id
+      if (currentSessionId !== sessionId) return
+
       const newRecord = {
         id: existingRecordId || "temp",
         sessionId,

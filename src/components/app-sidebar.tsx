@@ -82,7 +82,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent className="!overflow-hidden">
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto [mask-image:linear-gradient(to_bottom,transparent,rgba(0,0,0,0.3)_0.5rem,rgba(0,0,0,0.7)_1.5rem,black_2.5rem,black_calc(100%-2.5rem),transparent)]">
           <NavSessions />
         </div>
         <NavSecondary items={navSecondary} />

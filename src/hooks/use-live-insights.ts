@@ -10,6 +10,7 @@ import type { InsightsResponse } from "@/types/insights"
 const CHECKPOINT_INTERVAL = 5 // Send full transcript every N analyses
 
 export function useLiveInsights() {
+  const activeSession = useSessionStore((s) => s.activeSession)
   const lastAnalysisTimeRef = useRef<number>(0)
   const abortControllerRef = useRef<AbortController | null>(null)
   const isAnalyzingRef = useRef(false)
@@ -180,6 +181,11 @@ export function useLiveInsights() {
         try {
           const cleaned = accumulated.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
           const parsed: InsightsResponse = JSON.parse(cleaned)
+
+          // Bail out if the session changed while we were streaming
+          const currentSessionId = useSessionStore.getState().activeSession?.id
+          if (currentSessionId !== session.id) return
+
           updateFromResponse(parsed, session.id)
           clearComments()
           setWordCountAtLastUpdate(currentWordCount)
@@ -281,6 +287,16 @@ export function useLiveInsights() {
       useInsightsStore.getState().setNoteTrigger(null)
     }
   }, [triggerFromNote])
+
+  // Clean up on session change
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      isAnalyzingRef.current = false
+    }
+  }, [activeSession?.id])
 
   return { triggerAnalysis, analyzeTranscript, triggerFromNote, runFinalAnalysis }
 }
