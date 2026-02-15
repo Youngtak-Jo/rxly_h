@@ -562,6 +562,7 @@ function ModelSettings() {
     setDiagnosticKeywordsModel,
     setClinicalSupportModel,
     setAiDoctorModel,
+    setMedplumModel,
   } = useSettingsStore()
 
   return (
@@ -655,6 +656,17 @@ function ModelSettings() {
           value={aiModel.aiDoctorModel}
           onValueChange={setAiDoctorModel}
           recommendedModel={DEFAULT_AI_MODEL.aiDoctorModel}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Medplum FHIR Model"
+        description="Used to convert clinical data into FHIR R4 resources."
+      >
+        <ModelSelector
+          value={aiModel.medplumModel}
+          onValueChange={setMedplumModel}
+          recommendedModel={DEFAULT_AI_MODEL.medplumModel}
         />
       </SettingRow>
     </div>

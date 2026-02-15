@@ -7,6 +7,8 @@ import { useRecordingStore } from "@/stores/recording-store"
 import { IconChevronDown, IconChevronUp } from "@tabler/icons-react"
 import { RecordingControls } from "./recording-controls"
 import { TranscriptViewer } from "./transcript-viewer"
+import { ModeSelector } from "./mode-selector"
+import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import type { Speaker } from "@/types/session"
 
 function speakerLabel(speaker: Speaker) {
@@ -18,12 +20,18 @@ export function MobileTranscriptSection() {
   const entries = useTranscriptStore((s) => s.entries)
   const interimText = useTranscriptStore((s) => s.interimText)
   const { isRecording } = useRecordingStore()
+  const consultationStarted = useConsultationModeStore((s) => s.consultationStarted)
 
   const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null
 
   return (
     <div className="border-b bg-background">
       <RecordingControls />
+
+      {/* Mode selector: show before consultation starts on mobile */}
+      {!isRecording && !consultationStarted && entries.length === 0 && !interimText && (
+        <ModeSelector />
+      )}
 
       {/* Collapsed: show latest transcript entry */}
       {!expanded && (lastEntry || interimText) && (

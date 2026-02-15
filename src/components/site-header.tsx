@@ -43,10 +43,11 @@ import {
   IconFileTypePdf,
   IconMail,
   IconLoader2,
-  IconCloudUpload,
 } from "@tabler/icons-react"
 import { ExportDropdown } from "@/components/consultation/export-dropdown"
-import { MedplumSyncButton } from "@/components/medplum-sync-button"
+import { MedplumSyncButton, SyncButtonIcon } from "@/components/medplum-sync-button"
+import { useMedplumSyncStore } from "@/stores/medplum-sync-store"
+import { usePreparePayload } from "@/hooks/use-prepare-payload"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useConnectorStore } from "@/stores/connector-store"
 import { useSettingsDialogStore } from "@/stores/settings-store"
@@ -201,8 +202,12 @@ function MobileHeaderMenu() {
   const enabledCount = Object.values(connectors).filter(Boolean).length
   const activeTab = useConsultationTabStore((s) => s.activeTab)
 
+  const syncStatus = useMedplumSyncStore((s) => s.status)
+  const startPrepare = useMedplumSyncStore((s) => s.startPrepare)
+  const openReviewDialog = useMedplumSyncStore((s) => s.openReviewDialog)
+  const buildPayload = usePreparePayload()
+
   const [simDialogOpen, setSimDialogOpen] = useState(false)
-  const [syncDialogOpen, setSyncDialogOpen] = useState(false)
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
   const [email, setEmail] = useState("")
   const [isSending, setIsSending] = useState(false)
@@ -284,9 +289,25 @@ function MobileHeaderMenu() {
             <IconTestPipe className="size-4" />
             Simulation
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setSyncDialogOpen(true)} disabled={!activeSession}>
-            <IconCloudUpload className="size-4" />
-            Sync to Medplum
+          <DropdownMenuItem
+            onClick={() => {
+              if (syncStatus === "idle" || syncStatus === "error") {
+                const payload = buildPayload()
+                if (payload && activeSession) startPrepare(activeSession.id, payload)
+              } else if (syncStatus === "ready") {
+                openReviewDialog()
+              }
+            }}
+            disabled={!activeSession || syncStatus === "preparing" || syncStatus === "syncing"}
+          >
+            <SyncButtonIcon status={syncStatus} />
+            {syncStatus === "preparing"
+              ? "Preparing..."
+              : syncStatus === "ready"
+                ? "Review FHIR Data"
+                : syncStatus === "syncing"
+                  ? "Syncing..."
+                  : "Sync to Medplum"}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -322,7 +343,6 @@ function MobileHeaderMenu() {
       </Dialog>
 
       <SimulationDialog open={simDialogOpen} onOpenChange={setSimDialogOpen} />
-      <MedplumSyncButton open={syncDialogOpen} onOpenChange={setSyncDialogOpen} />
     </>
   )
 }
