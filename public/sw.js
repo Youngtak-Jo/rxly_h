@@ -1,4 +1,4 @@
-const CACHE_NAME = "rxly-v1";
+const CACHE_NAME = "rxly-v2";
 const STATIC_ASSETS = ["/", "/web-app-manifest-192x192.png", "/web-app-manifest-512x512.png"];
 
 self.addEventListener("install", (event) => {
