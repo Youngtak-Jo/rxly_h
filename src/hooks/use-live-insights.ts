@@ -65,8 +65,11 @@ export function useLiveInsights() {
       }
 
       // Decide whether to send full transcript or delta
+      // Force checkpoint (full transcript) when inline comments are present so the
+      // AI has complete context to address the comment without losing existing items.
+      const hasComments = pendingComments.length > 0
       const isCheckpoint =
-        analysisCount === 0 || analysisCount % CHECKPOINT_INTERVAL === 0
+        analysisCount === 0 || analysisCount % CHECKPOINT_INTERVAL === 0 || hasComments
       const transcript = isCheckpoint
         ? fullTranscript
         : transcriptStore.getTranscriptSince(entryCountAtLastUpdate)
@@ -154,19 +157,27 @@ export function useLiveInsights() {
               summary,
               keyFindings,
               redFlags,
-              // Only send doctor-modified items; AI regenerates its own from transcript
-              checklistItems: checklistItems
-                .filter(
-                  (item) =>
-                    item.source === "MANUAL" ||
-                    item.isChecked !== item.isAutoChecked ||
-                    item.doctorNote !== null
-                )
-                .map((item) => ({
-                  id: item.id,
-                  label: item.label,
-                  isChecked: item.isChecked,
-                })),
+              // When inline comments are present, send ALL items so the AI
+              // can see and preserve them. Otherwise only send doctor-modified
+              // items; AI regenerates its own from transcript.
+              checklistItems: hasComments
+                ? checklistItems.map((item) => ({
+                    id: item.id,
+                    label: item.label,
+                    isChecked: item.isChecked,
+                  }))
+                : checklistItems
+                    .filter(
+                      (item) =>
+                        item.source === "MANUAL" ||
+                        item.isChecked !== item.isAutoChecked ||
+                        item.doctorNote !== null
+                    )
+                    .map((item) => ({
+                      id: item.id,
+                      label: item.label,
+                      isChecked: item.isChecked,
+                    })),
             },
           }),
           signal: abortController.signal,
