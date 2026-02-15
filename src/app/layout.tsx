@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   title: "Rxly - AI Medical Consultation Assistant",
   description:
     "Real-time AI-powered medical consultation assistant with live transcription and insights",
+  other: {
+    "apple-mobile-web-app-title": "MyWebSite",
+  },
   openGraph: {
     title: "Rxly - AI Medical Consultation Assistant",
     description:
