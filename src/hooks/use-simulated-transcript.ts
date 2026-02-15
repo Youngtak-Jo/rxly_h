@@ -38,7 +38,7 @@ export function useSimulatedTranscript() {
   const currentIndexRef = useRef(0)
   const optionsRef = useRef<SimulationOptions>(DEFAULT_OPTIONS)
   const sessionIdRef = useRef("")
-  const runningTimeRef = useRef(0)
+
 
   const { setRecording, setDuration } = useRecordingStore()
   const { triggerAnalysis, runFinalAnalysis } = useLiveInsights()
@@ -105,12 +105,8 @@ export function useSimulatedTranscript() {
         words.length * INTERIM_WORD_STEP_MS * opts.speedFactor +
         100
 
-      const entryStartTime = runningTimeRef.current
-      runningTimeRef.current += words.length * 0.3
-      const entryEndTime = runningTimeRef.current
-
-      const capturedStartTime = entryStartTime
-      const capturedEndTime = entryEndTime
+      // Capture current header timer value as message startTime
+      const capturedStartTime = useRecordingStore.getState().duration
 
       const t2 = setTimeout(() => {
         // Safety net: abort if session has changed since this timeout was scheduled
@@ -122,6 +118,8 @@ export function useSimulatedTranscript() {
         const speaker = resolveSpeaker(capturedRawSpeakerId)
 
         const entryId = uuid()
+        const capturedEndTime = useRecordingStore.getState().duration
+
         addFinalEntry({
           id: entryId,
           sessionId,
@@ -218,7 +216,6 @@ export function useSimulatedTranscript() {
       isRunningRef.current = false
       isPausedRef.current = false
       currentIndexRef.current = 0
-      runningTimeRef.current = 0
 
       if (durationIntervalRef.current) {
         clearInterval(durationIntervalRef.current)
@@ -266,7 +263,6 @@ export function useSimulatedTranscript() {
       }
       sessionIdRef.current = sessionId
       currentIndexRef.current = 0
-      runningTimeRef.current = 0
 
       useTranscriptStore.getState().reset()
       setRecording(true)
@@ -281,12 +277,13 @@ export function useSimulatedTranscript() {
         stop: (options) => stopRef.current(options),
       })
 
-      // Duration timer (skips incrementing when paused)
+      // Duration timer — ticks faster with speed (e.g. 2x → 500ms, 10x → 100ms)
+      const tickMs = Math.max(100, 1000 * opts.speedFactor)
       durationIntervalRef.current = setInterval(() => {
         const s = useRecordingStore.getState()
         if (!s.isRecording || s.isPaused) return
         s.setDuration(s.duration + 1)
-      }, 1000)
+      }, tickMs)
 
       // Start processing from entry 0
       processEntry(0)
