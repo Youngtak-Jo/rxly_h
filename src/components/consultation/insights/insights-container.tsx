@@ -22,8 +22,14 @@ import { InlineCommentPopover } from "./inline-comment-popover"
 
 export function InsightsContainer() {
   const summary = useInsightsStore((s) => s.summary)
-  const keyFindings = useInsightsStore((s) => s.keyFindings) || []
-  const redFlags = useInsightsStore((s) => s.redFlags) || []
+  const keyFindings = ((): string[] => {
+    const findings = useInsightsStore((s) => s.keyFindings)
+    return Array.isArray(findings) ? findings : []
+  })()
+  const redFlags = ((): string[] => {
+    const flags = useInsightsStore((s) => s.redFlags)
+    return Array.isArray(flags) ? flags : []
+  })()
   const checklistItems = useInsightsStore((s) => s.checklistItems)
   const isProcessing = useInsightsStore((s) => s.isProcessing)
   const toggleChecklistItem = useInsightsStore((s) => s.toggleChecklistItem)
@@ -103,13 +109,13 @@ export function InsightsContainer() {
         <h3 className="flex items-center gap-2 text-sm font-medium mb-2">
           <IconSearch className="size-4 text-emerald-500" />
           Key Findings
-          {keyFindings.length > 0 && (
+          {Array.isArray(keyFindings) && keyFindings.length > 0 && (
             <Badge variant="secondary" className="text-[10px]">
               {keyFindings.length}
             </Badge>
           )}
         </h3>
-        {keyFindings.length > 0 ? (
+        {Array.isArray(keyFindings) && keyFindings.length > 0 ? (
           <ul className="space-y-1.5">
             {keyFindings.map((finding) => (
               <li
@@ -129,7 +135,7 @@ export function InsightsContainer() {
       </section>
 
       {/* Red Flags */}
-      {redFlags.length > 0 && (
+      {Array.isArray(redFlags) && redFlags.length > 0 && (
         <section data-section="redFlags">
           <h3 className="flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400 mb-2">
             <IconAlertTriangle className="size-4" />
