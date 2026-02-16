@@ -30,10 +30,10 @@ interface InsightsState {
   updateFromResponse: (response: InsightsResponse, sessionId: string) => void
   loadFromDB: (data: {
     summary: string
-    keyFindings: string[]
-    redFlags: string[]
-    checklistItems: ChecklistItem[]
-    diagnoses?: DiagnosisItem[]
+    keyFindings: string[] | unknown
+    redFlags: string[] | unknown
+    checklistItems: ChecklistItem[] | unknown
+    diagnoses?: DiagnosisItem[] | unknown
   }) => void
   toggleChecklistItem: (id: string) => void
   addChecklistItem: (label: string, sessionId: string) => void
@@ -138,10 +138,10 @@ export const useInsightsStore = create<InsightsState>((set) => ({
   loadFromDB: (data) =>
     set({
       summary: data.summary || "",
-      keyFindings: data.keyFindings || [],
-      redFlags: data.redFlags || [],
-      checklistItems: data.checklistItems || [],
-      diagnoses: data.diagnoses || [],
+      keyFindings: Array.isArray(data.keyFindings) ? data.keyFindings : [],
+      redFlags: Array.isArray(data.redFlags) ? data.redFlags : [],
+      checklistItems: Array.isArray(data.checklistItems) ? data.checklistItems : [],
+      diagnoses: Array.isArray(data.diagnoses) ? data.diagnoses : [],
     }),
 
   toggleChecklistItem: (id) =>
