@@ -22,16 +22,21 @@ export async function GET(
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
-    const [session, transcriptEntries, notes, researchMessages] = await Promise.all([
-      prisma.session.findUnique({
-        where: { id, userId: user.id },
-        include: {
-          insights: true,
-          record: true,
-          checklistItems: { orderBy: { sortOrder: "asc" } },
-          diagnoses: { orderBy: { sortOrder: "asc" } },
-        },
-      }),
+    const session = await prisma.session.findUnique({
+      where: { id, userId: user.id },
+      include: {
+        insights: true,
+        record: true,
+        checklistItems: { orderBy: { sortOrder: "asc" } },
+        diagnoses: { orderBy: { sortOrder: "asc" } },
+      },
+    })
+
+    if (!session) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 })
+    }
+
+    const [transcriptEntries, notes, researchMessages] = await Promise.all([
       prisma.transcriptEntry.findMany({
         where: { sessionId: id, isFinal: true },
         orderBy: { startTime: "asc" },
@@ -45,10 +50,6 @@ export async function GET(
         orderBy: { createdAt: "asc" },
       }),
     ])
-
-    if (!session) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 })
-    }
 
     // Batch signed URL generation for all notes
     const allPaths: string[] = []

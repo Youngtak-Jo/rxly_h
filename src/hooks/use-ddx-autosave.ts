@@ -35,6 +35,7 @@ export function useDdxAutoSave() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             diagnoses: currentState.diagnoses.map((dx) => ({
+              id: dx.id,
               icdCode: dx.icdCode,
               icdUri: dx.icdUri,
               diseaseName: dx.diseaseName,

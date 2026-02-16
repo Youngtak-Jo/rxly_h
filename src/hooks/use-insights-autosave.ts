@@ -38,6 +38,7 @@ export function useInsightsAutoSave() {
             keyFindings: currentState.keyFindings,
             redFlags: currentState.redFlags,
             checklistItems: currentState.checklistItems.map((item) => ({
+              id: item.id,
               label: item.label,
               isChecked: item.isChecked,
               isAutoChecked: item.isAutoChecked,

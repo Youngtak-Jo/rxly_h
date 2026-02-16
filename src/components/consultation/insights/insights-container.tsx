@@ -22,14 +22,10 @@ import { InlineCommentPopover } from "./inline-comment-popover"
 
 export function InsightsContainer() {
   const summary = useInsightsStore((s) => s.summary)
-  const keyFindings = ((): string[] => {
-    const findings = useInsightsStore((s) => s.keyFindings)
-    return Array.isArray(findings) ? findings : []
-  })()
-  const redFlags = ((): string[] => {
-    const flags = useInsightsStore((s) => s.redFlags)
-    return Array.isArray(flags) ? flags : []
-  })()
+  const rawKeyFindings = useInsightsStore((s) => s.keyFindings)
+  const rawRedFlags = useInsightsStore((s) => s.redFlags)
+  const keyFindings = Array.isArray(rawKeyFindings) ? rawKeyFindings : []
+  const redFlags = Array.isArray(rawRedFlags) ? rawRedFlags : []
   const checklistItems = useInsightsStore((s) => s.checklistItems)
   const isProcessing = useInsightsStore((s) => s.isProcessing)
   const toggleChecklistItem = useInsightsStore((s) => s.toggleChecklistItem)

@@ -15,6 +15,23 @@ export function useLiveInsights() {
   const abortControllerRef = useRef<AbortController | null>(null)
   const isAnalyzingRef = useRef(false)
   const pendingRetriggerRef = useRef(false)
+  const titlePatchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const queueSessionTitlePatch = useCallback((sessionId: string, title: string) => {
+    if (titlePatchTimerRef.current) {
+      clearTimeout(titlePatchTimerRef.current)
+    }
+
+    titlePatchTimerRef.current = setTimeout(() => {
+      fetch(`/api/sessions/${sessionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      }).catch(console.error)
+      titlePatchTimerRef.current = null
+    }, 500)
+  }, [])
+
   const runAnalysis = useCallback(
     async (forceRun: boolean = false) => {
       const session = useSessionStore.getState().activeSession
@@ -235,13 +252,15 @@ export function useLiveInsights() {
 
           // Auto-update title from every insights response
           if (parsed.title) {
-            const title = parsed.title.replace(/^["']|["']$/g, "")
-            useSessionStore.getState().updateSession(session.id, { title })
-            fetch(`/api/sessions/${session.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ title }),
-            }).catch(console.error)
+            const title = parsed.title.replace(/^["']|["']$/g, "").trim()
+            if (title) {
+              const store = useSessionStore.getState()
+              const previousTitle = store.sessions.find((s) => s.id === session.id)?.title ?? ""
+              if (previousTitle !== title) {
+                store.updateSession(session.id, { title })
+                queueSessionTitlePatch(session.id, title)
+              }
+            }
           }
         } catch {
           console.error("Failed to parse insights response:", accumulated)
@@ -264,7 +283,7 @@ export function useLiveInsights() {
         }
       }
     },
-    []
+    [queueSessionTitlePatch]
   )
 
   const analyzeTranscript = useCallback(() => {
@@ -325,6 +344,10 @@ export function useLiveInsights() {
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
+      }
+      if (titlePatchTimerRef.current) {
+        clearTimeout(titlePatchTimerRef.current)
+        titlePatchTimerRef.current = null
       }
       isAnalyzingRef.current = false
     }

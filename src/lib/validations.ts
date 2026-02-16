@@ -40,8 +40,27 @@ export const checklistPatchSchema = z.object({
   sortOrder: z.number().int().min(0).optional(),
 })
 
+const insightsChecklistItemSchema = z.object({
+  id: z.string().min(1).optional(),
+  label: z.string().min(1).max(500),
+  isChecked: z.boolean().default(false),
+  isAutoChecked: z.boolean().default(false),
+  doctorNote: z.string().max(1000).nullable().optional(),
+  sortOrder: z.number().int().min(0).optional(),
+  source: z.enum(["AI", "MANUAL"]).default("AI"),
+})
+
+export const insightsUpdateSchema = z.object({
+  summary: z.string().max(50000).optional(),
+  keyFindings: z.array(z.string()).max(200).optional(),
+  redFlags: z.array(z.string()).max(200).optional(),
+  diagnosticKeywords: z.array(z.unknown()).optional(),
+  checklistItems: z.array(insightsChecklistItemSchema).max(500).optional(),
+})
+
 export const diagnosesUpdateSchema = z.object({
   diagnoses: z.array(z.object({
+    id: z.string().min(1).optional(),
     icdCode: z.string().max(20),
     icdUri: z.string().nullable().optional(),
     diseaseName: z.string().max(500),

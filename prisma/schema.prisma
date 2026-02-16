@@ -28,6 +28,7 @@ model Session {
   researchMessages  ResearchMessage[]
 
   @@index([userId])
+  @@index([userId, startedAt])
   @@map("sessions")
 }
 
@@ -186,6 +187,7 @@ model ExportLink {
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@index([userId])
+  @@index([sessionId])
   @@map("export_links")
 }
 

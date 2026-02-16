@@ -6,12 +6,14 @@ interface SessionState {
   sessions: Session[]
   isLoading: boolean
   isSwitching: boolean
+  hasLoadedSessionList: boolean
   setActiveSession: (session: Session | null) => void
   setSessions: (sessions: Session[]) => void
   addSession: (session: Session) => void
   updateSession: (id: string, partial: Partial<Session>) => void
   setLoading: (loading: boolean) => void
   setSwitching: (switching: boolean) => void
+  setHasLoadedSessionList: (loaded: boolean) => void
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
@@ -19,6 +21,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   sessions: [],
   isLoading: false,
   isSwitching: false,
+  hasLoadedSessionList: false,
 
   setActiveSession: (session) => set({ activeSession: session }),
 
@@ -40,4 +43,5 @@ export const useSessionStore = create<SessionState>((set) => ({
 
   setLoading: (isLoading) => set({ isLoading }),
   setSwitching: (isSwitching) => set({ isSwitching }),
+  setHasLoadedSessionList: (hasLoadedSessionList) => set({ hasLoadedSessionList }),
 }))

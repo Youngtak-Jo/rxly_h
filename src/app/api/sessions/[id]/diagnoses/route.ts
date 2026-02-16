@@ -7,6 +7,39 @@ import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { diagnosesUpdateSchema } from "@/lib/validations"
 
+interface IncomingDiagnosis {
+  id?: string
+  icdCode: string
+  icdUri?: string | null
+  diseaseName: string
+  confidence: string
+  evidence: string
+  citations?: unknown[]
+  sortOrder?: number
+}
+
+function toPrismaConfidence(confidence: string): "HIGH" | "MODERATE" | "LOW" {
+  if (confidence.toUpperCase() === "HIGH") return "HIGH"
+  if (confidence.toUpperCase() === "LOW") return "LOW"
+  return "MODERATE"
+}
+
+function dedupeDiagnoses(items: IncomingDiagnosis[]): IncomingDiagnosis[] {
+  const seenIds = new Set<string>()
+  const dedupedReversed: IncomingDiagnosis[] = []
+
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i]
+    if (item.id) {
+      if (seenIds.has(item.id)) continue
+      seenIds.add(item.id)
+    }
+    dedupedReversed.push(item)
+  }
+
+  return dedupedReversed.reverse()
+}
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -52,34 +85,70 @@ export async function PUT(
     const { diagnoses } = parsed.data
 
     await prisma.$transaction(async (tx) => {
-      await tx.diagnosis.deleteMany({
+      const dedupedDiagnoses = dedupeDiagnoses(diagnoses)
+      const legacyOnly = dedupedDiagnoses.length > 0 && dedupedDiagnoses.every((dx) => !dx.id)
+
+      if (legacyOnly) {
+        await tx.diagnosis.deleteMany({ where: { sessionId: id } })
+        await tx.diagnosis.createMany({
+          data: dedupedDiagnoses.map((dx, index) => ({
+            sessionId: id,
+            icdCode: dx.icdCode,
+            icdUri: dx.icdUri || null,
+            diseaseName: dx.diseaseName,
+            confidence: toPrismaConfidence(dx.confidence),
+            evidence: dx.evidence,
+            citations: (dx.citations || []) as Prisma.InputJsonValue,
+            sortOrder: dx.sortOrder ?? index,
+          })),
+        })
+        return
+      }
+
+      const existingDiagnoses = await tx.diagnosis.findMany({
         where: { sessionId: id },
+        select: { id: true },
+      })
+      const existingIdSet = new Set(existingDiagnoses.map((item) => item.id))
+      const incomingIds = dedupedDiagnoses
+        .map((dx) => dx.id)
+        .filter((value): value is string => !!value)
+
+      await tx.diagnosis.deleteMany({
+        where: {
+          sessionId: id,
+          id: { notIn: incomingIds.length > 0 ? incomingIds : ["__never__"] },
+        },
       })
 
-      if (diagnoses && diagnoses.length > 0) {
-        await tx.diagnosis.createMany({
-          data: diagnoses.map(
-            (
-              dx,
-              index
-            ) => ({
-              sessionId: id,
-              icdCode: dx.icdCode,
-              icdUri: dx.icdUri || null,
-              diseaseName: dx.diseaseName,
-              confidence:
-                dx.confidence?.toUpperCase() === "HIGH"
-                  ? "HIGH"
-                  : dx.confidence?.toUpperCase() === "LOW"
-                    ? "LOW"
-                    : "MODERATE",
-              evidence: dx.evidence,
-              citations: (dx.citations || []) as Prisma.InputJsonValue,
-              sortOrder: dx.sortOrder ?? index,
+      await Promise.all(
+        dedupedDiagnoses.map((dx, index) => {
+          const baseData = {
+            icdCode: dx.icdCode,
+            icdUri: dx.icdUri || null,
+            diseaseName: dx.diseaseName,
+            confidence: toPrismaConfidence(dx.confidence),
+            evidence: dx.evidence,
+            citations: (dx.citations || []) as Prisma.InputJsonValue,
+            sortOrder: dx.sortOrder ?? index,
+          } as const
+
+          if (dx.id && existingIdSet.has(dx.id)) {
+            return tx.diagnosis.update({
+              where: { id: dx.id, sessionId: id },
+              data: baseData,
             })
-          ),
+          }
+
+          return tx.diagnosis.create({
+            data: {
+              ...(dx.id ? { id: dx.id } : {}),
+              sessionId: id,
+              ...baseData,
+            },
+          })
         })
-      }
+      )
     })
 
     logAudit({ userId: user.id, action: "UPDATE", resource: "diagnosis", sessionId: id })

@@ -5,10 +5,9 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { ConsultationLayout } from "@/components/consultation/consultation-layout"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { useSessionStore } from "@/stores/session-store"
 import { useSessionLoader } from "@/hooks/use-session-loader"
 import { TourProvider } from "@/components/tour/tour-provider"
-import { useEffect } from "react"
+import { useSessionListLoader } from "@/hooks/use-session-list-loader"
 
 export default function ConsultationSessionPage({
     params,
@@ -16,26 +15,7 @@ export default function ConsultationSessionPage({
     params: Promise<{ id: string }>
 }) {
     const { id } = use(params)
-    const { setSessions, setLoading } = useSessionStore()
-
-    // Load session list on mount
-    useEffect(() => {
-        const loadSessions = async () => {
-            setLoading(true)
-            try {
-                const res = await fetch("/api/sessions")
-                if (res.ok) {
-                    const sessions = await res.json()
-                    setSessions(sessions)
-                }
-            } catch (error) {
-                console.error("Failed to load sessions:", error)
-            } finally {
-                setLoading(false)
-            }
-        }
-        loadSessions()
-    }, [setSessions, setLoading])
+    useSessionListLoader()
 
     // Auto-load the session from URL param
     useSessionLoader(id)

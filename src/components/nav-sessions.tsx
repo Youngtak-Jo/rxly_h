@@ -82,18 +82,77 @@ export function NavSessions() {
   // Prefetch session data on hover (debounced)
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const prefetchingRef = useRef<Set<string>>(new Set())
+  const prefetchControllersRef = useRef<Map<string, AbortController>>(new Map())
+
+  const stopSimulationIfRunning = () => {
+    const recState = useRecordingStore.getState()
+    if (recState.isSimulating && recState.simulationControls) {
+      recState.simulationControls.stop({ skipFinalAnalysis: true })
+    }
+  }
+
+  const resetConsultationStores = () => {
+    transcriptStore.reset()
+    insightsStore.reset()
+    ddxStore.reset()
+    recordStore.reset()
+    recordingStore.reset()
+    noteStore.reset()
+    researchStore.reset()
+    useConsultationModeStore.getState().reset()
+    useConsultationTabStore.getState().clearAllUnseenUpdates()
+  }
 
   const prefetchSession = (sessionId: string) => {
     if (activeSession?.id === sessionId) return
     if (getCachedSession(sessionId)) return
     if (prefetchingRef.current.has(sessionId)) return
 
+    const controller = new AbortController()
     prefetchingRef.current.add(sessionId)
-    fetch(`/api/sessions/${sessionId}/full`)
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => setCachedSession(sessionId, data))
-      .catch(() => { })
-      .finally(() => prefetchingRef.current.delete(sessionId))
+    prefetchControllersRef.current.set(sessionId, controller)
+    fetch(`/api/sessions/${sessionId}/full`, { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => setCachedSession(sessionId, data))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return
+      })
+      .finally(() => {
+        prefetchingRef.current.delete(sessionId)
+        prefetchControllersRef.current.delete(sessionId)
+      })
+  }
+
+  useEffect(() => {
+    const controllerMap = prefetchControllersRef.current
+    const prefetchingSet = prefetchingRef.current
+
+    return () => {
+      if (prefetchTimerRef.current) {
+        clearTimeout(prefetchTimerRef.current)
+      }
+
+      for (const controller of controllerMap.values()) {
+        controller.abort()
+      }
+      controllerMap.clear()
+      prefetchingSet.clear()
+    }
+  }, [])
+
+  const restorePreviousSessionContext = async (previousSession: Session | null) => {
+    if (previousSession) {
+      const restored = await loadSessionById(previousSession.id)
+      if (!restored) {
+        useSessionStore.getState().setActiveSession(previousSession)
+      }
+      router.replace(`/consultation/${previousSession.id}`)
+      return
+    }
+
+    useSessionStore.getState().setActiveSession(null)
+    resetConsultationStores()
+    router.replace("/consultation")
   }
 
   // Tab state for sub-items
@@ -105,11 +164,11 @@ export function NavSessions() {
   const isResearchStreaming = useResearchStore((s) => s.isStreaming)
 
   const createSession = async () => {
-    // Stop any running simulation BEFORE resetting stores
-    const recState = useRecordingStore.getState()
-    if (recState.isSimulating && recState.simulationControls) {
-      recState.simulationControls.stop({ skipFinalAnalysis: true })
-    }
+    const storeBeforeCreate = useSessionStore.getState()
+    const previousSessions = storeBeforeCreate.sessions
+    const previousActiveSession = storeBeforeCreate.activeSession
+
+    stopSimulationIfRunning()
 
     const tempId = uuidv4()
     const now = new Date().toISOString()
@@ -126,15 +185,7 @@ export function NavSessions() {
 
     addSession(optimisticSession)
     setActiveSession(optimisticSession)
-    transcriptStore.reset()
-    insightsStore.reset()
-    ddxStore.reset()
-    recordStore.reset()
-    recordingStore.reset()
-    noteStore.reset()
-    researchStore.reset()
-    useConsultationModeStore.getState().reset()
-    useConsultationTabStore.getState().clearAllUnseenUpdates()
+    resetConsultationStores()
 
     try {
       const res = await fetch("/api/sessions", {
@@ -157,16 +208,15 @@ export function NavSessions() {
       console.error("Failed to create session:", error)
       toast.error("Failed to create session")
       const store = useSessionStore.getState()
-      store.setSessions(store.sessions.filter((s) => s.id !== tempId))
-      if (store.activeSession?.id === tempId) {
-        store.setActiveSession(null)
-      }
+      store.setSessions(previousSessions)
+      await restorePreviousSessionContext(previousActiveSession)
     }
   }
 
   const loadSession = async (sessionId: string) => {
     if (activeSession?.id === sessionId) return
-    await loadSessionById(sessionId)
+    const loaded = await loadSessionById(sessionId)
+    if (!loaded) return
     router.push(`/consultation/${sessionId}`)
   }
 
@@ -174,41 +224,36 @@ export function NavSessions() {
 
   const deleteSession = async (sessionId: string) => {
     setDeletingId(sessionId)
+    const storeBeforeDelete = useSessionStore.getState()
+    const previousSessions = storeBeforeDelete.sessions
+    const previousActiveSession = storeBeforeDelete.activeSession
+    const deletingActiveSession = previousActiveSession?.id === sessionId
 
     // 1. Abort in-flight analysis BEFORE delete to prevent race conditions
-    if (activeSession?.id === sessionId) {
-      const recState = useRecordingStore.getState()
-      if (recState.isSimulating && recState.simulationControls) {
-        recState.simulationControls.stop({ skipFinalAnalysis: true })
-      }
+    if (deletingActiveSession) {
+      stopSimulationIfRunning()
       setActiveSession(null) // Triggers hook cleanup → aborts in-flight AI calls
-      transcriptStore.reset()
-      insightsStore.reset()
-      ddxStore.reset()
-      recordStore.reset()
-      recordingStore.reset()
-      noteStore.reset()
-      researchStore.reset()
-      useConsultationModeStore.getState().reset()
-      useConsultationTabStore.getState().clearAllUnseenUpdates()
+      resetConsultationStores()
     }
 
     // 2. Optimistic UI removal
-    const previousSessions = sessions
-    setSessions(sessions.filter((s) => s.id !== sessionId))
+    setSessions(previousSessions.filter((s) => s.id !== sessionId))
     deleteCachedSession(sessionId)
 
     try {
       const res = await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Delete failed")
       // Navigate back to base consultation if we just deleted the active session
-      if (activeSession?.id === sessionId) {
+      if (deletingActiveSession) {
         router.replace("/consultation")
       }
     } catch (error) {
       // Rollback on failure
       console.error("Failed to delete session:", error)
       setSessions(previousSessions)
+      if (deletingActiveSession) {
+        await restorePreviousSessionContext(previousActiveSession)
+      }
       toast.error("Failed to delete session")
     } finally {
       setDeletingId(null)
@@ -230,22 +275,18 @@ export function NavSessions() {
 
   const commitRename = async () => {
     if (!editingId) return
+    const targetId = editingId
     const trimmed = editingTitle.trim()
     if (trimmed) {
       try {
-        await fetch(`/api/sessions/${editingId}`, {
+        const res = await fetch(`/api/sessions/${targetId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title: trimmed }),
         })
-        setSessions(
-          sessions.map((s) =>
-            s.id === editingId ? { ...s, title: trimmed } : s
-          )
-        )
-        if (activeSession?.id === editingId) {
-          setActiveSession({ ...activeSession, title: trimmed })
-        }
+        if (!res.ok) throw new Error("Rename failed")
+        useSessionStore.getState().updateSession(targetId, { title: trimmed })
+        deleteCachedSession(targetId)
       } catch (error) {
         console.error("Failed to rename session:", error)
         toast.error("Failed to rename session")

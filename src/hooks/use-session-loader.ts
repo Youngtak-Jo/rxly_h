@@ -12,6 +12,7 @@ import { useResearchStore } from "@/stores/research-store"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import type { TranscriptEntry, DiagnosticKeyword } from "@/types/session"
+import type { Session } from "@/types/session"
 import type { ChecklistItem, DiagnosisCitation } from "@/types/insights"
 import type { ConsultationRecord } from "@/types/record"
 
@@ -37,15 +38,7 @@ interface SessionDiagnosis {
     sortOrder: number
 }
 
-interface FullSessionResponse {
-    id: string
-    title: string
-    patientName: string | null
-    mode: string
-    startedAt: string
-    endedAt: string | null
-    createdAt: string
-    updatedAt: string
+interface FullSessionResponse extends Session {
     insights?: SessionInsights | null
     diagnoses?: SessionDiagnosis[]
     record?: ConsultationRecord | null
@@ -140,7 +133,7 @@ function restoreStores(
         }
     }
 
-    useSessionStore.getState().setActiveSession(session as any)
+    useSessionStore.getState().setActiveSession(session)
 
     // Transcript
     transcriptStore.reset()
@@ -225,10 +218,10 @@ function restoreStores(
 
 // ── loadSession (imperative, for nav-sessions click) ─────────────
 
-export async function loadSessionById(sessionId: string) {
+export async function loadSessionById(sessionId: string): Promise<boolean> {
     const store = useSessionStore.getState()
     const activeSession = store.activeSession
-    if (activeSession?.id === sessionId) return
+    if (activeSession?.id === sessionId) return true
 
     // Stop any running simulation
     const recState = useRecordingStore.getState()
@@ -259,10 +252,12 @@ export async function loadSessionById(sessionId: string) {
         }
 
         restoreStores(session, transcriptEntries, notes, researchMessages)
+        return true
     } catch (error) {
         console.error("Failed to load session:", error)
         const { toast } = await import("sonner")
         toast.error("Failed to load session")
+        return false
     } finally {
         const s = useSessionStore.getState()
         s.setLoading(false)
