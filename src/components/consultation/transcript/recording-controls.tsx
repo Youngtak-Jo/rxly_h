@@ -18,6 +18,8 @@ export function RecordingControls() {
   const { isRecording, isPaused, duration, setDuration, isSimulating, simulationControls } =
     useRecordingStore()
   const activeSession = useSessionStore((s) => s.activeSession)
+  const isSwitching = useSessionStore((s) => s.isSwitching)
+  const hydratingSessionId = useSessionStore((s) => s.hydratingSessionId)
   const { startListening, stopListening, pauseListening, resumeListening } =
     useDeepgram()
   const { startConsultation, endConsultation } = useAiDoctor()
@@ -28,6 +30,9 @@ export function RecordingControls() {
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   const isAiDoctorMode = mode === "ai-doctor"
+  const isTranscriptHydrating =
+    !!activeSession && hydratingSessionId === activeSession.id
+  const isStartDisabled = !activeSession || isSwitching || isTranscriptHydrating
 
   // Duration timer — only for live recording mode.
   // Simulation manages its own duration timer in the hook.
@@ -47,13 +52,20 @@ export function RecordingControls() {
   }, [isRecording, isPaused, duration, setDuration, isSimulating])
 
   const handleStart = useCallback(async () => {
-    if (!activeSession) return
+    if (!activeSession || isSwitching || isTranscriptHydrating) return
     if (isAiDoctorMode) {
       startConsultation()
     } else {
       await startListening()
     }
-  }, [activeSession, isAiDoctorMode, startConsultation, startListening])
+  }, [
+    activeSession,
+    isSwitching,
+    isTranscriptHydrating,
+    isAiDoctorMode,
+    startConsultation,
+    startListening,
+  ])
 
   const handleStop = useCallback(() => {
     if (isAiDoctorMode) {
@@ -104,7 +116,7 @@ export function RecordingControls() {
             onClick={handleStart}
             size="sm"
             className="gap-1.5 h-8"
-            disabled={!activeSession}
+            disabled={isStartDisabled}
           >
             {isAiDoctorMode ? "Start AI Consultation" : "Start Recording"}
           </Button>
