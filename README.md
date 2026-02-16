@@ -11,7 +11,8 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Next.js-000000?logo=next.js&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/Next.js%2016-000000?logo=next.js&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/Tailwind%20CSS%204-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" />
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
 </p>
@@ -24,13 +25,7 @@
 
 ## Screenshots
 
-<!-- Add your screenshots here -->
-<!-- ![Consultation View](docs/screenshots/consultation.png) -->
-<!-- ![Differential Diagnosis](docs/screenshots/ddx.png) -->
-<!-- ![Research Panel](docs/screenshots/research.png) -->
-<!-- ![Dashboard](docs/screenshots/dashboard.png) -->
-
-*Screenshots coming soon*
+![Rxly Dashboard](public/rxly-dashboard.png)
 
 ---
 
@@ -57,11 +52,17 @@ Instant generation of clinical summaries, key findings, red flags, and dynamic a
 ### Differential Diagnosis (DDx)
 Evidence-based differential diagnoses ranked by confidence level, complete with ICD-11 classification codes and supporting clinical evidence.
 
-### Medical Knowledge Integration
-A RAG (Retrieval-Augmented Generation) pipeline connecting **6 authoritative medical sources** — including peer-reviewed literature, drug safety databases, international disease classification, and active clinical trials — providing physicians with evidence at the point of care.
+### Tier 1 Medical Knowledge Integration
+A RAG (Retrieval-Augmented Generation) pipeline connecting **authoritative medical sources** — including **OpenFDA, ClinicalTrials.gov, DailyMed, PubMed, and Europe PMC** — providing physicians with high-confidence, evidence-based answers at the point of care.
 
 ### Automated Medical Scribe
 Structured SOAP notes (Subjective, Objective, Assessment, Plan) auto-generated from the voice conversation and physician annotations. No more hours spent on charting after clinic.
+
+### Simulation Mode
+Test and demonstrate the platform capabilities with a built-in simulation engine. Run complex clinical scenarios at up to 15x speed to verify real-time analysis without needing live actors.
+
+### PWA Support
+Install Rxly as a native-like application on desktop and mobile devices. Offline-capable architecture ensures critical functionality remains accessible.
 
 ### Intelligent Speaker Identification
 AI-based automatic classification of Doctor vs. Patient speech from raw audio, enabling accurate attribution throughout the transcript.
@@ -76,7 +77,7 @@ FHIR R4-compliant data export for seamless interoperability with electronic heal
 
 ## Built with Claude
 
-> **100% of the codebase was built using Claude Opus 4.6** via [Claude Code](https://claude.ai/code).
+> **100% of the codebase was built using Claude Opus** via [Claude Code](https://claude.ai/code).
 >
 > All AI reasoning and clinical intelligence features are powered by **Claude Opus 4.6** and **Claude Sonnet 4.5** — from real-time clinical analysis and differential diagnosis to medical record generation and research assistance.
 
