@@ -20,6 +20,7 @@ const PHI_STRING_FIELDS: Record<string, string[]> = {
     "plan",
   ],
   Insights: ["summary"],
+  ChecklistItem: ["doctorNote"],
   Note: ["content"],
   ResearchMessage: ["content"],
   Diagnosis: ["diseaseName", "evidence"],
@@ -29,6 +30,9 @@ const PHI_STRING_FIELDS: Record<string, string[]> = {
 const PHI_JSON_FIELDS: Record<string, string[]> = {
   Insights: ["keyFindings", "redFlags"],
   ConsultationRecord: ["vitals"],
+  Note: ["imageUrls", "storagePaths"],
+  Diagnosis: ["citations"],
+  ResearchMessage: ["citations"],
 }
 
 function isEncryptionEnabled(): boolean {
