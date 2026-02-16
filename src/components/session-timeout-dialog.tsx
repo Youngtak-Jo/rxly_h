@@ -12,10 +12,15 @@ import {
 import { Button } from "@/components/ui/button"
 
 export function SessionTimeoutDialog() {
-  const { showWarning, extendSession, logout } = useSessionTimeout()
+  const { showWarning, extendSession, dismissWarning, logout } = useSessionTimeout()
 
   return (
-    <Dialog open={showWarning} onOpenChange={() => extendSession()}>
+    <Dialog
+      open={showWarning}
+      onOpenChange={(open) => {
+        if (!open) dismissWarning()
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Session Expiring</DialogTitle>

@@ -129,10 +129,39 @@ const globalForPrisma = globalThis as unknown as {
   __prisma?: PrismaClient
 }
 
+function getDatasourceUrl(): string | undefined {
+  const raw = process.env.DATABASE_URL
+  if (!raw) return raw
+
+  try {
+    const url = new URL(raw)
+    const usesSupabasePooler =
+      url.hostname.includes("pooler.supabase.com") ||
+      url.searchParams.get("pgbouncer") === "true"
+
+    // In dev with Turbopack, multiple workers can cause pool starvation quickly.
+    // Clamp Prisma-side connection fan-out when using a pooled Supabase URL.
+    if (usesSupabasePooler && process.env.NODE_ENV !== "production") {
+      const configuredLimit = Number(url.searchParams.get("connection_limit") ?? "")
+      if (!Number.isFinite(configuredLimit) || configuredLimit > 1) {
+        url.searchParams.set("connection_limit", "1")
+      }
+
+      if (!url.searchParams.has("pool_timeout")) {
+        url.searchParams.set("pool_timeout", "30")
+      }
+    }
+
+    return url.toString()
+  } catch {
+    return raw
+  }
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function createPrismaClient() {
   const base = new PrismaClient({
-    datasourceUrl: process.env.DATABASE_URL,
+    datasourceUrl: getDatasourceUrl(),
     log:
       process.env.NODE_ENV !== "production"
         ? ["warn", "error"]

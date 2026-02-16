@@ -8,8 +8,14 @@ const IDLE_LOGOUT_MS = 16 * 60 * 1000 // 16 minutes
 
 export function useSessionTimeout() {
   const [showWarning, setShowWarning] = useState(false)
+  const showWarningRef = useRef(false)
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const logoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const setWarning = useCallback((value: boolean) => {
+    showWarningRef.current = value
+    setShowWarning(value)
+  }, [])
 
   const logout = useCallback(async () => {
     const supabase = createClient()
@@ -22,28 +28,32 @@ export function useSessionTimeout() {
     if (logoutTimer.current) clearTimeout(logoutTimer.current)
 
     warningTimer.current = setTimeout(() => {
-      setShowWarning(true)
+      setWarning(true)
     }, IDLE_WARNING_MS)
 
     logoutTimer.current = setTimeout(() => {
       logout()
     }, IDLE_LOGOUT_MS)
-  }, [logout])
+  }, [logout, setWarning])
 
   const resetTimers = useCallback(() => {
-    setShowWarning(false)
+    setWarning(false)
     startTimers()
-  }, [startTimers])
+  }, [setWarning, startTimers])
 
   const extendSession = useCallback(() => {
     resetTimers()
   }, [resetTimers])
 
+  const dismissWarning = useCallback(() => {
+    setWarning(false)
+  }, [setWarning])
+
   useEffect(() => {
     const events = ["mousedown", "keydown", "touchstart", "scroll"]
 
     const handleActivity = () => {
-      if (!showWarning) {
+      if (!showWarningRef.current) {
         resetTimers()
       }
     }
@@ -58,7 +68,7 @@ export function useSessionTimeout() {
       if (warningTimer.current) clearTimeout(warningTimer.current)
       if (logoutTimer.current) clearTimeout(logoutTimer.current)
     }
-  }, [resetTimers, startTimers, showWarning])
+  }, [resetTimers, startTimers])
 
-  return { showWarning, extendSession, logout }
+  return { showWarning, extendSession, dismissWarning, logout }
 }

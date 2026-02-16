@@ -16,6 +16,7 @@ export function useLiveInsights() {
   const isAnalyzingRef = useRef(false)
   const pendingRetriggerRef = useRef(false)
   const titlePatchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const analysisTriggerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const queueSessionTitlePatch = useCallback((sessionId: string, title: string) => {
     if (titlePatchTimerRef.current) {
@@ -294,10 +295,20 @@ export function useLiveInsights() {
     const { insightsMinInterval } = useSettingsStore.getState().analysis
     const timeSinceLastAnalysis = Date.now() - lastAnalysisTimeRef.current
     if (timeSinceLastAnalysis >= insightsMinInterval) {
+      if (analysisTriggerTimerRef.current) {
+        clearTimeout(analysisTriggerTimerRef.current)
+        analysisTriggerTimerRef.current = null
+      }
       analyzeTranscript()
     } else {
-      setTimeout(
-        () => analyzeTranscript(),
+      if (analysisTriggerTimerRef.current) {
+        clearTimeout(analysisTriggerTimerRef.current)
+      }
+      analysisTriggerTimerRef.current = setTimeout(
+        () => {
+          analysisTriggerTimerRef.current = null
+          analyzeTranscript()
+        },
         insightsMinInterval - timeSinceLastAnalysis
       )
     }
@@ -348,6 +359,10 @@ export function useLiveInsights() {
       if (titlePatchTimerRef.current) {
         clearTimeout(titlePatchTimerRef.current)
         titlePatchTimerRef.current = null
+      }
+      if (analysisTriggerTimerRef.current) {
+        clearTimeout(analysisTriggerTimerRef.current)
+        analysisTriggerTimerRef.current = null
       }
       isAnalyzingRef.current = false
     }

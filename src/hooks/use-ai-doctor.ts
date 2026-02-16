@@ -15,6 +15,11 @@ import { toast } from "sonner"
 const OPENING_MESSAGE =
   "Hi. I'm your AI doctor. Please have a seat. What brings you in today?"
 
+interface UploadedImage {
+  url: string
+  storagePath?: string
+}
+
 export function useAiDoctor() {
   const consultationStartRef = useRef<number>(0)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -82,15 +87,20 @@ export function useAiDoctor() {
   }, [addToTranscript])
 
   const sendMessage = useCallback(
-    async (text: string, imageUrls?: string[]) => {
+    async (text: string, uploadedImages?: UploadedImage[]) => {
       const trimmed = text.trim()
-      const hasImages = imageUrls && imageUrls.length > 0
+      const hasImages = uploadedImages && uploadedImages.length > 0
       if (!trimmed && !hasImages) return
 
       const session = useSessionStore.getState().activeSession
       if (!session) return
 
       const modeStore = useConsultationModeStore.getState()
+      const imageUrls = uploadedImages?.map((img) => img.url) || []
+      const storagePaths =
+        uploadedImages
+          ?.map((img) => img.storagePath)
+          .filter((path): path is string => !!path) || []
 
       // Build transcript text
       const transcriptText = hasImages
@@ -110,7 +120,7 @@ export function useAiDoctor() {
             body: JSON.stringify({
               content: trimmed || "",
               imageUrls,
-              storagePaths: [],
+              storagePaths,
             }),
           })
           if (noteRes.ok) {

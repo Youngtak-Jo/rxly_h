@@ -9,6 +9,7 @@ import { RecordingControls } from "./recording-controls"
 import { TranscriptViewer } from "./transcript-viewer"
 import { ModeSelector } from "./mode-selector"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
+import { useSessionStore } from "@/stores/session-store"
 import type { Speaker } from "@/types/session"
 
 function speakerLabel(speaker: Speaker) {
@@ -21,15 +22,19 @@ export function MobileTranscriptSection() {
   const interimText = useTranscriptStore((s) => s.interimText)
   const { isRecording } = useRecordingStore()
   const consultationStarted = useConsultationModeStore((s) => s.consultationStarted)
+  const activeSession = useSessionStore((s) => s.activeSession)
+  const hydratingSessionId = useSessionStore((s) => s.hydratingSessionId)
 
   const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null
+  const isTranscriptHydrating =
+    !!activeSession && hydratingSessionId === activeSession.id
 
   return (
     <div className="border-b bg-background">
       <RecordingControls />
 
       {/* Mode selector: show before consultation starts on mobile */}
-      {!isRecording && !consultationStarted && entries.length === 0 && !interimText && (
+      {!isRecording && !consultationStarted && entries.length === 0 && !interimText && !isTranscriptHydrating && (
         <ModeSelector />
       )}
 
@@ -62,6 +67,14 @@ export function MobileTranscriptSection() {
         <div className="px-4 py-2 text-center">
           <p className="text-xs text-muted-foreground/50 italic">
             Listening...
+          </p>
+        </div>
+      )}
+
+      {!expanded && !lastEntry && !interimText && !isRecording && isTranscriptHydrating && (
+        <div className="px-4 py-2 text-center">
+          <p className="text-xs text-muted-foreground/70 italic">
+            Loading transcript history...
           </p>
         </div>
       )}

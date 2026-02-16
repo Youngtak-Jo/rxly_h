@@ -45,15 +45,13 @@ export async function GET(
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
-    const [insights, checklistItems] = await Promise.all([
-      prisma.insights.findUnique({
-        where: { sessionId: id },
-      }),
-      prisma.checklistItem.findMany({
-        where: { sessionId: id },
-        orderBy: { sortOrder: "asc" },
-      }),
-    ])
+    const insights = await prisma.insights.findUnique({
+      where: { sessionId: id },
+    })
+    const checklistItems = await prisma.checklistItem.findMany({
+      where: { sessionId: id },
+      orderBy: { sortOrder: "asc" },
+    })
     logAudit({ userId: user.id, action: "READ", resource: "insights", sessionId: id })
     return NextResponse.json({ ...insights, checklistItems })
   } catch (error) {

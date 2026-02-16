@@ -19,6 +19,7 @@ interface ConsultationModeState {
   consultationStarted: boolean
 
   setMode: (mode: ConsultationMode) => void
+  setMessages: (messages: AiDoctorMessage[]) => void
   addMessage: (role: "assistant" | "user", content: string, imageUrls?: string[]) => void
   setAiResponding: (responding: boolean) => void
   setMicActive: (active: boolean) => void
@@ -35,6 +36,7 @@ export const useConsultationModeStore = create<ConsultationModeState>(
     consultationStarted: false,
 
     setMode: (mode) => set({ mode }),
+    setMessages: (aiDoctorMessages) => set({ aiDoctorMessages }),
 
     addMessage: (role, content, imageUrls?) =>
       set((state) => ({

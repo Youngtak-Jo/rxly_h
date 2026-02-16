@@ -84,12 +84,50 @@ export function useDeepgram() {
   const streamRef = useRef<MediaStream | null>(null)
   const sessionStartTimeRef = useRef<number>(0)
   const finalAnalysisCalledRef = useRef(false)
+  const recentChunkKeysRef = useRef<string[]>([])
+  const recentChunkKeySetRef = useRef<Set<string>>(new Set())
 
   const { setRecording, setPaused, setError, setDuration } = useRecordingStore()
   const { triggerAnalysis, runFinalAnalysis } = useLiveInsights()
 
+  const rememberChunkKey = useCallback((key: string) => {
+    if (recentChunkKeySetRef.current.has(key)) return
+
+    recentChunkKeySetRef.current.add(key)
+    recentChunkKeysRef.current.push(key)
+
+    // Keep bounded memory for long recordings.
+    if (recentChunkKeysRef.current.length > 2000) {
+      const oldest = recentChunkKeysRef.current.shift()
+      if (oldest) {
+        recentChunkKeySetRef.current.delete(oldest)
+      }
+    }
+  }, [])
+
+  const hasChunkKey = useCallback((key: string) => {
+    return recentChunkKeySetRef.current.has(key)
+  }, [])
+
+  const makeChunkFingerprint = useCallback(
+    (speakerId: number, text: string, start: number, end: number) => {
+      const normalizedText = text.trim().replace(/\s+/g, " ").toLowerCase()
+      return [
+        speakerId,
+        Math.round(start * 100),
+        Math.round(end * 100),
+        normalizedText,
+      ].join("|")
+    },
+    []
+  )
+
   const startListening = useCallback(async () => {
     try {
+      // Fresh dedupe window for each recording start.
+      recentChunkKeysRef.current = []
+      recentChunkKeySetRef.current.clear()
+
       // Reset speaker identification state so detection re-triggers for the new recording segment
       useTranscriptStore.getState().resetSpeakerIdentification()
 
@@ -198,6 +236,17 @@ export function useDeepgram() {
                 const speaker = resolveSpeaker(chunk.speakerId)
                 const startTime = baseTime - (data.duration || 0) + chunk.start
                 const endTime = baseTime - (data.duration || 0) + chunk.end
+                const dedupeKey = makeChunkFingerprint(
+                  chunk.speakerId,
+                  chunk.text,
+                  startTime,
+                  endTime
+                )
+
+                if (hasChunkKey(dedupeKey)) {
+                  continue
+                }
+                rememberChunkKey(dedupeKey)
 
                 const entry = {
                   id: uuid(),
@@ -211,6 +260,23 @@ export function useDeepgram() {
                     data.channel?.alternatives?.[0]?.confidence || 0,
                   isFinal: true,
                   createdAt: new Date().toISOString(),
+                }
+
+                // Guard against near-identical duplicate append right next to each other.
+                const existing = useTranscriptStore.getState().entries
+                const lastEntry = existing[existing.length - 1]
+                const normalizedChunkText = chunk.text.trim().replace(/\s+/g, " ").toLowerCase()
+                const normalizedLastText = lastEntry?.text
+                  ?.trim()
+                  .replace(/\s+/g, " ")
+                  .toLowerCase()
+                if (
+                  lastEntry &&
+                  normalizedLastText === normalizedChunkText &&
+                  lastEntry.rawSpeakerId === chunk.speakerId &&
+                  Math.abs((lastEntry.endTime ?? 0) - endTime) < 1
+                ) {
+                  continue
                 }
 
                 addFinalEntry(entry)
@@ -271,7 +337,16 @@ export function useDeepgram() {
       console.error("Failed to start listening:", error)
       setError(message)
     }
-  }, [setRecording, setDuration, setError, triggerAnalysis, runFinalAnalysis])
+  }, [
+    setRecording,
+    setDuration,
+    setError,
+    triggerAnalysis,
+    runFinalAnalysis,
+    hasChunkKey,
+    rememberChunkKey,
+    makeChunkFingerprint,
+  ])
 
   const stopListening = useCallback(() => {
     // Mark that we're calling runFinalAnalysis from stopListening

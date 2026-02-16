@@ -187,7 +187,7 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
 
     try {
       // Upload images first (reuse same Supabase upload flow)
-      const imageUrls: string[] = []
+      const uploadedImages: { url: string; storagePath?: string }[] = []
       for (const attachment of attachments) {
         const formData = new FormData()
         formData.append("file", attachment.file)
@@ -198,7 +198,12 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
         })
         if (res.ok) {
           const data = await res.json()
-          imageUrls.push(data.url)
+          if (data.url) {
+            uploadedImages.push({
+              url: data.url,
+              storagePath: data.path || undefined,
+            })
+          }
         }
       }
 
@@ -210,7 +215,10 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
       })
       textareaRef.current?.focus()
 
-      await sendMessage(message, imageUrls.length > 0 ? imageUrls : undefined)
+      await sendMessage(
+        message,
+        uploadedImages.length > 0 ? uploadedImages : undefined
+      )
     } catch (error) {
       console.error("Failed to send AI doctor message:", error)
       toast.error("Failed to send message")

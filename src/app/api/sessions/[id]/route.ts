@@ -23,6 +23,7 @@ export async function GET(
         insights: true,
         record: true,
         checklistItems: { orderBy: { sortOrder: "asc" } },
+        diagnoses: { orderBy: { sortOrder: "asc" } },
       },
     })
     if (!session) {

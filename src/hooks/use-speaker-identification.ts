@@ -26,6 +26,7 @@ export function useSpeakerIdentification() {
     (s) => s.incrementIdentificationAttempt
   )
   const relabelSpeakers = useTranscriptStore((s) => s.relabelSpeakers)
+  const speakerRoleMap = useTranscriptStore((s) => s.speakerRoleMap)
   const activeSession = useSessionStore((s) => s.activeSession)
 
   // Single-speaker detection state
@@ -39,13 +40,24 @@ export function useSpeakerIdentification() {
   const setSingleSpeakerDetected = useTranscriptStore(
     (s) => s.setSingleSpeakerDetected
   )
+  const deactivateSingleSpeakerMode = useTranscriptStore(
+    (s) => s.deactivateSingleSpeakerMode
+  )
   const speakerCheckBaseIndex = useTranscriptStore(
     (s) => s.speakerCheckBaseIndex
   )
 
   useEffect(() => {
-    // Already identified or currently identifying
-    if (identificationStatus === "identified" || isIdentifyingRef.current) {
+    // Already identifying
+    if (isIdentifyingRef.current) {
+      return
+    }
+
+    // If we still have an active mapping for this segment, no need to re-run.
+    if (
+      identificationStatus === "identified" &&
+      Object.keys(speakerRoleMap).length > 0
+    ) {
       return
     }
 
@@ -65,6 +77,7 @@ export function useSpeakerIdentification() {
     // If in single-speaker mode but a second speaker appeared, exit and resume normal flow
     if (singleSpeakerMode && uniqueSpeakerIds.length >= 2) {
       setSingleSpeakerDetected(false)
+      deactivateSingleSpeakerMode()
       // Fall through to normal identification logic below
     }
 
@@ -79,8 +92,8 @@ export function useSpeakerIdentification() {
         const fallback: Record<number, Speaker> = {}
         fallback[uniqueSpeakerIds[0]] = "DOCTOR"
         fallback[uniqueSpeakerIds[1]] = "PATIENT"
-        relabelSpeakers(fallback)
-        updateDbSpeakers(activeSession?.id, entries, fallback)
+        relabelSpeakers(fallback, speakerCheckBaseIndex)
+        updateDbSpeakers(activeSession?.id, recentEntries, fallback)
       }
       return
     }
@@ -137,8 +150,8 @@ export function useSpeakerIdentification() {
           for (const [key, value] of Object.entries(result.mapping)) {
             numericMapping[Number(key)] = value
           }
-          relabelSpeakers(numericMapping)
-          updateDbSpeakers(activeSession?.id, entries, numericMapping)
+          relabelSpeakers(numericMapping, speakerCheckBaseIndex)
+          updateDbSpeakers(activeSession?.id, recentEntries, numericMapping)
         } else {
           // Not confident — revert to unidentified so next attempt can trigger
           setIdentificationStatus("unidentified")
@@ -159,11 +172,13 @@ export function useSpeakerIdentification() {
     setIdentificationStatus,
     incrementIdentificationAttempt,
     relabelSpeakers,
+    speakerRoleMap,
     activeSession,
     singleSpeakerDetected,
     singleSpeakerPromptDismissed,
     singleSpeakerMode,
     setSingleSpeakerDetected,
+    deactivateSingleSpeakerMode,
     speakerCheckBaseIndex,
   ])
 }

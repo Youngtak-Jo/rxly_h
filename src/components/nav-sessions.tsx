@@ -30,7 +30,8 @@ import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import {
   loadSessionById,
   getCachedSession,
-  setCachedSession,
+  getCoreCachedSession,
+  prefetchCoreSessionById,
   deleteCachedSession,
 } from "@/hooks/use-session-loader"
 import {
@@ -105,18 +106,14 @@ export function NavSessions() {
 
   const prefetchSession = (sessionId: string) => {
     if (activeSession?.id === sessionId) return
+    if (getCoreCachedSession(sessionId)) return
     if (getCachedSession(sessionId)) return
     if (prefetchingRef.current.has(sessionId)) return
 
     const controller = new AbortController()
     prefetchingRef.current.add(sessionId)
     prefetchControllersRef.current.set(sessionId, controller)
-    fetch(`/api/sessions/${sessionId}/full`, { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data) => setCachedSession(sessionId, data))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return
-      })
+    void prefetchCoreSessionById(sessionId, controller.signal)
       .finally(() => {
         prefetchingRef.current.delete(sessionId)
         prefetchControllersRef.current.delete(sessionId)

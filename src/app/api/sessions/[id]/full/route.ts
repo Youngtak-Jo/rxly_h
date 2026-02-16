@@ -16,12 +16,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const requestStartedAt = performance.now()
   try {
     const user = await requireAuth()
 
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
+    const queryStartedAt = performance.now()
     const session = await prisma.session.findUnique({
       where: { id, userId: user.id },
       include: {
@@ -50,6 +52,7 @@ export async function GET(
         orderBy: { createdAt: "asc" },
       }),
     ])
+    const queryMs = performance.now() - queryStartedAt
 
     // Batch signed URL generation for all notes
     const allPaths: string[] = []
@@ -65,6 +68,7 @@ export async function GET(
       }
     }
 
+    const signedUrlStartedAt = performance.now()
     let signedUrlResults: { signedUrl: string }[] = []
     if (allPaths.length > 0) {
       const { data } = await supabaseAdmin.storage
@@ -72,6 +76,7 @@ export async function GET(
         .createSignedUrls(allPaths, 3600)
       signedUrlResults = data || []
     }
+    const signedUrlMs = performance.now() - signedUrlStartedAt
 
     const notesWithUrls = notes.map((note, i) => {
       const range = notePathRanges[i]
@@ -84,6 +89,18 @@ export async function GET(
         ...note,
         imageUrls: freshUrls.length > 0 ? freshUrls : note.imageUrls,
       }
+    })
+
+    const totalMs = performance.now() - requestStartedAt
+    logger.info("Session full fetch timing", {
+      sessionId: id,
+      queryMs: Number(queryMs.toFixed(1)),
+      signedUrlMs: Number(signedUrlMs.toFixed(1)),
+      totalMs: Number(totalMs.toFixed(1)),
+      transcriptCount: transcriptEntries.length,
+      noteCount: notes.length,
+      researchCount: researchMessages.length,
+      signedPathCount: allPaths.length,
     })
 
     logAudit({ userId: user.id, action: "READ", resource: "session_full", sessionId: id })

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useNoteStore, type NoteEntry } from "@/stores/note-store"
 import { cn } from "@/lib/utils"
-import { ChevronDown, AlertCircle } from "lucide-react"
+import { ChevronDown, AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import { useSessionStore } from "@/stores/session-store"
@@ -129,11 +129,15 @@ export function TranscriptViewer() {
   const singleSpeakerPromptDismissed = useTranscriptStore((s) => s.singleSpeakerPromptDismissed)
   const singleSpeakerMode = useTranscriptStore((s) => s.singleSpeakerMode)
   const classifyingEntries = useTranscriptStore((s) => s.classifyingEntries)
+  const activeSession = useSessionStore((s) => s.activeSession)
+  const hydratingSessionId = useSessionStore((s) => s.hydratingSessionId)
   const scrollRef = useRef<HTMLDivElement>(null)
   const isAtBottom = useRef(true)
   const [showScrollButton, setShowScrollButton] = useState(false)
 
   const isIdentified = identificationStatus === "identified"
+  const isTranscriptHydrating =
+    !!activeSession && hydratingSessionId === activeSession.id
 
   // Merge transcript entries and notes into a unified timeline
   const timeline = useMemo<TimelineItem[]>(() => {
@@ -198,7 +202,16 @@ export function TranscriptViewer() {
       >
         <div className="p-4 flex flex-col">
           {timeline.length === 0 && !interimText && (
-            <ModeSelector />
+            isTranscriptHydrating ? (
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-6 text-center">
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Loading transcript history...
+                </p>
+              </div>
+            ) : (
+              <ModeSelector />
+            )
           )}
 
           {timeline.map((item, i) => {

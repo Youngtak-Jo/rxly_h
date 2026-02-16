@@ -36,7 +36,10 @@ interface TranscriptState {
   getEntryCount: () => number
   setIdentificationStatus: (status: IdentificationStatus) => void
   incrementIdentificationAttempt: () => void
-  relabelSpeakers: (mapping: Record<number, Speaker>) => void
+  relabelSpeakers: (
+    mapping: Record<number, Speaker>,
+    fromIndex?: number
+  ) => void
   setDiagnosticKeywords: (keywords: DiagnosticKeyword[]) => void
   setHighlightStatus: (status: HighlightStatus) => void
 
@@ -44,6 +47,7 @@ interface TranscriptState {
   setSingleSpeakerDetected: (detected: boolean) => void
   dismissSingleSpeakerPrompt: () => void
   activateSingleSpeakerMode: () => void
+  deactivateSingleSpeakerMode: () => void
   setLastClassifiedEntryIndex: (index: number) => void
   setClassifyingEntries: (classifying: boolean) => void
   relabelEntriesIndividually: (mapping: Record<string, Speaker>) => void
@@ -132,11 +136,12 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
       identificationAttempt: state.identificationAttempt + 1,
     })),
 
-  relabelSpeakers: (mapping) =>
+  relabelSpeakers: (mapping, fromIndex = 0) =>
     set((state) => ({
       speakerRoleMap: mapping,
       identificationStatus: "identified",
-      entries: state.entries.map((entry) => {
+      entries: state.entries.map((entry, index) => {
+        if (index < fromIndex) return entry
         if (
           entry.rawSpeakerId !== undefined &&
           mapping[entry.rawSpeakerId]
@@ -162,6 +167,14 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
   activateSingleSpeakerMode: () =>
     set({ singleSpeakerMode: true }),
 
+  deactivateSingleSpeakerMode: () =>
+    set((state) => ({
+      singleSpeakerMode: false,
+      singleSpeakerDetected: false,
+      classifyingEntries: false,
+      lastClassifiedEntryIndex: state.entries.length,
+    })),
+
   setLastClassifiedEntryIndex: (index) =>
     set({ lastClassifiedEntryIndex: index }),
 
@@ -181,12 +194,18 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
 
   resetSpeakerIdentification: () =>
     set((state) => ({
-      identificationStatus: "unidentified",
+      // Keep existing labels visible across stop/start within the same session.
+      identificationStatus: state.entries.some(
+        (entry) => entry.speaker === "DOCTOR" || entry.speaker === "PATIENT"
+      )
+        ? "identified"
+        : "unidentified",
       identificationAttempt: 0,
       speakerRoleMap: {},
       singleSpeakerDetected: false,
-      singleSpeakerPromptDismissed: false,
-      singleSpeakerMode: false,
+      // Preserve user's single-speaker choice for the next recording segment.
+      singleSpeakerPromptDismissed: state.singleSpeakerPromptDismissed,
+      singleSpeakerMode: state.singleSpeakerMode,
       lastClassifiedEntryIndex: state.entries.length,
       classifyingEntries: false,
       speakerCheckBaseIndex: state.entries.length,
