@@ -83,11 +83,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent className="!overflow-hidden">
         <div
-          className="flex-1 min-h-0 overflow-y-auto"
-          style={{
-            maskImage:
-              "linear-gradient(to bottom, transparent, rgba(0,0,0,0.3) 0.5rem, rgba(0,0,0,0.7) 1.5rem, black 2.5rem, black calc(100% - 2.5rem), transparent)",
-          }}
+          className="flex-1 min-h-0 overflow-y-auto sidebar-fade-mask"
         >
           <NavSessions />
         </div>

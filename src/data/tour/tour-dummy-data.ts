@@ -140,6 +140,7 @@ export function ensureTourSession() {
     id: TOUR_SESSION_ID,
     title: "Guided Tour",
     patientName: null,
+    mode: "DOCTOR" as const,
     startedAt: now,
     endedAt: null,
     createdAt: now,

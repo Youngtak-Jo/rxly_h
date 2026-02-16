@@ -125,6 +125,12 @@
   }
 }
 
+/* ── Sidebar fade mask (avoids SSR hydration mismatch with inline style) */
+.sidebar-fade-mask {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, rgba(0,0,0,0.3) 0.5rem, rgba(0,0,0,0.7) 1.5rem, black 2.5rem, black calc(100% - 2.5rem), transparent);
+  mask-image: linear-gradient(to bottom, transparent, rgba(0,0,0,0.3) 0.5rem, rgba(0,0,0,0.7) 1.5rem, black 2.5rem, black calc(100% - 2.5rem), transparent);
+}
+
 /* ── Liquid Glass Utilities ────────────────────────────────────────── */
 .glass {
   background: oklch(1 0.002 75 / 0.6);

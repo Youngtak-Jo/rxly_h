@@ -17,13 +17,7 @@ type TimelineItem =
   | { type: "transcript"; data: TranscriptEntry }
   | { type: "note"; data: NoteEntry }
 
-function formatTime(seconds: number) {
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${s.toString().padStart(2, "0")}`
-}
-
-function formatNoteTime(createdAt: string) {
+function formatTime(createdAt: string) {
   const date = new Date(createdAt)
   return `${date.getHours()}:${date.getMinutes().toString().padStart(2, "0")}`
 }
@@ -229,7 +223,7 @@ export function TranscriptViewer() {
                       </div>
                     )}
                     <span className="text-[10px] text-muted-foreground/60 font-mono mt-1 block">
-                      {formatNoteTime(note.createdAt)}
+                      {formatTime(note.createdAt)}
                     </span>
                   </div>
                 </div>
@@ -279,26 +273,26 @@ export function TranscriptViewer() {
                   <p className="text-sm leading-relaxed">
                     {diagnosticKeywords.length > 0
                       ? highlightText(entry.text, diagnosticKeywords).map(
-                          (seg, j) =>
-                            seg.keyword ? (
-                              <mark
-                                key={j}
-                                className={cn(
-                                  "rounded px-0.5 -mx-0.5",
-                                  isDarkBubble
-                                    ? HIGHLIGHT_COLORS[seg.keyword.category]
-                                        .dark
-                                    : HIGHLIGHT_COLORS[seg.keyword.category]
-                                        .light
-                                )}
-                                title={seg.keyword.category}
-                              >
-                                {seg.text}
-                              </mark>
-                            ) : (
-                              <span key={j}>{seg.text}</span>
-                            )
-                        )
+                        (seg, j) =>
+                          seg.keyword ? (
+                            <mark
+                              key={j}
+                              className={cn(
+                                "rounded px-0.5 -mx-0.5",
+                                isDarkBubble
+                                  ? HIGHLIGHT_COLORS[seg.keyword.category]
+                                    .dark
+                                  : HIGHLIGHT_COLORS[seg.keyword.category]
+                                    .light
+                              )}
+                              title={seg.keyword.category}
+                            >
+                              {seg.text}
+                            </mark>
+                          ) : (
+                            <span key={j}>{seg.text}</span>
+                          )
+                      )
                       : entry.text}
                   </p>
                   {showMeta && (
@@ -326,7 +320,7 @@ export function TranscriptViewer() {
                             : "text-muted-foreground/60"
                         )}
                       >
-                        {formatTime(entry.startTime)}
+                        {formatTime(entry.createdAt)}
                       </span>
                     </div>
                   )}

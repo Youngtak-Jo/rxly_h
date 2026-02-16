@@ -13,6 +13,7 @@ model Session {
   userId      String        @map("user_id")
   title       String?
   patientName String?       @map("patient_name")
+  mode        SessionMode   @default(DOCTOR)
   startedAt   DateTime      @default(now()) @map("started_at")
   endedAt     DateTime?     @map("ended_at")
   createdAt   DateTime      @default(now()) @map("created_at")
@@ -28,6 +29,11 @@ model Session {
 
   @@index([userId])
   @@map("sessions")
+}
+
+enum SessionMode {
+  DOCTOR
+  AI_DOCTOR
 }
 
 enum Speaker {

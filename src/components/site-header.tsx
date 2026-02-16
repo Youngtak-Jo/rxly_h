@@ -54,11 +54,7 @@ import { useSettingsDialogStore } from "@/stores/settings-store"
 import { toast } from "sonner"
 import { generatePdf, getActiveTabExportHtml } from "@/lib/export-utils"
 
-function formatDuration(seconds: number) {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
-}
+
 
 function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange?: (open: boolean) => void }) {
   const [internalOpen, setInternalOpen] = useState(false)
@@ -345,7 +341,6 @@ function MobileHeaderMenu() {
 
 export function SiteHeader() {
   const activeSession = useSessionStore((s) => s.activeSession)
-  const { isRecording, isPaused, duration } = useRecordingStore()
   const isTranscriptCollapsed = useConsultationTabStore(
     (s) => s.isTranscriptCollapsed
   )
@@ -367,17 +362,7 @@ export function SiteHeader() {
         <h1 className="text-sm font-medium truncate min-w-0">
           {activeSession?.title || "Rxly Consultation"}
         </h1>
-        {isRecording && (
-          <div className="ml-3 flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
-            </span>
-            <Badge variant="secondary" className="text-xs font-mono">
-              {isPaused ? "Paused" : formatDuration(duration)}
-            </Badge>
-          </div>
-        )}
+
         <div data-tour="header-actions" className="ml-auto flex items-center gap-1">
           {/* Transcript toggle - desktop only */}
           {_toggleTranscript && (

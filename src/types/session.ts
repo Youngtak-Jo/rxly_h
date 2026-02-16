@@ -5,10 +5,13 @@ export interface DiagnosticKeyword {
   category: "symptom" | "diagnosis" | "medication" | "finding" | "vital"
 }
 
+export type SessionMode = "DOCTOR" | "AI_DOCTOR"
+
 export interface Session {
   id: string
   title: string | null
   patientName: string | null
+  mode: SessionMode
   startedAt: string
   endedAt: string | null
   createdAt: string

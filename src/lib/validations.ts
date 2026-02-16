@@ -14,6 +14,7 @@ export const signupSchema = z.object({
 export const sessionPatchSchema = z.object({
   title: z.string().max(200).optional(),
   patientName: z.string().max(200).nullable().optional(),
+  mode: z.enum(["DOCTOR", "AI_DOCTOR"]).optional(),
 })
 
 export const noteCreateSchema = z.object({

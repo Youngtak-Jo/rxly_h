@@ -180,10 +180,11 @@ export function NavSessions() {
 
     const tempId = uuidv4()
     const now = new Date().toISOString()
-    const optimisticSession = {
+    const optimisticSession: Session = {
       id: tempId,
       title: "New Consultation",
       patientName: null,
+      mode: "DOCTOR",
       startedAt: now,
       endedAt: null,
       createdAt: now,
@@ -273,12 +274,33 @@ export function NavSessions() {
       useConsultationModeStore.getState().reset()
       recordingStore.reset()
 
+      // Restore AI doctor mode from DB
+      if (session.mode === "AI_DOCTOR") {
+        const modeStore = useConsultationModeStore.getState()
+        modeStore.setMode("ai-doctor")
+
+        if (transcriptEntries?.length > 0) {
+          modeStore.setConsultationStarted(true)
+
+          // Reconstruct aiDoctorMessages for AI API history
+          for (const entry of transcriptEntries) {
+            modeStore.addMessage(
+              entry.speaker === "DOCTOR" ? "assistant" : "user",
+              entry.text
+            )
+          }
+        }
+      }
+
       setActiveSession(session)
 
       // Transcript: reset then immediately load
       transcriptStore.reset()
       if (transcriptEntries?.length > 0) {
         transcriptStore.loadEntries(transcriptEntries)
+      }
+      if (session.mode === "AI_DOCTOR") {
+        transcriptStore.setIdentificationStatus("identified")
       }
       const savedKeywords = session.insights?.diagnosticKeywords
       if (Array.isArray(savedKeywords) && savedKeywords.length > 0) {
@@ -497,13 +519,18 @@ export function NavSessions() {
                       asChild
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <span className="ml-auto flex-shrink-0">
+                      <span className="ml-auto flex flex-col items-end flex-shrink-0">
                         <span className="text-xs text-muted-foreground hidden md:inline group-hover/session:hidden">
                           {formatShortTimeAgo(new Date(session.startedAt))}
                         </span>
                         <span className="flex md:hidden group-hover/session:flex items-center justify-center rounded-md hover:bg-sidebar-accent size-5">
                           <IconDots className="size-4" />
                         </span>
+                        {session.mode === "AI_DOCTOR" && (
+                          <span className="text-[9px] font-medium rounded-full bg-secondary text-secondary-foreground px-1.5 h-3.5 items-center hidden md:inline-flex group-hover/session:hidden">
+                            AI
+                          </span>
+                        )}
                       </span>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent side="right" align="start">

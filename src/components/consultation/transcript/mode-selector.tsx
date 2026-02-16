@@ -6,6 +6,7 @@ import {
   type ConsultationMode,
 } from "@/stores/consultation-mode-store"
 import { useRecordingStore } from "@/stores/recording-store"
+import { useSessionStore } from "@/stores/session-store"
 import { cn } from "@/lib/utils"
 import { IconStethoscope, IconRobot, IconAlertTriangle } from "@tabler/icons-react"
 import {
@@ -46,6 +47,7 @@ export function ModeSelector() {
     (s) => s.consultationStarted
   )
   const isRecording = useRecordingStore((s) => s.isRecording)
+  const activeSession = useSessionStore((s) => s.activeSession)
   const [showDisclaimer, setShowDisclaimer] = useState(false)
 
   if (isRecording || consultationStarted) return null
@@ -61,6 +63,16 @@ export function ModeSelector() {
   function handleConsent() {
     setMode("ai-doctor")
     setShowDisclaimer(false)
+
+    if (activeSession) {
+      fetch(`/api/sessions/${activeSession.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "AI_DOCTOR" }),
+      }).catch(() => {})
+
+      useSessionStore.getState().updateSession(activeSession.id, { mode: "AI_DOCTOR" })
+    }
   }
 
   return (

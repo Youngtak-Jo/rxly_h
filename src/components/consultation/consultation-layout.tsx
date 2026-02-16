@@ -83,6 +83,7 @@ export function ConsultationLayout() {
       id: tempId,
       title: "New Consultation",
       patientName: null,
+      mode: "DOCTOR" as const,
       startedAt: now,
       endedAt: null,
       createdAt: now,

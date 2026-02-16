@@ -68,6 +68,7 @@ export async function PATCH(
       data: {
         title: parsed.data.title,
         patientName: parsed.data.patientName,
+        mode: parsed.data.mode,
       },
     })
     logAudit({ userId: user.id, action: "UPDATE", resource: "session", resourceId: id })

@@ -6,7 +6,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { AppearanceProvider } from "@/components/appearance-provider"
 import { SessionTimeoutDialog } from "@/components/session-timeout-dialog"
-import { ServiceWorkerRegister } from "@/components/service-worker-register"
+
 import "./globals.css"
 
 const geistSans = Geist({
@@ -83,7 +83,7 @@ export default function RootLayout({
             <SessionTimeoutDialog />
             <Toaster position="bottom-right" richColors />
             <Analytics />
-            <ServiceWorkerRegister />
+
           </TooltipProvider>
         </ThemeProvider>
       </body>
