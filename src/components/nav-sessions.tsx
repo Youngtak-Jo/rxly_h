@@ -526,11 +526,7 @@ export function NavSessions() {
                         <span className="flex md:hidden group-hover/session:flex items-center justify-center rounded-md hover:bg-sidebar-accent size-5">
                           <IconDots className="size-4" />
                         </span>
-                        {session.mode === "AI_DOCTOR" && (
-                          <span className="text-[9px] font-medium rounded-full bg-secondary text-secondary-foreground px-1.5 h-3.5 items-center hidden md:inline-flex group-hover/session:hidden">
-                            AI
-                          </span>
-                        )}
+
                       </span>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent side="right" align="start">
