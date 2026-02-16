@@ -162,22 +162,22 @@ export function useLiveInsights() {
               // items; AI regenerates its own from transcript.
               checklistItems: hasComments
                 ? checklistItems.map((item) => ({
+                  id: item.id,
+                  label: item.label,
+                  isChecked: item.isChecked,
+                }))
+                : checklistItems
+                  .filter(
+                    (item) =>
+                      item.source === "MANUAL" ||
+                      item.isChecked !== item.isAutoChecked ||
+                      item.doctorNote !== null
+                  )
+                  .map((item) => ({
                     id: item.id,
                     label: item.label,
                     isChecked: item.isChecked,
-                  }))
-                : checklistItems
-                    .filter(
-                      (item) =>
-                        item.source === "MANUAL" ||
-                        item.isChecked !== item.isAutoChecked ||
-                        item.doctorNote !== null
-                    )
-                    .map((item) => ({
-                      id: item.id,
-                      label: item.label,
-                      isChecked: item.isChecked,
-                    })),
+                  })),
             },
           }),
           signal: abortController.signal,
@@ -201,6 +201,12 @@ export function useLiveInsights() {
         try {
           const cleaned = accumulated.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
           const parsed: InsightsResponse = JSON.parse(cleaned)
+
+          // Sanitize arrays to prevent runtime crashes if AI returns invalid types
+          if (!Array.isArray(parsed.keyFindings)) parsed.keyFindings = []
+          if (!Array.isArray(parsed.redFlags)) parsed.redFlags = []
+          if (!Array.isArray(parsed.checklist)) parsed.checklist = []
+          if (parsed.diagnoses && !Array.isArray(parsed.diagnoses)) parsed.diagnoses = []
 
           // Bail out if the session changed while we were streaming
           const currentSessionId = useSessionStore.getState().activeSession?.id
