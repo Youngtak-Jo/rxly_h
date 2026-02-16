@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import {
   IconBulb,
   IconDots,
@@ -16,9 +17,7 @@ import { v4 as uuidv4 } from "uuid"
 import { toast } from "sonner"
 
 import { useSessionStore } from "@/stores/session-store"
-import type { Session, TranscriptEntry, DiagnosticKeyword } from "@/types/session"
-import type { ChecklistItem, DiagnosisCitation } from "@/types/insights"
-import type { ConsultationRecord } from "@/types/record"
+import type { Session } from "@/types/session"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useInsightsStore } from "@/stores/insights-store"
@@ -28,6 +27,12 @@ import { useNoteStore } from "@/stores/note-store"
 import { useDdxStore } from "@/stores/ddx-store"
 import { useResearchStore } from "@/stores/research-store"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
+import {
+  loadSessionById,
+  getCachedSession,
+  setCachedSession,
+  deleteCachedSession,
+} from "@/hooks/use-session-loader"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,81 +50,8 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
-// In-memory session data cache for fast re-visits
-// Session from API includes extra fields (insights, diagnoses, record, checklistItems)
-interface SessionInsights {
-  summary?: string
-  keyFindings?: string[]
-  redFlags?: string[]
-  diagnosticKeywords?: DiagnosticKeyword[]
-  [key: string]: unknown
-}
 
-interface SessionDiagnosis {
-  id: string
-  sessionId: string
-  icdCode: string
-  icdUri?: string
-  diseaseName: string
-  confidence: string
-  evidence: string
-  citations: unknown
-  sortOrder: number
-}
 
-interface FullSessionResponse extends Session {
-  insights?: SessionInsights | null
-  diagnoses?: SessionDiagnosis[]
-  record?: ConsultationRecord | null
-  checklistItems?: ChecklistItem[]
-}
-
-interface NoteData {
-  id: string
-  content: string
-  imageUrls: string[]
-  source: string
-  createdAt: string
-}
-
-interface ResearchMessageData {
-  id: string
-  role: string
-  content: string
-  citations: unknown
-  createdAt: string
-}
-
-interface CachedSessionData {
-  session: FullSessionResponse
-  transcriptEntries: TranscriptEntry[]
-  notes: NoteData[]
-  researchMessages: ResearchMessageData[]
-  timestamp: number
-}
-
-const sessionCache = new Map<string, CachedSessionData>()
-const MAX_CACHE_SIZE = 5
-const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
-
-function getCachedSession(sessionId: string): CachedSessionData | null {
-  const cached = sessionCache.get(sessionId)
-  if (!cached) return null
-  if (Date.now() - cached.timestamp > CACHE_TTL_MS) {
-    sessionCache.delete(sessionId)
-    return null
-  }
-  return cached
-}
-
-function setCachedSession(sessionId: string, data: Omit<CachedSessionData, "timestamp">) {
-  // Evict oldest if at capacity
-  if (sessionCache.size >= MAX_CACHE_SIZE && !sessionCache.has(sessionId)) {
-    const oldestKey = sessionCache.keys().next().value
-    if (oldestKey) sessionCache.delete(oldestKey)
-  }
-  sessionCache.set(sessionId, { ...data, timestamp: Date.now() })
-}
 
 function formatShortTimeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
@@ -136,6 +68,7 @@ function formatShortTimeAgo(date: Date): string {
 }
 
 export function NavSessions() {
+  const router = useRouter()
   const { sessions, activeSession, setActiveSession, addSession, setSessions } =
     useSessionStore()
   const transcriptStore = useTranscriptStore()
@@ -219,6 +152,7 @@ export function NavSessions() {
       if (store.activeSession?.id === tempId) {
         store.setActiveSession(realSession)
       }
+      router.push(`/consultation/${realSession.id}`)
     } catch (error) {
       console.error("Failed to create session:", error)
       toast.error("Failed to create session")
@@ -232,159 +166,8 @@ export function NavSessions() {
 
   const loadSession = async (sessionId: string) => {
     if (activeSession?.id === sessionId) return
-
-    // Stop any running simulation BEFORE resetting stores
-    const recState = useRecordingStore.getState()
-    if (recState.isSimulating && recState.simulationControls) {
-      recState.simulationControls.stop({ skipFinalAnalysis: true })
-    }
-
-    const cached = getCachedSession(sessionId)
-    const store = useSessionStore.getState()
-
-    // Use isSwitching for transition (keeps previous UI visible), isLoading only for initial load
-    if (activeSession) {
-      store.setSwitching(true)
-    } else {
-      store.setLoading(true)
-    }
-
-    try {
-      let session: FullSessionResponse
-      let transcriptEntries: TranscriptEntry[]
-      let notes: NoteData[]
-      let researchMessages: ResearchMessageData[]
-
-      if (cached) {
-        // Cache hit - use cached data
-        ; ({ session, transcriptEntries, notes, researchMessages } = cached)
-      } else {
-        // Cache miss - fetch from API
-        const res = await fetch(`/api/sessions/${sessionId}/full`)
-        if (!res.ok) throw new Error("Failed to load session")
-          ; ({ session, transcriptEntries, notes, researchMessages } = await res.json())
-
-        // Store in cache for re-visits
-        setCachedSession(sessionId, { session, transcriptEntries, notes, researchMessages })
-      }
-
-      // Batch reset+load per store to minimize empty-state renders.
-      // React 19 auto-batching merges these into fewer re-renders.
-      useConsultationTabStore.getState().clearAllUnseenUpdates()
-      useConsultationModeStore.getState().reset()
-      recordingStore.reset()
-
-      // Restore AI doctor mode from DB
-      if (session.mode === "AI_DOCTOR") {
-        const modeStore = useConsultationModeStore.getState()
-        modeStore.setMode("ai-doctor")
-
-        if (transcriptEntries?.length > 0) {
-          modeStore.setConsultationStarted(true)
-
-          // Reconstruct aiDoctorMessages for AI API history
-          for (const entry of transcriptEntries) {
-            modeStore.addMessage(
-              entry.speaker === "DOCTOR" ? "assistant" : "user",
-              entry.text
-            )
-          }
-        }
-      }
-
-      setActiveSession(session)
-
-      // Transcript: reset then immediately load
-      transcriptStore.reset()
-      if (transcriptEntries?.length > 0) {
-        transcriptStore.loadEntries(transcriptEntries)
-      }
-      if (session.mode === "AI_DOCTOR") {
-        transcriptStore.setIdentificationStatus("identified")
-      }
-      const savedKeywords = session.insights?.diagnosticKeywords
-      if (Array.isArray(savedKeywords) && savedKeywords.length > 0) {
-        transcriptStore.setDiagnosticKeywords(savedKeywords)
-      }
-
-      // Insights: reset then immediately load
-      insightsStore.reset()
-      if (session.insights) {
-        insightsStore.loadFromDB({
-          summary: session.insights.summary || "",
-          keyFindings: session.insights.keyFindings || [],
-          redFlags: session.insights.redFlags || [],
-          checklistItems: session.checklistItems || [],
-        })
-      }
-
-      // DDx: reset then immediately load
-      ddxStore.reset()
-      if (session.diagnoses && session.diagnoses.length > 0) {
-        ddxStore.loadFromDB(
-          session.diagnoses.map(
-            (dx) => ({
-              id: dx.id,
-              sessionId: dx.sessionId,
-              icdCode: dx.icdCode,
-              icdUri: dx.icdUri,
-              diseaseName: dx.diseaseName,
-              confidence: dx.confidence.toLowerCase() as
-                | "high"
-                | "moderate"
-                | "low",
-              evidence: dx.evidence,
-              citations: (dx.citations || []) as DiagnosisCitation[],
-              sortOrder: dx.sortOrder,
-            })
-          )
-        )
-      }
-
-      // Record: reset then immediately load
-      recordStore.reset()
-      if (session.record) {
-        recordStore.loadFromDB(session.record)
-      }
-
-      // Notes: reset then immediately load
-      noteStore.reset()
-      if (notes?.length > 0) {
-        noteStore.loadNotes(
-          notes.map((n) => ({
-            id: n.id,
-            content: n.content,
-            imageUrls: n.imageUrls || [],
-            storagePaths: [],
-            source: n.source as "MANUAL" | "STT" | "IMAGE",
-            createdAt: n.createdAt,
-          }))
-        )
-      }
-
-      // Research: reset then immediately load
-      researchStore.reset()
-      if (researchMessages?.length > 0) {
-        researchStore.loadFromDB(
-          researchMessages.map(
-            (m) => ({
-              id: m.id,
-              role: m.role as "user" | "assistant",
-              content: m.content,
-              citations: (typeof m.citations === "string" ? JSON.parse(m.citations) : m.citations) || [],
-              createdAt: m.createdAt,
-            })
-          )
-        )
-      }
-    } catch (error) {
-      console.error("Failed to load session:", error)
-      toast.error("Failed to load session")
-    } finally {
-      const s = useSessionStore.getState()
-      s.setLoading(false)
-      s.setSwitching(false)
-    }
+    await loadSessionById(sessionId)
+    router.push(`/consultation/${sessionId}`)
   }
 
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -413,11 +196,15 @@ export function NavSessions() {
     // 2. Optimistic UI removal
     const previousSessions = sessions
     setSessions(sessions.filter((s) => s.id !== sessionId))
-    sessionCache.delete(sessionId)
+    deleteCachedSession(sessionId)
 
     try {
       const res = await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Delete failed")
+      // Navigate back to base consultation if we just deleted the active session
+      if (activeSession?.id === sessionId) {
+        router.replace("/consultation")
+      }
     } catch (error) {
       // Rollback on failure
       console.error("Failed to delete session:", error)

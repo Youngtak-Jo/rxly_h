@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import type { PanelImperativeHandle } from "react-resizable-panels"
 import {
   ResizableHandle,
@@ -36,6 +37,7 @@ export function ConsultationLayout() {
   const isLoading = useSessionStore((s) => s.isLoading)
   const isSwitching = useSessionStore((s) => s.isSwitching)
   const { addSession, setActiveSession } = useSessionStore()
+  const router = useRouter()
   const { setTranscriptCollapsed, setToggleTranscript } =
     useConsultationTabStore()
   const rightPanelRef = useRef<PanelImperativeHandle | null>(null)
@@ -112,6 +114,7 @@ export function ConsultationLayout() {
       if (store.activeSession?.id === tempId) {
         store.setActiveSession(realSession)
       }
+      router.push(`/consultation/${realSession.id}`)
     } catch (error) {
       console.error("Failed to create session:", error)
       const store = useSessionStore.getState()
