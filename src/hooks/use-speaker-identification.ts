@@ -4,10 +4,35 @@ import { useEffect, useRef } from "react"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useSettingsStore } from "@/stores/settings-store"
-import type { Speaker } from "@/types/session"
+import type { Speaker, TranscriptEntry } from "@/types/session"
 
 const ENTRIES_PER_ATTEMPT = 3
 const MAX_ATTEMPTS = 2
+
+function buildIdentificationSample(
+  recentEntries: TranscriptEntry[],
+  requiredEntries: number
+): TranscriptEntry[] {
+  if (recentEntries.length < requiredEntries) return []
+
+  // Prefer the shortest suffix that includes both speakers and enough utterances.
+  const sample: TranscriptEntry[] = []
+  const sampleSpeakerIds = new Set<number>()
+
+  for (let i = recentEntries.length - 1; i >= 0; i--) {
+    const entry = recentEntries[i]
+    sample.unshift(entry)
+    if (entry.rawSpeakerId !== undefined) {
+      sampleSpeakerIds.add(entry.rawSpeakerId)
+    }
+    if (sample.length >= requiredEntries && sampleSpeakerIds.size >= 2) {
+      return sample
+    }
+  }
+
+  // Fallback: latest window (caller already checks overall unique speaker count).
+  return recentEntries.slice(-requiredEntries)
+}
 
 export function useSpeakerIdentification() {
   const isIdentifyingRef = useRef(false)
@@ -123,7 +148,11 @@ export function useSpeakerIdentification() {
       incrementIdentificationAttempt()
 
       try {
-        const utterances = recentEntries.slice(0, requiredEntries).map((e) => ({
+        const sampleEntries = buildIdentificationSample(
+          recentEntries,
+          requiredEntries
+        )
+        const utterances = sampleEntries.map((e) => ({
           speakerId: e.rawSpeakerId ?? 0,
           text: e.text,
         }))
