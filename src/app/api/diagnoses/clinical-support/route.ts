@@ -202,7 +202,7 @@ Evidence from consultation: ${evidence}`
         const parsedResult = safeParseAIJson<ClinicalDecisionSupport>(
           aiResult.text
         )
-        if (parsedResult.error) {
+        if (parsedResult.error || parsedResult.data === null) {
           logger.error("[clinical-support] AI returned invalid JSON (with RAG)")
           return NextResponse.json({ error: "AI returned invalid response format" }, { status: 502 })
         }
@@ -224,7 +224,7 @@ Evidence from consultation: ${evidence}`
     })
 
     const parsedResult = safeParseAIJson<ClinicalDecisionSupport>(text)
-    if (parsedResult.error) {
+    if (parsedResult.error || parsedResult.data === null) {
       logger.error("[clinical-support] AI returned invalid JSON")
       return NextResponse.json({ error: "AI returned invalid response format" }, { status: 502 })
     }

@@ -170,7 +170,7 @@ ${(transcript || "").slice(-3000)}
     })
 
     const parsedResult = safeParseAIJson<{ diagnoses?: unknown[] }>(text)
-    if (parsedResult.error) {
+    if (parsedResult.error || parsedResult.data === null) {
       logger.error("DDx: AI returned invalid JSON")
       return NextResponse.json({ error: "AI returned invalid response format" }, { status: 502 })
     }

@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     })
 
     const parsedResult = safeParseAIJson<Bundle>(text)
-    if (parsedResult.error) {
+    if (parsedResult.error || parsedResult.data === null) {
       logger.error("Medplum prepare: AI returned invalid JSON")
       return errorResponse("AI returned invalid FHIR Bundle format", 502)
     }
