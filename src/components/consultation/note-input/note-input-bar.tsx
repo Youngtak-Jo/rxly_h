@@ -303,7 +303,7 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
             isSending ||
             isAiResponding
           }
-          className="min-h-[36px] max-h-[120px] resize-none"
+          className="min-h-9 max-h-[120px] resize-none py-1.5 text-[16px] leading-5 md:text-sm"
           rows={1}
         />
         <Button
