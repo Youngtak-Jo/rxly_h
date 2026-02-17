@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server"
 import { streamText } from "ai"
 import { DEFAULT_MODEL } from "@/lib/xai"
-import { getModel } from "@/lib/ai-provider"
+import { getModel, isSupportedModel } from "@/lib/ai-provider"
 import { RECORD_SYSTEM_PROMPT } from "@/lib/prompts"
 import { buildSystemPrompt } from "@/lib/prompt-sanitizer"
 import { requireAuth } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { errorResponse } from "@/lib/api-response"
+import { buildGenerationOptions } from "@/lib/ai-request-options"
 import type { UserContent } from "ai"
 import { logger } from "@/lib/logger"
 
@@ -32,7 +33,11 @@ export async function POST(req: Request) {
       return errorResponse("No transcript, notes, or images provided", 400)
     }
 
-    const model = getModel(modelOverride || DEFAULT_MODEL)
+    const modelId = modelOverride || DEFAULT_MODEL
+    if (!isSupportedModel(modelId)) {
+      return errorResponse("Unsupported model id", 400)
+    }
+    const model = getModel(modelId)
 
     const textContent = [
       transcript?.trim()
@@ -76,7 +81,7 @@ export async function POST(req: Request) {
           content,
         },
       ],
-      temperature: 0.2,
+      ...buildGenerationOptions(modelId, { temperature: 0.2 }),
     })
 
     logAudit({ userId: user.id, action: "READ", resource: "ai_record" })

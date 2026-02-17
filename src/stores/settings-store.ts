@@ -68,6 +68,7 @@ export const AI_MODELS = [
   { value: "grok-4-1-fast", label: "Grok 4.1 Fast Reasoning" },
   { value: "claude-opus-4-6", label: "Claude Opus 4.6" },
   { value: "claude-sonnet-4-5-20250929", label: "Claude Sonnet 4.5" },
+  { value: "gpt-5.2", label: "GPT-5.2" },
 ] as const
 
 export const EMR_PROVIDERS = [

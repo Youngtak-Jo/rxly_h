@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server"
 import { generateText } from "ai"
 import { DEFAULT_MODEL } from "@/lib/xai"
-import { getModel } from "@/lib/ai-provider"
+import { getModel, isSupportedModel } from "@/lib/ai-provider"
 import { CLINICAL_SUPPORT_PROMPT } from "@/lib/prompts"
 import { requireAuth } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { errorResponse } from "@/lib/api-response"
+import { buildGenerationOptions } from "@/lib/ai-request-options"
+import { safeParseAIJson } from "@/lib/validations"
 import {
   fetchRAGContext,
   formatRAGContextForPrompt,
@@ -147,6 +150,12 @@ export async function POST(req: Request) {
       model?: string
     }
 
+    const modelId = modelOverride || DEFAULT_MODEL
+    if (!isSupportedModel(modelId)) {
+      return errorResponse("Unsupported model id", 400)
+    }
+    const model = getModel(modelId)
+
     let prompt = `Diagnosis: ${diseaseName} (ICD-11: ${icdCode})
 Confidence: ${confidence}
 Evidence from consultation: ${evidence}`
@@ -180,27 +189,24 @@ Evidence from consultation: ${evidence}`
         // Run AI generation + source enrichment in parallel
         const [aiResult, enrichedSources] = await Promise.all([
           generateText({
-            model: getModel(modelOverride || DEFAULT_MODEL),
+            model,
             system: CLINICAL_SUPPORT_PROMPT,
             prompt,
-            temperature: 0.2,
+            ...buildGenerationOptions(modelId, { temperature: 0.2 }),
           }),
           enrichSources(ragContext),
         ])
 
         sources = enrichedSources
 
-        let result: ClinicalDecisionSupport
-        try {
-          const cleaned = aiResult.text
-            .replace(/```json\s*/g, "")
-            .replace(/```\s*/g, "")
-            .trim()
-          result = JSON.parse(cleaned) as ClinicalDecisionSupport
-        } catch {
+        const parsedResult = safeParseAIJson<ClinicalDecisionSupport>(
+          aiResult.text
+        )
+        if (parsedResult.error) {
           logger.error("[clinical-support] AI returned invalid JSON (with RAG)")
           return NextResponse.json({ error: "AI returned invalid response format" }, { status: 502 })
         }
+        const result = parsedResult.data
 
         logAudit({ userId: user.id, action: "READ", resource: "clinical_support" })
         return Response.json({ support: result, sources })
@@ -211,23 +217,18 @@ Evidence from consultation: ${evidence}`
 
     // Fallback: no connectors or RAG failed — run AI alone
     const { text } = await generateText({
-      model: getModel(modelOverride || DEFAULT_MODEL),
+      model,
       system: CLINICAL_SUPPORT_PROMPT,
       prompt,
-      temperature: 0.2,
+      ...buildGenerationOptions(modelId, { temperature: 0.2 }),
     })
 
-    let result: ClinicalDecisionSupport
-    try {
-      const cleaned = text
-        .replace(/```json\s*/g, "")
-        .replace(/```\s*/g, "")
-        .trim()
-      result = JSON.parse(cleaned) as ClinicalDecisionSupport
-    } catch {
+    const parsedResult = safeParseAIJson<ClinicalDecisionSupport>(text)
+    if (parsedResult.error) {
       logger.error("[clinical-support] AI returned invalid JSON")
       return NextResponse.json({ error: "AI returned invalid response format" }, { status: 502 })
     }
+    const result = parsedResult.data
 
     logAudit({ userId: user.id, action: "READ", resource: "clinical_support" })
     return Response.json({ support: result, sources })

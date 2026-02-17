@@ -2,12 +2,13 @@ import { NextResponse } from "next/server"
 import { streamText, type ModelMessage } from "ai"
 import { logger } from "@/lib/logger"
 import { DEFAULT_MODEL } from "@/lib/xai"
-import { getModel } from "@/lib/ai-provider"
+import { getModel, isSupportedModel } from "@/lib/ai-provider"
 import { AI_DOCTOR_SYSTEM_PROMPT } from "@/lib/prompts"
 import { requireAuth } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { errorResponse } from "@/lib/api-response"
+import { buildGenerationOptions } from "@/lib/ai-request-options"
 
 export async function POST(req: Request) {
   try {
@@ -22,14 +23,18 @@ export async function POST(req: Request) {
       return errorResponse("No messages provided", 400)
     }
 
-    const model = getModel(modelOverride || DEFAULT_MODEL)
+    const modelId = modelOverride || DEFAULT_MODEL
+    if (!isSupportedModel(modelId)) {
+      return errorResponse("Unsupported model id", 400)
+    }
+    const model = getModel(modelId)
 
     const result = streamText({
       model,
       system: AI_DOCTOR_SYSTEM_PROMPT,
       // content can be a plain string or multimodal array [{type:"text",...},{type:"image",...}]
       messages: messages as ModelMessage[],
-      temperature: 0.4,
+      ...buildGenerationOptions(modelId, { temperature: 0.4 }),
     })
 
     logAudit({ userId: user.id, action: "READ", resource: "ai_doctor" })

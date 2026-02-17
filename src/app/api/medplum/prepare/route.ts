@@ -2,13 +2,15 @@ import { NextResponse } from "next/server"
 import { generateText } from "ai"
 import { logger } from "@/lib/logger"
 import { CLAUDE_MODEL } from "@/lib/anthropic"
-import { getModel } from "@/lib/ai-provider"
+import { getModel, isSupportedModel } from "@/lib/ai-provider"
 import { requireAuth } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { errorResponse } from "@/lib/api-response"
 import { FHIR_MAPPING_SYSTEM_PROMPT } from "@/lib/prompts"
 import { buildClinicalDataPrompt } from "@/lib/medplum-utils"
+import { buildGenerationOptions } from "@/lib/ai-request-options"
+import { safeParseAIJson } from "@/lib/validations"
 import type { Bundle } from "@medplum/fhirtypes"
 
 export async function POST(req: Request) {
@@ -33,25 +35,28 @@ export async function POST(req: Request) {
       transcript,
     })
 
-    const model = getModel(modelOverride || CLAUDE_MODEL)
+    const modelId = modelOverride || CLAUDE_MODEL
+    if (!isSupportedModel(modelId)) {
+      return errorResponse("Unsupported model id", 400)
+    }
+
+    const model = getModel(modelId)
     const { text } = await generateText({
       model,
       system: FHIR_MAPPING_SYSTEM_PROMPT,
       prompt: clinicalData,
-      temperature: 0.1,
-      maxOutputTokens: 8000,
+      ...buildGenerationOptions(modelId, {
+        temperature: 0.1,
+        maxOutputTokens: 8000,
+      }),
     })
 
-    let bundle: Bundle
-    try {
-      const cleaned = text
-        .replace(/^```(?:json)?\s*\n?/, "")
-        .replace(/\n?```\s*$/, "")
-      bundle = JSON.parse(cleaned)
-    } catch {
+    const parsedResult = safeParseAIJson<Bundle>(text)
+    if (parsedResult.error) {
       logger.error("Medplum prepare: AI returned invalid JSON")
       return errorResponse("AI returned invalid FHIR Bundle format", 502)
     }
+    const bundle = parsedResult.data
 
     if (
       bundle.resourceType !== "Bundle" ||

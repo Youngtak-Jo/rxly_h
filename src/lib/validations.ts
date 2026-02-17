@@ -76,13 +76,98 @@ export const diagnosesUpdateSchema = z.object({
  * Returns the parsed value or null if parsing fails.
  */
 export function safeParseAIJson<T = unknown>(text: string): { data: T; error: null } | { data: null; error: string } {
-  try {
-    const cleaned = text
-      .replace(/^```(?:json)?\s*\n?/, "")
-      .replace(/\n?```\s*$/, "")
-      .trim()
-    return { data: JSON.parse(cleaned) as T, error: null }
-  } catch {
-    return { data: null, error: "AI returned invalid JSON response" }
+  const parseCandidate = (candidate: string): T | null => {
+    try {
+      return JSON.parse(candidate) as T
+    } catch {
+      return null
+    }
   }
+
+  const cleaned = text
+    .replace(/^```(?:json)?\s*\n?/, "")
+    .replace(/\n?```\s*$/, "")
+    .trim()
+
+  const direct = parseCandidate(cleaned)
+  if (direct !== null) return { data: direct, error: null }
+
+  // Try to parse fenced JSON block content anywhere in the response.
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(text)
+  if (fenced?.[1]) {
+    const parsedFence = parseCandidate(fenced[1].trim())
+    if (parsedFence !== null) return { data: parsedFence, error: null }
+  }
+
+  // Fallback: extract first balanced JSON object/array from noisy output.
+  const extractBalancedJson = (input: string): string | null => {
+    const opens = new Set(["{", "["])
+    const closes: Record<string, string> = { "{": "}", "[": "]" }
+    const matching: Record<string, string> = { "}": "{", "]": "[" }
+
+    for (let i = 0; i < input.length; i++) {
+      const start = input[i]
+      if (!opens.has(start)) continue
+
+      const stack: string[] = [start]
+      let inString = false
+      let escaped = false
+
+      for (let j = i + 1; j < input.length; j++) {
+        const ch = input[j]
+
+        if (inString) {
+          if (escaped) {
+            escaped = false
+            continue
+          }
+          if (ch === "\\") {
+            escaped = true
+            continue
+          }
+          if (ch === "\"") {
+            inString = false
+          }
+          continue
+        }
+
+        if (ch === "\"") {
+          inString = true
+          continue
+        }
+
+        if (opens.has(ch)) {
+          stack.push(ch)
+          continue
+        }
+
+        if (ch === "}" || ch === "]") {
+          const top = stack[stack.length - 1]
+          if (!top || matching[ch] !== top) {
+            break
+          }
+          stack.pop()
+          if (stack.length === 0) {
+            return input.slice(i, j + 1)
+          }
+          continue
+        }
+
+        if (ch === closes[start]) {
+          // Covered by close handling above, left intentionally for readability.
+          continue
+        }
+      }
+    }
+
+    return null
+  }
+
+  const extracted = extractBalancedJson(text)
+  if (extracted) {
+    const parsedExtracted = parseCandidate(extracted)
+    if (parsedExtracted !== null) return { data: parsedExtracted, error: null }
+  }
+
+  return { data: null, error: "AI returned invalid JSON response" }
 }

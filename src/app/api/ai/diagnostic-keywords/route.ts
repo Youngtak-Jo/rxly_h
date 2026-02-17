@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server"
 import { generateText } from "ai"
 import { DEFAULT_MODEL } from "@/lib/xai"
-import { getModel } from "@/lib/ai-provider"
+import { getModel, isSupportedModel } from "@/lib/ai-provider"
 import { DIAGNOSTIC_KEYWORDS_PROMPT } from "@/lib/prompts"
 import { requireAuth } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { logger } from "@/lib/logger"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { errorResponse } from "@/lib/api-response"
+import { buildGenerationOptions } from "@/lib/ai-request-options"
+import { safeParseAIJson } from "@/lib/validations"
 
 export async function POST(req: Request) {
   try {
@@ -22,8 +24,13 @@ export async function POST(req: Request) {
       return errorResponse("No transcript provided", 400)
     }
 
+    const modelId = modelOverride || DEFAULT_MODEL
+    if (!isSupportedModel(modelId)) {
+      return errorResponse("Unsupported model id", 400)
+    }
+
     const { text } = await generateText({
-      model: getModel(modelOverride || DEFAULT_MODEL),
+      model: getModel(modelId),
       system: DIAGNOSTIC_KEYWORDS_PROMPT,
       messages: [
         {
@@ -31,18 +38,18 @@ export async function POST(req: Request) {
           content: `Extract diagnostic keywords from this consultation transcript:\n\n${transcript}`,
         },
       ],
-      temperature: 0.1,
-      maxOutputTokens: 1000,
+      ...buildGenerationOptions(modelId, {
+        temperature: 0.1,
+        maxOutputTokens: 1000,
+      }),
     })
 
-    let parsed: unknown
-    try {
-      const cleaned = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
-      parsed = JSON.parse(cleaned)
-    } catch {
+    const parsedResult = safeParseAIJson<unknown>(text)
+    if (parsedResult.error) {
       logger.error("Diagnostic keywords: AI returned invalid JSON")
       return NextResponse.json({ error: "AI returned invalid response format" }, { status: 502 })
     }
+    const parsed = parsedResult.data
 
     if (!Array.isArray(parsed)) {
       return NextResponse.json({ error: "Invalid response format" }, { status: 502 })
