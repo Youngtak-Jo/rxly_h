@@ -387,7 +387,7 @@ export function TranscriptViewer() {
           </div>
 
           {/* Single-speaker notification banner */}
-          {singleSpeakerDetected && !singleSpeakerPromptDismissed && !singleSpeakerMode && (
+          {consultationMode !== "ai-doctor" && singleSpeakerDetected && !singleSpeakerPromptDismissed && !singleSpeakerMode && (
             <div className="flex justify-center mt-4">
               <div className="w-full max-w-sm rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20 p-3">
                 <div className="flex items-start gap-2">

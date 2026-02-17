@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useSettingsStore } from "@/stores/settings-store"
+import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import type { Speaker, TranscriptEntry } from "@/types/session"
 
 const ENTRIES_PER_ATTEMPT = 3
@@ -53,6 +54,7 @@ export function useSpeakerIdentification() {
   const relabelSpeakers = useTranscriptStore((s) => s.relabelSpeakers)
   const speakerRoleMap = useTranscriptStore((s) => s.speakerRoleMap)
   const activeSession = useSessionStore((s) => s.activeSession)
+  const consultationMode = useConsultationModeStore((s) => s.mode)
 
   // Single-speaker detection state
   const singleSpeakerDetected = useTranscriptStore(
@@ -75,6 +77,15 @@ export function useSpeakerIdentification() {
   useEffect(() => {
     // Already identifying
     if (isIdentifyingRef.current) {
+      return
+    }
+
+    // AI doctor mode already has explicit speaker roles (DOCTOR/PATIENT).
+    // Skip diarization/single-speaker detection to avoid false alerts.
+    if (consultationMode === "ai-doctor") {
+      if (singleSpeakerDetected) {
+        setSingleSpeakerDetected(false)
+      }
       return
     }
 
@@ -203,6 +214,7 @@ export function useSpeakerIdentification() {
     relabelSpeakers,
     speakerRoleMap,
     activeSession,
+    consultationMode,
     singleSpeakerDetected,
     singleSpeakerPromptDismissed,
     singleSpeakerMode,

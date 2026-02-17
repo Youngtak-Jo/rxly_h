@@ -22,11 +22,8 @@ export function RecordingControls() {
   const hydratingSessionId = useSessionStore((s) => s.hydratingSessionId)
   const { startListening, stopListening, pauseListening, resumeListening } =
     useDeepgram()
-  const { startConsultation, endConsultation } = useAiDoctor()
+  const { endConsultation } = useAiDoctor()
   const mode = useConsultationModeStore((s) => s.mode)
-  const consultationStarted = useConsultationModeStore(
-    (s) => s.consultationStarted
-  )
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   const isAiDoctorMode = mode === "ai-doctor"
@@ -53,17 +50,11 @@ export function RecordingControls() {
 
   const handleStart = useCallback(async () => {
     if (!activeSession || isSwitching || isTranscriptHydrating) return
-    if (isAiDoctorMode) {
-      startConsultation()
-    } else {
-      await startListening()
-    }
+    await startListening()
   }, [
     activeSession,
     isSwitching,
     isTranscriptHydrating,
-    isAiDoctorMode,
-    startConsultation,
     startListening,
   ])
 
@@ -93,8 +84,7 @@ export function RecordingControls() {
     }
   }, [isPaused, isSimulating, simulationControls, pauseListening, resumeListening])
 
-  const headerLabel =
-    isAiDoctorMode && consultationStarted ? "AI Consultation" : "Transcript"
+  const headerLabel = isAiDoctorMode ? "AI Consultation" : "Transcript"
 
   return (
     <div className="flex items-center gap-2 border-b px-4 py-3">
@@ -112,14 +102,16 @@ export function RecordingControls() {
       </div>
       <div className="flex items-center gap-1">
         {!isRecording ? (
-          <Button
-            onClick={handleStart}
-            size="sm"
-            className="gap-1.5 h-8"
-            disabled={isStartDisabled}
-          >
-            {isAiDoctorMode ? "Start AI Consultation" : "Start Recording"}
-          </Button>
+          !isAiDoctorMode ? (
+            <Button
+              onClick={handleStart}
+              size="sm"
+              className="gap-1.5 h-8"
+              disabled={isStartDisabled}
+            >
+              Start Recording
+            </Button>
+          ) : null
         ) : (
           <>
             {/* Hide pause/resume in AI doctor mode */}

@@ -42,15 +42,15 @@ export function MobileTranscriptSection() {
       {!expanded && (lastEntry || interimText) && (
         <button
           onClick={() => setExpanded(true)}
-          className="w-full px-4 py-2 flex items-center gap-2 text-left hover:bg-muted/50 transition-colors"
+          className="w-full px-4 py-2 flex items-start gap-2 text-left hover:bg-muted/50 transition-colors"
         >
           <div className="flex-1 min-w-0">
             {interimText ? (
-              <p className="text-sm text-muted-foreground italic truncate">
+              <p className="text-sm leading-relaxed text-muted-foreground italic line-clamp-6 break-words">
                 {interimText}
               </p>
             ) : lastEntry ? (
-              <p className="text-sm truncate">
+              <p className="text-sm leading-relaxed line-clamp-6 break-words">
                 <span className="text-muted-foreground font-medium mr-1.5">
                   {speakerLabel(lastEntry.speaker)}
                 </span>

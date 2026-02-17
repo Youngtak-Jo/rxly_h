@@ -7,6 +7,7 @@ import {
 } from "@/stores/consultation-mode-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useSessionStore } from "@/stores/session-store"
+import { useAiDoctor } from "@/hooks/use-ai-doctor"
 import { cn } from "@/lib/utils"
 import { IconStethoscope, IconRobot, IconAlertTriangle } from "@tabler/icons-react"
 import {
@@ -48,6 +49,7 @@ export function ModeSelector() {
   )
   const isRecording = useRecordingStore((s) => s.isRecording)
   const activeSession = useSessionStore((s) => s.activeSession)
+  const { startConsultation } = useAiDoctor()
   const [showDisclaimer, setShowDisclaimer] = useState(false)
 
   if (isRecording || consultationStarted) return null
@@ -63,6 +65,7 @@ export function ModeSelector() {
   function handleConsent() {
     setMode("ai-doctor")
     setShowDisclaimer(false)
+    startConsultation()
 
     if (activeSession) {
       fetch(`/api/sessions/${activeSession.id}`, {

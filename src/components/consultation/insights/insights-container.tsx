@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { toast } from "sonner"
+import { useState, useRef } from "react"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useNoteStore } from "@/stores/note-store"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -37,30 +36,6 @@ export function InsightsContainer() {
 
   const hasContent = summary || keyFindings.length > 0 || redFlags.length > 0
   const checkedCount = checklistItems.filter((item) => item.isChecked).length
-  const toastIdRef = useRef<string | number | null>(null)
-
-  // Toast lifecycle for insights update
-  useEffect(() => {
-    if (isProcessing && hasContent) {
-      toastIdRef.current = toast.loading("AI is updating insights...", {
-        description: "Analyzing latest conversation data",
-        duration: Infinity,
-        position: "bottom-center",
-      })
-    } else if (toastIdRef.current !== null) {
-      toast.dismiss(toastIdRef.current)
-      toastIdRef.current = null
-    }
-  }, [isProcessing, hasContent])
-
-  // Cleanup toast on unmount
-  useEffect(() => {
-    return () => {
-      if (toastIdRef.current !== null) {
-        toast.dismiss(toastIdRef.current)
-      }
-    }
-  }, [])
 
   // Collect all uploaded images from notes
   const uploadedImages = notes.flatMap((note) =>

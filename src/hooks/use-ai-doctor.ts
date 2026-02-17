@@ -10,7 +10,6 @@ import { useInsightsStore } from "@/stores/insights-store"
 import { useNoteStore } from "@/stores/note-store"
 import { useDdxStore } from "@/stores/ddx-store"
 import { v4 as uuidv4 } from "uuid"
-import { toast } from "sonner"
 
 const OPENING_MESSAGE =
   "Hi. I'm your AI doctor. Please have a seat. What brings you in today?"
@@ -66,6 +65,7 @@ export function useAiDoctor() {
     consultationStartRef.current = Date.now()
 
     const modeStore = useConsultationModeStore.getState()
+    const hasExistingConversation = modeStore.aiDoctorMessages.length > 0
     modeStore.setConsultationStarted(true)
 
     // Set recording state so analysis hooks activate
@@ -76,14 +76,11 @@ export function useAiDoctor() {
     // Set identification status to "identified" since we know the speakers
     useTranscriptStore.getState().setIdentificationStatus("identified")
 
-    // Add opening message
-    modeStore.addMessage("assistant", OPENING_MESSAGE)
-    addToTranscript("DOCTOR", OPENING_MESSAGE)
-
-    toast.info(
-      "You can type messages or use the microphone button for voice input.",
-      { duration: 5000 }
-    )
+    // Add the opening message only on the first AI doctor interaction in this session.
+    if (!hasExistingConversation) {
+      modeStore.addMessage("assistant", OPENING_MESSAGE)
+      addToTranscript("DOCTOR", OPENING_MESSAGE)
+    }
   }, [addToTranscript])
 
   const sendMessage = useCallback(

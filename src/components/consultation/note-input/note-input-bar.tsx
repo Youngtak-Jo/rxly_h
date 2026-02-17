@@ -38,9 +38,6 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
   const activeSession = useSessionStore((s) => s.activeSession)
 
   const mode = useConsultationModeStore((s) => s.mode)
-  const consultationStarted = useConsultationModeStore(
-    (s) => s.consultationStarted
-  )
   const isAiResponding = useConsultationModeStore((s) => s.isAiResponding)
   const isMicActive = useConsultationModeStore((s) => s.isMicActive)
   const setMicActive = useConsultationModeStore((s) => s.setMicActive)
@@ -48,7 +45,7 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
   const { sendMessage } = useAiDoctor()
 
   const isAiDoctorMode = mode === "ai-doctor"
-  const isAiDoctorActive = isAiDoctorMode && consultationStarted
+  const isAiDoctorActive = isAiDoctorMode
 
   // Cleanup object URLs on unmount to prevent memory leaks
   useEffect(() => {
@@ -244,8 +241,7 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
 
   const getPlaceholder = () => {
     if (!activeSession) return "Start a session first..."
-    if (isAiDoctorActive) return "Type your message..."
-    if (isAiDoctorMode) return "Start the AI consultation first..."
+    if (isAiDoctorMode) return "Type your message..."
     return "Add a note to the consultation..."
   }
 
@@ -305,10 +301,9 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
           disabled={
             !activeSession ||
             isSending ||
-            (isAiDoctorMode && !consultationStarted) ||
             isAiResponding
           }
-          className="min-h-[36px] max-h-[120px] resize-none text-sm"
+          className="min-h-[36px] max-h-[120px] resize-none"
           rows={1}
         />
         <Button
@@ -324,8 +319,8 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
           )}
         </Button>
 
-        {/* Mic toggle button - only in AI doctor mode when consultation started */}
-        {isAiDoctorActive && (
+        {/* Mic toggle button - available in AI doctor mode */}
+        {isAiDoctorMode && (
           <Button
             variant={isMicActive ? "default" : "ghost"}
             size="icon"

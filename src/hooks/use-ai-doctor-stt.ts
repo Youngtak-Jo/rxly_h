@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import { useSettingsStore } from "@/stores/settings-store"
+import { useTranscriptStore } from "@/stores/transcript-store"
 import { useAiDoctor } from "@/hooks/use-ai-doctor"
 import { toast } from "sonner"
 
@@ -25,7 +26,7 @@ export function useAiDoctorStt() {
   const accumulatedTextRef = useRef("")
   const sendTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const { sendMessage } = useAiDoctor()
+  const { sendMessage, startConsultation } = useAiDoctor()
   // Store sendMessage in a ref so the effect doesn't depend on it
   const sendMessageRef = useRef(sendMessage)
   useEffect(() => {
@@ -64,6 +65,8 @@ export function useAiDoctorStt() {
       sendMessageRef.current(accumulated)
       accumulatedTextRef.current = ""
     }
+
+    useTranscriptStore.getState().clearInterim()
   }
 
   // React to isMicActive changes
@@ -73,8 +76,14 @@ export function useAiDoctorStt() {
   )
 
   useEffect(() => {
-    if (!isMicActive || !consultationStarted) {
+    if (!isMicActive) {
       cleanupResources()
+      return
+    }
+
+    // Allow mic toggle to bootstrap AI consultation without a separate start button.
+    if (!consultationStarted) {
+      startConsultation()
       return
     }
 
@@ -176,13 +185,21 @@ export function useAiDoctorStt() {
           if (data.type === "Results") {
             const transcript =
               data.channel?.alternatives?.[0]?.transcript || ""
-            if (!transcript.trim()) return
+            const trimmedTranscript = transcript.trim()
+            if (!trimmedTranscript) return
 
             const isFinal = data.is_final
 
             if (isFinal) {
               accumulatedTextRef.current +=
-                (accumulatedTextRef.current ? " " : "") + transcript.trim()
+                (accumulatedTextRef.current ? " " : "") + trimmedTranscript
+            } else {
+              const livePreview = accumulatedTextRef.current
+                ? `${accumulatedTextRef.current} ${trimmedTranscript}`
+                : trimmedTranscript
+              useTranscriptStore
+                .getState()
+                .setInterimText(livePreview, "PATIENT")
             }
           }
 
@@ -190,6 +207,7 @@ export function useAiDoctorStt() {
             const text = accumulatedTextRef.current.trim()
             if (text) {
               accumulatedTextRef.current = ""
+              useTranscriptStore.getState().clearInterim()
               if (sendTimeoutRef.current) {
                 clearTimeout(sendTimeoutRef.current)
               }
@@ -201,6 +219,8 @@ export function useAiDoctorStt() {
                 }
                 sendTimeoutRef.current = null
               }, 500)
+            } else {
+              useTranscriptStore.getState().clearInterim()
             }
           }
         } catch {
@@ -228,5 +248,5 @@ export function useAiDoctorStt() {
       cancelled = true
       cleanupResources()
     }
-  }, [isMicActive, consultationStarted])
+  }, [isMicActive, consultationStarted, startConsultation])
 }
