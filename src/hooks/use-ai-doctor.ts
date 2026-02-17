@@ -10,6 +10,7 @@ import { useInsightsStore } from "@/stores/insights-store"
 import { useNoteStore } from "@/stores/note-store"
 import { useDdxStore } from "@/stores/ddx-store"
 import { v4 as uuidv4 } from "uuid"
+import { toast } from "sonner"
 
 const OPENING_MESSAGE =
   "Hi. I'm your AI doctor. Please have a seat. What brings you in today?"
