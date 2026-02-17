@@ -139,7 +139,7 @@ export function ModeSelector() {
       </div>
 
       <AlertDialog open={showDisclaimer} onOpenChange={setShowDisclaimer}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-h-[85svh] overflow-y-auto">
           <AlertDialogHeader className="text-center sm:text-center sm:place-items-center">
             <div className="mx-auto inline-flex size-12 items-center justify-center rounded-full bg-amber-500/10">
               <IconAlertTriangle className="size-6 text-amber-500" />

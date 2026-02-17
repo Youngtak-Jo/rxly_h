@@ -304,12 +304,14 @@ function SettingRow({
 }) {
   return (
     <>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="space-y-0.5">
           <Label className="text-sm font-medium">{label}</Label>
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>
-        {children}
+        <div className="flex w-full items-center sm:w-auto sm:justify-end">
+          {children}
+        </div>
       </div>
       <Separator />
     </>
@@ -340,7 +342,7 @@ function TranscriptionSettings() {
         description="Select the language for speech recognition."
       >
         <Select value={stt.language} onValueChange={setSttLanguage}>
-          <SelectTrigger className="w-[200px] text-xs">
+          <SelectTrigger className="w-full sm:w-[200px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -398,7 +400,7 @@ function TranscriptionSettings() {
           value={String(audio.endpointing)}
           onValueChange={(v) => setEndpointing(Number(v))}
         >
-          <SelectTrigger className="w-[160px] text-xs">
+          <SelectTrigger className="w-full sm:w-[160px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -418,7 +420,7 @@ function TranscriptionSettings() {
           value={String(audio.utteranceEndMs)}
           onValueChange={(v) => setUtteranceEndMs(Number(v))}
         >
-          <SelectTrigger className="w-[160px] text-xs">
+          <SelectTrigger className="w-full sm:w-[160px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -512,7 +514,7 @@ function AnalysisSettings() {
           value={getInsightsPreset()}
           onValueChange={handleInsightsSensitivity}
         >
-          <SelectTrigger className="w-[180px] text-xs">
+          <SelectTrigger className="w-full sm:w-[180px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -530,7 +532,7 @@ function AnalysisSettings() {
         description="How often differential diagnosis is updated during recording."
       >
         <Select value={getDdxPreset()} onValueChange={handleDdxSensitivity}>
-          <SelectTrigger className="w-[180px] text-xs">
+          <SelectTrigger className="w-full sm:w-[180px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -557,7 +559,7 @@ function ModelSelector({
 }) {
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className="w-[250px] text-xs">
+      <SelectTrigger className="w-full sm:w-[250px] text-xs">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -848,7 +850,7 @@ function EMRSettings() {
         description="The EMR/EHR system that receives exported FHIR data."
       >
         <Select value={emr.provider} onValueChange={setEmrProvider}>
-          <SelectTrigger className="w-[200px] text-xs">
+          <SelectTrigger className="w-full sm:w-[200px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -971,7 +973,7 @@ function AppearanceSettings() {
         description="Select the color theme for the interface."
       >
         <Select value={appearance.theme} onValueChange={handleThemeChange}>
-          <SelectTrigger className="w-[160px] text-xs">
+          <SelectTrigger className="w-full sm:w-[160px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -987,7 +989,7 @@ function AppearanceSettings() {
         description="Adjust the text size across the interface."
       >
         <Select value={appearance.fontSize} onValueChange={handleFontSizeChange}>
-          <SelectTrigger className="w-[160px] text-xs">
+          <SelectTrigger className="w-full sm:w-[160px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -1005,7 +1007,7 @@ function AppearanceSettings() {
         description="Control the spacing and padding of interface elements."
       >
         <Select value={appearance.uiDensity} onValueChange={handleUiDensityChange}>
-          <SelectTrigger className="w-[160px] text-xs">
+          <SelectTrigger className="w-full sm:w-[160px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -1023,7 +1025,7 @@ function AppearanceSettings() {
         description="Set the corner roundness for UI elements."
       >
         <Select value={appearance.borderRadius} onValueChange={handleBorderRadiusChange}>
-          <SelectTrigger className="w-[160px] text-xs">
+          <SelectTrigger className="w-full sm:w-[160px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

@@ -429,6 +429,15 @@
   line-height: 1.85;
 }
 
+.research-markdown p,
+.research-markdown li,
+.research-markdown td,
+.research-markdown th,
+.research-markdown a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .research-markdown ul,
 .research-markdown ol {
   margin-top: 0.75rem;
@@ -478,6 +487,14 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .research-markdown table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 .research-markdown th {

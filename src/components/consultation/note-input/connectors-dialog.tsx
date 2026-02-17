@@ -22,22 +22,22 @@ const CONNECTORS: {
   label: string
   description: string
 }[] = [
-  {
-    key: "pubmed",
-    label: "PubMed",
-    description: "NCBI biomedical literature search (36M+ articles)",
-  },
-  {
-    key: "icd11",
-    label: "ICD-11",
-    description: "WHO International Classification of Diseases",
-  },
-  {
-    key: "europe_pmc",
-    label: "Europe PMC",
-    description: "European biomedical literature (33M+ publications)",
-  },
-]
+    {
+      key: "pubmed",
+      label: "PubMed",
+      description: "NCBI biomedical literature search (36M+ articles)",
+    },
+    {
+      key: "icd11",
+      label: "ICD-11",
+      description: "WHO International Classification of Diseases",
+    },
+    {
+      key: "europe_pmc",
+      label: "Europe PMC",
+      description: "European biomedical literature (33M+ publications)",
+    },
+  ]
 
 export function ConnectorsDialog() {
   const [open, setOpen] = useState(false)

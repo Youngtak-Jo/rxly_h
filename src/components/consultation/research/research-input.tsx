@@ -187,7 +187,7 @@ export function ResearchInput() {
   }
 
   return (
-    <div className="border-t p-3">
+    <div className="border-t p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:pb-3">
       <div className="flex items-end gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

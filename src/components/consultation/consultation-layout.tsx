@@ -24,7 +24,7 @@ import { useUnseenUpdateTracker } from "@/hooks/use-unseen-update-tracker"
 import { useSpeakerIdentification } from "@/hooks/use-speaker-identification"
 import { useSingleSpeakerClassification } from "@/hooks/use-single-speaker-classification"
 import { useDiagnosticHighlights } from "@/hooks/use-diagnostic-highlights"
-import { useIsMobile } from "@/hooks/use-mobile"
+import { useMobileViewport } from "@/hooks/use-mobile"
 import { useAiDoctorStt } from "@/hooks/use-ai-doctor-stt"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import { IconLoader2 } from "@tabler/icons-react"
@@ -38,10 +38,13 @@ export function ConsultationLayout() {
   const isSwitching = useSessionStore((s) => s.isSwitching)
   const { addSession, setActiveSession } = useSessionStore()
   const router = useRouter()
-  const { setTranscriptCollapsed, setToggleTranscript } =
-    useConsultationTabStore()
+  const activeTab = useConsultationTabStore((s) => s.activeTab)
+  const setTranscriptCollapsed = useConsultationTabStore(
+    (s) => s.setTranscriptCollapsed
+  )
+  const setToggleTranscript = useConsultationTabStore((s) => s.setToggleTranscript)
   const rightPanelRef = useRef<PanelImperativeHandle | null>(null)
-  const isMobile = useIsMobile()
+  const { isMobile, isReady: isMobileReady } = useMobileViewport()
 
   useRecordAutoSave()
   useInsightsAutoSave()
@@ -70,13 +73,17 @@ export function ConsultationLayout() {
 
   // Register toggle function in store so SiteHeader can call it (desktop only)
   useEffect(() => {
+    if (!isMobileReady) {
+      setToggleTranscript(null)
+      return
+    }
     if (!isMobile) {
       setToggleTranscript(toggleRightPanel)
       return () => setToggleTranscript(null)
     } else {
       setToggleTranscript(null)
     }
-  }, [toggleRightPanel, setToggleTranscript, isMobile])
+  }, [toggleRightPanel, setToggleTranscript, isMobile, isMobileReady])
 
   const createSession = async () => {
     const tempId = uuidv4()
@@ -154,6 +161,17 @@ export function ConsultationLayout() {
     )
   }
 
+  // Keep a neutral state until mobile breakpoint is resolved to avoid
+  // a desktop-to-mobile layout jump on first paint.
+  if (activeSession && !isMobileReady) {
+    return (
+      <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-3">
+        <IconLoader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Preparing consultation...</p>
+      </div>
+    )
+  }
+
   // Mobile layout: vertical stack
   if (isMobile) {
     return (
@@ -167,13 +185,15 @@ export function ConsultationLayout() {
           "flex flex-col flex-1 min-h-0 transition-opacity duration-200",
           isSwitching ? "opacity-40 pointer-events-none" : "opacity-100"
         )}>
-          <MobileTranscriptSection />
+          {activeTab !== "research" && <MobileTranscriptSection />}
           <div className="flex-1 min-h-0 overflow-hidden">
             <CenterPanel />
           </div>
-          <div className="shrink-0 pb-[env(safe-area-inset-bottom)]">
-            <NoteInputBar />
-          </div>
+          {activeTab !== "research" && (
+            <div className="shrink-0 pb-[env(safe-area-inset-bottom)]">
+              <NoteInputBar />
+            </div>
+          )}
         </div>
       </div>
     )

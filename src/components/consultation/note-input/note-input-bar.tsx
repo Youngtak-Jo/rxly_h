@@ -264,8 +264,9 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
                 className="h-16 w-16 rounded-md object-cover border"
               />
               <button
+                type="button"
                 onClick={() => removeAttachment(i)}
-                className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity [@media(hover:none)]:opacity-100"
               >
                 <IconX className="size-2.5" />
               </button>
