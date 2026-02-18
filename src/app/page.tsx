@@ -1,5 +1,6 @@
 import { LandingNavbar } from "@/components/landing-navbar"
 import { HeroConsultationDemo } from "@/components/landing/hero-consultation-demo"
+import { LandingSections } from "@/components/landing/landing-sections"
 import { Instrument_Serif } from "next/font/google"
 
 const instrumentSerif = Instrument_Serif({
@@ -7,12 +8,17 @@ const instrumentSerif = Instrument_Serif({
   weight: "400",
 })
 
+const heroBridgeBackground = "oklch(0.86 0.06 55)"
+
 export default function Home() {
   return (
-    <main className="relative min-h-svh overflow-x-clip bg-white text-foreground">
+    <main
+      className="relative min-h-svh overflow-x-clip text-foreground"
+      style={{ backgroundColor: heroBridgeBackground }}
+    >
       <LandingNavbar />
 
-      <section className="relative isolate overflow-hidden">
+      <section className="relative isolate overflow-hidden" style={{ background: heroBridgeBackground }}>
         <video
           aria-hidden="true"
           autoPlay
@@ -23,11 +29,11 @@ export default function Home() {
           poster="/vertimg.jpeg"
           className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
           style={{
-            filter: "brightness(1.08) contrast(1.02)",
+            filter: "brightness(1.02) contrast(1.02)",
             WebkitMaskImage:
-              "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 72%, rgba(0,0,0,0.95) 78%, rgba(0,0,0,0.75) 86%, rgba(0,0,0,0.45) 93%, rgba(0,0,0,0) 100%)",
+              "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 70%, rgba(0,0,0,0.9) 80%, rgba(0,0,0,0.55) 89%, rgba(0,0,0,0.2) 95%, rgba(0,0,0,0) 100%)",
             maskImage:
-              "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 72%, rgba(0,0,0,0.95) 78%, rgba(0,0,0,0.75) 86%, rgba(0,0,0,0.45) 93%, rgba(0,0,0,0) 100%)",
+              "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 70%, rgba(0,0,0,0.9) 80%, rgba(0,0,0,0.55) 89%, rgba(0,0,0,0.2) 95%, rgba(0,0,0,0) 100%)",
             WebkitMaskRepeat: "no-repeat",
             maskRepeat: "no-repeat",
             WebkitMaskSize: "100% 100%",
@@ -58,41 +64,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section
-        id="features"
-        className="scroll-mt-28 px-6 py-20 md:scroll-mt-36 md:px-10"
-      >
-        <div className="mx-auto max-w-6xl">
-          <h2 className="text-3xl font-semibold">Features</h2>
-          <p className="mt-3 max-w-3xl text-muted-foreground">
-            Section skeleton reserved for product capabilities content.
-          </p>
-        </div>
-      </section>
-
-      <section
-        id="how-it-works"
-        className="scroll-mt-28 px-6 py-20 md:scroll-mt-36 md:px-10"
-      >
-        <div className="mx-auto max-w-6xl">
-          <h2 className="text-3xl font-semibold">How it works</h2>
-          <p className="mt-3 max-w-3xl text-muted-foreground">
-            Section skeleton reserved for workflow and architecture explanation.
-          </p>
-        </div>
-      </section>
-
-      <section
-        id="security"
-        className="scroll-mt-28 px-6 py-20 md:scroll-mt-36 md:px-10"
-      >
-        <div className="mx-auto max-w-6xl">
-          <h2 className="text-3xl font-semibold">Security</h2>
-          <p className="mt-3 max-w-3xl text-muted-foreground">
-            Section skeleton reserved for compliance and privacy details.
-          </p>
-        </div>
-      </section>
+      <LandingSections />
     </main>
   )
 }

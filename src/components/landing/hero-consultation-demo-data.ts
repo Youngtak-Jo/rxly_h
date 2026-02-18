@@ -592,14 +592,12 @@ export const HERO_DEMO_FHIR_REVIEW_STATE: HeroDemoFhirReviewState = {
 export interface HeroDemoResearchState {
   userQuery: string
   assistantMarkdown: string
-  generatedAt: string
-  modelLabel: string
 }
 
 export const HERO_DEMO_RESEARCH_STATE: HeroDemoResearchState = {
   userQuery:
     "We plan to increase metformin from 1000 mg to 2000 mg and add empagliflozin. Please provide the expected rate of achieving HbA1c <7% with this combination, the real-world magnitude of HbA1c reduction, and the evidence supporting gradual metformin titration at two-week intervals.",
-  assistantMarkdown: `## AI Research Summary
+  assistantMarkdown: `## Evidence Brief: Metformin Uptitration + Empagliflozin
 
 ### Quick answer
 - **Expected HbA1c < 7% attainment** after intensification to metformin 2000 mg/day plus empagliflozin is typically in the **~38-62% range** at 6-12 months, depending on baseline HbA1c and adherence.
@@ -650,8 +648,6 @@ export const HERO_DEMO_RESEARCH_STATE: HeroDemoResearchState = {
 ---
 **Demo note:** Values above are illustrative evidence-style ranges for UI preview and should be validated against patient-specific factors before clinical use.
 `,
-  generatedAt: "Feb 18, 2026 09:42",
-  modelLabel: "Rxly Research (Medical RAG)",
 }
 
 export type HeroDemoSpeaker = "DOCTOR" | "PATIENT"

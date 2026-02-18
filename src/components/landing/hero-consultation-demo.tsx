@@ -43,7 +43,7 @@ export function HeroConsultationDemo() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
   const [selectedDdxId, setSelectedDdxId] = useState(INITIAL_DDX_ID)
-  const transcriptRef = useRef<HTMLDivElement | null>(null)
+  const transcriptRef = useRef<HTMLElement | null>(null)
   const activePanelId = `hero-demo-panel-${activeMode}`
 
   const isInsightsMode = activeMode === "insights"
@@ -178,7 +178,7 @@ export function HeroConsultationDemo() {
                 className={cn(
                   panelBaseClass,
                   styles.panelIn,
-                  "relative flex flex-col overflow-hidden ring-1 ring-primary/35"
+                  "relative flex min-h-0 flex-col overflow-y-auto ring-1 ring-primary/35"
                 )}
                 aria-label="Live insights panel"
               >
@@ -191,7 +191,7 @@ export function HeroConsultationDemo() {
 
                 <div
                   className={cn(
-                    "relative z-10 flex-1 space-y-3 overflow-y-auto pr-1 text-[11px] md:text-xs",
+                    "relative z-10 flex-1 space-y-3 pr-1 text-[11px] md:text-xs",
                     styles.panelIn,
                     isPlaying && "animate-breathe insights-shimmer-overlay"
                   )}
@@ -264,17 +264,19 @@ export function HeroConsultationDemo() {
               </section>
 
               <section
-                className={cn(panelBaseClass, styles.panelIn, "flex flex-col ring-1 ring-primary/20")}
+                ref={transcriptRef}
+                className={cn(
+                  panelBaseClass,
+                  styles.panelIn,
+                  "flex min-h-0 flex-col overflow-y-auto ring-1 ring-primary/20"
+                )}
                 aria-label="Transcript panel"
               >
                 <header className="mb-2 flex items-center">
                   <h3 className="text-xs font-semibold">Real-time Transcript</h3>
                 </header>
 
-                <div
-                  ref={transcriptRef}
-                  className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1"
-                >
+                <div className="flex flex-col gap-2 pr-1">
                   {visibleEntries.map((entry) => {
                     const isDoctor = entry.speaker === "DOCTOR"
                     return (
@@ -334,7 +336,11 @@ export function HeroConsultationDemo() {
           {activeMode === "ddx" && (
             <div className="grid h-full min-h-0 gap-3 md:grid-cols-[1.02fr_0.98fr] md:gap-4">
               <section
-                className={cn(panelBaseClass, styles.panelIn, "flex flex-col ring-1 ring-amber-500/35")}
+                className={cn(
+                  panelBaseClass,
+                  styles.panelIn,
+                  "flex min-h-0 flex-col overflow-y-auto ring-1 ring-amber-500/35"
+                )}
                 aria-label="Differential diagnosis panel"
               >
                 <header className="mb-3 flex items-center justify-between gap-2">
@@ -352,7 +358,7 @@ export function HeroConsultationDemo() {
                   {HERO_DEMO_DDX_STATE.triageSignal}
                 </p>
 
-                <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
+                <div className="mt-3 space-y-2 pr-1">
                   {HERO_DEMO_DDX_STATE.candidates.map((candidate) => {
                     const isSelected = selectedDdxCandidate?.id === candidate.id
 
@@ -396,7 +402,11 @@ export function HeroConsultationDemo() {
               </section>
 
               <section
-                className={cn(panelBaseClass, styles.panelIn, "flex flex-col ring-1 ring-amber-500/20")}
+                className={cn(
+                  panelBaseClass,
+                  styles.panelIn,
+                  "flex min-h-0 flex-col overflow-y-auto ring-1 ring-amber-500/20"
+                )}
                 aria-label="Clinical decision support panel"
               >
                 <header className="mb-3 flex items-center justify-between gap-2">
@@ -414,7 +424,7 @@ export function HeroConsultationDemo() {
                 </header>
 
                 {selectedDdxSupport && selectedDdxCandidate ? (
-                  <div className="flex-1 space-y-3 overflow-y-auto pr-1 text-[11px] md:text-xs">
+                  <div className="space-y-3 pr-1 text-[11px] md:text-xs">
                     <article className="rounded-lg border border-border/70 bg-background/70 p-2.5">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                         Selected Diagnosis
@@ -512,7 +522,11 @@ export function HeroConsultationDemo() {
           {activeMode === "record" && (
             <div className="grid h-full min-h-0 gap-3 md:grid-cols-[1fr_1.15fr] md:gap-4">
               <section
-                className={cn(panelBaseClass, styles.panelIn, "flex min-h-0 flex-col ring-1 ring-emerald-500/35")}
+                className={cn(
+                  panelBaseClass,
+                  styles.panelIn,
+                  "flex min-h-0 flex-col overflow-y-auto ring-1 ring-emerald-500/35"
+                )}
                 aria-label="Consultation record overview"
               >
                 <header className="mb-3">
@@ -536,7 +550,7 @@ export function HeroConsultationDemo() {
                   </div>
                 </div>
 
-                <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
+                <div className="mt-3 space-y-2 pr-1">
                   {HERO_DEMO_RECORD_STATE.sections.map((section) => (
                     <article
                       key={section.id}
@@ -571,7 +585,11 @@ export function HeroConsultationDemo() {
               </section>
 
               <section
-                className={cn(panelBaseClass, styles.panelIn, "flex min-h-0 flex-col ring-1 ring-emerald-500/20")}
+                className={cn(
+                  panelBaseClass,
+                  styles.panelIn,
+                  "flex min-h-0 flex-col overflow-hidden ring-1 ring-emerald-500/20"
+                )}
                 aria-label="Review FHIR data dialog preview"
               >
                 <div
@@ -590,7 +608,7 @@ export function HeroConsultationDemo() {
                     </p>
                   </header>
 
-                  <div className="flex-1 space-y-2 overflow-y-auto px-3 py-2.5">
+                  <div className="flex-1 space-y-2 overflow-y-auto px-3 py-2.5 pb-3">
                     {HERO_DEMO_FHIR_REVIEW_STATE.resources.map((resource) => {
                       const isReady = resource.status === "Ready"
 
@@ -640,7 +658,7 @@ export function HeroConsultationDemo() {
                     </article>
                   </div>
 
-                  <footer className="flex items-center justify-end gap-2 border-t border-border/80 px-3 py-2.5">
+                  <footer className="z-10 flex shrink-0 items-center justify-end gap-2 border-t border-border/80 bg-background px-3 py-2.5">
                     <button
                       type="button"
                       className="rounded-md border border-border/80 bg-background px-3 py-1.5 text-[11px] font-medium text-foreground/90 transition-colors hover:bg-muted md:text-xs"
@@ -662,7 +680,11 @@ export function HeroConsultationDemo() {
           {activeMode === "research" && (
             <div className="h-full min-h-0">
               <section
-                className={cn(panelBaseClass, styles.panelIn, "flex h-full min-h-0 flex-col ring-1 ring-sky-500/35")}
+                className={cn(
+                  panelBaseClass,
+                  styles.panelIn,
+                  "flex h-full min-h-0 flex-col overflow-y-auto ring-1 ring-sky-500/35"
+                )}
                 aria-label="Research panel"
               >
                 <header className="mb-3 flex items-center justify-between gap-2">
@@ -675,7 +697,7 @@ export function HeroConsultationDemo() {
                   </div>
                 </header>
 
-                <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+                <div className="space-y-3 pr-1">
                   <div className="flex justify-end">
                     <article className="max-w-[98%] rounded-2xl rounded-br-sm border border-primary/25 bg-primary/10 px-3 py-2 text-[11px] leading-relaxed md:text-xs">
                       <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-primary/80">
