@@ -178,8 +178,7 @@ export function HeroConsultationDemo() {
                 className={cn(
                   panelBaseClass,
                   styles.panelIn,
-                  "relative flex flex-col overflow-hidden ring-1 ring-primary/35",
-                  isPlaying && "animate-breathe insights-shimmer-overlay"
+                  "relative flex flex-col overflow-hidden ring-1 ring-primary/35"
                 )}
                 aria-label="Live insights panel"
               >
@@ -193,7 +192,8 @@ export function HeroConsultationDemo() {
                 <div
                   className={cn(
                     "relative z-10 flex-1 space-y-3 overflow-y-auto pr-1 text-[11px] md:text-xs",
-                    styles.panelIn
+                    styles.panelIn,
+                    isPlaying && "animate-breathe insights-shimmer-overlay"
                   )}
                   key={currentStep.id}
                 >
@@ -286,15 +286,15 @@ export function HeroConsultationDemo() {
                           className={cn(
                             "max-w-[90%] rounded-lg px-3 py-2 text-[11px] leading-relaxed",
                             isDoctor
-                              ? "rounded-tr-sm border border-primary/20 bg-primary/10 text-foreground"
-                              : "rounded-bl-sm border border-slate-300/70 bg-slate-200/95 text-slate-900 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90 dark:text-slate-100"
+                              ? "rounded-tr-sm border border-primary/15 bg-primary/10 text-foreground backdrop-blur-sm"
+                              : "rounded-tl-sm bg-muted text-foreground"
                           )}
                         >
                           <p>{entry.text}</p>
                           <p
                             className={cn(
                               "mt-1 text-[10px] font-medium",
-                              isDoctor ? "text-primary/75" : "text-slate-600 dark:text-slate-300"
+                              isDoctor ? "text-primary/75" : "text-muted-foreground"
                             )}
                           >
                             {speakerLabel(entry)}
