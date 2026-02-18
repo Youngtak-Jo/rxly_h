@@ -3,31 +3,50 @@ import { HeroConsultationDemo } from "@/components/landing/hero-consultation-dem
 
 export default function Home() {
   return (
-    <main className="relative min-h-svh overflow-x-clip bg-[radial-gradient(120%_90%_at_50%_-20%,oklch(0.98_0.04_75)_0%,oklch(0.97_0.02_70)_40%,oklch(0.94_0.02_55)_100%)] text-foreground dark:bg-[radial-gradient(120%_90%_at_50%_-20%,oklch(0.3_0.03_45)_0%,oklch(0.22_0.01_35)_45%,oklch(0.16_0.01_30)_100%)]">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -left-20 top-24 h-72 w-72 rounded-full bg-primary/15 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-20 top-[35rem] h-72 w-72 rounded-full bg-chart-2/20 blur-3xl"
-      />
-
+    <main className="relative min-h-svh overflow-x-clip bg-white text-foreground">
       <LandingNavbar />
 
-      <section className="mx-auto flex min-h-[88svh] w-full max-w-7xl flex-col items-center px-6 pb-16 pt-28 text-center md:px-10 md:pt-36">
-        <div className="max-w-3xl">
-          <h1 className="text-4xl font-semibold leading-tight md:text-6xl">
-            AI Clinical Copilot
-          </h1>
-          <p className="mt-5 text-base text-muted-foreground md:text-lg">
-            Turn every consultation into structured clinical intelligence with
-            real-time transcription, live insights, and action-ready next steps.
-          </p>
-        </div>
+      <section className="relative isolate overflow-hidden">
+        <video
+          aria-hidden="true"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          poster="/vertimg.jpeg"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+          style={{
+            filter: "brightness(1.08) contrast(1.02)",
+            WebkitMaskImage:
+              "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 62%, rgba(0,0,0,0.95) 68%, rgba(0,0,0,0.75) 76%, rgba(0,0,0,0.45) 86%, rgba(0,0,0,0) 100%)",
+            maskImage:
+              "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 62%, rgba(0,0,0,0.95) 68%, rgba(0,0,0,0.75) 76%, rgba(0,0,0,0.45) 86%, rgba(0,0,0,0) 100%)",
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+            WebkitMaskSize: "100% 100%",
+            maskSize: "100% 100%",
+          }}
+        >
+          <source src="/grok-video-659ea432-9ca4-41d7-bda9-7f3670897f7f.mp4" type="video/mp4" />
+        </video>
 
-        <div className="mt-10 w-full">
-          <HeroConsultationDemo />
+        <div className="relative z-10">
+          <section className="mx-auto flex min-h-[88svh] w-full max-w-7xl flex-col items-center px-6 pb-16 pt-28 text-center md:px-10 md:pt-36">
+            <div className="max-w-3xl">
+              <h1 className="text-4xl font-semibold leading-tight text-black md:text-6xl">
+                AI Clinical Copilot
+              </h1>
+              <p className="mt-5 text-base text-black/80 md:text-lg">
+                Turn every consultation into structured clinical intelligence with
+                real-time transcription, live insights, and action-ready next steps.
+              </p>
+            </div>
+
+            <div className="mt-10 w-full">
+              <HeroConsultationDemo />
+            </div>
+          </section>
         </div>
       </section>
 

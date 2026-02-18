@@ -17,23 +17,19 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 export function LandingNavbar() {
-  const fixedMouse = { x: 0, y: 0 }
-
   return (
     <LiquidGlass
       blurAmount={0}
-      aberrationIntensity={4}
-      elasticity={0.3}
+      aberrationIntensity={2}
+      elasticity={0.08}
       saturation={140}
-      globalMousePos={fixedMouse}
-      mouseOffset={fixedMouse}
       mode="standard"
       cornerRadius={999}
       padding="0"
       className={`${styles.landingNavGlass} pointer-events-auto w-full`}
       style={{
         position: "fixed",
-        top: "1.5rem",
+        top: "calc(1.5rem + 28px)",
         left: "50%",
         zIndex: 100,
       }}
