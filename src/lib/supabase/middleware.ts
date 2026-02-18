@@ -30,7 +30,8 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Public paths accessible without authentication
-  const publicPaths = [
+  const publicExactPaths = ["/", "/manifest.json"]
+  const publicPrefixPaths = [
     "/login",
     "/signup",
     "/forgot-password",
@@ -38,14 +39,14 @@ export async function updateSession(request: NextRequest) {
     "/auth",
     "/api",
     "/export",
-    "/manifest.json",
   ]
 
+  const isPublicPath =
+    publicExactPaths.includes(request.nextUrl.pathname) ||
+    publicPrefixPaths.some((path) => request.nextUrl.pathname.startsWith(path))
+
   // Redirect unauthenticated users to /login
-  if (
-    !user &&
-    !publicPaths.some((path) => request.nextUrl.pathname.startsWith(path))
-  ) {
+  if (!user && !isPublicPath) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)

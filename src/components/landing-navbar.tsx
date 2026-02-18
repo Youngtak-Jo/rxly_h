@@ -1,0 +1,89 @@
+"use client"
+
+import Image from "next/image"
+import Link from "next/link"
+import LiquidGlass from "liquid-glass-react"
+import styles from "./landing-navbar.module.css"
+
+type NavItem = {
+  label: string
+  href: string
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { label: "Features", href: "#features" },
+  { label: "How it works", href: "#how-it-works" },
+  { label: "Security", href: "#security" },
+]
+
+export function LandingNavbar() {
+  const fixedMouse = { x: 0, y: 0 }
+
+  return (
+    <LiquidGlass
+      blurAmount={0}
+      aberrationIntensity={4}
+      elasticity={0.3}
+      saturation={140}
+      globalMousePos={fixedMouse}
+      mouseOffset={fixedMouse}
+      mode="standard"
+      cornerRadius={999}
+      padding="0"
+      className={`${styles.landingNavGlass} pointer-events-auto w-full`}
+      style={{
+        position: "fixed",
+        top: "1.5rem",
+        left: "50%",
+        zIndex: 100,
+      }}
+    >
+      <header className="w-full">
+        <nav className="flex w-full items-center justify-between gap-3 px-3 py-2 md:px-4 md:py-2.5">
+          <Link
+            href="/"
+            className="flex items-center gap-2 rounded-full px-2 py-1 transition hover:bg-white/20"
+          >
+            <Image
+              src="/icon0.svg"
+              alt="Rxly icon"
+              width={32}
+              height={32}
+              className="size-8 rounded-full object-cover"
+              priority
+            />
+            <Image
+              src="/logo.svg"
+              alt="Rxly wordmark"
+              width={933}
+              height={451}
+              className="hidden h-7 w-auto translate-y-[1px] sm:block md:h-8 dark:invert"
+              priority
+            />
+          </Link>
+
+          <ul className="hidden items-center gap-1 md:flex">
+            {NAV_ITEMS.map((item) => (
+              <li key={item.href}>
+                <a
+                  href={item.href}
+                  className="rounded-full px-3 py-1.5 text-sm font-medium text-neutral-800 transition hover:bg-white/20"
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          <Link
+            href="/consultation"
+            className="rounded-full bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-neutral-700 sm:text-sm"
+          >
+            <span className="sm:hidden">Start</span>
+            <span className="hidden sm:inline">Start Consultation</span>
+          </Link>
+        </nav>
+      </header>
+    </LiquidGlass>
+  )
+}

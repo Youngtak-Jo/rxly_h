@@ -1,0 +1,29 @@
+.landingNavGlass {
+  width: calc(100vw - 3rem);
+  max-width: 67rem;
+  transform: translate(-50%, 0) !important;
+}
+
+@media (min-width: 48rem) {
+  .landingNavGlass {
+    width: calc(100vw - 5rem);
+  }
+}
+
+.landingNavGlass :global(.glass) {
+  display: flex !important;
+  width: 100% !important;
+  background: oklch(1 0.002 75 / 0.26) !important;
+  border: 0 !important;
+  box-shadow: 0 8px 20px oklch(0.62 0.08 45 / 0.11) !important;
+}
+
+.landingNavGlass :global(.glass > div) {
+  width: 100% !important;
+}
+
+:global(.dark) .landingNavGlass :global(.glass) {
+  background: oklch(1 0.002 75 / 0.2) !important;
+  border: 0 !important;
+  box-shadow: 0 8px 20px oklch(0.48 0.08 45 / 0.16) !important;
+}
