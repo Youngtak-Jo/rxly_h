@@ -1,5 +1,11 @@
 import { LandingNavbar } from "@/components/landing-navbar"
 import { HeroConsultationDemo } from "@/components/landing/hero-consultation-demo"
+import { Instrument_Serif } from "next/font/google"
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+})
 
 export default function Home() {
   return (
@@ -19,9 +25,9 @@ export default function Home() {
           style={{
             filter: "brightness(1.08) contrast(1.02)",
             WebkitMaskImage:
-              "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 62%, rgba(0,0,0,0.95) 68%, rgba(0,0,0,0.75) 76%, rgba(0,0,0,0.45) 86%, rgba(0,0,0,0) 100%)",
+              "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 72%, rgba(0,0,0,0.95) 78%, rgba(0,0,0,0.75) 86%, rgba(0,0,0,0.45) 93%, rgba(0,0,0,0) 100%)",
             maskImage:
-              "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 62%, rgba(0,0,0,0.95) 68%, rgba(0,0,0,0.75) 76%, rgba(0,0,0,0.45) 86%, rgba(0,0,0,0) 100%)",
+              "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 72%, rgba(0,0,0,0.95) 78%, rgba(0,0,0,0.75) 86%, rgba(0,0,0,0.45) 93%, rgba(0,0,0,0) 100%)",
             WebkitMaskRepeat: "no-repeat",
             maskRepeat: "no-repeat",
             WebkitMaskSize: "100% 100%",
@@ -32,12 +38,14 @@ export default function Home() {
         </video>
 
         <div className="relative z-10">
-          <section className="mx-auto flex min-h-[88svh] w-full max-w-7xl flex-col items-center px-6 pb-16 pt-28 text-center md:px-10 md:pt-36">
+          <section className="mx-auto flex min-h-[102svh] w-full max-w-7xl flex-col items-center px-6 pb-16 pt-28 text-center md:min-h-[108svh] md:px-10 md:pt-36">
             <div className="max-w-3xl">
-              <h1 className="text-4xl font-semibold leading-tight text-black md:text-6xl">
+              <h1
+                className={`${instrumentSerif.className} text-5xl font-normal leading-tight text-white [text-shadow:0_8px_24px_rgba(0,0,0,0.35)] md:text-7xl lg:text-8xl`}
+              >
                 AI Clinical Copilot
               </h1>
-              <p className="mt-5 text-base text-black/80 md:text-lg">
+              <p className="mt-5 text-base text-white/90 [text-shadow:0_4px_16px_rgba(0,0,0,0.3)] md:text-lg">
                 Turn every consultation into structured clinical intelligence with
                 real-time transcription, live insights, and action-ready next steps.
               </p>

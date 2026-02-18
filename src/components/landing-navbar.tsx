@@ -53,7 +53,7 @@ export function LandingNavbar() {
               alt="Rxly wordmark"
               width={933}
               height={451}
-              className="hidden h-7 w-auto translate-y-[1px] sm:block md:h-8 dark:invert"
+              className="hidden h-7 w-auto translate-y-[1px] invert sm:block md:h-8"
               priority
             />
           </Link>
@@ -63,7 +63,7 @@ export function LandingNavbar() {
               <li key={item.href}>
                 <a
                   href={item.href}
-                  className="rounded-full px-3 py-1.5 text-sm font-medium text-neutral-800 transition hover:bg-white/20"
+                  className="rounded-full px-3 py-1.5 text-sm font-medium text-white/90 transition hover:bg-white/20 hover:text-white"
                 >
                   {item.label}
                 </a>

@@ -1,5 +1,78 @@
+.modeToggleTrack {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: max-content;
+  padding: 0.26rem;
+}
+
+.modeToggleButton {
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgb(255 255 255 / 0.82);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.5rem 0.82rem;
+  white-space: nowrap;
+  transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+
+.modeToggleButton:hover {
+  color: rgb(255 255 255 / 0.96);
+}
+
+.modeToggleButton:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.modeToggleButtonActive {
+  color: rgb(255 255 255 / 1);
+  background: rgb(255 255 255 / 0.15);
+  border-color: rgb(255 255 255 / 0.3);
+}
+
 .panelIn {
   animation: panel-in 260ms ease-out;
+}
+
+.modeSwapIn {
+  animation: mode-swap-in 220ms ease-out;
+}
+
+.ddxCandidateButton {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(212 212 216 / 0.65);
+  background: rgb(255 255 255 / 0.68);
+  padding: 0.625rem;
+  text-align: left;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.ddxCandidateButton:hover {
+  border-color: rgb(245 158 11 / 0.4);
+  background: rgb(255 251 235 / 0.7);
+}
+
+.ddxCandidateButton:focus-visible {
+  outline: 2px solid rgb(245 158 11 / 0.38);
+  outline-offset: 2px;
+}
+
+.ddxCandidateButtonActive {
+  border-color: rgb(245 158 11 / 0.58);
+  background: rgb(255 247 237 / 0.88);
+  box-shadow: 0 0 0 1px rgb(245 158 11 / 0.22);
+  transform: translateY(-1px);
+}
+
+.fhirDialogMock {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.95) 0%, rgb(248 250 252 / 0.86) 100%);
 }
 
 .typingDot {
@@ -26,6 +99,18 @@
   }
 }
 
+@keyframes mode-swap-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes dot-pulse {
   0%,
   80%,
@@ -40,13 +125,42 @@
   }
 }
 
+:global(.dark) .ddxCandidateButton {
+  border-color: rgb(63 63 70 / 0.74);
+  background: rgb(30 41 59 / 0.62);
+}
+
+:global(.dark) .ddxCandidateButton:hover {
+  border-color: rgb(245 158 11 / 0.48);
+  background: rgb(68 64 60 / 0.74);
+}
+
+:global(.dark) .ddxCandidateButtonActive {
+  background: rgb(69 39 0 / 0.5);
+  box-shadow: 0 0 0 1px rgb(245 158 11 / 0.3);
+}
+
+:global(.dark) .fhirDialogMock {
+  background:
+    linear-gradient(180deg, rgb(15 23 42 / 0.88) 0%, rgb(30 41 59 / 0.7) 100%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .panelIn {
+    animation: none;
+  }
+
+  .modeSwapIn {
     animation: none;
   }
 
   .typingDot {
     animation: none;
     opacity: 0.65;
+  }
+
+  .ddxCandidateButton,
+  .ddxCandidateButtonActive {
+    transform: none;
   }
 }
