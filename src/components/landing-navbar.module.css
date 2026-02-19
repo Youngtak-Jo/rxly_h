@@ -9,12 +9,3 @@
     max-width: 75rem;
   }
 }
-
-.landingNavGlass :global(.glass) {
-  display: flex !important;
-  width: 100% !important;
-}
-
-.landingNavGlass :global(.glass > div) {
-  width: 100% !important;
-}

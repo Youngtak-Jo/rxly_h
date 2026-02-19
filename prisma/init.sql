@@ -92,6 +92,20 @@ CREATE TABLE "consultation_records" (
 );
 
 -- CreateTable
+CREATE TABLE "patient_handouts" (
+    "id" TEXT NOT NULL,
+    "session_id" TEXT NOT NULL,
+    "language" TEXT NOT NULL,
+    "conditions" JSONB NOT NULL,
+    "entries" JSONB NOT NULL,
+    "generated_at" TIMESTAMP(3) NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "patient_handouts_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "notes" (
     "id" TEXT NOT NULL,
     "session_id" TEXT NOT NULL,
@@ -116,6 +130,9 @@ CREATE INDEX "checklist_items_session_id_sort_order_idx" ON "checklist_items"("s
 CREATE UNIQUE INDEX "consultation_records_session_id_key" ON "consultation_records"("session_id");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "patient_handouts_session_id_key" ON "patient_handouts"("session_id");
+
+-- CreateIndex
 CREATE INDEX "notes_session_id_created_at_idx" ON "notes"("session_id", "created_at");
 
 -- AddForeignKey
@@ -131,5 +148,7 @@ ALTER TABLE "checklist_items" ADD CONSTRAINT "checklist_items_session_id_fkey" F
 ALTER TABLE "consultation_records" ADD CONSTRAINT "consultation_records_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "notes" ADD CONSTRAINT "notes_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "patient_handouts" ADD CONSTRAINT "patient_handouts_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+-- AddForeignKey
+ALTER TABLE "notes" ADD CONSTRAINT "notes_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;

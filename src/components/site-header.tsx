@@ -185,6 +185,7 @@ const TAB_LABELS: Record<string, string> = {
   ddx: "Differential Diagnosis",
   record: "Consultation Record",
   research: "Research",
+  patientHandout: "Patient Handout",
 }
 
 function MobileHeaderMenu() {

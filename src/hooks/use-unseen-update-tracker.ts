@@ -6,6 +6,7 @@ import { useInsightsStore } from "@/stores/insights-store"
 import { useDdxStore } from "@/stores/ddx-store"
 import { useRecordStore } from "@/stores/record-store"
 import { useResearchStore } from "@/stores/research-store"
+import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 
 export function useUnseenUpdateTracker() {
   useEffect(() => {
@@ -35,11 +36,18 @@ export function useUnseenUpdateTracker() {
       }
     })
 
+    const unsubPatientHandout = usePatientHandoutStore.subscribe((state, prev) => {
+      if (prev.isGenerating && !state.isGenerating) {
+        markTabUpdated("patientHandout")
+      }
+    })
+
     return () => {
       unsubInsights()
       unsubDdx()
       unsubRecord()
       unsubResearch()
+      unsubPatientHandout()
     }
   }, [])
 }

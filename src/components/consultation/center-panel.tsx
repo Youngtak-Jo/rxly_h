@@ -4,6 +4,7 @@ import { InsightsContainer } from "./insights/insights-container"
 import { DdxContainer } from "./ddx/ddx-container"
 import { RecordContainer } from "./record/record-container"
 import { ResearchContainer } from "./research/research-container"
+import { PatientHandoutContainer } from "./patient-handout/patient-handout-container"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 
 export function CenterPanel() {
@@ -22,6 +23,8 @@ export function CenterPanel() {
               <InsightsContainer />
             ) : activeTab === "ddx" ? (
               <DdxContainer />
+            ) : activeTab === "patientHandout" ? (
+              <PatientHandoutContainer />
             ) : (
               <RecordContainer />
             )}

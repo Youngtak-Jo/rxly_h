@@ -30,6 +30,7 @@ const PHI_STRING_FIELDS: Record<string, string[]> = {
 const PHI_JSON_FIELDS: Record<string, string[]> = {
   Insights: ["keyFindings", "redFlags"],
   ConsultationRecord: ["vitals"],
+  PatientHandout: ["conditions", "entries"],
   Note: ["imageUrls", "storagePaths"],
   Diagnosis: ["citations"],
   ResearchMessage: ["citations"],
@@ -40,6 +41,7 @@ const RELATION_MODEL_MAP: Record<string, Record<string, { model: string; isArray
   Session: {
     insights:          { model: "Insights",            isArray: false },
     record:            { model: "ConsultationRecord",  isArray: false },
+    patientHandout:    { model: "PatientHandout",      isArray: false },
     checklistItems:    { model: "ChecklistItem",       isArray: true },
     diagnoses:         { model: "Diagnosis",           isArray: true },
     transcriptEntries: { model: "TranscriptEntry",     isArray: true },

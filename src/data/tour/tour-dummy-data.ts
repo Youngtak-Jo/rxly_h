@@ -16,7 +16,7 @@ import type { ResearchMessage } from "@/stores/research-store"
 // Snapshot types
 // ---------------------------------------------------------------------------
 export interface TourSnapshot {
-  activeTab: "insights" | "ddx" | "record" | "research"
+  activeTab: "insights" | "ddx" | "record" | "research" | "patientHandout"
   activeSession: ReturnType<typeof useSessionStore.getState>["activeSession"]
   hadSession: boolean
   insights: {

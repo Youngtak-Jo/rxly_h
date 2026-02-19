@@ -26,6 +26,7 @@ import { useRecordingStore } from "@/stores/recording-store"
 import { useNoteStore } from "@/stores/note-store"
 import { useDdxStore } from "@/stores/ddx-store"
 import { useResearchStore } from "@/stores/research-store"
+import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import {
   loadSessionById,
@@ -79,6 +80,7 @@ export function NavSessions() {
   const noteStore = useNoteStore()
   const ddxStore = useDdxStore()
   const researchStore = useResearchStore()
+  const patientHandoutStore = usePatientHandoutStore()
 
   // Prefetch session data on hover (debounced)
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -100,6 +102,7 @@ export function NavSessions() {
     recordingStore.reset()
     noteStore.reset()
     researchStore.reset()
+    patientHandoutStore.reset()
     useConsultationModeStore.getState().reset()
     useConsultationTabStore.getState().clearAllUnseenUpdates()
   }
@@ -159,6 +162,7 @@ export function NavSessions() {
   const isInsightsProcessing = useInsightsStore((s) => s.isProcessing)
   const isRecordGenerating = useRecordStore((s) => s.isGenerating)
   const isResearchStreaming = useResearchStore((s) => s.isStreaming)
+  const isPatientHandoutGenerating = usePatientHandoutStore((s) => s.isGenerating)
 
   const createSession = async () => {
     const storeBeforeCreate = useSessionStore.getState()
@@ -456,6 +460,25 @@ export function NavSessions() {
                         {isResearchStreaming ? (
                           <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
                         ) : unseenUpdates.research && activeTab !== "research" ? (
+                          <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                        ) : null}
+                      </button>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+
+                  {/* Patient Handout */}
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={activeTab === "patientHandout"}
+                    >
+                      <button onClick={() => setActiveTab("patientHandout")}>
+                        <IconFileText className="size-4" />
+                        <span className="truncate">Patient Handout</span>
+                        {isPatientHandoutGenerating ? (
+                          <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
+                        ) : unseenUpdates.patientHandout &&
+                          activeTab !== "patientHandout" ? (
                           <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-green-500" />
                         ) : null}
                       </button>

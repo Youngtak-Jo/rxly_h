@@ -1,21 +1,4 @@
-import Link from "next/link"
 import { Instrument_Serif } from "next/font/google"
-import type { LucideIcon } from "lucide-react"
-import {
-  Activity,
-  FileText,
-  LockKeyhole,
-  Mic,
-  Send,
-  ShieldCheck,
-  TimerReset,
-} from "lucide-react"
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
 import styles from "./landing-sections.module.css"
 
 const instrumentSerif = Instrument_Serif({
@@ -38,24 +21,6 @@ type FeatureItem = {
   valueLine: string
   visual: FeatureVisual
   cardClass: string
-}
-
-type WorkflowStep = {
-  title: string
-  description: string
-  output: string
-  icon: LucideIcon
-}
-
-type SecurityItem = {
-  title: string
-  description: string
-  icon: LucideIcon
-}
-
-type FaqItem = {
-  question: string
-  answer: string
 }
 
 const FEATURE_ITEMS: FeatureItem[] = [
@@ -115,78 +80,6 @@ const FEATURE_ITEMS: FeatureItem[] = [
   },
 ]
 
-const WORKFLOW_STEPS: WorkflowStep[] = [
-  {
-    title: "Record",
-    description: "Start a consultation and stream speech into a structured timeline.",
-    output: "Live transcript with speaker context",
-    icon: Mic,
-  },
-  {
-    title: "Analyze",
-    description: "AI monitors the conversation and continuously updates clinical interpretation.",
-    output: "Insights, red flags, and candidate diagnoses",
-    icon: Activity,
-  },
-  {
-    title: "Validate",
-    description: "Review suggestions, reconcile evidence, and confirm the clinical direction.",
-    output: "Clinician-reviewed reasoning trail",
-    icon: ShieldCheck,
-  },
-  {
-    title: "Deliver",
-    description: "Finalize notes and share care-ready outputs to your existing systems.",
-    output: "Action-ready summary and export payload",
-    icon: Send,
-  },
-]
-
-const SECURITY_ITEMS: SecurityItem[] = [
-  {
-    title: "AES-256-GCM at Rest",
-    description: "Protected consultation data is encrypted before storage to reduce exposure risk.",
-    icon: LockKeyhole,
-  },
-  {
-    title: "Comprehensive Audit Logging",
-    description: "Access and modification events are captured so teams can trace operational activity.",
-    icon: FileText,
-  },
-  {
-    title: "CSP + Input Sanitization",
-    description: "Strict content policies and sanitization controls are applied to mitigate injection vectors.",
-    icon: ShieldCheck,
-  },
-  {
-    title: "API Rate Limiting",
-    description: "Traffic controls are enforced across key endpoints to reduce abuse and instability.",
-    icon: TimerReset,
-  },
-]
-
-const FAQ_ITEMS: FaqItem[] = [
-  {
-    question: "How quickly can a team start using Rxly?",
-    answer:
-      "Most teams can run pilot sessions in a short setup window once environment variables and audio permissions are configured.",
-  },
-  {
-    question: "How is consultation data handled?",
-    answer:
-      "Rxly applies technical safeguards such as encryption, audit logging, and endpoint controls while keeping clinician review in the loop.",
-  },
-  {
-    question: "Can Rxly fit into an existing integration path?",
-    answer:
-      "Yes. Outputs are structured for interoperability workflows, including export patterns aligned with FHIR-based systems.",
-  },
-  {
-    question: "How do teams roll this out without disrupting clinicians?",
-    answer:
-      "Teams usually start with supervised pilot consults, validate note quality and workflow fit, then expand by specialty or site.",
-  },
-]
 
 function renderFeaturePreview(visual: FeatureVisual) {
   switch (visual) {
@@ -384,118 +277,6 @@ export function LandingSections() {
                 {renderFeaturePreview(item.visual)}
               </article>
             ))}
-          </div>
-        </div>
-      </section>
-
-      <section
-        id="how-it-works"
-        className={`scroll-mt-28 px-6 py-16 md:scroll-mt-36 md:px-10 md:py-20 ${styles.section} ${styles.delayTwo}`}
-      >
-        <div className="mx-auto max-w-6xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">How It Works</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-            A four-step loop clinicians can trust
-          </h2>
-          <p className="mt-3 max-w-3xl text-sm text-foreground/70 md:text-base">
-            Each stage keeps the clinician in control while AI handles repetitive synthesis and structure.
-          </p>
-
-          <ol className={`mt-10 grid gap-4 lg:grid-cols-4 ${styles.timeline}`}>
-            {WORKFLOW_STEPS.map((step, index) => (
-              <li key={step.title} className={styles.timelineItem}>
-                <article className={`glass glass-highlight ${styles.timelineCard}`}>
-                  <span className={`glass-subtle ${styles.stepPill}`}>{String(index + 1).padStart(2, "0")}</span>
-                  <step.icon className="mt-4 size-5 text-primary" />
-                  <h3 className="mt-4 text-lg font-semibold text-foreground">{step.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-foreground/70">{step.description}</p>
-                  <p className={styles.stepOutput}>
-                    <span>Output:</span> {step.output}
-                  </p>
-                </article>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      <section
-        id="security"
-        className={`scroll-mt-28 px-6 py-16 md:scroll-mt-36 md:px-10 md:py-20 ${styles.section} ${styles.delayThree}`}
-      >
-        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.04fr_0.96fr] lg:items-start">
-          <div className={styles.securityCopy}>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">Security</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-              Technical safeguards built into the product layer
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-foreground/72 md:text-base">
-              Rxly is designed for high-trust clinical workflows with layered controls that prioritize
-              confidentiality, traceability, and platform stability.
-            </p>
-            <div className={`glass-subtle ${styles.securityNote}`}>
-              <LockKeyhole className="size-4 text-primary" />
-              <p className="text-sm text-foreground/75">
-                Safeguards are implemented as product behaviors, not optional afterthoughts.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            {SECURITY_ITEMS.map((item) => (
-              <article key={item.title} className={`glass-terracotta glass-highlight ${styles.securityCard}`}>
-                <div className={styles.iconShell}>
-                  <item.icon className="size-5 text-primary" />
-                </div>
-                <h3 className="mt-4 text-base font-semibold text-foreground">{item.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-foreground/72">{item.description}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section
-        id="faq"
-        className={`scroll-mt-28 px-6 py-16 md:scroll-mt-36 md:px-10 md:py-20 ${styles.section} ${styles.delayFour}`}
-      >
-        <div className="mx-auto max-w-4xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">FAQ</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-            Questions teams ask before rollout
-          </h2>
-
-          <div className={`mt-10 ${styles.faqShell} glass`}>
-            <Accordion type="single" collapsible className="w-full">
-              {FAQ_ITEMS.map((item, index) => (
-                <AccordionItem value={`faq-${index + 1}`} key={item.question}>
-                  <AccordionTrigger className="cursor-pointer py-4 text-left text-base font-semibold text-foreground hover:no-underline">
-                    {item.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-4 text-sm leading-relaxed text-foreground/72">
-                    {item.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </div>
-        </div>
-      </section>
-
-      <section className={`px-6 pb-24 pt-10 md:px-10 md:pb-28 ${styles.section} ${styles.delayFive}`}>
-        <div className="mx-auto max-w-6xl">
-          <div className={`glass-terracotta glass-highlight ${styles.finalCta}`}>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">Start Now</p>
-            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-              Turn your next consultation into structured clinical intelligence.
-            </h2>
-            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-foreground/72 md:text-base">
-              Launch Rxly, capture the session in real time, and move from transcript to action-ready output
-              without adding documentation burden.
-            </p>
-            <Link href="/consultation" className={styles.ctaButton}>
-              Start Consultation
-            </Link>
           </div>
         </div>
       </section>

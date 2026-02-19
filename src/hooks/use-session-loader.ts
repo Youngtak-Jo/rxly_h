@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import type { ChecklistItem, DiagnosisCitation } from "@/types/insights"
 import type { ConsultationRecord } from "@/types/record"
+import type { PatientHandoutDocument } from "@/types/patient-handout"
 import type { DiagnosticKeyword, Session, TranscriptEntry } from "@/types/session"
 import {
   useConsultationModeStore,
@@ -14,6 +15,7 @@ import { useInsightsStore } from "@/stores/insights-store"
 import { useNoteStore, type NoteEntry } from "@/stores/note-store"
 import { useRecordStore } from "@/stores/record-store"
 import { useRecordingStore } from "@/stores/recording-store"
+import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 import {
   useResearchStore,
   type ResearchMessage,
@@ -45,6 +47,7 @@ export interface CoreSessionResponse extends Session {
   insights?: SessionInsights | null
   diagnoses?: SessionDiagnosis[]
   record?: ConsultationRecord | null
+  patientHandout?: PatientHandoutDocument | null
   checklistItems?: ChecklistItem[]
 }
 
@@ -288,6 +291,7 @@ function restoreCoreStores(session: CoreSessionResponse) {
   const recordStore = useRecordStore.getState()
   const noteStore = useNoteStore.getState()
   const researchStore = useResearchStore.getState()
+  const patientHandoutStore = usePatientHandoutStore.getState()
   const recordingStore = useRecordingStore.getState()
   const consultationModeStore = useConsultationModeStore.getState()
 
@@ -334,6 +338,11 @@ function restoreCoreStores(session: CoreSessionResponse) {
   recordStore.reset()
   if (session.record) {
     recordStore.loadFromDB(session.record)
+  }
+
+  patientHandoutStore.reset()
+  if (session.patientHandout) {
+    patientHandoutStore.loadFromDB(session.patientHandout)
   }
 }
 

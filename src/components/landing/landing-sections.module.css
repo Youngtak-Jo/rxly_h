@@ -51,22 +51,6 @@
   animation-delay: 40ms;
 }
 
-.delayTwo {
-  animation-delay: 90ms;
-}
-
-.delayThree {
-  animation-delay: 140ms;
-}
-
-.delayFour {
-  animation-delay: 190ms;
-}
-
-.delayFive {
-  animation-delay: 240ms;
-}
-
 .featureGrid {
   margin-top: 2.5rem;
   display: grid;
@@ -549,151 +533,6 @@
   font-weight: 700;
 }
 
-.iconShell {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 0.85rem;
-  border: 1px solid oklch(0.66 0.11 46 / 0.34);
-  background: linear-gradient(
-    145deg,
-    oklch(1 0 0 / 0.82) 0%,
-    oklch(0.95 0.03 66 / 0.58) 100%
-  );
-}
-
-.timeline {
-  position: relative;
-}
-
-.timelineItem {
-  position: relative;
-}
-
-.timelineCard {
-  display: flex;
-  flex-direction: column;
-  min-height: 13.5rem;
-  border-radius: 1rem;
-  padding: 1rem;
-  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
-  box-shadow: 0 20px 40px -34px oklch(0.31 0.06 42 / 0.55);
-}
-
-.timelineCard:hover {
-  transform: translateY(-4px);
-  border-color: oklch(0.64 0.12 45 / 0.38);
-}
-
-.stepPill {
-  align-self: flex-start;
-  padding: 0.24rem 0.62rem;
-  border-radius: 999px;
-  border: 1px solid oklch(0.66 0.11 46 / 0.34);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: oklch(0.38 0.06 43);
-}
-
-.stepOutput {
-  margin-top: auto;
-  padding-top: 0.85rem;
-  font-size: 0.81rem;
-  color: oklch(0.39 0.04 48 / 0.85);
-}
-
-.stepOutput span {
-  font-weight: 600;
-  color: oklch(0.42 0.07 43);
-}
-
-.securityCopy {
-  max-width: 35rem;
-}
-
-.securityNote {
-  margin-top: 1.15rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.6rem;
-  border-radius: 0.95rem;
-  padding: 0.85rem 0.95rem;
-}
-
-.securityCard {
-  border-radius: 1rem;
-  min-height: 11rem;
-  padding: 1rem;
-  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
-  box-shadow: 0 22px 42px -34px oklch(0.34 0.07 44 / 0.55);
-}
-
-.securityCard:hover {
-  transform: translateY(-4px);
-  border-color: oklch(0.61 0.12 44 / 0.44);
-}
-
-.faqShell {
-  border-radius: 1.25rem;
-  padding: 0.35rem 1rem;
-  box-shadow: 0 26px 45px -38px oklch(0.31 0.04 46 / 0.45);
-}
-
-.faqShell :global([data-slot="accordion-item"]) {
-  border-color: oklch(0.72 0.03 58 / 0.45);
-}
-
-.finalCta {
-  position: relative;
-  overflow: hidden;
-  border-radius: 1.5rem;
-  padding: 2.2rem 1.45rem;
-  box-shadow: 0 28px 56px -40px oklch(0.35 0.08 43 / 0.6);
-}
-
-.finalCta::after {
-  content: "";
-  position: absolute;
-  right: -6rem;
-  top: -6rem;
-  width: 18rem;
-  height: 18rem;
-  border-radius: 9999px;
-  background: radial-gradient(circle, oklch(0.79 0.13 58 / 0.42) 0%, transparent 70%);
-  filter: blur(10px);
-  animation: blob-drift 18s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.ctaButton {
-  margin-top: 1.4rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: oklch(0.37 0.07 43);
-  color: oklch(0.985 0.002 75);
-  padding: 0.72rem 1.1rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  transition: transform 200ms ease, background-color 200ms ease;
-}
-
-.ctaButton:hover {
-  transform: translateY(-2px);
-  background: oklch(0.42 0.08 43);
-}
-
-.ctaButton:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 3px var(--ring),
-    0 0 0 6px oklch(1 0 0 / 0.74);
-}
-
 @media (min-width: 48rem) {
   .featureGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -703,16 +542,6 @@
   .featureCardC,
   .featureCardF {
     grid-column: span 2;
-  }
-
-  .featureCardShell,
-  .timelineCard,
-  .securityCard {
-    padding: 1.1rem;
-  }
-
-  .finalCta {
-    padding: 2.45rem 2rem;
   }
 }
 
@@ -742,42 +571,21 @@
   .featureCardF {
     grid-column: span 7;
   }
-
-  .timeline::before {
-    content: "";
-    position: absolute;
-    left: 1rem;
-    right: 1rem;
-    top: 1.2rem;
-    border-top: 1px dashed oklch(0.61 0.08 47 / 0.5);
-    z-index: 0;
-  }
-
-  .timelineItem {
-    z-index: 1;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .section,
   .driftBlob,
-  .finalCta::after,
   .liveDot,
   .shimmerLine {
     animation: none !important;
   }
 
-  .featureCardShell,
-  .timelineCard,
-  .securityCard,
-  .ctaButton {
+  .featureCardShell {
     transition: none !important;
   }
 
-  .featureCardShell:hover,
-  .timelineCard:hover,
-  .securityCard:hover,
-  .ctaButton:hover {
+  .featureCardShell:hover {
     transform: none !important;
   }
 }

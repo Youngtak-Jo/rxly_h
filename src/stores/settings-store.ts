@@ -122,6 +122,7 @@ interface AnalysisSettings {
 interface AiModelSettings {
   insightsModel: string
   recordModel: string
+  patientHandoutModel: string
   ddxModel: string
   researchModel: string
   speakerIdModel: string
@@ -136,6 +137,7 @@ interface CustomInstructionsSettings {
   ddx: string
   record: string
   research: string
+  patientHandout: string
 }
 
 interface EmrSettings {
@@ -203,6 +205,7 @@ interface SettingsState {
   setDdxMinInterval: (ms: number) => void
   setInsightsModel: (model: string) => void
   setRecordModel: (model: string) => void
+  setPatientHandoutModel: (model: string) => void
   setDdxModel: (model: string) => void
   setResearchModel: (model: string) => void
   setSpeakerIdModel: (model: string) => void
@@ -214,6 +217,7 @@ interface SettingsState {
   setDdxInstructions: (instructions: string) => void
   setRecordInstructions: (instructions: string) => void
   setResearchInstructions: (instructions: string) => void
+  setPatientHandoutInstructions: (instructions: string) => void
   setEmrProvider: (provider: EmrSettings["provider"]) => void
   setTheme: (theme: "light" | "dark" | "system") => void
   setFontSize: (fontSize: FontSize) => void
@@ -250,6 +254,7 @@ const DEFAULT_ANALYSIS: AnalysisSettings = {
 const DEFAULT_AI_MODEL: AiModelSettings = {
   insightsModel: "grok-4-1-fast-non-reasoning",
   recordModel: "grok-4-1-fast-non-reasoning",
+  patientHandoutModel: "claude-opus-4-6",
   ddxModel: "claude-opus-4-6",
   researchModel: "claude-opus-4-6",
   speakerIdModel: "grok-4-1-fast-non-reasoning",
@@ -266,6 +271,7 @@ const DEFAULT_CUSTOM_INSTRUCTIONS: CustomInstructionsSettings = {
   ddx: "",
   record: "",
   research: "",
+  patientHandout: "",
 }
 
 const DEFAULT_EMR: EmrSettings = {
@@ -328,6 +334,8 @@ export const useSettingsStore = create<SettingsState>()(
         set((state) => ({ aiModel: { ...state.aiModel, insightsModel } })),
       setRecordModel: (recordModel) =>
         set((state) => ({ aiModel: { ...state.aiModel, recordModel } })),
+      setPatientHandoutModel: (patientHandoutModel) =>
+        set((state) => ({ aiModel: { ...state.aiModel, patientHandoutModel } })),
       setDdxModel: (ddxModel) =>
         set((state) => ({ aiModel: { ...state.aiModel, ddxModel } })),
       setResearchModel: (researchModel) =>
@@ -351,6 +359,10 @@ export const useSettingsStore = create<SettingsState>()(
         set((state) => ({ customInstructions: { ...state.customInstructions, record } })),
       setResearchInstructions: (research) =>
         set((state) => ({ customInstructions: { ...state.customInstructions, research } })),
+      setPatientHandoutInstructions: (patientHandout) =>
+        set((state) => ({
+          customInstructions: { ...state.customInstructions, patientHandout },
+        })),
 
       setEmrProvider: (provider) =>
         set((state) => ({ emr: { ...state.emr, provider } })),

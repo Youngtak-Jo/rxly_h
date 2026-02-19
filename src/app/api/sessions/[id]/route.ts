@@ -22,6 +22,7 @@ export async function GET(
       include: {
         insights: true,
         record: true,
+        patientHandout: true,
         checklistItems: { orderBy: { sortOrder: "asc" } },
         diagnoses: { orderBy: { sortOrder: "asc" } },
       },

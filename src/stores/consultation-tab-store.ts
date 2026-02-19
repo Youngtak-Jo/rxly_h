@@ -1,12 +1,13 @@
 import { create } from "zustand"
 
-type Tab = "insights" | "ddx" | "record" | "research"
+type Tab = "insights" | "ddx" | "record" | "research" | "patientHandout"
 
 const NO_UNSEEN: Record<Tab, boolean> = {
   insights: false,
   ddx: false,
   record: false,
   research: false,
+  patientHandout: false,
 }
 
 interface ConsultationTabState {

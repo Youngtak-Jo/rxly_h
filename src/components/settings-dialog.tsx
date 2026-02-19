@@ -579,6 +579,7 @@ function ModelSettings() {
     aiModel,
     setInsightsModel,
     setRecordModel,
+    setPatientHandoutModel,
     setDdxModel,
     setResearchModel,
     setSpeakerIdModel,
@@ -613,6 +614,17 @@ function ModelSettings() {
           value={aiModel.recordModel}
           onValueChange={setRecordModel}
           recommendedModel={DEFAULT_AI_MODEL.recordModel}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Patient Handout Model"
+        description="Used for patient-friendly handout generation."
+      >
+        <ModelSelector
+          value={aiModel.patientHandoutModel}
+          onValueChange={setPatientHandoutModel}
+          recommendedModel={DEFAULT_AI_MODEL.patientHandoutModel}
         />
       </SettingRow>
 
@@ -719,6 +731,13 @@ const INSTRUCTION_FIELDS = [
       "e.g., Use SOAP format strictly. Include detailed ROS. Always document allergies prominently.",
   },
   {
+    key: "patientHandout" as const,
+    label: "Patient Handout",
+    description: "Custom instructions for patient education handout generation.",
+    placeholder:
+      "e.g., Keep language at 8th-grade reading level. Emphasize self-care steps and warning signs clearly.",
+  },
+  {
     key: "research" as const,
     label: "Research",
     description: "Custom instructions for medical research assistance.",
@@ -734,6 +753,7 @@ function CustomInstructionsSettings() {
     setDdxInstructions,
     setRecordInstructions,
     setResearchInstructions,
+    setPatientHandoutInstructions,
   } = useSettingsStore()
 
   const setters = {
@@ -741,6 +761,7 @@ function CustomInstructionsSettings() {
     ddx: setDdxInstructions,
     record: setRecordInstructions,
     research: setResearchInstructions,
+    patientHandout: setPatientHandoutInstructions,
   }
 
   return (

@@ -29,6 +29,7 @@ export async function GET(
       include: {
         insights: true,
         record: true,
+        patientHandout: true,
         checklistItems: { orderBy: { sortOrder: "asc" } },
         diagnoses: { orderBy: { sortOrder: "asc" } },
       },
@@ -100,6 +101,7 @@ export async function GET(
       transcriptCount: transcriptEntries.length,
       noteCount: notes.length,
       researchCount: researchMessages.length,
+      handoutExists: !!session.patientHandout,
       signedPathCount: allPaths.length,
     })
 

@@ -2,19 +2,26 @@ import { useInsightsStore } from "@/stores/insights-store"
 import { useDdxStore } from "@/stores/ddx-store"
 import { useRecordStore } from "@/stores/record-store"
 import { useResearchStore } from "@/stores/research-store"
+import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import type { ChecklistItem, DiagnosisItem } from "@/types/insights"
 import type { ConsultationRecord } from "@/types/record"
 import type { ResearchMessage } from "@/stores/research-store"
+import {
+  PATIENT_HANDOUT_SECTION_LABELS,
+  type PatientHandoutDocument,
+  type PatientHandoutSectionKey,
+} from "@/types/patient-handout"
 
-type Tab = "insights" | "ddx" | "record" | "research"
+type Tab = "insights" | "ddx" | "record" | "research" | "patientHandout"
 
 const TAB_LABELS: Record<Tab, string> = {
   insights: "Live Insights",
   ddx: "Differential Diagnosis",
   record: "Consultation Record",
   research: "Research",
+  patientHandout: "Patient Handout",
 }
 
 function escapeHtml(str: string): string {
@@ -275,6 +282,55 @@ function formatResearchBody(messages: ResearchMessage[]): string {
   return parts.join("\n")
 }
 
+function formatPatientHandoutBody(document: PatientHandoutDocument | null): string {
+  if (!document || document.conditions.length === 0) {
+    return `<p style="font-size: 14px; color: #9ca3af; font-style: italic;">No patient handout available.</p>`
+  }
+
+  const sectionOrder: PatientHandoutSectionKey[] = [
+    "conditionOverview",
+    "signsSymptoms",
+    "causesRiskFactors",
+    "complications",
+    "treatmentOptions",
+    "whenToSeekHelp",
+    "additionalAdviceFollowUp",
+    "disclaimer",
+  ]
+
+  const entryMap = new Map(
+    document.entries.map((entry) => [entry.conditionId, entry])
+  )
+
+  const parts: string[] = []
+
+  document.conditions.forEach((condition) => {
+    const entry = entryMap.get(condition.id)
+    parts.push(
+      `<div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px;">`
+    )
+    parts.push(
+      `<h2 style="font-size: 16px; margin: 0 0 2px 0; color: #111827;">${escapeHtml(condition.diseaseName)}</h2>`
+    )
+    parts.push(
+      `<p style="font-size: 12px; margin: 0 0 12px 0; color: #6b7280;">ICD-11: ${escapeHtml(condition.icdCode)}</p>`
+    )
+
+    sectionOrder.forEach((sectionKey) => {
+      const titleText = PATIENT_HANDOUT_SECTION_LABELS[sectionKey]
+      const value = entry?.sections[sectionKey] || ""
+      parts.push(sectionTitle(titleText))
+      parts.push(
+        `<p style="font-size: 14px; color: #374151; margin: 0; white-space: pre-wrap;">${escapeHtml(value || "[Not provided]")}</p>`
+      )
+    })
+
+    parts.push(`</div>`)
+  })
+
+  return parts.join("\n")
+}
+
 // ── HTML export (used for email) ──
 
 export function getActiveTabExportHtml(): { html: string; tabLabel: string } {
@@ -312,6 +368,11 @@ export function getActiveTabExportHtml(): { html: string; tabLabel: string } {
     case "research": {
       const { messages } = useResearchStore.getState()
       bodyHtml = formatResearchBody(messages)
+      break
+    }
+    case "patientHandout": {
+      const { document } = usePatientHandoutStore.getState()
+      bodyHtml = formatPatientHandoutBody(document)
       break
     }
   }
@@ -609,6 +670,54 @@ function writeResearchPdf(w: PdfWriter) {
   })
 }
 
+function writePatientHandoutPdf(w: PdfWriter) {
+  const { document } = usePatientHandoutStore.getState()
+
+  if (!document || document.conditions.length === 0) {
+    writeText(w, "No patient handout available.", {
+      color: COLORS.lightGray,
+    })
+    return
+  }
+
+  const sectionOrder: PatientHandoutSectionKey[] = [
+    "conditionOverview",
+    "signsSymptoms",
+    "causesRiskFactors",
+    "complications",
+    "treatmentOptions",
+    "whenToSeekHelp",
+    "additionalAdviceFollowUp",
+    "disclaimer",
+  ]
+
+  const entryMap = new Map(
+    document.entries.map((entry) => [entry.conditionId, entry])
+  )
+
+  document.conditions.forEach((condition, index) => {
+    if (index > 0) {
+      w.y += 3
+      drawLine(w)
+      w.y += 3
+    }
+
+    writeText(w, `${condition.diseaseName} (${condition.icdCode})`, {
+      fontSize: 12,
+      bold: true,
+    })
+
+    const entry = entryMap.get(condition.id)
+    sectionOrder.forEach((sectionKey) => {
+      const label = PATIENT_HANDOUT_SECTION_LABELS[sectionKey]
+      writeSectionTitle(w, label)
+      writeText(w, entry?.sections[sectionKey] || "[Not provided]", {
+        fontSize: 10,
+      })
+    })
+  })
+}
+
 export async function generatePdf(): Promise<{ blob: Blob; filename: string }> {
   const { jsPDF } = await import("jspdf")
 
@@ -660,6 +769,9 @@ export async function generatePdf(): Promise<{ blob: Blob; filename: string }> {
       break
     case "research":
       writeResearchPdf(w)
+      break
+    case "patientHandout":
+      writePatientHandoutPdf(w)
       break
   }
 

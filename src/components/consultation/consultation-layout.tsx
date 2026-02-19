@@ -18,8 +18,10 @@ import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useRecordAutoSave } from "@/hooks/use-record-autosave"
 import { useInsightsAutoSave } from "@/hooks/use-insights-autosave"
 import { useDdxAutoSave } from "@/hooks/use-ddx-autosave"
+import { usePatientHandoutAutoSave } from "@/hooks/use-patient-handout-autosave"
 import { useLiveDdx } from "@/hooks/use-live-ddx"
 import { useLiveRecord } from "@/hooks/use-live-record"
+import { useLivePatientHandout } from "@/hooks/use-live-patient-handout"
 import { useUnseenUpdateTracker } from "@/hooks/use-unseen-update-tracker"
 import { useSpeakerIdentification } from "@/hooks/use-speaker-identification"
 import { useSingleSpeakerClassification } from "@/hooks/use-single-speaker-classification"
@@ -49,8 +51,10 @@ export function ConsultationLayout() {
   useRecordAutoSave()
   useInsightsAutoSave()
   useDdxAutoSave()
+  usePatientHandoutAutoSave()
   useLiveDdx()
   useLiveRecord()
+  useLivePatientHandout()
   useUnseenUpdateTracker()
 
   // These hooks were in RightPanel but need to run on mobile too

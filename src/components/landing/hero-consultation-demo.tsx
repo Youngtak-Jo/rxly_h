@@ -118,12 +118,12 @@ export function HeroConsultationDemo() {
   return (
     <div className="mx-auto w-full max-w-[74rem]">
       <div className="mb-10">
-        <div className="relative h-11 w-full overflow-visible">
+        <div className="relative h-12 w-full overflow-visible">
           <LiquidGlass
-            blurAmount={0.05}
-            aberrationIntensity={1.6}
-            elasticity={0.12}
-            saturation={130}
+            blurAmount={0}
+            aberrationIntensity={2}
+            elasticity={0.08}
+            saturation={140}
             mode="standard"
             cornerRadius={999}
             padding="0"
