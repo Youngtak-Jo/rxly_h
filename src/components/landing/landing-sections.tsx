@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { Instrument_Serif } from "next/font/google"
 import styles from "./landing-sections.module.css"
 
@@ -6,242 +7,93 @@ const instrumentSerif = Instrument_Serif({
   weight: "400",
 })
 
-type FeatureVisual =
-  | "transcription"
-  | "insights"
-  | "ddx"
-  | "scribe"
-  | "research"
-  | "fhir"
+type ConnectorItem = {
+  id: string
+  name: string
+  logoSrc?: string
+}
 
-type FeatureItem = {
+type SettingsOption = {
   id: string
   title: string
   description: string
-  valueLine: string
-  visual: FeatureVisual
-  cardClass: string
 }
 
-const FEATURE_ITEMS: FeatureItem[] = [
+type FhirResourceState = {
+  id: string
+  resource: string
+  status: "Ready" | "Review"
+}
+
+const CONNECTORS: ConnectorItem[] = [
+  { id: "pubmed", name: "PubMed" },
+  { id: "icd11", name: "ICD-11" },
+  { id: "europe-pmc", name: "Europe PMC" },
+  { id: "openfda", name: "OpenFDA" },
+  { id: "clinicaltrials", name: "ClinicalTrials.gov" },
+  { id: "dailymed", name: "DailyMed" },
+]
+
+const SETTINGS_OPTIONS: SettingsOption[] = [
   {
-    id: "transcription",
-    title: "Real-Time Voice Transcription",
-    description:
-      "Medical speech is captured live with speaker-aware structuring for doctor and patient turns.",
-    valueLine: "Live diarization + structured timeline",
-    visual: "transcription",
-    cardClass: "featureCardA",
+    id: "model-routing",
+    title: "AI Model Routing",
+    description: "Choose different models by task such as transcript analysis, DDx, research, and handout generation.",
   },
   {
-    id: "insights",
-    title: "AI Clinical Insights",
-    description:
-      "Summaries, key findings, red flags, and action checklists update continuously during the consult.",
-    valueLine: "Continuous reasoning updates in-session",
-    visual: "insights",
-    cardClass: "featureCardB",
+    id: "custom-instructions",
+    title: "Custom Instructions",
+    description: "Define clinic-level rules, tone, language, and documentation preferences inside Settings.",
   },
   {
-    id: "ddx",
-    title: "Differential Diagnosis (DDx)",
-    description:
-      "Evidence-ranked differentials are surfaced with rationale and next-step guidance.",
-    valueLine: "Ranked candidates with confidence context",
-    visual: "ddx",
-    cardClass: "featureCardC",
+    id: "ehr-fit",
+    title: "EMR/EHR Environment Fit",
+    description: "Tailor output and handoff behavior to your existing charting and review workflow.",
   },
   {
-    id: "scribe",
-    title: "Automated Medical Scribe",
-    description:
-      "Consultation context is converted into structured SOAP-ready documentation for clinician review.",
-    valueLine: "Structured note draft without post-visit backlog",
-    visual: "scribe",
-    cardClass: "featureCardD",
-  },
-  {
-    id: "research",
-    title: "Evidence Research Assistant",
-    description:
-      "Clinical questions are answered with sourced evidence from trusted medical data endpoints.",
-    valueLine: "Cited evidence briefs at point of care",
-    visual: "research",
-    cardClass: "featureCardE",
-  },
-  {
-    id: "fhir",
-    title: "EMR/EHR Integration (FHIR R4)",
-    description:
-      "Validated FHIR resource bundles are prepared for review and dispatch into existing systems.",
-    valueLine: "Review-first export workflow to EMR/EHR",
-    visual: "fhir",
-    cardClass: "featureCardF",
+    id: "team-preferences",
+    title: "Team Configuration",
+    description: "Set defaults by department so each room gets the right workflow without manual setup.",
   },
 ]
 
+const SECURITY_CONTROLS = [
+  "AES-256-GCM encryption for sensitive data at rest",
+  "Secure transport with strict HTTPS enforcement",
+  "Audit-ready logging and traceability hooks",
+  "Prompt input sanitization and rate limiting safeguards",
+]
 
-function renderFeaturePreview(visual: FeatureVisual) {
-  switch (visual) {
-    case "transcription":
-      return (
-        <div className={styles.featurePreviewShell}>
-          <div className={styles.featureMeta}>
-            <span className={styles.miniPill}>
-              <span className={styles.liveDot} />
-              Live capture
-            </span>
-            <div className={styles.waveBars} aria-hidden>
-              <span />
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
-          <ul className={styles.transcriptList}>
-            <li className={styles.transcriptRow}>
-              <span className={styles.speakerChipDoctor}>Dr</span>
-              <p>Pain started centrally overnight and now localizes to the RLQ.</p>
-              <span>00:22</span>
-            </li>
-            <li className={styles.transcriptRow}>
-              <span className={styles.speakerChipPatient}>Pt</span>
-              <p>Walking and coughing make it sharper than before.</p>
-              <span>00:36</span>
-            </li>
-            <li className={styles.transcriptRow}>
-              <span className={styles.speakerChipDoctor}>Dr</span>
-              <p>Noted. Logging symptom progression and timeline markers.</p>
-              <span>00:48</span>
-            </li>
-          </ul>
-        </div>
-      )
+const FHIR_FLOW = [
+  "Capture encounter and narrative context",
+  "Assemble FHIR R4 resources",
+  "Validate and flag items needing review",
+  "Dispatch approved bundle to EHR",
+]
 
-    case "insights":
-      return (
-        <div className={styles.featurePreviewShell}>
-          <p className={styles.insightSummary}>
-            Appendicitis likelihood is increasing with progressive focal tenderness and fever.
-          </p>
-          <ul className={styles.insightList}>
-            <li>Migratory abdominal pain now anchored in RLQ.</li>
-            <li>Inflammatory pattern is strengthening across vitals + exam.</li>
-          </ul>
-          <p className={styles.redFlagPill}>Red flag: rebound tenderness now present.</p>
-          <p className={styles.checkRow}>
-            <span className={styles.checkDone}>Done</span>
-            CBC + CRP + urinalysis bundle queued.
-          </p>
-          <p className={styles.checkRow}>
-            <span className={styles.checkDone}>Done</span>
-            Surgery handoff draft generated.
-          </p>
-          <div className={styles.shimmerLine} aria-hidden />
-        </div>
-      )
+const FHIR_RESOURCES: FhirResourceState[] = [
+  { id: "encounter", resource: "Encounter", status: "Ready" },
+  { id: "condition", resource: "Condition", status: "Ready" },
+  { id: "observation", resource: "Observation", status: "Ready" },
+  { id: "medication-request", resource: "MedicationRequest", status: "Review" },
+]
 
-    case "ddx":
-      return (
-        <div className={styles.featurePreviewShell}>
-          <ul className={styles.ddxList}>
-            <li className={styles.ddxRow}>
-              <div>
-                <p>Acute appendicitis</p>
-              </div>
-              <span className={`${styles.miniPill} ${styles.likelihoodHigh}`}>High</span>
-            </li>
-            <li className={styles.ddxRow}>
-              <div>
-                <p>Complicated appendicitis risk</p>
-              </div>
-              <span className={`${styles.miniPill} ${styles.likelihoodModerate}`}>Moderate</span>
-            </li>
-            <li className={styles.ddxRow}>
-              <div>
-                <p>Cecal diverticulitis</p>
-              </div>
-              <span className={`${styles.miniPill} ${styles.likelihoodLower}`}>Lower</span>
-            </li>
-          </ul>
-          <p className={styles.ddxNextStep}>
-            Next step: confirm CT findings and route to urgent surgical review.
-          </p>
-        </div>
-      )
-
-    case "scribe":
-      return (
-        <div className={styles.featurePreviewShell}>
-          <div className={styles.scribeTabs}>
-            <span className={styles.scribeTabActive}>S</span>
-            <span>O</span>
-            <span>A</span>
-            <span>P</span>
-          </div>
-          <div className={styles.scribeBody}>
-            <p>CC: RLQ pain worsening over 12 hours with nausea and chills.</p>
-            <p>Exam: McBurney tenderness, guarding, positive Rovsing sign.</p>
-            <p>Plan: NPO, IV fluids, ceftriaxone + metronidazole, surgery consult.</p>
-          </div>
-          <div className={styles.completionTrack}>
-            <span className={styles.completionFill} />
-          </div>
-        </div>
-      )
-
-    case "research":
-      return (
-        <div className={styles.featurePreviewShell}>
-          <p className={styles.queryBubble}>
-            Query: expected HbA1c target attainment after metformin uptitration + empagliflozin?
-          </p>
-          <div className={styles.sourceList}>
-            <span className={`${styles.miniPill} ${styles.sourceChip}`}>PubMed</span>
-            <span className={`${styles.miniPill} ${styles.sourceChip}`}>ClinicalTrials.gov</span>
-            <span className={`${styles.miniPill} ${styles.sourceChip}`}>DailyMed</span>
-          </div>
-          <div className={styles.answerPanel}>
-            <p>
-              Evidence brief: real-world cohorts show ~1.2 to 1.8% HbA1c reduction with baseline-dependent
-              target attainment at 24 to 52 weeks.
-            </p>
-          </div>
-        </div>
-      )
-
-    case "fhir":
-      return (
-        <div className={styles.featurePreviewShell}>
-          <ul className={styles.resourceList}>
-            <li className={styles.resourceRow}>
-              <span>Encounter</span>
-              <span className={`${styles.miniPill} ${styles.statusReady}`}>Ready</span>
-            </li>
-            <li className={styles.resourceRow}>
-              <span>Condition</span>
-              <span className={`${styles.miniPill} ${styles.statusReady}`}>Ready</span>
-            </li>
-            <li className={styles.resourceRow}>
-              <span>Observation</span>
-              <span className={`${styles.miniPill} ${styles.statusReady}`}>Ready</span>
-            </li>
-            <li className={styles.resourceRow}>
-              <span>MedicationRequest</span>
-              <span className={`${styles.miniPill} ${styles.statusReview}`}>Needs Review</span>
-            </li>
-          </ul>
-          <ul className={styles.validationList}>
-            <li>4 resources validated, 1 clinical review warning.</li>
-            <li>Medication dosage needs pharmacist confirmation.</li>
-          </ul>
-          <span className={styles.exportStub}>Send to EMR</span>
-        </div>
-      )
-
-    default:
-      return null
-  }
+function renderConnectorTile(connector: ConnectorItem, key: string) {
+  return (
+    <li key={key} className={styles.connectorTile}>
+      {connector.logoSrc ? (
+        <Image
+          src={connector.logoSrc}
+          alt={`${connector.name} logo`}
+          width={140}
+          height={40}
+          className={styles.connectorLogo}
+        />
+      ) : (
+        <span className={styles.connectorFallback}>{connector.name}</span>
+      )}
+    </li>
+  )
 }
 
 export function LandingSections() {
@@ -251,32 +103,170 @@ export function LandingSections() {
       <div aria-hidden className={`${styles.driftBlob} ${styles.blobTwo}`} />
 
       <section
-        id="features"
-        className={`scroll-mt-28 px-6 pb-8 pt-20 md:scroll-mt-36 md:px-10 md:pt-24 ${styles.section} ${styles.delayOne}`}
+        id="connectors"
+        className={`scroll-mt-28 px-6 pt-20 md:scroll-mt-36 md:px-10 md:pt-24 ${styles.section} ${styles.delayOne}`}
       >
-        <div className="mx-auto max-w-6xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">Features</p>
-          <h2
-            className={`${instrumentSerif.className} mt-3 text-3xl font-normal tracking-tight text-foreground md:text-4xl`}
-          >
-            Clinical intelligence across the full consultation loop
+        <div className={styles.inner}>
+          <p className={styles.eyebrow}>Connectors</p>
+          <h2 className={`${instrumentSerif.className} ${styles.title}`}>
+            Trusted medical sources, always in the loop
           </h2>
-          <p className="mt-3 max-w-3xl text-sm text-foreground/70 md:text-base">
-            From capture to decision support and export, Rxly keeps the clinician in control while AI
-            handles real-time synthesis.
+          <p className={styles.description}>
+            Rxly can be wired to tier-1 clinical data endpoints so evidence appears at the point of care.
           </p>
 
-          <div className={styles.featureGrid}>
-            {FEATURE_ITEMS.map((item) => (
-              <article key={item.id} className={`${styles.featureCardShell} ${styles[item.cardClass]}`}>
-                <div className={styles.featureHead}>
-                  <h3>{item.title}</h3>
-                  <p>{item.description}</p>
-                  <p className={styles.featureValueLine}>{item.valueLine}</p>
-                </div>
-                {renderFeaturePreview(item.visual)}
-              </article>
-            ))}
+          <article className={styles.card}>
+            <div className={styles.marqueeViewport}>
+              <div className={styles.marqueeTrack}>
+                <ul className={styles.marqueeRow}>
+                  {CONNECTORS.map((connector) => renderConnectorTile(connector, `${connector.id}-primary`))}
+                </ul>
+                <ul className={styles.marqueeRow} aria-hidden="true">
+                  {CONNECTORS.map((connector) => renderConnectorTile(connector, `${connector.id}-clone`))}
+                </ul>
+              </div>
+            </div>
+            <p className={styles.note}>
+              Logo slots are in place. Insert brand assets later and each tile will auto-switch from text fallback
+              to logo.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section
+        id="customization"
+        className={`scroll-mt-28 px-6 pt-12 md:scroll-mt-36 md:px-10 md:pt-16 ${styles.section} ${styles.delayTwo}`}
+      >
+        <div className={styles.inner}>
+          <p className={styles.eyebrow}>Customization</p>
+          <h2 className={`${instrumentSerif.className} ${styles.title}`}>
+            Settings that adapt to each clinical environment
+          </h2>
+          <p className={styles.description}>
+            From model selection to instruction policy, teams can shape Rxly around real clinic workflows.
+          </p>
+
+          <div className={styles.twoColumn}>
+            <article className={styles.card}>
+              <h3 className={styles.cardTitle}>Built for practical day-to-day operations</h3>
+              <ul className={styles.settingsList}>
+                {SETTINGS_OPTIONS.map((option) => (
+                  <li key={option.id} className={styles.settingsItem}>
+                    <p>{option.title}</p>
+                    <span>{option.description}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+
+            <article className={styles.card}>
+              <p className={styles.previewKicker}>Settings Preview</p>
+              <div className={styles.previewList}>
+                <p className={styles.previewRow}>
+                  <span>Clinical Support Model</span>
+                  <strong>GPT-5 / Claude</strong>
+                </p>
+                <p className={styles.previewRow}>
+                  <span>Custom Instruction Profile</span>
+                  <strong>Family Medicine Default</strong>
+                </p>
+                <p className={styles.previewRow}>
+                  <span>EMR/EHR Mapping</span>
+                  <strong>Practice-specific Template</strong>
+                </p>
+                <p className={styles.previewRow}>
+                  <span>Output Language</span>
+                  <strong>English</strong>
+                </p>
+              </div>
+              <p className={styles.note}>
+                Teams can standardize defaults per care setting and still allow clinician-level overrides.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="security"
+        className={`scroll-mt-28 px-6 pt-12 md:scroll-mt-36 md:px-10 md:pt-16 ${styles.section} ${styles.delayThree}`}
+      >
+        <div className={styles.inner}>
+          <p className={styles.eyebrow}>Security</p>
+          <h2 className={`${instrumentSerif.className} ${styles.title}`}>
+            Encryption-first with HIPAA-aligned safeguards
+          </h2>
+          <p className={styles.description}>
+            Security controls are designed for healthcare handling requirements across storage, transport, and
+            operational access.
+          </p>
+
+          <div className={styles.twoColumn}>
+            <article className={styles.card}>
+              <h3 className={styles.cardTitle}>Core technical safeguards</h3>
+              <ul className={styles.securityList}>
+                {SECURITY_CONTROLS.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </article>
+
+            <article className={`${styles.card} ${styles.securityNoticeCard}`}>
+              <p className={styles.previewKicker}>Compliance Status</p>
+              <h3 className={styles.cardTitle}>HIPAA-aligned implementation in progress</h3>
+              <p className={styles.descriptionInline}>
+                Controls are built to support HIPAA technical safeguards and review-friendly governance workflows.
+              </p>
+              <p className={styles.noticeText}>BAA not yet available.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="ehr-integration"
+        className={`scroll-mt-28 px-6 pb-20 pt-12 md:scroll-mt-36 md:px-10 md:pb-24 md:pt-16 ${styles.section} ${styles.delayFour}`}
+      >
+        <div className={styles.inner}>
+          <p className={styles.eyebrow}>EHR Integration</p>
+          <h2 className={`${instrumentSerif.className} ${styles.title}`}>FHIR R4-ready handoff for EMR/EHR</h2>
+          <p className={styles.description}>
+            Data is staged as structured FHIR R4 resources, reviewed by clinicians, and then dispatched into your
+            EHR flow.
+          </p>
+
+          <div className={styles.twoColumn}>
+            <article className={styles.card}>
+              <h3 className={styles.cardTitle}>Review-first export sequence</h3>
+              <div className={styles.flowGrid}>
+                {FHIR_FLOW.map((step, index) => (
+                  <p key={step} className={styles.flowStep}>
+                    <span>{index + 1}</span>
+                    {step}
+                  </p>
+                ))}
+              </div>
+            </article>
+
+            <article className={styles.card}>
+              <h3 className={styles.cardTitle}>FHIR resource status</h3>
+              <ul className={styles.resourceList}>
+                {FHIR_RESOURCES.map((item) => (
+                  <li key={item.id} className={styles.resourceRow}>
+                    <span>{item.resource}</span>
+                    <span
+                      className={`${styles.resourceBadge} ${
+                        item.status === "Ready" ? styles.resourceReady : styles.resourceReview
+                      }`}
+                    >
+                      {item.status}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className={styles.note}>Validation warnings stay visible until clinician review is complete.</p>
+            </article>
           </div>
         </div>
       </section>

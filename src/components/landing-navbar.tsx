@@ -1,9 +1,11 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import LiquidGlass from "liquid-glass-react"
+import { Menu } from "lucide-react"
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import styles from "./landing-navbar.module.css"
 
 type NavItem = {
@@ -12,11 +14,15 @@ type NavItem = {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Features", href: "#features" },
+  { label: "Connectors", href: "#connectors" },
+  { label: "Customization", href: "#customization" },
+  { label: "Security", href: "#security" },
+  { label: "EHR Integration", href: "#ehr-integration" },
 ]
 
 export function LandingNavbar() {
   const navMountRef = useRef<HTMLDivElement | null>(null)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const mount = navMountRef.current
@@ -64,7 +70,7 @@ export function LandingNavbar() {
           position: "fixed",
           top: "calc(1.5rem + 28px)",
           left: "50%",
-          zIndex: 100,
+          zIndex: 40,
         }}
       >
         <header className="w-full">
@@ -104,13 +110,62 @@ export function LandingNavbar() {
               ))}
             </ul>
 
-            <Link
-              href="/consultation"
-              className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-white/90 sm:text-sm"
-            >
-              <span className="sm:hidden">Start</span>
-              <span className="hidden sm:inline">Start Consultation</span>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex size-9 items-center justify-center rounded-full border border-white/40 bg-white/12 text-white transition hover:bg-white/20 md:hidden"
+                    aria-label="Open section navigation"
+                  >
+                    <Menu className="size-4" />
+                  </button>
+                </SheetTrigger>
+
+                <SheetContent
+                  side="right"
+                  className="w-[82vw] max-w-xs border-l border-zinc-200/70 bg-background p-0"
+                >
+                  <div className="flex h-full flex-col">
+                    <div className="border-b border-zinc-200/70 p-4 pr-10">
+                      <SheetTitle className="text-sm font-semibold text-zinc-900">Navigate</SheetTitle>
+                      <p className="mt-1 text-xs text-zinc-600">Jump to any section of the landing page.</p>
+                    </div>
+
+                    <nav className="grid gap-1 p-3">
+                      {NAV_ITEMS.map((item) => (
+                        <a
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="rounded-lg border border-zinc-200/70 bg-white/80 px-3 py-2 text-sm font-medium text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-50"
+                        >
+                          {item.label}
+                        </a>
+                      ))}
+                    </nav>
+
+                    <div className="mt-auto p-3 pt-0">
+                      <Link
+                        href="/consultation"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block rounded-full bg-zinc-900 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-zinc-700"
+                      >
+                        Start Consultation
+                      </Link>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              <Link
+                href="/consultation"
+                className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-white/90 sm:text-sm"
+              >
+                <span className="sm:hidden">Start</span>
+                <span className="hidden sm:inline">Start Consultation</span>
+              </Link>
+            </div>
           </nav>
         </header>
       </LiquidGlass>
