@@ -26,12 +26,12 @@ type FhirResourceState = {
 }
 
 const CONNECTORS: ConnectorItem[] = [
-  { id: "pubmed", name: "PubMed" },
-  { id: "icd11", name: "ICD-11" },
-  { id: "europe-pmc", name: "Europe PMC" },
-  { id: "openfda", name: "OpenFDA" },
-  { id: "clinicaltrials", name: "ClinicalTrials.gov" },
-  { id: "dailymed", name: "DailyMed" },
+  { id: "pubmed", name: "PubMed", logoSrc: "/connector-logos/pubmed.svg" },
+  { id: "icd11", name: "ICD-11", logoSrc: "/connector-logos/icd11-who.png" },
+  { id: "europe-pmc", name: "Europe PMC", logoSrc: "/connector-logos/europe-pmc.png" },
+  { id: "openfda", name: "OpenFDA", logoSrc: "/connector-logos/openfda.png" },
+  { id: "clinicaltrials", name: "ClinicalTrials.gov", logoSrc: "/connector-logos/NIH-Symbol.png" },
+  { id: "dailymed", name: "DailyMed", logoSrc: "/connector-logos/dailymed.png" },
 ]
 
 const SETTINGS_OPTIONS: SettingsOption[] = [
@@ -256,9 +256,8 @@ export function LandingSections() {
                   <li key={item.id} className={styles.resourceRow}>
                     <span>{item.resource}</span>
                     <span
-                      className={`${styles.resourceBadge} ${
-                        item.status === "Ready" ? styles.resourceReady : styles.resourceReview
-                      }`}
+                      className={`${styles.resourceBadge} ${item.status === "Ready" ? styles.resourceReady : styles.resourceReview
+                        }`}
                     >
                       {item.status}
                     </span>

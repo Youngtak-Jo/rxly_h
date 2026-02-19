@@ -1,6 +1,9 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
+const CLAUDE_SONNET_45_MODEL = "claude-sonnet-4-5-20250929"
+const CLAUDE_SONNET_46_MODEL = "claude-sonnet-4-6"
+
 export const NOVA3_LANGUAGES = [
   { value: "multi", label: "Multilingual (Auto-detect)" },
   { value: "en", label: "English (Recommended)" },
@@ -67,7 +70,7 @@ export const AI_MODELS = [
   { value: "grok-4-1-fast-non-reasoning", label: "Grok 4.1 Fast" },
   { value: "grok-4-1-fast", label: "Grok 4.1 Fast Reasoning" },
   { value: "claude-opus-4-6", label: "Claude Opus 4.6" },
-  { value: "claude-sonnet-4-5-20250929", label: "Claude Sonnet 4.5" },
+  { value: CLAUDE_SONNET_46_MODEL, label: "Claude Sonnet 4.6" },
   { value: "gpt-5.2", label: "GPT-5.2" },
 ] as const
 
@@ -130,6 +133,33 @@ interface AiModelSettings {
   clinicalSupportModel: string
   aiDoctorModel: string
   medplumModel: string
+}
+
+const AI_MODEL_KEYS: (keyof AiModelSettings)[] = [
+  "insightsModel",
+  "recordModel",
+  "patientHandoutModel",
+  "ddxModel",
+  "researchModel",
+  "speakerIdModel",
+  "diagnosticKeywordsModel",
+  "clinicalSupportModel",
+  "aiDoctorModel",
+  "medplumModel",
+]
+
+function normalizeAiModelSettings(
+  aiModel: Partial<AiModelSettings> | undefined
+): Partial<AiModelSettings> | undefined {
+  if (!aiModel) return aiModel
+
+  const normalized: Partial<AiModelSettings> = { ...aiModel }
+  for (const key of AI_MODEL_KEYS) {
+    if (normalized[key] === CLAUDE_SONNET_45_MODEL) {
+      normalized[key] = CLAUDE_SONNET_46_MODEL
+    }
+  }
+  return normalized
 }
 
 interface CustomInstructionsSettings {
@@ -403,13 +433,14 @@ export const useSettingsStore = create<SettingsState>()(
       name: "rxly-settings",
       merge: (persisted, current) => {
         const p = persisted as Partial<SettingsState> | undefined
+        const normalizedAiModel = normalizeAiModelSettings(p?.aiModel)
         return {
           ...current,
           ...p,
           stt: { ...current.stt, ...p?.stt },
           audio: { ...current.audio, ...p?.audio },
           analysis: { ...current.analysis, ...p?.analysis },
-          aiModel: { ...current.aiModel, ...p?.aiModel },
+          aiModel: { ...current.aiModel, ...normalizedAiModel },
           customInstructions: { ...current.customInstructions, ...p?.customInstructions },
           emr: { ...current.emr, ...p?.emr },
           appearance: { ...current.appearance, ...p?.appearance },
