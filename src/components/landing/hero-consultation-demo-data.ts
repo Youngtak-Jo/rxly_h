@@ -1,4 +1,9 @@
-export type HeroDemoMode = "insights" | "ddx" | "record" | "research"
+export type HeroDemoMode =
+  | "insights"
+  | "ddx"
+  | "record"
+  | "research"
+  | "patientHandout"
 
 export interface HeroDemoModeOption {
   id: HeroDemoMode
@@ -10,6 +15,7 @@ export const HERO_DEMO_MODE_OPTIONS: HeroDemoModeOption[] = [
   { id: "ddx", label: "Differential Dx" },
   { id: "record", label: "Consultation Record" },
   { id: "research", label: "Research" },
+  { id: "patientHandout", label: "Patient Handout" },
 ]
 
 export interface HeroDemoDdxCandidate {
@@ -592,11 +598,15 @@ export const HERO_DEMO_FHIR_REVIEW_STATE: HeroDemoFhirReviewState = {
 export interface HeroDemoResearchState {
   userQuery: string
   assistantMarkdown: string
+  modelLabel: string
+  generatedAt: string
 }
 
 export const HERO_DEMO_RESEARCH_STATE: HeroDemoResearchState = {
   userQuery:
     "We plan to increase metformin from 1000 mg to 2000 mg and add empagliflozin. Please provide the expected rate of achieving HbA1c <7% with this combination, the real-world magnitude of HbA1c reduction, and the evidence supporting gradual metformin titration at two-week intervals.",
+  modelLabel: "GPT-5",
+  generatedAt: "Generated 3 min ago",
   assistantMarkdown: `## Evidence Brief: Metformin Uptitration + Empagliflozin
 
 ### Quick answer
@@ -647,6 +657,114 @@ export const HERO_DEMO_RESEARCH_STATE: HeroDemoResearchState = {
 
 ---
 **Demo note:** Values above are illustrative evidence-style ranges for UI preview and should be validated against patient-specific factors before clinical use.
+`,
+}
+
+export interface HeroDemoPatientHandoutState {
+  patientDisplay: string
+  language: "en" | "ko"
+  generatedAt: string
+  markdown: string
+}
+
+export const HERO_DEMO_PATIENT_HANDOUT_STATE: HeroDemoPatientHandoutState = {
+  patientDisplay: "Alex Carter | Encounter 2026-02-18",
+  language: "en",
+  generatedAt: "Generated 2 min ago",
+  markdown: `## Migraine, unspecified (8A80.Z)
+
+Source: DDx
+
+### Condition Overview
+
+A migraine is a type of headache disorder that causes moderate to severe pain, usually on one side of the head. The pain is often described as throbbing or pulsing and can last anywhere from a few hours to several days. Migraines are more than just a bad headache - they are a neurological condition that can significantly affect your daily life, including your ability to work, concentrate, and carry out normal activities. Migraines are very common and tend to run in families. Based on your visit, your doctor is considering migraine as a likely explanation for the recurring right-sided throbbing headaches you have been experiencing over the past two weeks, especially given the associated nausea, sensitivity to light, and your mother's history of migraines.
+
+### Signs / Symptoms
+
+Common signs and symptoms of migraines include:
+
+- Throbbing or pulsating pain, usually on one side of the head (though it can affect both sides)
+- Moderate to severe pain intensity (often rated 5-10 out of 10)
+- Nausea and sometimes vomiting
+- Sensitivity to light (photophobia) - bright lights may worsen the pain
+- Sensitivity to sound (phonophobia) and sometimes smells
+- Episodes typically lasting 4 to 72 hours if untreated
+- Pain that worsens with physical activity or routine movement
+- Feeling fatigued or drained after the headache resolves
+
+Some people experience a "warning phase" called an aura before the headache begins, which can include visual disturbances like flashing lights or zigzag lines, tingling in the face or hands, or difficulty speaking. Not everyone with migraines gets auras. Your symptoms - right-sided throbbing pain, nausea, and light sensitivity lasting 4 to 6 hours - are very characteristic of migraine episodes.
+
+### Causes / Risk Factors
+
+The exact cause of migraines is not fully understood, but they are believed to involve changes in brain activity that temporarily affect nerve signals, blood vessels, and chemical messengers in the brain. Several factors can increase your risk or trigger episodes:
+
+- Family history: Having a parent with migraines significantly increases your risk. Your mother's history of migraines is an important factor.
+- Stress: Emotional or work-related stress is one of the most common migraine triggers. The increased workload and pressure you described can directly contribute.
+- Sleep problems: Too little sleep (or irregular sleep patterns) is a well-known trigger. Getting only about 5 hours per night is likely playing a role.
+- Caffeine: While moderate caffeine can sometimes help headaches, high intake (3-4 cups of coffee daily) can trigger migraines or make them worse, especially if intake varies day to day.
+- Skipped meals: Going long periods without eating causes drops in blood sugar, which can trigger migraines.
+- Hormonal changes: These are more common in women but can affect anyone.
+- Environmental factors: Bright lights, loud noises, strong smells, and weather changes can also be triggers.
+
+It is worth noting that triggers often work together - for example, stress combined with poor sleep and skipped meals can make a migraine much more likely than any one factor alone.
+
+### Complications
+
+While migraines themselves are not life-threatening, they can lead to several complications if not properly managed:
+
+- Chronic migraine: If migraines occur 15 or more days per month for three months or longer, they may be classified as chronic, which is harder to treat.
+- Medication overuse headache (rebound headache): Taking pain relievers like ibuprofen too frequently (more than 2-3 days per week on a regular basis) can actually cause your headaches to become more frequent and harder to treat. This is an important concern given your current ibuprofen use.
+- Gastrointestinal problems: Frequent use of NSAIDs like ibuprofen can irritate the stomach lining and increase the risk of ulcers or stomach bleeding.
+- Impact on quality of life: Untreated or poorly managed migraines can lead to missed work, social isolation, anxiety, and depression.
+- Status migrainosus: In rare cases, a migraine can last longer than 72 hours and may require emergency medical treatment.
+
+### Treatment Options
+
+Migraine treatment generally involves two approaches - managing acute episodes when they happen and taking preventive steps to reduce how often they occur:
+
+**Acute (immediate relief) treatments:**
+- Over-the-counter pain relievers such as ibuprofen or acetaminophen can help if taken early in an episode, but should not be used more than 2-3 days per week to avoid rebound headaches.
+- Your doctor may prescribe specific migraine medications called triptans (e.g., sumatriptan), which are designed to stop migraine attacks.
+- Anti-nausea medications may be prescribed if nausea is a significant symptom.
+- Resting in a quiet, dark room during an episode can help reduce symptoms.
+
+**Preventive strategies:**
+- Lifestyle modifications are a critical first step. Based on your situation, this includes improving sleep (aiming for 7-8 hours per night), reducing caffeine intake gradually (do not stop suddenly, as caffeine withdrawal can itself trigger headaches), eating regular meals, and finding ways to manage stress.
+- If migraines are frequent or severe, your doctor may recommend daily preventive medications such as certain blood pressure medications, antidepressants, or anti-seizure drugs that have been shown to reduce migraine frequency.
+- Keeping a headache diary - tracking when headaches occur, what you ate, how you slept, and your stress level - can help identify your personal triggers.
+
+Your doctor will work with you to find the right combination of treatments based on how your migraines respond.
+
+### When to Seek Help
+
+You should seek medical attention promptly if you experience any of the following:
+
+- A sudden, severe headache that feels like the worst headache of your life (sometimes called a "thunderclap" headache) - this requires emergency care.
+- Headache accompanied by fever, stiff neck, confusion, seizures, double vision, weakness, numbness, or difficulty speaking.
+- A headache that is significantly different from your usual pattern.
+- Headaches that are getting progressively worse over days or weeks despite treatment.
+- New neurological symptoms such as vision loss, difficulty walking, or slurred speech.
+- Headache following a head injury.
+- Headaches occurring more than 15 days per month.
+
+Since your headaches are a new occurrence and have been going on for two weeks, it is important to follow up with your doctor as recommended. If any of the warning signs above develop, do not wait for a scheduled appointment - seek immediate medical care.
+
+### Additional Advice / Follow-Up
+
+Here are some practical steps you can take starting now:
+
+- **Sleep:** Prioritize getting 7-8 hours of sleep per night. Try to go to bed and wake up at the same time each day, even on weekends.
+- **Caffeine:** Gradually reduce your coffee intake. Cutting from 3-4 cups to 1-2 cups over a week or two can help. Avoid stopping abruptly, as this can trigger withdrawal headaches.
+- **Meals:** Eat regular meals, especially breakfast. Try not to go more than 4-5 hours without eating during the day. Keep healthy snacks available.
+- **Stress management:** Consider stress-reduction techniques such as deep breathing exercises, short walks, or setting boundaries at work when possible.
+- **Headache diary:** Start tracking your headaches - note the date, time, severity, duration, what you ate, how you slept, and any possible triggers. Bring this to your next appointment.
+- **Medication use:** Be mindful of how often you are taking ibuprofen. Discuss with your doctor if you are needing it more than 2-3 days per week, as a different treatment plan may be needed.
+- **Follow-up:** Keep your follow-up appointment with your doctor. They may want to run additional tests to rule out other causes, adjust your treatment plan, or discuss preventive medication options.
+- **Hydration:** Drink plenty of water throughout the day, as dehydration can also contribute to headaches.
+
+### Disclaimer
+
+This handout is provided for educational purposes only and is based on general information about migraines. It is not a confirmed personal diagnosis, and it does not replace the professional judgment of your doctor. Your healthcare provider will determine the most appropriate diagnosis and treatment plan for your specific situation after completing a full evaluation. If you are experiencing a medical emergency - such as a sudden, severe headache, neurological symptoms, or any condition that feels life-threatening - call emergency services (911) or go to your nearest emergency room immediately. Do not rely on this document to make treatment decisions on your own.
 `,
 }
 

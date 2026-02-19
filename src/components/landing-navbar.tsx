@@ -106,7 +106,7 @@ export function LandingNavbar() {
 
             <Link
               href="/consultation"
-              className="rounded-full bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-neutral-700 sm:text-sm"
+              className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-white/90 sm:text-sm"
             >
               <span className="sm:hidden">Start</span>
               <span className="hidden sm:inline">Start Consultation</span>

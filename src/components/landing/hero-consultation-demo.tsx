@@ -5,12 +5,13 @@ import LiquidGlass from "liquid-glass-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { cn } from "@/lib/utils"
-import { Activity, Check } from "lucide-react"
+import { Activity, Check, FileDown } from "lucide-react"
 import {
   HERO_DEMO_DDX_STATE,
   HERO_DEMO_DDX_SUPPORT_BY_ID,
   HERO_DEMO_FHIR_REVIEW_STATE,
   HERO_DEMO_MODE_OPTIONS,
+  HERO_DEMO_PATIENT_HANDOUT_STATE,
   HERO_DEMO_RECORD_STATE,
   HERO_DEMO_RESEARCH_STATE,
   HERO_DEMO_STEP_INTERVAL_MS,
@@ -37,6 +38,13 @@ function ddxLikelihoodClass(likelihood: "High" | "Moderate" | "Lower") {
 }
 
 const INITIAL_DDX_ID = HERO_DEMO_DDX_STATE.candidates[0]?.id ?? ""
+const COMPACT_MODE_LABELS: Record<HeroDemoMode, string> = {
+  insights: "LI",
+  ddx: "DDx",
+  record: "CR",
+  research: "Ref",
+  patientHandout: "Pt Ed",
+}
 
 export function HeroConsultationDemo() {
   const [activeMode, setActiveMode] = useState<HeroDemoMode>("insights")
@@ -129,24 +137,32 @@ export function HeroConsultationDemo() {
             padding="0"
             style={{ position: "absolute", top: "50%", left: "50%" }}
           >
-            <div role="tablist" aria-label="Hero demo modes" className={styles.modeToggleTrack}>
-              {HERO_DEMO_MODE_OPTIONS.map((modeOption) => {
-                const isActive = modeOption.id === activeMode
-                return (
-                  <button
-                    key={modeOption.id}
-                    id={`hero-demo-tab-${modeOption.id}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    aria-controls={`hero-demo-panel-${modeOption.id}`}
-                    onClick={() => setActiveMode(modeOption.id)}
-                    className={cn(styles.modeToggleButton, isActive && styles.modeToggleButtonActive)}
-                  >
-                    {modeOption.label}
-                  </button>
-                )
-              })}
+            <div className={styles.modeToggleViewport}>
+              <div role="tablist" aria-label="Hero demo modes" className={styles.modeToggleTrack}>
+                {HERO_DEMO_MODE_OPTIONS.map((modeOption) => {
+                  const isActive = modeOption.id === activeMode
+                  return (
+                    <button
+                      key={modeOption.id}
+                      id={`hero-demo-tab-${modeOption.id}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      aria-label={modeOption.label}
+                      aria-controls={`hero-demo-panel-${modeOption.id}`}
+                      onClick={() => setActiveMode(modeOption.id)}
+                      className={cn(styles.modeToggleButton, isActive && styles.modeToggleButtonActive)}
+                    >
+                      <span aria-hidden="true" className={styles.modeToggleLabelLong}>
+                        {modeOption.label}
+                      </span>
+                      <span aria-hidden="true" className={styles.modeToggleLabelShort}>
+                        {COMPACT_MODE_LABELS[modeOption.id]}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </LiquidGlass>
         </div>
@@ -192,8 +208,8 @@ export function HeroConsultationDemo() {
                 <div
                   className={cn(
                     "relative z-10 flex-1 space-y-3 pr-1 text-[11px] md:text-xs",
-                    styles.panelIn,
-                    isPlaying && "animate-breathe insights-shimmer-overlay"
+                    styles.insightsTextRefresh,
+                    isPlaying && "insights-shimmer-overlay"
                   )}
                   key={currentStep.id}
                 >
@@ -289,7 +305,7 @@ export function HeroConsultationDemo() {
                             "max-w-[90%] rounded-lg px-3 py-2 text-[11px] leading-relaxed",
                             isDoctor
                               ? "rounded-tr-sm border border-primary/15 bg-primary/10 text-foreground backdrop-blur-sm"
-                              : "rounded-tl-sm bg-muted text-foreground"
+                              : "rounded-tl-sm border border-zinc-300/70 bg-zinc-200/80 text-foreground dark:border-zinc-700/70 dark:bg-zinc-800/70"
                           )}
                         >
                           <p>{entry.text}</p>
@@ -713,6 +729,42 @@ export function HeroConsultationDemo() {
                     </ReactMarkdown>
                   </div>
                 </div>
+              </section>
+            </div>
+          )}
+
+          {activeMode === "patientHandout" && (
+            <div className="h-full min-h-0">
+              <section
+                className={cn(
+                  panelBaseClass,
+                  styles.panelIn,
+                  "flex h-full min-h-0 flex-col overflow-y-auto ring-1 ring-cyan-500/35"
+                )}
+                aria-label="Patient handout panel"
+              >
+                <header className="mb-3 flex items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-xs font-semibold">Patient Handout</h3>
+                    <p className="mt-1 text-[11px] text-muted-foreground md:text-xs">
+                      {HERO_DEMO_PATIENT_HANDOUT_STATE.patientDisplay}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/35 bg-cyan-500/10 px-2.5 py-1.5 text-[11px] font-medium text-cyan-700 transition-colors hover:bg-cyan-500/15 dark:text-cyan-200"
+                    aria-label="Download patient handout PDF (demo)"
+                  >
+                    <FileDown className="size-3.5" />
+                    Download PDF
+                  </button>
+                </header>
+
+                <article className="research-markdown rounded-lg border border-border/70 bg-background/70 p-3 text-[11px] md:text-xs">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {HERO_DEMO_PATIENT_HANDOUT_STATE.markdown}
+                  </ReactMarkdown>
+                </article>
               </section>
             </div>
           )}
