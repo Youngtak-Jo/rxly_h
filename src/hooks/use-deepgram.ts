@@ -289,6 +289,7 @@ export function useDeepgram() {
                     body: JSON.stringify({
                       id: entry.id,
                       speaker,
+                      rawSpeakerId: chunk.speakerId,
                       text: chunk.text,
                       startTime: Math.max(0, startTime),
                       endTime: Math.max(0, endTime),

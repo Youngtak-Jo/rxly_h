@@ -28,6 +28,7 @@ CREATE TABLE "transcript_entries" (
     "id" TEXT NOT NULL,
     "session_id" TEXT NOT NULL,
     "speaker" "Speaker" NOT NULL,
+    "raw_speaker_id" INTEGER,
     "text" TEXT NOT NULL,
     "start_time" DOUBLE PRECISION NOT NULL,
     "end_time" DOUBLE PRECISION NOT NULL,

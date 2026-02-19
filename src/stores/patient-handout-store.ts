@@ -6,12 +6,9 @@ import type {
   PatientHandoutSections,
 } from "@/types/patient-handout"
 
-export type PatientHandoutLanguageMode = "auto" | "ko" | "en"
-
 interface PatientHandoutState {
   document: PatientHandoutDocument | null
   selectedConditions: PatientHandoutCondition[]
-  languageMode: PatientHandoutLanguageMode
   isGenerating: boolean
   lastUpdated: Date | null
   abortController: AbortController | null
@@ -22,7 +19,6 @@ interface PatientHandoutState {
   setSelectedConditions: (conditions: PatientHandoutCondition[]) => void
   addCondition: (condition: PatientHandoutCondition) => void
   removeCondition: (conditionId: string) => void
-  setLanguageMode: (mode: PatientHandoutLanguageMode) => void
   updateSection: (
     conditionId: string,
     field: PatientHandoutSectionKey,
@@ -62,7 +58,6 @@ function dedupeConditions(
 export const usePatientHandoutStore = create<PatientHandoutState>((set, get) => ({
   document: null,
   selectedConditions: [],
-  languageMode: "auto",
   isGenerating: false,
   lastUpdated: null,
   abortController: null,
@@ -131,8 +126,6 @@ export const usePatientHandoutStore = create<PatientHandoutState>((set, get) => 
       }
     }),
 
-  setLanguageMode: (languageMode) => set({ languageMode }),
-
   updateSection: (conditionId, field, value) =>
     set((state) => {
       if (!state.document) return state
@@ -176,7 +169,6 @@ export const usePatientHandoutStore = create<PatientHandoutState>((set, get) => 
     set({
       document: null,
       selectedConditions: [],
-      languageMode: "auto",
       isGenerating: false,
       lastUpdated: null,
       abortController: null,

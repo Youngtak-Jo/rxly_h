@@ -5,6 +5,7 @@ import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useSettingsStore } from "@/stores/settings-store"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
+import { useRecordingStore } from "@/stores/recording-store"
 import type { Speaker, TranscriptEntry } from "@/types/session"
 
 const ENTRIES_PER_ATTEMPT = 3
@@ -55,6 +56,7 @@ export function useSpeakerIdentification() {
   const speakerRoleMap = useTranscriptStore((s) => s.speakerRoleMap)
   const activeSession = useSessionStore((s) => s.activeSession)
   const consultationMode = useConsultationModeStore((s) => s.mode)
+  const isRecording = useRecordingStore((s) => s.isRecording)
 
   // Single-speaker detection state
   const singleSpeakerDetected = useTranscriptStore(
@@ -89,26 +91,53 @@ export function useSpeakerIdentification() {
       return
     }
 
+    // Speaker detection/identification should only run while recording is active.
+    // This avoids stale prompts after refresh/history hydration.
+    if (!isRecording) {
+      if (singleSpeakerDetected) {
+        setSingleSpeakerDetected(false)
+      }
+      return
+    }
+
     // If we still have an active mapping for this segment, no need to re-run.
     if (
       identificationStatus === "identified" &&
       Object.keys(speakerRoleMap).length > 0
     ) {
+      if (singleSpeakerDetected) {
+        setSingleSpeakerDetected(false)
+      }
       return
     }
 
     // Only consider entries from the current recording segment
-    const recentEntries = entries.slice(speakerCheckBaseIndex)
+    const recentEntries = entries
+      .slice(speakerCheckBaseIndex)
+      .filter(
+        (
+          entry
+        ): entry is TranscriptEntry & { rawSpeakerId: number } =>
+          typeof entry.rawSpeakerId === "number"
+      )
+
     const newEntryCount = recentEntries.length
 
+    // Legacy entries may not have raw speaker IDs; skip single-speaker detection.
+    if (newEntryCount === 0) {
+      if (singleSpeakerDetected) {
+        setSingleSpeakerDetected(false)
+      }
+      return
+    }
+
     // Compute unique speaker IDs from current segment only
-    const uniqueSpeakerIds = [
-      ...new Set(
-        recentEntries
-          .map((e) => e.rawSpeakerId)
-          .filter((id): id is number => id !== undefined)
-      ),
-    ]
+    const uniqueSpeakerIds = [...new Set(recentEntries.map((e) => e.rawSpeakerId))]
+
+    // Hide single-speaker prompt as soon as a second speaker is observed.
+    if (singleSpeakerDetected && uniqueSpeakerIds.length >= 2) {
+      setSingleSpeakerDetected(false)
+    }
 
     // If in single-speaker mode but a second speaker appeared, exit and resume normal flow
     if (singleSpeakerMode && uniqueSpeakerIds.length >= 2) {
@@ -215,6 +244,7 @@ export function useSpeakerIdentification() {
     speakerRoleMap,
     activeSession,
     consultationMode,
+    isRecording,
     singleSpeakerDetected,
     singleSpeakerPromptDismissed,
     singleSpeakerMode,

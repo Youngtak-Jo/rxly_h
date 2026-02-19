@@ -48,6 +48,7 @@ model TranscriptEntry {
   id         String   @id @default(uuid())
   sessionId  String   @map("session_id")
   speaker    Speaker
+  rawSpeakerId Int?   @map("raw_speaker_id")
   text       String
   startTime  Float    @map("start_time")
   endTime    Float    @map("end_time")

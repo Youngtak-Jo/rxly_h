@@ -6,6 +6,16 @@ import { requireAuth, requireSessionOwnership } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
+interface TranscriptEntryCreateBody {
+  id?: string
+  speaker?: Speaker
+  rawSpeakerId?: number
+  text: string
+  startTime: number
+  endTime: number
+  confidence?: number
+}
+
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -94,13 +104,16 @@ export async function POST(
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
-    const body = await req.json()
+    const body = (await req.json()) as TranscriptEntryCreateBody
 
     const entry = await prisma.transcriptEntry.create({
       data: {
         ...(body.id ? { id: body.id } : {}),
         sessionId: id,
         speaker: body.speaker || "UNKNOWN",
+        ...(typeof body.rawSpeakerId === "number"
+          ? { rawSpeakerId: body.rawSpeakerId }
+          : {}),
         text: body.text,
         startTime: body.startTime,
         endTime: body.endTime,

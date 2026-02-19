@@ -8,15 +8,32 @@ import { useRecordingStore } from "@/stores/recording-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useSettingsStore } from "@/stores/settings-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
+import type { TranscriptEntry } from "@/types/session"
 
 const WAIT_TIMEOUT_MS = 60000
 
-function resolveLanguage(
-  mode: "auto" | "ko" | "en",
-  sttLanguage: string
-): "ko" | "en" {
-  if (mode === "ko" || mode === "en") return mode
-  return sttLanguage.toLowerCase().startsWith("ko") ? "ko" : "en"
+function detectLanguageFromText(text: string): "ko" | "en" {
+  const hangul = (text.match(/[가-힣]/g) || []).length
+  const latin = (text.match(/[A-Za-z]/g) || []).length
+
+  if (hangul === 0 && latin === 0) return "en"
+  if (hangul > latin) return "ko"
+  return "en"
+}
+
+function resolveHandoutLanguage(entries: TranscriptEntry[]): "ko" | "en" {
+  const patientText = entries
+    .filter((entry) => entry.speaker === "PATIENT")
+    .map((entry) => entry.text)
+    .join(" ")
+    .trim()
+
+  if (patientText) {
+    return detectLanguageFromText(patientText)
+  }
+
+  const conversationText = entries.map((entry) => entry.text).join(" ").trim()
+  return detectLanguageFromText(conversationText)
 }
 
 async function fetchDoctorNotes(
@@ -75,7 +92,6 @@ export async function generatePatientHandout(
 ) {
   const {
     selectedConditions,
-    languageMode,
     setGenerating,
     setGeneratedDocument,
     setAbortController,
@@ -100,11 +116,12 @@ export async function generatePatientHandout(
     }
   }
 
-  const transcript = useTranscriptStore.getState().getFullTranscript()
+  const transcriptStore = useTranscriptStore.getState()
+  const transcript = transcriptStore.getFullTranscript()
   const insightsStore = useInsightsStore.getState()
   const ddxStore = useDdxStore.getState()
   const settingsStore = useSettingsStore.getState()
-  const resolvedLanguage = resolveLanguage(languageMode, settingsStore.stt.language)
+  const resolvedLanguage = resolveHandoutLanguage(transcriptStore.entries)
 
   setGenerating(true)
 

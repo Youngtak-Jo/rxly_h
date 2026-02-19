@@ -92,6 +92,10 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
       identificationStatus: hasIdentifiedSpeakers ? "identified" : "unidentified",
       diagnosticKeywords: [],
       highlightStatus: "idle",
+      singleSpeakerDetected: false,
+      classifyingEntries: false,
+      lastClassifiedEntryIndex: entries.length,
+      speakerCheckBaseIndex: entries.length,
     })
   },
 
