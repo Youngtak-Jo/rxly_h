@@ -1,4 +1,5 @@
 import Image from "next/image"
+import Link from "next/link"
 import { Instrument_Serif } from "next/font/google"
 import {
   Search,
@@ -59,18 +60,14 @@ export function LandingSections() {
             </div>
             <div className={`${styles.visualSquare} ${styles.connectorsSquare}`}>
               <div className={styles.connectorsUiContainer}>
-                <div className={`${styles.mockUiGlass} ${styles.connectorsInput}`}>
-                  <Search className={styles.connectorsInputIcon} />
-                  <span>Search Connectors...</span>
-                </div>
                 <div className={styles.connectorsGrid}>
                   {CONNECTORS.map(connector => (
                     <div key={connector.id} className={styles.connectorLogoCard}>
                       <Image
                         src={connector.logoSrc}
                         alt={connector.name}
-                        width={100}
-                        height={30}
+                        width={120}
+                        height={40}
                         className={styles.connectorLogoImg}
                       />
                     </div>
@@ -233,6 +230,29 @@ export function LandingSections() {
                   <span className={styles.ehrRowSuccess}>Mapped</span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className={`px-6 pb-24 md:px-10 md:pb-32 ${styles.section} ${styles.delayFour} ${styles.ctaSection}`}>
+        <div className={styles.inner}>
+          <div className={styles.ctaContent}>
+            <h2 className={`${instrumentSerif.className} ${styles.ctaTitle}`}>
+              Ready to transform your clinical workflow?
+            </h2>
+            <p className={styles.ctaDescription}>
+              Join the future of healthcare with Rxly's intelligent, secure, and integrated platform.
+            </p>
+            <div className={styles.ctaButtonGroup}>
+              <Link href="/consultation" className={styles.ctaPrimaryButton}>
+                Start
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+              <a href="mailto:contact@rxly.ai" className={styles.ctaSecondaryButton}>
+                Contact Sales
+              </a>
             </div>
           </div>
         </div>

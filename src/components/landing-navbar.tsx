@@ -143,7 +143,7 @@ export function LandingNavbar() {
                 href="/consultation"
                 className="inline-flex h-9 items-center justify-center rounded-full bg-white px-4 text-sm font-semibold text-black transition hover:bg-white/90"
               >
-                <span>Start Consultation</span>
+                <span>Start<span className="hidden sm:inline"> Consultation</span></span>
               </Link>
 
               <button
