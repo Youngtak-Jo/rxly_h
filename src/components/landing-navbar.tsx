@@ -5,7 +5,6 @@ import Image from "next/image"
 import Link from "next/link"
 import LiquidGlass from "liquid-glass-react"
 import { Menu } from "lucide-react"
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import styles from "./landing-navbar.module.css"
 
 type NavItem = {
@@ -17,13 +16,14 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Connectors", href: "#connectors" },
   { label: "Customization", href: "#customization" },
   { label: "Security", href: "#security" },
-  { label: "EHR Integration", href: "#ehr-integration" },
+  { label: "EHR", href: "#ehr-integration" },
 ]
 
 export function LandingNavbar() {
   const navMountRef = useRef<HTMLDivElement | null>(null)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
+  // Main navbar styling effect
   useEffect(() => {
     const mount = navMountRef.current
     if (!mount) return
@@ -55,6 +55,33 @@ export function LandingNavbar() {
     }
   }, [])
 
+  // Dropdown menu styling effect
+  useEffect(() => {
+    if (!isMobileMenuOpen) return
+    const mount = navMountRef.current
+    if (!mount) return
+
+    const timeoutId = setTimeout(() => {
+      const glassRoots = mount.querySelectorAll<HTMLElement>('.rxly-mobile-menu-glass')
+      glassRoots.forEach(glassRoot => {
+        const glassLayer = Array.from(glassRoot.children).find(
+          (child) => child instanceof HTMLDivElement
+        ) as HTMLDivElement | undefined
+
+        if (glassLayer) {
+          glassLayer.style.display = "flex"
+          glassLayer.style.width = "100%"
+          const contentLayer = Array.from(glassLayer.children).find(
+            (child) => child instanceof HTMLDivElement
+          ) as HTMLDivElement | undefined
+          if (contentLayer) contentLayer.style.width = "100%"
+        }
+      })
+    }, 50)
+
+    return () => clearTimeout(timeoutId)
+  }, [isMobileMenuOpen])
+
   return (
     <div ref={navMountRef}>
       <LiquidGlass
@@ -70,6 +97,7 @@ export function LandingNavbar() {
           position: "fixed",
           top: "calc(1.5rem + 28px)",
           left: "50%",
+          transform: "translateX(-50%)",
           zIndex: 40,
         }}
       >
@@ -92,7 +120,7 @@ export function LandingNavbar() {
                 alt="Rxly wordmark"
                 width={933}
                 height={451}
-                className="hidden h-7 w-auto translate-y-[1px] invert sm:block md:h-8"
+                className="h-7 w-auto translate-y-[1px] invert md:h-8"
                 priority
               />
             </Link>
@@ -111,64 +139,70 @@ export function LandingNavbar() {
             </ul>
 
             <div className="flex items-center gap-2">
-              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                <SheetTrigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex size-9 items-center justify-center rounded-full border border-white/40 bg-white/12 text-white transition hover:bg-white/20 md:hidden"
-                    aria-label="Open section navigation"
-                  >
-                    <Menu className="size-4" />
-                  </button>
-                </SheetTrigger>
-
-                <SheetContent
-                  side="right"
-                  className="w-[82vw] max-w-xs border-l border-zinc-200/70 bg-background p-0"
-                >
-                  <div className="flex h-full flex-col">
-                    <div className="border-b border-zinc-200/70 p-4 pr-10">
-                      <SheetTitle className="text-sm font-semibold text-zinc-900">Navigate</SheetTitle>
-                      <p className="mt-1 text-xs text-zinc-600">Jump to any section of the landing page.</p>
-                    </div>
-
-                    <nav className="grid gap-1 p-3">
-                      {NAV_ITEMS.map((item) => (
-                        <a
-                          key={item.href}
-                          href={item.href}
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className="rounded-lg border border-zinc-200/70 bg-white/80 px-3 py-2 text-sm font-medium text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-50"
-                        >
-                          {item.label}
-                        </a>
-                      ))}
-                    </nav>
-
-                    <div className="mt-auto p-3 pt-0">
-                      <Link
-                        href="/consultation"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="block rounded-full bg-zinc-900 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-zinc-700"
-                      >
-                        Start Consultation
-                      </Link>
-                    </div>
-                  </div>
-                </SheetContent>
-              </Sheet>
-
               <Link
                 href="/consultation"
-                className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-white/90 sm:text-sm"
+                className="inline-flex h-9 items-center justify-center rounded-full bg-white px-4 text-sm font-semibold text-black transition hover:bg-white/90"
               >
-                <span className="sm:hidden">Start</span>
-                <span className="hidden sm:inline">Start Consultation</span>
+                <span>Start Consultation</span>
               </Link>
+
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="inline-flex size-9 items-center justify-center rounded-full border border-white/40 bg-white/12 text-white transition hover:bg-white/20 md:hidden"
+                aria-label="Toggle navigation menu"
+              >
+                <Menu className="size-4" />
+              </button>
             </div>
           </nav>
         </header>
       </LiquidGlass>
+
+      {/* Mobile Dropdown Menu */}
+      {isMobileMenuOpen && (
+        <LiquidGlass
+          blurAmount={0.1}
+          aberrationIntensity={2}
+          elasticity={0.08}
+          saturation={140}
+          mode="standard"
+          cornerRadius={24}
+          padding="0"
+          className={`${styles.landingNavGlass} rxly-mobile-menu-glass pointer-events-auto md:hidden shadow-lg w-full`}
+          style={{
+            position: "fixed",
+            top: "16rem",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 30
+          }}
+        >
+          <div className="flex w-full flex-col p-4 rounded-[24px]">
+            <nav className="flex flex-col gap-2 relative z-10">
+              {NAV_ITEMS.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="rounded-lg px-4 py-3 text-sm font-medium text-white/90 transition hover:bg-white/20 hover:text-white"
+                >
+                  {item.label}
+                </a>
+              ))}
+              <div className="mt-2 border-t border-white/10 pt-4">
+                <Link
+                  href="/consultation"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block w-full rounded-full bg-white px-4 py-3 text-center text-sm font-semibold text-black transition hover:bg-white/90"
+                >
+                  Start Consultation
+                </Link>
+              </div>
+            </nav>
+          </div>
+        </LiquidGlass>
+      )}
     </div>
   )
 }
