@@ -62,9 +62,7 @@ export async function POST(req: Request) {
 
     let existingChecklistText = ""
     if (checklistItems.length > 0) {
-      existingChecklistText = hasInlineComments
-        ? "\n\n--- CURRENT CHECKLIST ITEMS (preserve items with their IDs; add/remove based on clinical relevance) ---"
-        : "\n\n--- DOCTOR-MODIFIED CHECKLIST ITEMS (preserve these items and their IDs in your full checklist output) ---"
+      existingChecklistText = "\n\n--- CURRENT CHECKLIST ITEMS (preserve items with their IDs; add/remove based on clinical relevance) ---"
       if (uncheckedItems.length > 0) {
         existingChecklistText += "\nPending:"
         uncheckedItems.forEach((item: { id: string; label: string }) => {

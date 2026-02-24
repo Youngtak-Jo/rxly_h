@@ -284,14 +284,14 @@ const DEFAULT_ANALYSIS: AnalysisSettings = {
 const DEFAULT_AI_MODEL: AiModelSettings = {
   insightsModel: "grok-4-1-fast-non-reasoning",
   recordModel: "grok-4-1-fast-non-reasoning",
-  patientHandoutModel: "claude-opus-4-6",
-  ddxModel: "claude-opus-4-6",
-  researchModel: "claude-opus-4-6",
+  patientHandoutModel: "grok-4-1-fast-non-reasoning",
+  ddxModel: "grok-4-1-fast-non-reasoning",
+  researchModel: "grok-4-1-fast-non-reasoning",
   speakerIdModel: "grok-4-1-fast-non-reasoning",
   diagnosticKeywordsModel: "grok-4-1-fast-non-reasoning",
   clinicalSupportModel: "grok-4-1-fast-non-reasoning",
   aiDoctorModel: "grok-4-1-fast-non-reasoning",
-  medplumModel: "claude-opus-4-6",
+  medplumModel: "grok-4-1-fast-non-reasoning",
 }
 
 export { DEFAULT_AI_MODEL }

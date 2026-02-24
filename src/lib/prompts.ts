@@ -36,7 +36,7 @@ The "checklist" array is the COMPLETE desired checklist. You output the full lis
 
 0. PRESERVE IDs: Each existing checklist item has an ID (shown as [id:xxx] in the input). When you keep or modify an existing item, you MUST include its original "id" field in your output: {"id": "xxx", "label": "...", "checked": ...}. For NEW items that do not correspond to any existing item, omit the "id" field entirely.
 
-1. OUTPUT THE FULL CHECKLIST: Every item that should be on the checklist must appear in the array. Items you omit will be removed. Items you include will be kept or added. You will only receive checklist items that the doctor has manually modified. Generate the full checklist from transcript analysis, and always preserve doctor-modified items with their original IDs.
+1. OUTPUT THE FULL CHECKLIST: Every item that should be on the checklist must appear in the array. Items you omit will be removed. Items you include will be kept or added. Generate the full checklist from transcript and clinical context, and always preserve existing items with their original IDs unless they are no longer clinically relevant.
 
 2. NO DUPLICATES: Each clinical action should appear EXACTLY ONCE. Do not include two items that mean the same thing with different wording. For example, "Assess pain severity" and "Assess current pain severity, location, and radiation" are the same — pick one.
 

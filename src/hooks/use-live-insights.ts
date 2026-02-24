@@ -175,27 +175,12 @@ export function useLiveInsights() {
               summary,
               keyFindings,
               redFlags,
-              // When inline comments are present, send ALL items so the AI
-              // can see and preserve them. Otherwise only send doctor-modified
-              // items; AI regenerates its own from transcript.
-              checklistItems: hasComments
-                ? checklistItems.map((item) => ({
-                  id: item.id,
-                  label: item.label,
-                  isChecked: item.isChecked,
-                }))
-                : checklistItems
-                  .filter(
-                    (item) =>
-                      item.source === "MANUAL" ||
-                      item.isChecked !== item.isAutoChecked ||
-                      item.doctorNote !== null
-                  )
-                  .map((item) => ({
-                    id: item.id,
-                    label: item.label,
-                    isChecked: item.isChecked,
-                  })),
+              // Always send the full checklist so the AI can see existing items and preserve them
+              checklistItems: checklistItems.map((item) => ({
+                id: item.id,
+                label: item.label,
+                isChecked: item.isChecked,
+              })),
             },
           }),
           signal: abortController.signal,

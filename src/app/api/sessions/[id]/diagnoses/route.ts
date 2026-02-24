@@ -149,7 +149,8 @@ export async function PUT(
           })
         })
       )
-    })
+    },
+      { maxWait: 15000, timeout: 30000 })
 
     logAudit({ userId: user.id, action: "UPDATE", resource: "diagnosis", sessionId: id })
     return NextResponse.json({ ok: true })

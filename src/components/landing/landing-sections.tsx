@@ -1,5 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
+import { LandingCta } from "./landing-cta"
 import { Instrument_Serif } from "next/font/google"
 import {
   Search,
@@ -15,7 +16,10 @@ import {
   Settings,
   SlidersHorizontal,
   Bot,
-  Languages
+  Languages,
+  ChevronDown,
+  ShieldCheck,
+  Activity
 } from "lucide-react"
 import styles from "./landing-sections.module.css"
 
@@ -105,6 +109,7 @@ export function LandingSections() {
                   <span>Clinic Preferences</span>
                 </div>
                 <div className={styles.settingsBody}>
+                  {/* Row 1: AI Model (Select Box) */}
                   <div className={styles.settingsRow}>
                     <div className={styles.settingsRowLeft}>
                       <div className={styles.settingsIconWrapper}>
@@ -112,12 +117,16 @@ export function LandingSections() {
                       </div>
                       <div className={styles.settingsRowText}>
                         <span className={styles.settingsRowTitle}>AI Model</span>
-                        <span className={styles.settingsRowDesc}>GPT-5 / Claude 3.5</span>
+                        <span className={styles.settingsRowDesc}>Primary reasoning engine</span>
                       </div>
                     </div>
-                    <div className={styles.mockToggle}></div>
+                    <div className={styles.mockSelect}>
+                      <span>Claude Opus 4.6</span>
+                      <ChevronDown className="w-3 h-3 text-gray-500" />
+                    </div>
                   </div>
 
+                  {/* Row 2: Tone & Style (Segmented Control) */}
                   <div className={styles.settingsRow}>
                     <div className={styles.settingsRowLeft}>
                       <div className={styles.settingsIconWrapper}>
@@ -125,23 +134,46 @@ export function LandingSections() {
                       </div>
                       <div className={styles.settingsRowText}>
                         <span className={styles.settingsRowTitle}>Tone & Style</span>
-                        <span className={styles.settingsRowDesc}>Professional, concise</span>
+                        <span className={styles.settingsRowDesc}>Response formatting</span>
                       </div>
                     </div>
-                    <div className={`${styles.mockToggle} ${styles.mockToggleActive}`}></div>
+                    <div className={styles.mockSegmentedControl}>
+                      <span className={`${styles.mockSegment} ${styles.mockSegmentActive}`}>Professional</span>
+                      <span className={styles.mockSegment}>Concise</span>
+                    </div>
                   </div>
 
+                  {/* Row 3: Auto-translate (Toggle) */}
                   <div className={styles.settingsRow}>
                     <div className={styles.settingsRowLeft}>
                       <div className={styles.settingsIconWrapper}>
                         <Languages className="w-4 h-4 text-blue-600" />
                       </div>
                       <div className={styles.settingsRowText}>
-                        <span className={styles.settingsRowTitle}>Output Language</span>
-                        <span className={styles.settingsRowDesc}>Korean (Auto-translate)</span>
+                        <span className={styles.settingsRowTitle}>Auto-translate</span>
+                        <span className={styles.settingsRowDesc}>Output in patient's language</span>
                       </div>
                     </div>
-                    <div className={styles.mockToggle}></div>
+                    <div className={`${styles.mockToggle} ${styles.mockToggleActive}`}></div>
+                  </div>
+
+                  {/* Row 4: Evidence Level (Slider) */}
+                  <div className={`${styles.settingsRow} ${styles.settingsRowVertical}`}>
+                    <div className={styles.settingsRowHeader}>
+                      <span className={styles.settingsRowTitle}>Evidence Threshold</span>
+                      <span className={styles.settingsRowValue}>High Confidence</span>
+                    </div>
+                    <div className={styles.mockSliderContainer}>
+                      <div className={styles.mockSliderTrack}>
+                        <div className={styles.mockSliderFill} style={{ width: '85%' }}></div>
+                        <div className={styles.mockSliderThumb} style={{ left: '85%' }}></div>
+                      </div>
+                      <div className={styles.mockSliderScale}>
+                        <span>Low</span>
+                        <span>Med</span>
+                        <span>High</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -172,17 +204,55 @@ export function LandingSections() {
             </div>
             <div className={`${styles.visualSquare} ${styles.securitySquare}`}>
               <div className={`${styles.mockUiGlass} ${styles.securityCard}`}>
-                <div className={styles.securityRow}>
-                  <Lock className={styles.securityRowIcon} />
-                  <span className={styles.securityRowText}>AES-256 Encryption at Rest</span>
+                <div className={styles.securityHeaderVisual}>
+                  <div className={styles.securityPulseRings}>
+                    <div className={styles.ring1}></div>
+                    <div className={styles.ring2}></div>
+                    <div className={styles.ring3}></div>
+                  </div>
+                  <div className={styles.securityIconCenter}>
+                    <ShieldCheck className={styles.centerIcon} />
+                  </div>
                 </div>
-                <div className={styles.securityRow}>
-                  <Fingerprint className={styles.securityRowIcon} />
-                  <span className={styles.securityRowText}>Strict HTTPS Enforcement</span>
+
+                <div className={styles.securityStatusPanel}>
+                  <span className={styles.securityStatusLabel}>System Status</span>
+                  <span className={styles.securityStatusValue}>Protected & Compliant</span>
                 </div>
-                <div className={styles.securityRow}>
-                  <CheckCircle2 className={styles.securityRowIcon} />
-                  <span className={styles.securityRowText}>Audit-ready Event Logging</span>
+
+                <div className={styles.securityList}>
+                  <div className={styles.securityItem}>
+                    <div className={styles.securityItemIcon}>
+                      <Lock className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div className={styles.securityItemText}>
+                      <span className={styles.securityItemTitle}>AES-256 Encryption</span>
+                      <span className={styles.securityItemSub}>Data encrypted at rest</span>
+                    </div>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  </div>
+
+                  <div className={styles.securityItem}>
+                    <div className={styles.securityItemIcon}>
+                      <Fingerprint className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div className={styles.securityItemText}>
+                      <span className={styles.securityItemTitle}>Strict HTTPS</span>
+                      <span className={styles.securityItemSub}>TLS 1.3 transit security</span>
+                    </div>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  </div>
+
+                  <div className={styles.securityItem}>
+                    <div className={styles.securityItemIcon}>
+                      <Activity className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <div className={styles.securityItemText}>
+                      <span className={styles.securityItemTitle}>Audit-ready Logging</span>
+                      <span className={styles.securityItemSub}>Immutable event trails</span>
+                    </div>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -235,28 +305,7 @@ export function LandingSections() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className={`px-6 pb-24 md:px-10 md:pb-32 ${styles.section} ${styles.delayFour} ${styles.ctaSection}`}>
-        <div className={styles.inner}>
-          <div className={styles.ctaContent}>
-            <h2 className={`${instrumentSerif.className} ${styles.ctaTitle}`}>
-              Ready to transform your clinical workflow?
-            </h2>
-            <p className={styles.ctaDescription}>
-              Join the future of healthcare with Rxly's intelligent, secure, and integrated platform.
-            </p>
-            <div className={styles.ctaButtonGroup}>
-              <Link href="/consultation" className={styles.ctaPrimaryButton}>
-                Start
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-              <a href="mailto:contact@rxly.ai" className={styles.ctaSecondaryButton}>
-                Contact Sales
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
+      <LandingCta />
     </div>
   )
 }
