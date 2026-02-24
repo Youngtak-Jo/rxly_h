@@ -162,19 +162,18 @@ function formatDdxBody(diagnoses: DiagnosisItem[]): string {
   </div>
   <div style="font-size: 12px; color: #6b7280; margin-bottom: 6px;">ICD: ${escapeHtml(dx.icdCode)}</div>
   <div style="font-size: 13px; color: #374151;">${escapeHtml(dx.evidence)}</div>
-  ${
-    dx.citations.length > 0
-      ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #f3f4f6;">
+  ${dx.citations.length > 0
+        ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #f3f4f6;">
           <div style="font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 4px;">References</div>
           ${dx.citations
-            .map(
-              (c) =>
-                `<div style="font-size: 11px; color: #6b7280; margin-bottom: 2px;">&bull; [${escapeHtml(c.source.toUpperCase())}] <a href="${escapeHtml(c.url)}" style="color: #2563eb;">${escapeHtml(c.title)}</a></div>`
-            )
-            .join("\n")}
+          .map(
+            (c) =>
+              `<div style="font-size: 11px; color: #6b7280; margin-bottom: 2px;">&bull; [${escapeHtml(c.source.toUpperCase())}] <a href="${escapeHtml(c.url)}" style="color: #2563eb;">${escapeHtml(c.title)}</a></div>`
+          )
+          .join("\n")}
         </div>`
-      : ""
-  }
+        : ""
+      }
 </div>`)
   })
 
@@ -264,18 +263,17 @@ function formatResearchBody(messages: ResearchMessage[]): string {
 <div style="border: 1px solid ${borderColor}; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; background: ${bgColor};">
   <div style="font-size: 11px; font-weight: 600; color: ${labelColor}; margin-bottom: 4px;">${label}</div>
   <div style="font-size: 13px; color: #374151; white-space: pre-wrap;">${escapeHtml(msg.content)}</div>
-  ${
-    msg.citations.length > 0
-      ? `<div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid ${borderColor};">
+  ${msg.citations.length > 0
+        ? `<div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid ${borderColor};">
           ${msg.citations
-            .map(
-              (c) =>
-                `<div style="font-size: 11px; color: #6b7280; margin-bottom: 2px;">&bull; [${escapeHtml(c.source.toUpperCase())}] <a href="${escapeHtml(c.url)}" style="color: #2563eb;">${escapeHtml(c.title)}</a></div>`
-            )
-            .join("\n")}
+          .map(
+            (c) =>
+              `<div style="font-size: 11px; color: #6b7280; margin-bottom: 2px;">&bull; [${escapeHtml(c.source.toUpperCase())}] <a href="${escapeHtml(c.url)}" style="color: #2563eb;">${escapeHtml(c.title)}</a></div>`
+          )
+          .join("\n")}
         </div>`
-      : ""
-  }
+        : ""
+      }
 </div>`)
   })
 
@@ -383,408 +381,40 @@ export function getActiveTabExportHtml(): { html: string; tabLabel: string } {
   }
 }
 
-// ── jsPDF-based PDF generation (no html2canvas) ──
-
-type RGB = [number, number, number]
-
-const COLORS = {
-  black: [17, 24, 39] as RGB,
-  gray: [107, 114, 128] as RGB,
-  lightGray: [156, 163, 175] as RGB,
-  red: [220, 38, 38] as RGB,
-  green: [22, 163, 74] as RGB,
-  amber: [217, 119, 6] as RGB,
-  blue: [37, 99, 235] as RGB,
-  teal: [5, 150, 105] as RGB,
-  lineColor: [229, 231, 235] as RGB,
-}
-
-interface PdfWriter {
-  y: number
-  doc: import("jspdf").jsPDF
-  pageWidth: number
-  pageHeight: number
-  margin: number
-  contentWidth: number
-}
-
-function checkPageBreak(w: PdfWriter, neededHeight: number) {
-  if (w.y + neededHeight > w.pageHeight - w.margin) {
-    w.doc.addPage()
-    w.y = w.margin
-  }
-}
-
-function drawLine(w: PdfWriter) {
-  w.doc.setDrawColor(...COLORS.lineColor)
-  w.doc.setLineWidth(0.3)
-  w.doc.line(w.margin, w.y, w.margin + w.contentWidth, w.y)
-  w.y += 4
-}
-
-function writeText(
-  w: PdfWriter,
-  text: string,
-  opts: {
-    fontSize?: number
-    color?: RGB
-    bold?: boolean
-    indent?: number
-    lineHeight?: number
-    prefix?: string
-  } = {}
-) {
-  const {
-    fontSize = 10,
-    color = COLORS.black,
-    bold = false,
-    indent = 0,
-    lineHeight = 1.4,
-    prefix,
-  } = opts
-
-  w.doc.setFontSize(fontSize)
-  w.doc.setTextColor(...color)
-  w.doc.setFont("helvetica", bold ? "bold" : "normal")
-
-  const x = w.margin + indent
-  const maxWidth = w.contentWidth - indent
-
-  // Split text into lines that fit
-  const lines = w.doc.splitTextToSize(text, maxWidth)
-
-  for (let i = 0; i < lines.length; i++) {
-    const lineText = i === 0 && prefix ? `${prefix}${lines[i]}` : lines[i]
-    const h = fontSize * 0.353 * lineHeight // pt to mm, with line height
-    checkPageBreak(w, h)
-    w.doc.text(lineText, x, w.y)
-    w.y += h
-  }
-}
-
-function writeSectionTitle(w: PdfWriter, title: string) {
-  w.y += 4
-  checkPageBreak(w, 12)
-  writeText(w, title, { fontSize: 12, bold: true, color: COLORS.black })
-  w.y += 1
-  drawLine(w)
-}
-
-function writeInsightsPdf(w: PdfWriter) {
-  const { summary, keyFindings, redFlags, checklistItems } =
-    useInsightsStore.getState()
-
-  if (summary) {
-    writeSectionTitle(w, "Summary")
-    writeText(w, summary, { color: COLORS.black })
-  }
-
-  if (keyFindings.length > 0) {
-    writeSectionTitle(w, "Key Findings")
-    keyFindings.forEach((f) => {
-      writeText(w, f, { indent: 4, prefix: "\u2022 " })
-      w.y += 1
-    })
-  }
-
-  if (redFlags.length > 0) {
-    writeSectionTitle(w, "Red Flags")
-    redFlags.forEach((f) => {
-      writeText(w, f, { indent: 4, color: COLORS.red, prefix: "\u26A0 " })
-      w.y += 1
-    })
-  }
-
-  if (checklistItems.length > 0) {
-    writeSectionTitle(w, "Checklist")
-    checklistItems.forEach((item) => {
-      const icon = item.isChecked ? "\u2611" : "\u2610"
-      const color = item.isChecked ? COLORS.gray : COLORS.black
-      writeText(w, `${icon} ${item.label}`, { indent: 4, color })
-      if (item.doctorNote) {
-        writeText(w, `Note: ${item.doctorNote}`, {
-          indent: 12,
-          fontSize: 9,
-          color: COLORS.gray,
-        })
-      }
-      w.y += 1
-    })
-  }
-
-  if (!summary && keyFindings.length === 0 && redFlags.length === 0 && checklistItems.length === 0) {
-    writeText(w, "No insights data available.", { color: COLORS.lightGray })
-  }
-}
-
-function writeDdxPdf(w: PdfWriter) {
-  const { diagnoses } = useDdxStore.getState()
-
-  if (diagnoses.length === 0) {
-    writeText(w, "No differential diagnoses available.", {
-      color: COLORS.lightGray,
-    })
-    return
-  }
-
-  const confidenceColor: Record<string, RGB> = {
-    high: COLORS.green,
-    moderate: COLORS.amber,
-    low: COLORS.red,
-  }
-
-  diagnoses.forEach((dx, i) => {
-    checkPageBreak(w, 20)
-    w.y += 3
-
-    // Disease name + confidence
-    const confColor = confidenceColor[dx.confidence] || COLORS.gray
-    writeText(w, `${i + 1}. ${dx.diseaseName}`, {
-      fontSize: 11,
-      bold: true,
-    })
-    // Confidence on same conceptual block
-    writeText(w, `Confidence: ${dx.confidence}`, {
-      fontSize: 9,
-      color: confColor,
-      indent: 4,
-    })
-
-    // ICD code
-    writeText(w, `ICD: ${dx.icdCode}`, {
-      fontSize: 9,
-      color: COLORS.gray,
-      indent: 4,
-    })
-    w.y += 1
-
-    // Evidence
-    writeText(w, dx.evidence, { indent: 4, fontSize: 9.5 })
-
-    // Citations
-    if (dx.citations.length > 0) {
-      w.y += 2
-      writeText(w, "References:", {
-        fontSize: 8,
-        bold: true,
-        color: COLORS.gray,
-        indent: 4,
-      })
-      dx.citations.forEach((c) => {
-        writeText(
-          w,
-          `[${c.source.toUpperCase()}] ${c.title}`,
-          { fontSize: 8, color: COLORS.gray, indent: 8 }
-        )
-      })
-    }
-
-    w.y += 2
-    drawLine(w)
-  })
-}
-
-function writeRecordPdf(w: PdfWriter) {
-  const { record } = useRecordStore.getState()
-
-  if (!record) {
-    writeText(w, "No consultation record available.", {
-      color: COLORS.lightGray,
-    })
-    return
-  }
-
-  // Vitals
-  if (record.vitals) {
-    const v = record.vitals
-    const vitals = [
-      { label: "BP", value: v.bp },
-      { label: "HR", value: v.hr },
-      { label: "Temp", value: v.temp },
-      { label: "RR", value: v.rr },
-      { label: "SpO2", value: v.spo2 },
-    ].filter((x) => x.value)
-
-    if (vitals.length > 0) {
-      writeSectionTitle(w, "Vitals")
-      const row = vitals.map((x) => `${x.label}: ${x.value}`).join("   |   ")
-      writeText(w, row, { fontSize: 10 })
-    }
-  }
-
-  const sections: { label: string; value: string | null }[] = [
-    { label: "Chief Complaint", value: record.chiefComplaint },
-    { label: "History of Present Illness", value: record.hpiText },
-    { label: "Current Medications", value: record.medications },
-    { label: "Review of Systems", value: record.rosText },
-    { label: "Past Medical History", value: record.pmh },
-    { label: "Social History", value: record.socialHistory },
-    { label: "Family History", value: record.familyHistory },
-    { label: "Physical Exam", value: record.physicalExam },
-    { label: "Labs / Studies", value: record.labsStudies },
-    { label: "Assessment", value: record.assessment },
-    { label: "Plan", value: record.plan },
-  ]
-
-  sections.forEach(({ label, value }) => {
-    if (value) {
-      writeSectionTitle(w, label)
-      writeText(w, value, { fontSize: 10 })
-    }
-  })
-}
-
-function writeResearchPdf(w: PdfWriter) {
-  const { messages } = useResearchStore.getState()
-
-  if (messages.length === 0) {
-    writeText(w, "No research messages available.", {
-      color: COLORS.lightGray,
-    })
-    return
-  }
-
-  messages.forEach((msg) => {
-    const isUser = msg.role === "user"
-    const label = isUser ? "You" : "Rxly Research"
-    const labelColor = isUser ? COLORS.blue : COLORS.teal
-
-    checkPageBreak(w, 12)
-    w.y += 3
-    writeText(w, label, { fontSize: 9, bold: true, color: labelColor })
-    writeText(w, msg.content, { fontSize: 10 })
-
-    if (msg.citations.length > 0) {
-      w.y += 1
-      msg.citations.forEach((c) => {
-        writeText(
-          w,
-          `[${c.source.toUpperCase()}] ${c.title}`,
-          { fontSize: 8, color: COLORS.gray, indent: 4 }
-        )
-      })
-    }
-
-    w.y += 2
-    drawLine(w)
-  })
-}
-
-function writePatientHandoutPdf(w: PdfWriter) {
-  const { document } = usePatientHandoutStore.getState()
-
-  if (!document || document.conditions.length === 0) {
-    writeText(w, "No patient handout available.", {
-      color: COLORS.lightGray,
-    })
-    return
-  }
-
-  const sectionOrder: PatientHandoutSectionKey[] = [
-    "conditionOverview",
-    "signsSymptoms",
-    "causesRiskFactors",
-    "complications",
-    "treatmentOptions",
-    "whenToSeekHelp",
-    "additionalAdviceFollowUp",
-    "disclaimer",
-  ]
-
-  const entryMap = new Map(
-    document.entries.map((entry) => [entry.conditionId, entry])
-  )
-
-  document.conditions.forEach((condition, index) => {
-    if (index > 0) {
-      w.y += 3
-      drawLine(w)
-      w.y += 3
-    }
-
-    writeText(w, `${condition.diseaseName} (${condition.icdCode})`, {
-      fontSize: 12,
-      bold: true,
-    })
-
-    const entry = entryMap.get(condition.id)
-    sectionOrder.forEach((sectionKey) => {
-      const label = PATIENT_HANDOUT_SECTION_LABELS[sectionKey]
-      writeSectionTitle(w, label)
-      writeText(w, entry?.sections[sectionKey] || "[Not provided]", {
-        fontSize: 10,
-      })
-    })
-  })
-}
+// ── PDF Export using html2pdf.js ──
 
 export async function generatePdf(): Promise<{ blob: Blob; filename: string }> {
-  const { jsPDF } = await import("jspdf")
-
-  const activeTab = useConsultationTabStore.getState().activeTab
+  const { html, tabLabel } = getActiveTabExportHtml()
   const session = useSessionStore.getState().activeSession
   const sessionTitle = session?.title || "Consultation"
-  const tabLabel = TAB_LABELS[activeTab]
-  const record = useRecordStore.getState().record
-  const patientName = record?.patientName || null
-
-  const date = new Date().toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
-  const time = new Date().toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-
-  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" })
-  const margin = 15
-  const pageWidth = doc.internal.pageSize.getWidth()
-  const pageHeight = doc.internal.pageSize.getHeight()
-  const contentWidth = pageWidth - margin * 2
-
-  const w: PdfWriter = { y: margin, doc, pageWidth, pageHeight, margin, contentWidth }
-
-  // Header
-  writeText(w, "Rxly", { fontSize: 18, bold: true })
-  writeText(w, tabLabel, { fontSize: 13, bold: true, color: COLORS.gray })
-  w.y += 2
-  const subtitle = `${sessionTitle}${patientName ? ` | Patient: ${patientName}` : ""} | ${date}`
-  writeText(w, subtitle, { fontSize: 9, color: COLORS.gray })
-  w.y += 2
-  drawLine(w)
-  w.y += 2
-
-  // Body
-  switch (activeTab) {
-    case "insights":
-      writeInsightsPdf(w)
-      break
-    case "ddx":
-      writeDdxPdf(w)
-      break
-    case "record":
-      writeRecordPdf(w)
-      break
-    case "research":
-      writeResearchPdf(w)
-      break
-    case "patientHandout":
-      writePatientHandoutPdf(w)
-      break
-  }
-
-  // Footer
-  w.y += 6
-  drawLine(w)
-  writeText(w, `Generated by Rxly on ${date} at ${time}`, {
-    fontSize: 8,
-    color: COLORS.lightGray,
-  })
-
   const dateStr = new Date().toISOString().slice(0, 10)
   const filename = `${tabLabel.replace(/\s+/g, "-").toLowerCase()}-${sessionTitle.replace(/\s+/g, "-").toLowerCase()}-${dateStr}.pdf`
 
-  return { blob: doc.output("blob"), filename }
+  // Dynamically import html2pdf
+  const html2pdfModule = (await import("html2pdf.js")) as any
+  const html2pdf = html2pdfModule.default || html2pdfModule
+
+  // Create a temporary container for rendering to ensure styles are applied correctly
+  const container = document.createElement("div")
+  container.innerHTML = html
+  // Required so html2pdf can render it accurately before destruction
+  container.style.position = "absolute"
+  container.style.left = "-9999px"
+  document.body.appendChild(container)
+
+  const opt = {
+    margin: [15, 0, 15, 0],
+    filename,
+    image: { type: "jpeg", quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+    pagebreak: { mode: ["css", "legacy"] }
+  }
+
+  try {
+    const blob = await html2pdf().from(container).set(opt).output("blob")
+    return { blob, filename }
+  } finally {
+    document.body.removeChild(container)
+  }
 }

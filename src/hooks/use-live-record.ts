@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from "react"
 import { useRecordStore } from "@/stores/record-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
+import { useNoteStore } from "@/stores/note-store"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useSettingsStore } from "@/stores/settings-store"
@@ -22,26 +23,13 @@ export async function generateRecord(
   const { summary, keyFindings } = useInsightsStore.getState()
   const existingRecord = useRecordStore.getState().record
 
-  // Fetch doctor notes and image URLs
-  let doctorNotes = ""
-  let imageUrls: string[] = []
-  try {
-    const notesRes = await fetch(`/api/sessions/${sessionId}/notes`, { signal })
-    if (notesRes.ok) {
-      const notes = await notesRes.json()
-      if (notes.length > 0) {
-        doctorNotes = notes
-          .map((n: { content: string }) => n.content)
-          .filter(Boolean)
-          .join("\n")
-        imageUrls = notes.flatMap(
-          (n: { imageUrls: string[] }) => n.imageUrls || []
-        )
-      }
-    }
-  } catch {
-    // Continue without notes
-  }
+  // Use cached notes from store instead of fetching
+  const notes = useNoteStore.getState().notes
+  const doctorNotes = notes
+    .map((n) => n.content)
+    .filter(Boolean)
+    .join("\n")
+  const imageUrls = notes.flatMap((n) => n.imageUrls || [])
 
   // Need at least transcript, notes, or images to generate
   if (!transcript.trim() && !doctorNotes.trim() && imageUrls.length === 0) return
@@ -98,15 +86,15 @@ export async function generateRecord(
         patientName,
         chiefComplaint: parsed.chiefComplaint || null,
         hpiText: parsed.hpiText || null,
-        medications: parsed.medications || null,
+        medications: Array.isArray(parsed.medications) ? parsed.medications.join("\n") : (parsed.medications || null),
         rosText: parsed.rosText || null,
         pmh: parsed.pmh || null,
         socialHistory: parsed.socialHistory || null,
         familyHistory: parsed.familyHistory || null,
         vitals: parsed.vitals || null,
         physicalExam: parsed.physicalExam || null,
-        labsStudies: parsed.labsStudies || null,
-        assessment: parsed.assessment || null,
+        labsStudies: Array.isArray(parsed.labsStudies) ? parsed.labsStudies.join("\n") : (parsed.labsStudies || null),
+        assessment: Array.isArray(parsed.assessment) ? parsed.assessment.map((a: string, i: number) => `${i + 1}. ${a}`).join("\n") : (parsed.assessment || null),
         plan: parsed.plan || null,
       }
       setRecord(newRecord)

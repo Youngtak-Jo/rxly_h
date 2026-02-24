@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
-import { streamText } from "ai"
+import { streamObject } from "ai"
+import { z } from "zod"
 import { DEFAULT_MODEL } from "@/lib/xai"
 import { getModel, isSupportedModel } from "@/lib/ai-provider"
 import { RECORD_SYSTEM_PROMPT } from "@/lib/prompts"
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
 
     const textContent = [
       transcript?.trim()
-        ? `Transcript:\n${(transcript as string).slice(-6000)}`
+        ? `Transcript:\n${transcript}`
         : "Transcript:\n(No speech recorded yet)",
       doctorNotes?.trim()
         ? `\nDoctor's notes (inline annotations during consultation):\n${doctorNotes}`
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
 
     const systemPrompt = buildSystemPrompt(RECORD_SYSTEM_PROMPT, customInstructions)
 
-    const result = streamText({
+    const result = streamObject({
       model,
       system: systemPrompt,
       messages: [
@@ -82,10 +83,32 @@ export async function POST(req: Request) {
         },
       ],
       ...buildGenerationOptions(modelId, { temperature: 0.2 }),
+      schema: z.object({
+        chiefComplaint: z.string().nullable().describe("Primary reason for visit in patient's words"),
+        hpiText: z.string().nullable().describe("Detailed history of present illness narrative"),
+        medications: z.array(z.string()).nullable().describe("Current medications list. Include both prescription and OTC medications."),
+        rosText: z.string().nullable().describe("Review of systems findings"),
+        pmh: z.string().nullable().describe("Past medical history"),
+        socialHistory: z.string().nullable().describe("Social history (smoking, alcohol, occupation, etc.)"),
+        familyHistory: z.string().nullable().describe("Family medical history"),
+        vitals: z.object({
+          bp: z.string(),
+          hr: z.string(),
+          temp: z.string(),
+          rr: z.string(),
+          spo2: z.string(),
+        }).nullable(),
+        physicalExam: z.string().nullable().describe("Physical examination findings"),
+        labsStudies: z.array(z.string()).nullable().describe("Ordered or reviewed labs and studies"),
+        assessment: z.array(z.string()).nullable().describe("Clinical assessment with problem list"),
+        plan: z.string().nullable().describe("Treatment plan organized by problem")
+      })
     })
 
     logAudit({ userId: user.id, action: "READ", resource: "ai_record" })
-    return result.toTextStreamResponse()
+    return new Response(result.textStream, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    })
   } catch (error) {
     if (error instanceof NextResponse) return error
     logger.error("Record generation error:", error)

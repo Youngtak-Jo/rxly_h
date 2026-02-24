@@ -92,11 +92,16 @@ export async function POST(req: Request) {
     let ragContextText = ""
     if (
       hasConnectorsEnabled &&
-      (transcript?.trim() || doctorNotes?.trim())
+      (currentInsights?.summary?.trim() || doctorNotes?.trim() || transcript?.trim())
     ) {
       try {
+        // Use insights summary + key findings for search context instead of raw transcript if possible
+        const insightsContext = currentInsights?.summary
+          ? `${currentInsights.summary}\n${currentInsights.keyFindings?.join(", ") || ""}`
+          : transcript || ""
+
         const searchTerms = await extractSearchTerms(
-          transcript || "",
+          insightsContext,
           doctorNotes || "",
           modelId
         )
@@ -116,16 +121,12 @@ export async function POST(req: Request) {
       }
     }
 
-    // Build user prompt with clinical context
+    // Build user prompt with clinical context (Omit raw transcript for token efficiency)
     let userPrompt = `--- PRE-PROCESSED CLINICAL INSIGHTS ---
 Summary: ${currentInsights.summary || "(none yet)"}
 Key Findings: ${JSON.stringify(currentInsights.keyFindings || [])}
 Red Flags: ${JSON.stringify(currentInsights.redFlags || [])}
---- END CLINICAL INSIGHTS ---
-
---- CONSULTATION TRANSCRIPT (last portion) ---
-${(transcript || "").slice(-3000)}
---- END TRANSCRIPT ---`
+--- END CLINICAL INSIGHTS ---`
 
     if (doctorNotes?.trim()) {
       userPrompt += `\n\n--- DOCTOR'S NOTES ---\n${doctorNotes}\n--- END NOTES ---`

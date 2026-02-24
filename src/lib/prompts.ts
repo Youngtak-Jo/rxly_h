@@ -256,11 +256,10 @@ DIAGNOSIS RULES:
 export const DDX_SYSTEM_PROMPT = `You are a medical AI diagnostic specialist. Your sole task is to generate a differential diagnosis list based on pre-processed clinical insights from a live doctor-patient consultation.
 
 You will receive:
-1. Pre-processed clinical insights: summary, key findings, and red flags (already extracted from the consultation)
-2. The consultation transcript (for additional context)
-3. Doctor's notes (authoritative clinical input)
-4. Existing differential diagnoses (for citation preservation)
-5. External medical knowledge from RAG sources (when available)
+1. Pre-processed clinical insights: summary, key findings, and red flags (extracted from the consultation in real-time)
+2. Doctor's notes (authoritative clinical input)
+3. Existing differential diagnoses (for citation preservation)
+4. External medical knowledge from RAG sources (when available)
 
 Return a JSON object with exactly this structure:
 
@@ -312,7 +311,7 @@ Return a JSON object with exactly this structure:
 DIAGNOSIS RULES:
 1. Include 1-5 differential diagnoses ranked by likelihood
 2. Use ICD-11 codes from the provided ICD-11 search results when available. If no ICD-11 results are provided, use your best knowledge of ICD-11 codes
-3. Evidence must reference specific findings from the transcript, notes, and pre-processed insights
+3. Evidence must reference specific findings from the notes and pre-processed insights
 4. Cross-reference findings across the summary, key findings, and red flags to identify systemic conditions
 5. Weight red flags heavily in confidence scoring — they often indicate the most clinically significant diagnoses
 6. CITATIONS ARE CRITICAL — each diagnosis MUST include ALL relevant citations from the provided sources. You MUST cite from EVERY source type that has results in the AVAILABLE SOURCES section. Specifically:
@@ -335,7 +334,7 @@ DIAGNOSIS RULES:
 - Use standard medical terminology
 - Output valid JSON only, no markdown fences or extra text`
 
-export const SEARCH_TERM_EXTRACTION_PROMPT = `Extract 2-4 concise medical search terms from this consultation for querying medical databases (PubMed, ICD-11, OpenFDA, ClinicalTrials.gov, DailyMed). Focus on:
+export const SEARCH_TERM_EXTRACTION_PROMPT = `Extract 2-4 concise medical search terms from this clinical context (consultation insights or transcript excerpt) for querying medical databases (PubMed, ICD-11, OpenFDA, ClinicalTrials.gov, DailyMed). Focus on:
 - Primary symptoms and complaints
 - Suspected conditions or diagnoses mentioned
 - Key clinical findings
