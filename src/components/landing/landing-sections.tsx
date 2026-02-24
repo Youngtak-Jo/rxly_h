@@ -58,9 +58,9 @@ export function LandingSections() {
               <p className={styles.description}>
                 Rxly can be wired to tier-1 clinical data endpoints so evidence appears at the point of care.
               </p>
-              <a href="#" className={styles.learnMoreLink}>
+              <Link href="/features/connectors" className={styles.learnMoreLink}>
                 Learn more <ChevronRight className={styles.learnMoreIcon} />
-              </a>
+              </Link>
             </div>
             <div className={`${styles.visualSquare} ${styles.connectorsSquare}`}>
               <div className={styles.connectorsUiContainer}>
@@ -98,9 +98,9 @@ export function LandingSections() {
               <p className={styles.description}>
                 From model selection to instruction policy, teams can shape Rxly around real clinic workflows.
               </p>
-              <a href="#" className={styles.learnMoreLink}>
+              <Link href="/features/customization" className={styles.learnMoreLink}>
                 Learn more <ChevronRight className={styles.learnMoreIcon} />
-              </a>
+              </Link>
             </div>
             <div className={`${styles.visualSquare} ${styles.customSquare}`}>
               <div className={`${styles.mockUiGlass} ${styles.settingsDialog}`}>
@@ -121,7 +121,7 @@ export function LandingSections() {
                       </div>
                     </div>
                     <div className={styles.mockSelect}>
-                      <span>Claude Opus 4.6</span>
+                      <span>Opus 4.6</span>
                       <ChevronDown className="w-3 h-3 text-gray-500" />
                     </div>
                   </div>
@@ -198,9 +198,9 @@ export function LandingSections() {
                 Security controls are designed for healthcare handling requirements across storage, transport, and
                 operational access.
               </p>
-              <a href="#" className={styles.learnMoreLink}>
+              <Link href="/features/security" className={styles.learnMoreLink}>
                 Learn more <ChevronRight className={styles.learnMoreIcon} />
-              </a>
+              </Link>
             </div>
             <div className={`${styles.visualSquare} ${styles.securitySquare}`}>
               <div className={`${styles.mockUiGlass} ${styles.securityCard}`}>
@@ -274,9 +274,9 @@ export function LandingSections() {
                 Data is staged as structured FHIR R4 resources, reviewed by clinicians, and then dispatched into your
                 EHR flow.
               </p>
-              <a href="#" className={styles.learnMoreLink}>
+              <Link href="/features/ehr" className={styles.learnMoreLink}>
                 Learn more <ChevronRight className={styles.learnMoreIcon} />
-              </a>
+              </Link>
             </div>
             <div className={`${styles.visualSquare} ${styles.ehrSquare}`}>
               <div className={`${styles.mockUiGlass} ${styles.ehrCard}`}>

@@ -26,6 +26,9 @@ interface TranscriptState {
   classifyingEntries: boolean
   speakerCheckBaseIndex: number
 
+  // Optimization: incremental highlight extraction
+  lastAnalyzedHighlightIndex: number
+
   addFinalEntry: (entry: TranscriptEntry) => void
   setInterimText: (text: string, speaker: Speaker) => void
   clearInterim: () => void
@@ -42,6 +45,7 @@ interface TranscriptState {
   ) => void
   setDiagnosticKeywords: (keywords: DiagnosticKeyword[]) => void
   setHighlightStatus: (status: HighlightStatus) => void
+  setLastAnalyzedHighlightIndex: (index: number) => void
 
   // Single-speaker mode actions
   setSingleSpeakerDetected: (detected: boolean) => void
@@ -63,7 +67,6 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
   speakerRoleMap: {},
   diagnosticKeywords: [],
   highlightStatus: "idle",
-
   // Single-speaker mode defaults
   singleSpeakerDetected: false,
   singleSpeakerPromptDismissed: false,
@@ -71,6 +74,8 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
   lastClassifiedEntryIndex: 0,
   classifyingEntries: false,
   speakerCheckBaseIndex: 0,
+
+  lastAnalyzedHighlightIndex: 0,
 
   addFinalEntry: (entry) =>
     set((state) => ({
@@ -96,6 +101,7 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
       classifyingEntries: false,
       lastClassifiedEntryIndex: entries.length,
       speakerCheckBaseIndex: entries.length,
+      lastAnalyzedHighlightIndex: entries.length,
     })
   },
 
@@ -115,6 +121,7 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
       lastClassifiedEntryIndex: 0,
       classifyingEntries: false,
       speakerCheckBaseIndex: 0,
+      lastAnalyzedHighlightIndex: 0,
     }),
 
   getFullTranscript: () => {
@@ -160,6 +167,8 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
     set({ diagnosticKeywords: keywords, highlightStatus: "done" }),
 
   setHighlightStatus: (status) => set({ highlightStatus: status }),
+
+  setLastAnalyzedHighlightIndex: (index) => set({ lastAnalyzedHighlightIndex: index }),
 
   // Single-speaker mode actions
   setSingleSpeakerDetected: (detected) =>

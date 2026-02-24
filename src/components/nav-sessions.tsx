@@ -34,6 +34,9 @@ import {
   getCoreCachedSession,
   prefetchCoreSessionById,
   deleteCachedSession,
+  cancelSessionLoad,
+  setCoreCachedSession,
+  setCachedSession,
 } from "@/hooks/use-session-loader"
 import {
   DropdownMenu,
@@ -141,11 +144,11 @@ export function NavSessions() {
   }, [])
 
   const restorePreviousSessionContext = async (previousSession: Session | null) => {
+    cancelSessionLoad()
+    useSessionStore.getState().setSwitching(false)
+
     if (previousSession) {
-      const restored = await loadSessionById(previousSession.id)
-      if (!restored) {
-        useSessionStore.getState().setActiveSession(previousSession)
-      }
+      useSessionStore.getState().setActiveSession(previousSession)
       router.replace(`/consultation/${previousSession.id}`)
       return
     }
@@ -169,6 +172,8 @@ export function NavSessions() {
     const previousSessions = storeBeforeCreate.sessions
     const previousActiveSession = storeBeforeCreate.activeSession
 
+    cancelSessionLoad()
+    useSessionStore.getState().setSwitching(false)
     stopSimulationIfRunning()
 
     const tempId = uuidv4()
@@ -184,15 +189,35 @@ export function NavSessions() {
       updatedAt: now,
     }
 
+    // Pre-populate caches to prevent use-session-loader from fetching a not-yet-created backend session
+    const dummyCoreSession = {
+      ...optimisticSession,
+      insights: null,
+      diagnoses: [],
+      record: null,
+      patientHandout: null,
+      checklistItems: []
+    }
+    setCoreCachedSession(tempId, dummyCoreSession)
+    setCachedSession(tempId, {
+      session: dummyCoreSession,
+      transcriptEntries: [],
+      notes: [],
+      researchMessages: []
+    })
+
     addSession(optimisticSession)
     setActiveSession(optimisticSession)
     resetConsultationStores()
+
+    // Immediate navigation to prevent active work loss during the DB wait
+    router.push(`/consultation/${tempId}`)
 
     try {
       const res = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "New Consultation" }),
+        body: JSON.stringify({ id: tempId, title: "New Consultation" }),
       })
       if (!res.ok) throw new Error("Failed to create session")
       const realSession = await res.json()
@@ -204,7 +229,6 @@ export function NavSessions() {
       if (store.activeSession?.id === tempId) {
         store.setActiveSession(realSession)
       }
-      router.push(`/consultation/${realSession.id}`)
     } catch (error) {
       console.error("Failed to create session:", error)
       toast.error("Failed to create session")
@@ -214,10 +238,9 @@ export function NavSessions() {
     }
   }
 
-  const loadSession = async (sessionId: string) => {
+  const loadSession = (sessionId: string) => {
     if (activeSession?.id === sessionId) return
-    const loaded = await loadSessionById(sessionId)
-    if (!loaded) return
+    useSessionStore.getState().setSwitching(true)
     router.push(`/consultation/${sessionId}`)
   }
 
@@ -232,9 +255,11 @@ export function NavSessions() {
 
     // 1. Abort in-flight analysis BEFORE delete to prevent race conditions
     if (deletingActiveSession) {
+      cancelSessionLoad()
       stopSimulationIfRunning()
       setActiveSession(null) // Triggers hook cleanup → aborts in-flight AI calls
       resetConsultationStores()
+      useSessionStore.getState().setSwitching(false)
     }
 
     // 2. Optimistic UI removal

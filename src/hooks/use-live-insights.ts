@@ -14,9 +14,10 @@ export function useLiveInsights() {
   const lastAnalysisTimeRef = useRef<number>(0)
   const abortControllerRef = useRef<AbortController | null>(null)
   const isAnalyzingRef = useRef(false)
-  const pendingRetriggerRef = useRef(false)
+  const pendingRetriggerRef = useRef<"force" | "normal" | false>(false)
   const titlePatchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const analysisTriggerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const triggerAnalysisRef = useRef<() => void>(undefined)
 
   const queueSessionTitlePatch = useCallback((sessionId: string, title: string) => {
     if (titlePatchTimerRef.current) {
@@ -38,8 +39,9 @@ export function useLiveInsights() {
       const session = useSessionStore.getState().activeSession
       if (!session) return
       if (isAnalyzingRef.current) {
-        // Queue a re-trigger so newly added comments get picked up
-        if (forceRun) pendingRetriggerRef.current = true
+        // Queue a re-trigger so newly added comments or transcripts get picked up
+        if (forceRun) pendingRetriggerRef.current = "force"
+        else if (!pendingRetriggerRef.current) pendingRetriggerRef.current = "normal"
         return
       }
 
@@ -263,9 +265,14 @@ export function useLiveInsights() {
       } finally {
         isAnalyzingRef.current = false
         if (pendingRetriggerRef.current) {
+          const wasForce = pendingRetriggerRef.current === "force"
           pendingRetriggerRef.current = false
-          // Pick up comments added during the in-flight analysis
-          setTimeout(() => runAnalysis(true), 100)
+          // Pick up comments or transcripts added during the in-flight analysis.
+          // We wait 100ms before triggering to let the state settle.
+          setTimeout(() => {
+            if (wasForce) runAnalysis(true)
+            else triggerAnalysisRef.current?.()
+          }, 100)
         }
       }
     },
@@ -298,6 +305,8 @@ export function useLiveInsights() {
       )
     }
   }, [analyzeTranscript])
+
+  triggerAnalysisRef.current = triggerAnalysis
 
   const triggerFromNote = useCallback(() => {
     runAnalysis(true)

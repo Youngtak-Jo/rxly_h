@@ -1,10 +1,12 @@
 "use client"
 
-import { InsightsContainer } from "./insights/insights-container"
-import { DdxContainer } from "./ddx/ddx-container"
-import { RecordContainer } from "./record/record-container"
-import { ResearchContainer } from "./research/research-container"
-import { PatientHandoutContainer } from "./patient-handout/patient-handout-container"
+import dynamic from "next/dynamic"
+
+const InsightsContainer = dynamic(() => import("./insights/insights-container").then(mod => mod.InsightsContainer))
+const DdxContainer = dynamic(() => import("./ddx/ddx-container").then(mod => mod.DdxContainer))
+const RecordContainer = dynamic(() => import("./record/record-container").then(mod => mod.RecordContainer))
+const ResearchContainer = dynamic(() => import("./research/research-container").then(mod => mod.ResearchContainer))
+const PatientHandoutContainer = dynamic(() => import("./patient-handout/patient-handout-container").then(mod => mod.PatientHandoutContainer))
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 
 export function CenterPanel() {

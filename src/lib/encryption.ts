@@ -13,8 +13,13 @@ const SALT_LENGTH = 16
 const ENCODING = "base64" as const
 
 // Cache derived keys by salt to avoid repeated scrypt calls for reads
+const MAX_CACHE_SIZE = 1000
 const _keyCache = new Map<string, Buffer>()
 let _legacyKey: Buffer | null = null
+
+// Static salt used for new encryptions to avoid scrypt bottleneck
+const V2_SALT = Buffer.from("rxly-phi-v2-salt")
+let _v2Key: Buffer | null = null
 
 function getSecret(): string {
   const secret = process.env.PHI_ENCRYPTION_KEY
@@ -30,9 +35,21 @@ function deriveKey(salt: Buffer): Buffer {
   let key = _keyCache.get(saltHex)
   if (!key) {
     key = scryptSync(getSecret(), salt, 32)
+    if (_keyCache.size >= MAX_CACHE_SIZE) {
+      const firstKey = _keyCache.keys().next().value
+      if (firstKey) _keyCache.delete(firstKey)
+    }
     _keyCache.set(saltHex, key)
   }
   return key
+}
+
+/** Get the v2 key (static salt "rxly-phi-v2-salt") for new encryptions. */
+function getV2Key(): Buffer {
+  if (!_v2Key) {
+    _v2Key = scryptSync(getSecret(), V2_SALT, 32)
+  }
+  return _v2Key
 }
 
 /** Get the legacy key (static salt "rxly-phi-salt") for reading old 3-part format. */
@@ -44,13 +61,13 @@ function getLegacyKey(): Buffer {
 }
 
 /**
- * Encrypt a plaintext string using AES-256-GCM with a per-record random salt.
+ * Encrypt a plaintext string using AES-256-GCM with a static v2 salt.
  * Output format: salt:iv:tag:encrypted (all base64)
  */
 export function encryptField(plaintext: string | null | undefined): string | null {
   if (!plaintext) return plaintext as null
-  const salt = randomBytes(SALT_LENGTH)
-  const key = deriveKey(salt)
+  const salt = V2_SALT
+  const key = getV2Key()
   const iv = randomBytes(IV_LENGTH)
   const cipher = createCipheriv(ALGORITHM, key, iv)
   const encrypted = Buffer.concat([

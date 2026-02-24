@@ -15,6 +15,7 @@ import { NoteInputBar } from "./note-input/note-input-bar"
 import { MobileTranscriptSection } from "./transcript/mobile-transcript-section"
 import { useSessionStore } from "@/stores/session-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
+import { cancelSessionLoad } from "@/hooks/use-session-loader"
 import { useRecordAutoSave } from "@/hooks/use-record-autosave"
 import { useInsightsAutoSave } from "@/hooks/use-insights-autosave"
 import { useDdxAutoSave } from "@/hooks/use-ddx-autosave"
@@ -102,6 +103,9 @@ export function ConsultationLayout() {
       createdAt: now,
       updatedAt: now,
     }
+
+    cancelSessionLoad()
+    useSessionStore.getState().setSwitching(false)
 
     // Reset AI doctor mode for new session
     useConsultationModeStore.getState().reset()

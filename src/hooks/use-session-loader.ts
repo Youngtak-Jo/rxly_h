@@ -100,6 +100,12 @@ const inFlightFullRequests = new Map<
 
 let activeHydrationSessionId: string | null = null
 
+export let targetSessionLoadId: string | null = null
+
+export function cancelSessionLoad() {
+  targetSessionLoadId = null
+}
+
 function pruneCache<K, V>(cache: Map<K, V>, maxSize: number) {
   if (cache.size < maxSize) return
   const oldestKey = cache.keys().next().value
@@ -477,11 +483,15 @@ export async function loadSessionById(sessionId: string): Promise<boolean> {
   }
   store.setHydratingSessionId(null)
 
+  targetSessionLoadId = sessionId
+
   const requestStart = performance.now()
 
   try {
     const cachedFullSession = getCachedSession(sessionId)
     if (cachedFullSession) {
+      if (targetSessionLoadId !== sessionId) return false
+
       restoreCoreStores(cachedFullSession.session)
       hydrateHeavyStores(cachedFullSession)
 
@@ -497,6 +507,8 @@ export async function loadSessionById(sessionId: string): Promise<boolean> {
     }
 
     const coreSession = await fetchCoreSessionById(sessionId)
+    if (targetSessionLoadId !== sessionId) return false
+
     restoreCoreStores(coreSession)
 
     const coreLoadedMs = performance.now() - requestStart
@@ -551,8 +563,10 @@ export async function loadSessionById(sessionId: string): Promise<boolean> {
     return false
   } finally {
     const latestStore = useSessionStore.getState()
-    latestStore.setLoading(false)
-    latestStore.setSwitching(false)
+    if (targetSessionLoadId === sessionId) {
+      latestStore.setLoading(false)
+      latestStore.setSwitching(false)
+    }
   }
 }
 

@@ -5,6 +5,7 @@ import { useRecordingStore } from "@/stores/recording-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useSettingsStore } from "@/stores/settings-store"
+import type { DiagnosticKeyword } from "@/types/session"
 
 export function useDiagnosticHighlights() {
   const isRecording = useRecordingStore((s) => s.isRecording)
@@ -14,12 +15,20 @@ export function useDiagnosticHighlights() {
   useEffect(() => {
     if (wasRecordingRef.current && !isRecording && !isAnalyzingRef.current) {
       const analyze = async () => {
-        const { getFullTranscript, setHighlightStatus, setDiagnosticKeywords } =
-          useTranscriptStore.getState()
+        const {
+          getTranscriptSince,
+          setHighlightStatus,
+          setDiagnosticKeywords,
+          diagnosticKeywords: existingKeywords,
+          lastAnalyzedHighlightIndex,
+          setLastAnalyzedHighlightIndex,
+          entries,
+        } = useTranscriptStore.getState()
 
-        const transcript = getFullTranscript()
+        const transcript = getTranscriptSince(lastAnalyzedHighlightIndex)
         if (!transcript.trim()) return
 
+        const currentEntryCount = entries.length
         isAnalyzingRef.current = true
         setHighlightStatus("loading")
 
@@ -35,8 +44,28 @@ export function useDiagnosticHighlights() {
 
           if (!res.ok) throw new Error("Keyword extraction failed")
 
-          const keywords = await res.json()
-          setDiagnosticKeywords(keywords)
+          const newKeywords = (await res.json()) as DiagnosticKeyword[]
+
+          // Deduplicate and merge keywords
+          const mergedKeywords = [...existingKeywords]
+          const seen = new Set(
+            existingKeywords
+              .filter((k) => k?.category && k?.phrase)
+              .map((k) => `${k.category}:${k.phrase.toLowerCase()}`)
+          )
+
+          for (const k of newKeywords) {
+            if (!k?.category || !k?.phrase) continue
+
+            const key = `${k.category}:${k.phrase.toLowerCase()}`
+            if (!seen.has(key)) {
+              seen.add(key)
+              mergedKeywords.push(k)
+            }
+          }
+
+          setDiagnosticKeywords(mergedKeywords)
+          setLastAnalyzedHighlightIndex(currentEntryCount)
 
           // Persist to DB
           const sessionId = useSessionStore.getState().activeSession?.id
@@ -44,7 +73,7 @@ export function useDiagnosticHighlights() {
             fetch(`/api/sessions/${sessionId}/insights`, {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ diagnosticKeywords: keywords }),
+              body: JSON.stringify({ diagnosticKeywords: mergedKeywords }),
             }).catch(console.error)
           }
         } catch (error) {

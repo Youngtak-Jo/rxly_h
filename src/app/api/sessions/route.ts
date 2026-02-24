@@ -37,6 +37,7 @@ export async function POST(req: Request) {
 
     const session = await prisma.session.create({
       data: {
+        id: body.id || undefined,
         userId: user.id,
         title: body.title || "New Consultation",
         patientName: body.patientName || null,
