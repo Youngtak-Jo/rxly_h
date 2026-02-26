@@ -73,15 +73,6 @@ Upload medical images during a consultation for context-aware AI analysis — co
 ### EMR/EHR Integration
 FHIR R4-compliant data export for seamless interoperability with electronic health record systems.
 
----
-
-## Built with Claude
-
-> **100% of the codebase was built using Claude Opus** via [Claude Code](https://claude.ai/code).
->
-> All AI reasoning and clinical intelligence features are powered by **Claude Opus 4.6** and **Claude Sonnet 4.5** — from real-time clinical analysis and differential diagnosis to medical record generation and research assistance.
-
----
 
 ## How It Works
 
