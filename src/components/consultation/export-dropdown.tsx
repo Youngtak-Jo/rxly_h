@@ -30,6 +30,7 @@ import { toast } from "sonner"
 import { useSessionStore } from "@/stores/session-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { getActiveTabExportHtml, generatePdf } from "@/lib/export-utils"
+import { trackClientEvent } from "@/lib/telemetry/client-events"
 
 const TAB_LABELS: Record<string, string> = {
   insights: "Live Insights",
@@ -55,6 +56,14 @@ export function ExportDropdown() {
       a.download = filename
       a.click()
       URL.revokeObjectURL(url)
+      if (activeSession) {
+        trackClientEvent({
+          eventType: "export_clicked",
+          feature: "pdf",
+          sessionId: activeSession.id,
+          metadata: { tab: activeTab },
+        })
+      }
       toast.success("PDF downloaded successfully")
     } catch (err) {
       console.error("PDF export error:", err)
@@ -77,6 +86,14 @@ export function ExportDropdown() {
 
       if (!res.ok) throw new Error()
 
+      if (activeSession) {
+        trackClientEvent({
+          eventType: "export_clicked",
+          feature: "email",
+          sessionId: activeSession.id,
+          metadata: { tab: activeTab },
+        })
+      }
       toast.success(`Email sent to ${email}`)
       setEmailDialogOpen(false)
       setEmail("")

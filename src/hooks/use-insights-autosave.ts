@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useSessionStore } from "@/stores/session-store"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 
 const AUTO_SAVE_DEBOUNCE_MS = 2000
 
@@ -47,7 +48,13 @@ export function useInsightsAutoSave() {
               source: item.source,
             })),
           }),
-        }).catch(console.error)
+        })
+          .then((res) => {
+            if (res.ok) {
+              deleteCachedSession(currentSession.id)
+            }
+          })
+          .catch(console.error)
       }, AUTO_SAVE_DEBOUNCE_MS)
     })
 

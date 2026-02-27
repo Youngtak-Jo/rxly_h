@@ -1,4 +1,6 @@
 import { create } from "zustand"
+import { useSessionStore } from "@/stores/session-store"
+import { trackClientEvent } from "@/lib/telemetry/client-events"
 
 type Tab = "insights" | "ddx" | "record" | "research" | "patientHandout"
 
@@ -25,12 +27,25 @@ interface ConsultationTabState {
 }
 
 export const useConsultationTabStore = create<ConsultationTabState>(
-  (set, get) => ({
+  (set) => ({
     activeTab: "insights",
     setActiveTab: (tab) =>
-      set({
-        activeTab: tab,
-        unseenUpdates: { ...get().unseenUpdates, [tab]: false },
+      set((state) => {
+        if (state.activeTab !== tab) {
+          trackClientEvent({
+            eventType: "tab_switched",
+            feature: tab,
+            sessionId: useSessionStore.getState().activeSession?.id ?? null,
+            metadata: {
+              from: state.activeTab,
+              to: tab,
+            },
+          })
+        }
+        return {
+          activeTab: tab,
+          unseenUpdates: { ...state.unseenUpdates, [tab]: false },
+        }
       }),
 
     unseenUpdates: { ...NO_UNSEEN },

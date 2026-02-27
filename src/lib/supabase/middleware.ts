@@ -45,11 +45,26 @@ export async function updateSession(request: NextRequest) {
     publicExactPaths.includes(request.nextUrl.pathname) ||
     publicPrefixPaths.some((path) => request.nextUrl.pathname.startsWith(path))
 
+  const isAdminPath = request.nextUrl.pathname.startsWith("/admin")
+
   // Redirect unauthenticated users to /login
   if (!user && !isPublicPath) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)
+  }
+
+  // Restrict admin routes to app_metadata.role=admin
+  if (user && isAdminPath) {
+    const role =
+      typeof user.app_metadata?.role === "string"
+        ? user.app_metadata.role
+        : undefined
+    if (role !== "admin") {
+      const url = request.nextUrl.clone()
+      url.pathname = "/consultation"
+      return NextResponse.redirect(url)
+    }
   }
 
   // Redirect authenticated users away from auth pages

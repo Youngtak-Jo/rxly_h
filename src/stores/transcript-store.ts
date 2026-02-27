@@ -8,10 +8,17 @@ export type IdentificationStatus =
 
 export type HighlightStatus = "idle" | "loading" | "done"
 
+function countWords(text: string): number {
+  const trimmed = text.trim()
+  if (!trimmed) return 0
+  return trimmed.split(/\s+/).length
+}
+
 interface TranscriptState {
   entries: TranscriptEntry[]
   interimText: string
   interimSpeaker: Speaker
+  wordCountTotal: number
   identificationStatus: IdentificationStatus
   identificationAttempt: number
   speakerRoleMap: Record<number, Speaker>
@@ -37,6 +44,7 @@ interface TranscriptState {
   getFullTranscript: () => string
   getTranscriptSince: (entryIndex: number) => string
   getEntryCount: () => number
+  getWordCountTotal: () => number
   setIdentificationStatus: (status: IdentificationStatus) => void
   incrementIdentificationAttempt: () => void
   relabelSpeakers: (
@@ -62,6 +70,7 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
   entries: [],
   interimText: "",
   interimSpeaker: "UNKNOWN",
+  wordCountTotal: 0,
   identificationStatus: "unidentified",
   identificationAttempt: 0,
   speakerRoleMap: {},
@@ -81,6 +90,7 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
     set((state) => ({
       entries: [...state.entries, entry],
       interimText: "",
+      wordCountTotal: state.wordCountTotal + countWords(entry.text),
     })),
 
   setInterimText: (text, speaker) =>
@@ -92,11 +102,16 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
     const hasIdentifiedSpeakers = entries.some(
       (e: TranscriptEntry) => e.speaker === "DOCTOR" || e.speaker === "PATIENT"
     )
+    const wordCountTotal = entries.reduce(
+      (sum, entry) => sum + countWords(entry.text),
+      0
+    )
     set({
       entries,
       identificationStatus: hasIdentifiedSpeakers ? "identified" : "unidentified",
       diagnosticKeywords: [],
       highlightStatus: "idle",
+      wordCountTotal,
       singleSpeakerDetected: false,
       classifyingEntries: false,
       lastClassifiedEntryIndex: entries.length,
@@ -110,6 +125,7 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
       entries: [],
       interimText: "",
       interimSpeaker: "UNKNOWN",
+      wordCountTotal: 0,
       identificationStatus: "unidentified",
       identificationAttempt: 0,
       speakerRoleMap: {},
@@ -138,6 +154,8 @@ export const useTranscriptStore = create<TranscriptState>((set, get) => ({
   },
 
   getEntryCount: () => get().entries.length,
+
+  getWordCountTotal: () => get().wordCountTotal,
 
   setIdentificationStatus: (status) =>
     set({ identificationStatus: status }),

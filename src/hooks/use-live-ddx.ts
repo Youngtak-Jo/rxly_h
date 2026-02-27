@@ -8,13 +8,17 @@ import { useSessionStore } from "@/stores/session-store"
 import { useConnectorStore } from "@/stores/connector-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useSettingsStore } from "@/stores/settings-store"
+import { buildDoctorNotes, useNoteStore } from "@/stores/note-store"
+import { trackClientEvent } from "@/lib/telemetry/client-events"
 
 const INSIGHTS_DEBOUNCE_MS = 3000
+const FORCE_DUPLICATE_GUARD_MS = 8000
 const DDX_MAX_RETRIES = 1
 const DDX_RETRY_DELAY_MS = 1000
 
 export function useLiveDdx() {
   const lastDdxTimeRef = useRef<number>(0)
+  const lastInsightsUpdatedAtRef = useRef<number>(0)
   const abortControllerRef = useRef<AbortController | null>(null)
   const isAnalyzingRef = useRef(false)
   const insightsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -38,13 +42,16 @@ export function useLiveDdx() {
         summary,
         keyFindings,
         redFlags,
+        lastUpdated,
       } = useInsightsStore.getState()
+      const insightsUpdatedAt = lastUpdated?.getTime() ?? 0
 
       // Need at least some insights context before generating DDx
       if (!summary && keyFindings.length === 0) return
 
-      const transcript = useTranscriptStore.getState().getFullTranscript()
-      const currentWordCount = transcript.split(/\s+/).length
+      const transcriptStore = useTranscriptStore.getState()
+      const transcript = transcriptStore.getFullTranscript()
+      const currentWordCount = transcriptStore.getWordCountTotal()
       const newWords = currentWordCount - wordCountAtLastUpdate
       const timeSinceLastDdx = Date.now() - lastDdxTimeRef.current
 
@@ -60,6 +67,17 @@ export function useLiveDdx() {
           return
       }
 
+      // Guard against back-to-back forced triggers with unchanged context
+      // (e.g. note-trigger + insights-reactive trigger).
+      if (
+        forceRun &&
+        newWords <= 0 &&
+        timeSinceLastDdx < FORCE_DUPLICATE_GUARD_MS &&
+        insightsUpdatedAt <= lastInsightsUpdatedAtRef.current
+      ) {
+        return
+      }
+
       // Abort any in-flight DDx generation
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
@@ -69,26 +87,32 @@ export function useLiveDdx() {
       abortControllerRef.current = abortController
       isAnalyzingRef.current = true
       setProcessing(true)
+      trackClientEvent({
+        eventType: "analysis_triggered",
+        feature: "ddx",
+        sessionId: session.id,
+        metadata: { forceRun },
+      })
 
       try {
-        // Fetch doctor notes
-        let doctorNotes = ""
-        try {
-          const notesRes = await fetch(
-            `/api/sessions/${session.id}/notes`,
-            { signal: abortController.signal }
-          )
-          if (notesRes.ok) {
-            const notes = await notesRes.json()
-            if (notes.length > 0) {
-              doctorNotes = notes
-                .map((n: { content: string }) => n.content)
-                .filter(Boolean)
-                .join("\n")
+        // Prefer local notes cache; fallback to lightweight server fetch.
+        let doctorNotes = buildDoctorNotes(useNoteStore.getState().notes)
+
+        if (!doctorNotes.trim()) {
+          try {
+            const notesRes = await fetch(
+              `/api/sessions/${session.id}/notes?includeSignedUrls=false`,
+              { signal: abortController.signal }
+            )
+            if (notesRes.ok) {
+              const notes = await notesRes.json()
+              if (notes.length > 0) {
+                doctorNotes = buildDoctorNotes(notes)
+              }
             }
+          } catch {
+            // Ignore notes fetch failure
           }
-        } catch {
-          // Ignore notes fetch failure
         }
 
         // Bail out if there's no textual content to analyze
@@ -101,6 +125,7 @@ export function useLiveDdx() {
         const { aiModel, customInstructions } = useSettingsStore.getState()
 
         const ddxBody = JSON.stringify({
+          sessionId: session.id,
           transcript,
           doctorNotes,
           model: aiModel.ddxModel,
@@ -152,8 +177,20 @@ export function useLiveDdx() {
           updateFromResponse(parsed.diagnoses, session.id)
           setWordCountAtLastUpdate(currentWordCount)
           lastDdxTimeRef.current = Date.now()
+          lastInsightsUpdatedAtRef.current = insightsUpdatedAt
+          trackClientEvent({
+            eventType: "analysis_completed",
+            feature: "ddx",
+            sessionId: session.id,
+          })
         } else {
           setProcessing(false)
+          trackClientEvent({
+            eventType: "analysis_failed",
+            feature: "ddx",
+            sessionId: session.id,
+            metadata: { reason: "invalid_response" },
+          })
         }
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
@@ -161,24 +198,18 @@ export function useLiveDdx() {
         }
         console.error("DDx generation failed:", error)
         useDdxStore.getState().setProcessing(false)
+        trackClientEvent({
+          eventType: "analysis_failed",
+          feature: "ddx",
+          sessionId: session.id,
+          metadata: { reason: "request_error" },
+        })
       } finally {
         isAnalyzingRef.current = false
       }
     },
     []
   )
-
-  const triggerFromNote = useCallback(() => {
-    runDdx(true)
-  }, [runDdx])
-
-  // Register triggerFromNote globally so NoteInputBar can call it
-  useEffect(() => {
-    useDdxStore.getState().setNoteTrigger(triggerFromNote)
-    return () => {
-      useDdxStore.getState().setNoteTrigger(null)
-    }
-  }, [triggerFromNote])
 
   // Subscribe to insights store changes and reactively trigger DDx
   useEffect(() => {
@@ -253,5 +284,4 @@ export function useLiveDdx() {
     }
   }, [activeSession?.id])
 
-  return { triggerFromNote }
 }

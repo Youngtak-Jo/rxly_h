@@ -4,6 +4,8 @@ import * as React from "react"
 import {
   IconHelp,
   IconSettings,
+  IconShield,
+  type Icon,
 } from "@tabler/icons-react"
 
 
@@ -40,7 +42,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     avatar: user?.user_metadata?.avatar_url || "",
   }
 
-  const navSecondary = [
+  const navSecondary: {
+    title: string
+    url: string
+    icon: Icon
+    onClick?: () => void
+    dataTour?: string
+  }[] = [
     {
       title: "Settings",
       url: "#",
@@ -55,6 +63,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       onClick: () => useTourStore.getState().startTour(),
     },
   ]
+
+  const role =
+    typeof user?.app_metadata?.role === "string"
+      ? user.app_metadata.role
+      : undefined
+
+  if (role === "admin") {
+    navSecondary.unshift({
+      title: "Admin",
+      url: "/admin/home",
+      icon: IconShield,
+    })
+  }
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>

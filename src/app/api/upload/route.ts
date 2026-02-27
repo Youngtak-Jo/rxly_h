@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { v4 as uuid } from "uuid"
 import { createClient } from "@supabase/supabase-js"
 import { logger } from "@/lib/logger"
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, requireSessionOwnership } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
@@ -39,6 +39,13 @@ export async function POST(req: Request) {
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
     }
+    if (!sessionId || !sessionId.trim()) {
+      return NextResponse.json(
+        { error: "sessionId is required" },
+        { status: 400 }
+      )
+    }
+    await requireSessionOwnership(sessionId, user.id)
 
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json(
@@ -67,9 +74,7 @@ export async function POST(req: Request) {
     }
     const ext = MIME_EXT[detectedMime] || "jpg"
     const filename = `${uuid()}.${ext}`
-    const storagePath = sessionId
-      ? `${sessionId}/${filename}`
-      : `unassigned/${filename}`
+    const storagePath = `${sessionId}/${filename}`
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from("medical-images")

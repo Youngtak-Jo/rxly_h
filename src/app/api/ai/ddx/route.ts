@@ -20,6 +20,7 @@ import {
   getRAGSourceMeta,
 } from "@/lib/connectors"
 import type { ConnectorState } from "@/types/insights"
+import { withAiTelemetry } from "@/lib/telemetry/ai"
 
 async function extractSearchTerms(
   transcript: string,
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
       enabledConnectors,
       model: modelOverride,
       customInstructions,
+      sessionId,
     } = await req.json()
 
     if (!transcript?.trim() && !doctorNotes?.trim()) {
@@ -163,12 +165,32 @@ Red Flags: ${JSON.stringify(currentInsights.redFlags || [])}
 
     const systemPrompt = buildSystemPrompt(DDX_SYSTEM_PROMPT, customInstructions)
 
-    const { text } = await generateText({
-      model,
-      system: systemPrompt,
-      prompt: userPrompt,
-      ...buildGenerationOptions(modelId, { temperature: 0.3 }),
-    })
+    const text = await withAiTelemetry(
+      {
+        userId: user.id,
+        sessionId: typeof sessionId === "string" ? sessionId : null,
+        feature: "ai_ddx",
+        model: modelId,
+      },
+      async () => {
+        const result = await generateText({
+          model,
+          system: systemPrompt,
+          prompt: userPrompt,
+          ...buildGenerationOptions(modelId, { temperature: 0.3 }),
+        })
+
+        return {
+          result: result.text,
+          usage: result.usage
+            ? {
+                inputTokens: result.usage.inputTokens,
+                outputTokens: result.usage.outputTokens,
+              }
+            : undefined,
+        }
+      }
+    )
 
     const parsedResult = safeParseAIJson<{ diagnoses?: unknown[] }>(text)
     if (parsedResult.error || parsedResult.data === null) {

@@ -9,6 +9,7 @@ import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { errorResponse } from "@/lib/api-response"
 import { buildGenerationOptions } from "@/lib/ai-request-options"
+import { withAiTelemetry } from "@/lib/telemetry/ai"
 
 export async function POST(req: Request) {
   try {
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
     const { allowed } = checkRateLimit(user.id, "ai")
     if (!allowed) return rateLimitResponse()
 
-    const { messages, model: modelOverride } = await req.json()
+    const { messages, model: modelOverride, sessionId } = await req.json()
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return errorResponse("No messages provided", 400)
@@ -29,17 +30,29 @@ export async function POST(req: Request) {
     }
     const model = getModel(modelId)
 
-    const result = streamText({
-      model,
-      system: AI_DOCTOR_SYSTEM_PROMPT,
-      // content can be a plain string or multimodal array [{type:"text",...},{type:"image",...}]
-      messages: messages as ModelMessage[],
-      ...buildGenerationOptions(modelId, { temperature: 0.4 }),
-    })
+    const response = await withAiTelemetry(
+      {
+        userId: user.id,
+        sessionId: typeof sessionId === "string" ? sessionId : null,
+        feature: "ai_doctor",
+        model: modelId,
+      },
+      async () => {
+        const result = streamText({
+          model,
+          system: AI_DOCTOR_SYSTEM_PROMPT,
+          // content can be a plain string or multimodal array [{type:"text",...},{type:"image",...}]
+          messages: messages as ModelMessage[],
+          ...buildGenerationOptions(modelId, { temperature: 0.4 }),
+        })
+
+        return { result: result.toTextStreamResponse() }
+      }
+    )
 
     logAudit({ userId: user.id, action: "READ", resource: "ai_doctor" })
 
-    return result.toTextStreamResponse()
+    return response
   } catch (error) {
     if (error instanceof NextResponse) return error
     logger.error("AI Doctor generation error:", error)

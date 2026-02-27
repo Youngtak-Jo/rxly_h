@@ -5,7 +5,14 @@ import { useInsightsStore } from "@/stores/insights-store"
 import { useSettingsStore } from "@/stores/settings-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
+import {
+  buildDoctorNotes,
+  buildNoteImageEntries,
+  useNoteStore,
+} from "@/stores/note-store"
 import type { InsightsResponse } from "@/types/insights"
+import { trackClientEvent } from "@/lib/telemetry/client-events"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 
 const CHECKPOINT_INTERVAL = 5 // Send full transcript every N analyses
 
@@ -29,7 +36,13 @@ export function useLiveInsights() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title }),
-      }).catch(console.error)
+      })
+        .then((res) => {
+          if (res.ok) {
+            deleteCachedSession(sessionId)
+          }
+        })
+        .catch(console.error)
       titlePatchTimerRef.current = null
     }, 500)
   }, [])
@@ -68,7 +81,7 @@ export function useLiveInsights() {
       const transcriptStore = useTranscriptStore.getState()
       const currentEntryCount = transcriptStore.getEntryCount()
       const fullTranscript = transcriptStore.getFullTranscript()
-      const currentWordCount = fullTranscript.split(/\s+/).length
+      const currentWordCount = transcriptStore.getWordCountTotal()
       const newWords = currentWordCount - wordCountAtLastUpdate
       const timeSinceLastAnalysis = Date.now() - lastAnalysisTimeRef.current
 
@@ -105,57 +118,59 @@ export function useLiveInsights() {
       abortControllerRef.current = abortController
       isAnalyzingRef.current = true
       setProcessing(true)
+      trackClientEvent({
+        eventType: "analysis_triggered",
+        feature: "insights",
+        sessionId: session.id,
+        metadata: { forceRun },
+      })
 
       try {
-        // Fetch doctor notes for context (including image URLs for vision)
+        // Prefer local note cache to avoid per-analysis signed URL regeneration.
         let doctorNotes = ""
         let newImageUrls: string[] = []
         let newImageStoragePaths: string[] = []
         let previousImageFindings: { storagePath: string; findings: string }[] = []
-        try {
-          const notesRes = await fetch(
-            `/api/sessions/${session.id}/notes`,
-            { signal: abortController.signal }
-          )
-          if (notesRes.ok) {
-            const notes = await notesRes.json()
-            if (notes.length > 0) {
-              doctorNotes = notes
-                .map((n: { content: string }) => n.content)
-                .filter(Boolean)
-                .join("\n")
+        let notes: Array<{
+          content?: string
+          imageUrls?: string[]
+          storagePaths?: string[]
+        }> = useNoteStore.getState().notes
 
-              // Pair imageUrls with storagePaths for stable identification
-              const { analyzedImages } = useInsightsStore.getState()
-              const imageEntries: { storagePath: string; imageUrl: string }[] = []
-              notes.forEach(
-                (n: { imageUrls: string[]; storagePaths: string[] }) => {
-                  const urls = n.imageUrls || []
-                  const paths = n.storagePaths || []
-                  urls.forEach((url: string, i: number) => {
-                    if (paths[i]) {
-                      imageEntries.push({ storagePath: paths[i], imageUrl: url })
-                    }
-                  })
-                }
-              )
-
-              // Separate new images from already-analyzed ones
-              const newEntries = imageEntries.filter(
-                (e) => !analyzedImages[e.storagePath]
-              )
-              newImageUrls = newEntries.map((e) => e.imageUrl)
-              newImageStoragePaths = newEntries.map((e) => e.storagePath)
-              previousImageFindings = imageEntries
-                .filter((e) => analyzedImages[e.storagePath])
-                .map((e) => ({
-                  storagePath: e.storagePath,
-                  findings: analyzedImages[e.storagePath],
-                }))
+        // Fallback fetch for sessions where local cache isn't populated yet.
+        if (notes.length === 0) {
+          try {
+            const notesRes = await fetch(
+              `/api/sessions/${session.id}/notes?includeSignedUrls=false`,
+              { signal: abortController.signal }
+            )
+            if (notesRes.ok) {
+              notes = await notesRes.json()
             }
+          } catch {
+            // Ignore notes fetch failure
           }
-        } catch {
-          // Ignore notes fetch failure
+        }
+
+        if (notes.length > 0) {
+          doctorNotes = buildDoctorNotes(notes)
+
+          // Pair imageUrls with storagePaths for stable identification
+          const { analyzedImages } = useInsightsStore.getState()
+          const imageEntries = buildNoteImageEntries(notes)
+
+          // Separate new images from already-analyzed ones
+          const newEntries = imageEntries.filter(
+            (e) => !analyzedImages[e.storagePath]
+          )
+          newImageUrls = newEntries.map((e) => e.imageUrl)
+          newImageStoragePaths = newEntries.map((e) => e.storagePath)
+          previousImageFindings = imageEntries
+            .filter((e) => analyzedImages[e.storagePath])
+            .map((e) => ({
+              storagePath: e.storagePath,
+              findings: analyzedImages[e.storagePath],
+            }))
         }
 
         const { aiModel, customInstructions } = useSettingsStore.getState()
@@ -164,6 +179,7 @@ export function useLiveInsights() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            sessionId: session.id,
             transcript,
             doctorNotes,
             newImageUrls,
@@ -223,6 +239,12 @@ export function useLiveInsights() {
           setEntryCountAtLastUpdate(currentEntryCount)
           incrementAnalysisCount()
           lastAnalysisTimeRef.current = Date.now()
+          trackClientEvent({
+            eventType: "analysis_completed",
+            feature: "insights",
+            sessionId: session.id,
+            metadata: { mode },
+          })
 
           // Cache findings for newly analyzed images to avoid re-sending them
           if (newImageStoragePaths.length > 0) {
@@ -255,6 +277,12 @@ export function useLiveInsights() {
           setProcessing(false)
           // Update lastUpdated so reactive subscribers (DDx) don't silently skip
           useInsightsStore.setState({ lastUpdated: new Date() })
+          trackClientEvent({
+            eventType: "analysis_failed",
+            feature: "insights",
+            sessionId: session.id,
+            metadata: { reason: "parse_error" },
+          })
         }
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
@@ -262,6 +290,12 @@ export function useLiveInsights() {
         }
         console.error("Insights analysis failed:", error)
         useInsightsStore.getState().setProcessing(false)
+        trackClientEvent({
+          eventType: "analysis_failed",
+          feature: "insights",
+          sessionId: session.id,
+          metadata: { reason: "request_error" },
+        })
       } finally {
         isAnalyzingRef.current = false
         if (pendingRetriggerRef.current) {
@@ -343,6 +377,13 @@ export function useLiveInsights() {
       useInsightsStore.getState().setNoteTrigger(null)
     }
   }, [triggerFromNote])
+
+  useEffect(() => {
+    useInsightsStore.getState().setFinalTrigger(runFinalAnalysis)
+    return () => {
+      useInsightsStore.getState().setFinalTrigger(null)
+    }
+  }, [runFinalAnalysis])
 
   // Clean up on session change
   useEffect(() => {

@@ -1,8 +1,12 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { useRecordStore } from "@/stores/record-store"
+import {
+  computeRecordFingerprint,
+  useRecordStore,
+} from "@/stores/record-store"
 import { useSessionStore } from "@/stores/session-store"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 
 const AUTO_SAVE_DEBOUNCE_MS = 2000
 
@@ -27,28 +31,44 @@ export function useRecordAutoSave() {
 
       autoSaveTimerRef.current = setTimeout(() => {
         const currentSession = useSessionStore.getState().activeSession
-        const currentRecord = useRecordStore.getState().record
-        if (!currentRecord || !currentSession || currentSession.id !== scheduledSessionId) return
+        const {
+          record,
+          lastPersistedFingerprint,
+          setLastPersistedFingerprint,
+        } = useRecordStore.getState()
+        if (!record || !currentSession || currentSession.id !== scheduledSessionId) return
+
+        const currentFingerprint = computeRecordFingerprint(record)
+        if (!currentFingerprint || currentFingerprint === lastPersistedFingerprint) {
+          return
+        }
 
         fetch(`/api/sessions/${currentSession.id}/record`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            patientName: currentRecord.patientName,
-            chiefComplaint: currentRecord.chiefComplaint,
-            hpiText: currentRecord.hpiText,
-            medications: currentRecord.medications,
-            rosText: currentRecord.rosText,
-            pmh: currentRecord.pmh,
-            socialHistory: currentRecord.socialHistory,
-            familyHistory: currentRecord.familyHistory,
-            vitals: currentRecord.vitals,
-            physicalExam: currentRecord.physicalExam,
-            labsStudies: currentRecord.labsStudies,
-            assessment: currentRecord.assessment,
-            plan: currentRecord.plan,
+            patientName: record.patientName,
+            chiefComplaint: record.chiefComplaint,
+            hpiText: record.hpiText,
+            medications: record.medications,
+            rosText: record.rosText,
+            pmh: record.pmh,
+            socialHistory: record.socialHistory,
+            familyHistory: record.familyHistory,
+            vitals: record.vitals,
+            physicalExam: record.physicalExam,
+            labsStudies: record.labsStudies,
+            assessment: record.assessment,
+            plan: record.plan,
           }),
-        }).catch(console.error)
+        })
+          .then((res) => {
+            if (res.ok) {
+              deleteCachedSession(currentSession.id)
+              setLastPersistedFingerprint(currentFingerprint)
+            }
+          })
+          .catch(console.error)
       }, AUTO_SAVE_DEBOUNCE_MS)
     })
 

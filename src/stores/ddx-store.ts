@@ -15,9 +15,6 @@ interface DdxState {
   isProcessing: boolean
   lastUpdated: Date | null
   wordCountAtLastUpdate: number
-  // Global callback for triggering DDx from note submission
-  _noteTrigger: (() => void) | null
-  setNoteTrigger: (fn: (() => void) | null) => void
 
   setProcessing: (processing: boolean) => void
   updateFromResponse: (diagnoses: DdxOutputItem[], sessionId: string) => void
@@ -31,8 +28,6 @@ export const useDdxStore = create<DdxState>((set) => ({
   isProcessing: false,
   lastUpdated: null,
   wordCountAtLastUpdate: 0,
-  _noteTrigger: null,
-  setNoteTrigger: (fn) => set({ _noteTrigger: fn }),
 
   setProcessing: (isProcessing) => set({ isProcessing }),
 

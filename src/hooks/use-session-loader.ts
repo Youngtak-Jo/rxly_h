@@ -411,9 +411,16 @@ async function fetchCoreSessionById(sessionId: string): Promise<CoreSessionRespo
   return request
 }
 
-async function fetchFullSessionById(sessionId: string): Promise<FullSessionResponse> {
-  const cached = getCachedSession(sessionId)
-  if (cached) return cached
+async function fetchFullSessionById(
+  sessionId: string,
+  options?: { forceRefresh?: boolean }
+): Promise<FullSessionResponse> {
+  const forceRefresh = options?.forceRefresh ?? false
+
+  if (!forceRefresh) {
+    const cached = getCachedSession(sessionId)
+    if (cached) return cached
+  }
 
   const inFlight = inFlightFullRequests.get(sessionId)
   if (inFlight) return inFlight.promise
@@ -494,6 +501,18 @@ export async function loadSessionById(sessionId: string): Promise<boolean> {
 
       restoreCoreStores(cachedFullSession.session)
       hydrateHeavyStores(cachedFullSession)
+
+      // Cache hit path: return immediately, then refresh in background to avoid
+      // serving stale data for up to FULL_CACHE_TTL_MS.
+      void fetchFullSessionById(sessionId, { forceRefresh: true })
+        .then((freshFullSession) => {
+          if (useSessionStore.getState().activeSession?.id !== sessionId) return
+          hydrateHeavyStores(freshFullSession)
+        })
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === "AbortError") return
+          console.error("Background session revalidate failed:", error)
+        })
 
       if (process.env.NODE_ENV !== "production") {
         const fullHydratedMs = performance.now() - requestStart

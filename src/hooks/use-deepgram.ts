@@ -6,6 +6,7 @@ import { useSettingsStore } from "@/stores/settings-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useLiveInsights } from "@/hooks/use-live-insights"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 import { v4 as uuid } from "uuid"
 import type { Speaker } from "@/types/session"
 
@@ -134,7 +135,12 @@ export function useDeepgram() {
       // Get temporary token
       const tokenRes = await fetch("/api/deepgram/token", { method: "POST" })
       if (!tokenRes.ok) throw new Error("Failed to get Deepgram token")
-      const { token } = await tokenRes.json()
+      const tokenPayload = (await tokenRes.json()) as {
+        token: string
+        tokenType?: "bearer" | "token"
+      }
+      const token = tokenPayload.token
+      const tokenType = tokenPayload.tokenType || "bearer"
 
       // Read settings at connection time
       const settings = useSettingsStore.getState()
@@ -188,7 +194,7 @@ export function useDeepgram() {
 
       const ws = new WebSocket(
         `wss://api.deepgram.com/v1/listen?${params}`,
-        ["token", token]
+        [tokenType, token]
       )
       wsRef.current = ws
 
@@ -296,7 +302,13 @@ export function useDeepgram() {
                       confidence:
                         data.channel?.alternatives?.[0]?.confidence || 0,
                     }),
-                  }).catch(console.error)
+                  })
+                    .then((res) => {
+                      if (res.ok) {
+                        deleteCachedSession(sessionId)
+                      }
+                    })
+                    .catch(console.error)
                 }
               }
             } else if (!data.is_final) {

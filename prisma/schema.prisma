@@ -27,6 +27,8 @@ model Session {
   diagnoses         Diagnosis[]
   notes             Note[]
   researchMessages  ResearchMessage[]
+  aiUsageEvents     AiUsageEvent[]
+  clientEvents      ClientEvent[]
 
   @@index([userId])
   @@index([userId, startedAt])
@@ -194,6 +196,49 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model AiUsageEvent {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  sessionId   String?  @map("session_id")
+  feature     String
+  provider    String
+  model       String
+  requestId   String?  @map("request_id")
+  inputTokens Int?     @map("input_tokens")
+  outputTokens Int?    @map("output_tokens")
+  latencyMs   Int?     @map("latency_ms")
+  costUsd     Float?   @map("cost_usd")
+  status      String
+  errorCode   String?  @map("error_code")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  session Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([feature, createdAt])
+  @@index([sessionId, createdAt])
+  @@map("ai_usage_events")
+}
+
+model ClientEvent {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  sessionId String?  @map("session_id")
+  eventType String   @map("event_type")
+  feature   String
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([eventType, createdAt])
+  @@index([sessionId, createdAt])
+  @@map("client_events")
+}
+
 model ExportLink {
   id          String   @id @default(uuid())
   userId      String   @map("user_id")
@@ -206,6 +251,80 @@ model ExportLink {
   @@index([userId])
   @@index([sessionId])
   @@map("export_links")
+}
+
+enum AdminIncidentStatus {
+  NEW
+  ACK
+  IN_PROGRESS
+  RESOLVED
+  DISMISSED
+}
+
+enum AdminIncidentPriority {
+  P1
+  P2
+  P3
+}
+
+model AdminAlertIncident {
+  id              String                @id @default(uuid())
+  fingerprint     String                @unique
+  rule            String
+  severity        String
+  priority        AdminIncidentPriority @default(P2)
+  title           String
+  description     String
+  metadata        Json?
+  userId          String?               @map("user_id")
+  sessionId       String?               @map("session_id")
+  firstSeenAt     DateTime              @default(now()) @map("first_seen_at")
+  lastSeenAt      DateTime              @default(now()) @map("last_seen_at")
+  occurrenceCount Int                   @default(1) @map("occurrence_count")
+  status          AdminIncidentStatus   @default(NEW)
+  ownerId         String?               @map("owner_id")
+  dueAt           DateTime?             @map("due_at")
+  resolutionNote  String?               @map("resolution_note")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  activities AdminIncidentActivity[]
+
+  @@index([status, priority, lastSeenAt])
+  @@index([ownerId, status])
+  @@index([sessionId, status])
+  @@index([userId, status])
+  @@map("admin_alert_incidents")
+}
+
+model AdminIncidentActivity {
+  id         String             @id @default(uuid())
+  incidentId String             @map("incident_id")
+  actorId    String             @map("actor_id")
+  action     String
+  metadata   Json?
+  createdAt  DateTime           @default(now()) @map("created_at")
+
+  incident AdminAlertIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("admin_incident_activities")
+}
+
+model AdminSavedView {
+  id          String   @id @default(uuid())
+  adminUserId String   @map("admin_user_id")
+  pageKey     String   @map("page_key")
+  name        String
+  params      Json
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([adminUserId, pageKey])
+  @@index([adminUserId, isDefault])
+  @@map("admin_saved_views")
 }
 
 enum DiagnosisConfidence {

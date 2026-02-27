@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useSettingsStore } from "@/stores/settings-store"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 import type { Speaker, TranscriptEntry } from "@/types/session"
 
 const BATCH_SIZE = 3
@@ -55,6 +56,7 @@ export function useSingleSpeakerClassification() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            sessionId: activeSession?.id,
             entries: newEntries,
             context: contextEntries.length > 0 ? contextEntries : undefined,
             model: aiModel,
@@ -99,6 +101,7 @@ export async function classifyAllEntries(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        sessionId,
         entries: entries.map((e) => ({ id: e.id, text: e.text })),
         model: aiModel,
       }),
@@ -139,5 +142,11 @@ function updateDbEntries(
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ updates }),
-  }).catch(console.error)
+  })
+    .then((res) => {
+      if (res.ok) {
+        deleteCachedSession(sessionId)
+      }
+    })
+    .catch(console.error)
 }

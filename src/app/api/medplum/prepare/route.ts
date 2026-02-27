@@ -12,6 +12,7 @@ import { buildClinicalDataPrompt } from "@/lib/medplum-utils"
 import { buildGenerationOptions } from "@/lib/ai-request-options"
 import { safeParseAIJson } from "@/lib/validations"
 import type { Bundle } from "@medplum/fhirtypes"
+import { withAiTelemetry } from "@/lib/telemetry/ai"
 
 export async function POST(req: Request) {
   try {
@@ -41,15 +42,38 @@ export async function POST(req: Request) {
     }
 
     const model = getModel(modelId)
-    const { text } = await generateText({
-      model,
-      system: FHIR_MAPPING_SYSTEM_PROMPT,
-      prompt: clinicalData,
-      ...buildGenerationOptions(modelId, {
-        temperature: 0.1,
-        maxOutputTokens: 8000,
-      }),
-    })
+    const text = await withAiTelemetry(
+      {
+        userId: user.id,
+        sessionId:
+          session && typeof session === "object" && typeof session.id === "string"
+            ? session.id
+            : null,
+        feature: "medplum_prepare_ai",
+        model: modelId,
+      },
+      async () => {
+        const result = await generateText({
+          model,
+          system: FHIR_MAPPING_SYSTEM_PROMPT,
+          prompt: clinicalData,
+          ...buildGenerationOptions(modelId, {
+            temperature: 0.1,
+            maxOutputTokens: 8000,
+          }),
+        })
+
+        return {
+          result: result.text,
+          usage: result.usage
+            ? {
+                inputTokens: result.usage.inputTokens,
+                outputTokens: result.usage.outputTokens,
+              }
+            : undefined,
+        }
+      }
+    )
 
     const parsedResult = safeParseAIJson<Bundle>(text)
     if (parsedResult.error || parsedResult.data === null) {

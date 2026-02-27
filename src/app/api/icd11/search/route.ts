@@ -21,6 +21,7 @@ export async function GET(req: Request) {
     const results = await searchIcd11(q, 10)
     return NextResponse.json({ results })
   } catch (error) {
+    if (error instanceof NextResponse) return error
     logger.error("ICD-11 search failed:", error)
     // Non-fatal endpoint: return an empty list so UI can continue.
     return NextResponse.json({ results: [] })

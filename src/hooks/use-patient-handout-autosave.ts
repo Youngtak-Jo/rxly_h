@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 import { useSessionStore } from "@/stores/session-store"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 
 const AUTO_SAVE_DEBOUNCE_MS = 2000
 
@@ -39,7 +40,13 @@ export function usePatientHandoutAutoSave() {
             entries: currentDocument.entries,
             generatedAt: currentDocument.generatedAt,
           }),
-        }).catch(console.error)
+        })
+          .then((res) => {
+            if (res.ok) {
+              deleteCachedSession(currentSession.id)
+            }
+          })
+          .catch(console.error)
       }, AUTO_SAVE_DEBOUNCE_MS)
     })
 

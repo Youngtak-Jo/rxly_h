@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   IconBulb,
   IconDots,
@@ -29,7 +29,6 @@ import { useResearchStore } from "@/stores/research-store"
 import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import {
-  loadSessionById,
   getCachedSession,
   getCoreCachedSession,
   prefetchCoreSessionById,
@@ -74,6 +73,7 @@ function formatShortTimeAgo(date: Date): string {
 
 export function NavSessions() {
   const router = useRouter()
+  const pathname = usePathname()
   const { sessions, activeSession, setActiveSession, addSession, setSessions } =
     useSessionStore()
   const transcriptStore = useTranscriptStore()
@@ -89,6 +89,8 @@ export function NavSessions() {
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const prefetchingRef = useRef<Set<string>>(new Set())
   const prefetchControllersRef = useRef<Map<string, AbortController>>(new Map())
+  const pathnameRef = useRef(pathname)
+  const navigationRequestSeqRef = useRef(0)
 
   const stopSimulationIfRunning = () => {
     const recState = useRecordingStore.getState()
@@ -142,6 +144,10 @@ export function NavSessions() {
       prefetchingSet.clear()
     }
   }, [])
+
+  useEffect(() => {
+    pathnameRef.current = pathname
+  }, [pathname])
 
   const restorePreviousSessionContext = async (previousSession: Session | null) => {
     cancelSessionLoad()
@@ -222,6 +228,15 @@ export function NavSessions() {
       if (!res.ok) throw new Error("Failed to create session")
       const realSession = await res.json()
 
+      const realCoreSession = {
+        ...realSession,
+        insights: realSession.insights ?? null,
+        diagnoses: [],
+        record: realSession.record ?? null,
+        patientHandout: null,
+        checklistItems: [],
+      }
+
       const store = useSessionStore.getState()
       store.setSessions(
         store.sessions.map((s) => (s.id === tempId ? realSession : s))
@@ -229,22 +244,44 @@ export function NavSessions() {
       if (store.activeSession?.id === tempId) {
         store.setActiveSession(realSession)
       }
+      setCoreCachedSession(realSession.id, realCoreSession)
+      setCachedSession(realSession.id, {
+        session: realCoreSession,
+        transcriptEntries: [],
+        notes: [],
+        researchMessages: [],
+      })
+      if (realSession.id !== tempId) {
+        deleteCachedSession(tempId)
+      }
     } catch (error) {
       console.error("Failed to create session:", error)
       toast.error("Failed to create session")
+      deleteCachedSession(tempId)
       const store = useSessionStore.getState()
       store.setSessions(previousSessions)
       await restorePreviousSessionContext(previousActiveSession)
     }
   }
 
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
+  const renameInFlightIdRef = useRef<string | null>(null)
+  const routeSessionId =
+    pathname && pathname.startsWith("/consultation/")
+      ? pathname.slice("/consultation/".length)
+      : null
+  const visualActiveSessionId = routeSessionId || activeSession?.id || null
+
   const loadSession = (sessionId: string) => {
+    if (editingId || deletingId === sessionId) return
     if (activeSession?.id === sessionId) return
+    navigationRequestSeqRef.current += 1
     useSessionStore.getState().setSwitching(true)
     router.push(`/consultation/${sessionId}`)
   }
-
-  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const deleteSession = async (sessionId: string) => {
     setDeletingId(sessionId)
@@ -252,43 +289,51 @@ export function NavSessions() {
     const previousSessions = storeBeforeDelete.sessions
     const previousActiveSession = storeBeforeDelete.activeSession
     const deletingActiveSession = previousActiveSession?.id === sessionId
+    const navigationSeqAtDeleteStart = navigationRequestSeqRef.current
 
-    // 1. Abort in-flight analysis BEFORE delete to prevent race conditions
-    if (deletingActiveSession) {
-      cancelSessionLoad()
-      stopSimulationIfRunning()
-      setActiveSession(null) // Triggers hook cleanup → aborts in-flight AI calls
-      resetConsultationStores()
-      useSessionStore.getState().setSwitching(false)
-    }
-
-    // 2. Optimistic UI removal
+    // Optimistic removal for both active and inactive session delete.
     setSessions(previousSessions.filter((s) => s.id !== sessionId))
     deleteCachedSession(sessionId)
 
     try {
       const res = await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Delete failed")
-      // Navigate back to base consultation if we just deleted the active session
+
+      // If user did not request another session after delete start and we're still on
+      // the deleted route, navigate back to base consultation.
       if (deletingActiveSession) {
-        router.replace("/consultation")
+        const deletedSessionPath = `/consultation/${sessionId}`
+        const shouldNavigateToBase =
+          navigationRequestSeqRef.current === navigationSeqAtDeleteStart &&
+          pathnameRef.current === deletedSessionPath
+
+        if (shouldNavigateToBase) {
+          cancelSessionLoad()
+          stopSimulationIfRunning()
+          setActiveSession(null)
+          resetConsultationStores()
+          useSessionStore.getState().setSwitching(false)
+          router.replace("/consultation")
+        }
       }
     } catch (error) {
-      // Rollback on failure
       console.error("Failed to delete session:", error)
       setSessions(previousSessions)
       if (deletingActiveSession) {
-        await restorePreviousSessionContext(previousActiveSession)
+        const deletedSessionPath = `/consultation/${sessionId}`
+        const shouldRestore =
+          navigationRequestSeqRef.current === navigationSeqAtDeleteStart &&
+          pathnameRef.current === deletedSessionPath
+
+        if (shouldRestore) {
+          await restorePreviousSessionContext(previousActiveSession)
+        }
       }
       toast.error("Failed to delete session")
     } finally {
       setDeletingId(null)
     }
   }
-
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editingTitle, setEditingTitle] = useState("")
-  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (editingId) inputRef.current?.focus()
@@ -302,7 +347,12 @@ export function NavSessions() {
   const commitRename = async () => {
     if (!editingId) return
     const targetId = editingId
+    if (renameInFlightIdRef.current === targetId) return
+    renameInFlightIdRef.current = targetId
+
     const trimmed = editingTitle.trim()
+    setEditingId(null)
+
     if (trimmed) {
       try {
         const res = await fetch(`/api/sessions/${targetId}`, {
@@ -316,9 +366,13 @@ export function NavSessions() {
       } catch (error) {
         console.error("Failed to rename session:", error)
         toast.error("Failed to rename session")
+      } finally {
+        renameInFlightIdRef.current = null
       }
+      return
     }
-    setEditingId(null)
+
+    renameInFlightIdRef.current = null
   }
 
   return (
@@ -334,7 +388,8 @@ export function NavSessions() {
           </div>
         )}
         {sessions.map((session) => {
-          const isActive = activeSession?.id === session.id
+          const isActive = visualActiveSessionId === session.id
+          const isDeleting = deletingId === session.id
           return (
             <SidebarMenuItem key={session.id}>
               {editingId === session.id ? (
@@ -344,69 +399,85 @@ export function NavSessions() {
                   onChange={(e) => setEditingTitle(e.target.value)}
                   onBlur={commitRename}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") commitRename()
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      e.currentTarget.blur()
+                    }
                     if (e.key === "Escape") setEditingId(null)
                   }}
                   className="h-8 w-full rounded-md border bg-background px-2 text-sm outline-none"
                 />
               ) : (
-                <SidebarMenuButton
-                  isActive={isActive}
-                  onClick={() => loadSession(session.id)}
-                  onMouseEnter={() => {
-                    if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current)
-                    prefetchTimerRef.current = setTimeout(() => prefetchSession(session.id), 300)
-                  }}
-                  onMouseLeave={() => {
-                    if (prefetchTimerRef.current) {
-                      clearTimeout(prefetchTimerRef.current)
-                      prefetchTimerRef.current = null
-                    }
-                  }}
-                  className="group/session h-auto items-start py-2"
-                >
-                  <span className="line-clamp-2">
-                    {session.title || "Untitled Session"}
-                  </span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      asChild
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <span className="ml-auto flex flex-col items-end flex-shrink-0">
-                        <span className="text-xs text-muted-foreground hidden md:inline group-hover/session:hidden">
-                          {formatShortTimeAgo(new Date(session.startedAt))}
-                        </span>
-                        <span className="flex md:hidden group-hover/session:flex items-center justify-center rounded-md hover:bg-sidebar-accent size-5">
-                          <IconDots className="size-4" />
-                        </span>
-
-                      </span>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent side="right" align="start">
-                      <DropdownMenuItem
-                        onClick={() =>
-                          startRename(session.id, session.title ?? "")
-                        }
-                      >
-                        <IconPencil className="mr-2 size-4" />
-                        Rename
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => deleteSession(session.id)}
-                        disabled={!!deletingId}
-                        className="text-destructive"
-                      >
-                        {deletingId === session.id ? (
-                          <IconLoader2 className="mr-2 size-4 animate-spin" />
-                        ) : (
-                          <IconTrash className="mr-2 size-4" />
-                        )}
-                        {deletingId === session.id ? "Deleting..." : "Delete"}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </SidebarMenuButton>
+                <div className="group/session relative">
+                  <SidebarMenuButton
+                    isActive={isActive}
+                    onClick={() => loadSession(session.id)}
+                    onMouseEnter={() => {
+                      if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current)
+                      prefetchTimerRef.current = setTimeout(() => prefetchSession(session.id), 300)
+                    }}
+                    onMouseLeave={() => {
+                      if (prefetchTimerRef.current) {
+                        clearTimeout(prefetchTimerRef.current)
+                        prefetchTimerRef.current = null
+                      }
+                    }}
+                    className="h-auto items-start py-2"
+                  >
+                    <span className="line-clamp-2 min-w-0 flex-1">
+                      {session.title || "Untitled Session"}
+                    </span>
+                    <div className="ml-auto w-11 shrink-0 pr-4">
+                      {isDeleting ? (
+                        <div className="flex h-5 items-center justify-end text-muted-foreground">
+                          <IconLoader2 className="size-3 animate-spin" />
+                        </div>
+                      ) : (
+                        <div className="relative flex h-5 items-center justify-end">
+                          <span className="hidden text-xs tabular-nums text-muted-foreground transition-opacity md:inline group-hover/session:opacity-0">
+                            {formatShortTimeAgo(new Date(session.startedAt))}
+                          </span>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              asChild
+                              onClick={(event) => event.stopPropagation()}
+                              onPointerDown={(event) => event.stopPropagation()}
+                            >
+                              <span
+                                aria-label="Session actions"
+                                className="flex size-5 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent md:absolute md:right-0 md:top-0 md:opacity-0 md:pointer-events-none md:group-hover/session:opacity-100 md:group-hover/session:pointer-events-auto"
+                              >
+                                <IconDots className="size-4" />
+                              </span>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent side="right" align="start">
+                              <DropdownMenuItem
+                                onSelect={(event) => {
+                                  event.stopPropagation()
+                                  startRename(session.id, session.title ?? "")
+                                }}
+                              >
+                                <IconPencil className="mr-2 size-4" />
+                                Rename
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={(event) => {
+                                  event.stopPropagation()
+                                  void deleteSession(session.id)
+                                }}
+                                disabled={!!deletingId}
+                                className="text-destructive"
+                              >
+                                <IconTrash className="mr-2 size-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
+                    </div>
+                  </SidebarMenuButton>
+                </div>
               )}
               {isActive && (
                 <SidebarMenuSub>

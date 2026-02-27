@@ -12,6 +12,7 @@ import { errorResponse } from "@/lib/api-response"
 import { buildGenerationOptions } from "@/lib/ai-request-options"
 import type { UserContent } from "ai"
 import { logger } from "@/lib/logger"
+import { withAiTelemetry } from "@/lib/telemetry/ai"
 
 export async function POST(req: Request) {
   try {
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
       imageUrls,
       insights,
       existingRecord,
+      sessionId,
       model: modelOverride,
       customInstructions,
     } = await req.json()
@@ -73,42 +75,56 @@ export async function POST(req: Request) {
 
     const systemPrompt = buildSystemPrompt(RECORD_SYSTEM_PROMPT, customInstructions)
 
-    const result = streamObject({
-      model,
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content,
-        },
-      ],
-      ...buildGenerationOptions(modelId, { temperature: 0.2 }),
-      schema: z.object({
-        chiefComplaint: z.string().nullable().describe("Primary reason for visit in patient's words"),
-        hpiText: z.string().nullable().describe("Detailed history of present illness narrative"),
-        medications: z.array(z.string()).nullable().describe("Current medications list. Include both prescription and OTC medications."),
-        rosText: z.string().nullable().describe("Review of systems findings"),
-        pmh: z.string().nullable().describe("Past medical history"),
-        socialHistory: z.string().nullable().describe("Social history (smoking, alcohol, occupation, etc.)"),
-        familyHistory: z.string().nullable().describe("Family medical history"),
-        vitals: z.object({
-          bp: z.string(),
-          hr: z.string(),
-          temp: z.string(),
-          rr: z.string(),
-          spo2: z.string(),
-        }).nullable(),
-        physicalExam: z.string().nullable().describe("Physical examination findings"),
-        labsStudies: z.array(z.string()).nullable().describe("Ordered or reviewed labs and studies"),
-        assessment: z.array(z.string()).nullable().describe("Clinical assessment with problem list"),
-        plan: z.string().nullable().describe("Treatment plan organized by problem")
-      })
-    })
+    const response = await withAiTelemetry(
+      {
+        userId: user.id,
+        sessionId: typeof sessionId === "string" ? sessionId : null,
+        feature: "ai_record",
+        model: modelId,
+      },
+      async () => {
+        const result = streamObject({
+          model,
+          system: systemPrompt,
+          messages: [
+            {
+              role: "user",
+              content,
+            },
+          ],
+          ...buildGenerationOptions(modelId, { temperature: 0.2 }),
+          schema: z.object({
+            chiefComplaint: z.string().nullable().describe("Primary reason for visit in patient's words"),
+            hpiText: z.string().nullable().describe("Detailed history of present illness narrative"),
+            medications: z.array(z.string()).nullable().describe("Current medications list. Include both prescription and OTC medications."),
+            rosText: z.string().nullable().describe("Review of systems findings"),
+            pmh: z.string().nullable().describe("Past medical history"),
+            socialHistory: z.string().nullable().describe("Social history (smoking, alcohol, occupation, etc.)"),
+            familyHistory: z.string().nullable().describe("Family medical history"),
+            vitals: z.object({
+              bp: z.string(),
+              hr: z.string(),
+              temp: z.string(),
+              rr: z.string(),
+              spo2: z.string(),
+            }).nullable(),
+            physicalExam: z.string().nullable().describe("Physical examination findings"),
+            labsStudies: z.array(z.string()).nullable().describe("Ordered or reviewed labs and studies"),
+            assessment: z.array(z.string()).nullable().describe("Clinical assessment with problem list"),
+            plan: z.string().nullable().describe("Treatment plan organized by problem")
+          })
+        })
+
+        return {
+          result: new Response(result.textStream, {
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          }),
+        }
+      }
+    )
 
     logAudit({ userId: user.id, action: "READ", resource: "ai_record" })
-    return new Response(result.textStream, {
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    })
+    return response
   } catch (error) {
     if (error instanceof NextResponse) return error
     logger.error("Record generation error:", error)

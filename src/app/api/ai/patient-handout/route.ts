@@ -16,6 +16,7 @@ import type {
   PatientHandoutEntry,
   PatientHandoutSections,
 } from "@/types/patient-handout"
+import { withAiTelemetry } from "@/lib/telemetry/ai"
 
 interface ParsedHandout {
   language?: string
@@ -92,6 +93,7 @@ export async function POST(req: Request) {
       language,
       model: modelOverride,
       customInstructions,
+      sessionId,
     } = (await req.json()) as {
       transcript?: string
       doctorNotes?: string
@@ -101,6 +103,7 @@ export async function POST(req: Request) {
       language?: "ko" | "en"
       model?: string
       customInstructions?: string
+      sessionId?: string
     }
 
     if (!selectedConditions || selectedConditions.length === 0) {
@@ -128,12 +131,32 @@ export async function POST(req: Request) {
       .filter(Boolean)
       .join("\n\n")
 
-    const { text } = await generateText({
-      model,
-      system: buildSystemPrompt(PATIENT_HANDOUT_SYSTEM_PROMPT, customInstructions),
-      prompt,
-      ...buildGenerationOptions(modelId, { temperature: 0.2 }),
-    })
+    const text = await withAiTelemetry(
+      {
+        userId: user.id,
+        sessionId: typeof sessionId === "string" ? sessionId : null,
+        feature: "ai_patient_handout",
+        model: modelId,
+      },
+      async () => {
+        const result = await generateText({
+          model,
+          system: buildSystemPrompt(PATIENT_HANDOUT_SYSTEM_PROMPT, customInstructions),
+          prompt,
+          ...buildGenerationOptions(modelId, { temperature: 0.2 }),
+        })
+
+        return {
+          result: result.text,
+          usage: result.usage
+            ? {
+                inputTokens: result.usage.inputTokens,
+                outputTokens: result.usage.outputTokens,
+              }
+            : undefined,
+        }
+      }
+    )
 
     const parsedResult = safeParseAIJson<ParsedHandout>(text)
     if (parsedResult.error || !parsedResult.data) {

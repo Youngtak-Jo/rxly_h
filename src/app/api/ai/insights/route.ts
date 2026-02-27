@@ -11,6 +11,7 @@ import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { errorResponse } from "@/lib/api-response"
 import { buildGenerationOptions } from "@/lib/ai-request-options"
 import type { UserContent } from "ai"
+import { withAiTelemetry } from "@/lib/telemetry/ai"
 
 export async function POST(req: Request) {
   try {
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
       currentInsights,
       model: modelOverride,
       customInstructions,
+      sessionId,
     } = await req.json()
 
     const hasNewImages = newImageUrls && newImageUrls.length > 0
@@ -137,20 +139,32 @@ export async function POST(req: Request) {
 
     const systemPrompt = buildSystemPrompt(INSIGHTS_SYSTEM_PROMPT, customInstructions)
 
-    const result = streamText({
-      model,
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content,
-        },
-      ],
-      ...buildGenerationOptions(modelId, { temperature: 0.3 }),
-    })
+    const response = await withAiTelemetry(
+      {
+        userId: user.id,
+        sessionId: typeof sessionId === "string" ? sessionId : null,
+        feature: "ai_insights",
+        model: modelId,
+      },
+      async () => {
+        const result = streamText({
+          model,
+          system: systemPrompt,
+          messages: [
+            {
+              role: "user",
+              content,
+            },
+          ],
+          ...buildGenerationOptions(modelId, { temperature: 0.3 }),
+        })
+
+        return { result: result.toTextStreamResponse() }
+      }
+    )
 
     logAudit({ userId: user.id, action: "READ", resource: "ai_insights" })
-    return result.toTextStreamResponse()
+    return response
   } catch (error) {
     if (error instanceof NextResponse) return error
     logger.error("Insights generation error:", error)

@@ -10,6 +10,7 @@ import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { errorResponse } from "@/lib/api-response"
 import { buildGenerationOptions } from "@/lib/ai-request-options"
 import { safeParseAIJson } from "@/lib/validations"
+import { withAiTelemetry } from "@/lib/telemetry/ai"
 
 export async function POST(req: Request) {
   try {
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
     const { allowed } = checkRateLimit(user.id, "ai")
     if (!allowed) return rateLimitResponse()
 
-    const { utterances, model: modelOverride } = await req.json()
+    const { utterances, model: modelOverride, sessionId } = await req.json()
 
     if (!utterances?.length) {
       return errorResponse("No utterances provided", 400)
@@ -37,17 +38,37 @@ export async function POST(req: Request) {
       return errorResponse("Unsupported model id", 400)
     }
 
-    const { text } = await generateText({
-      model: getModel(modelId),
-      system: SPEAKER_IDENTIFICATION_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: `Analyze these transcript utterances and identify the doctor and patient:\n\n${formatted}`,
-        },
-      ],
-      ...buildGenerationOptions(modelId, { temperature: 0.1 }),
-    })
+    const text = await withAiTelemetry(
+      {
+        userId: user.id,
+        sessionId: typeof sessionId === "string" ? sessionId : null,
+        feature: "ai_speakers",
+        model: modelId,
+      },
+      async () => {
+        const result = await generateText({
+          model: getModel(modelId),
+          system: SPEAKER_IDENTIFICATION_PROMPT,
+          messages: [
+            {
+              role: "user",
+              content: `Analyze these transcript utterances and identify the doctor and patient:\n\n${formatted}`,
+            },
+          ],
+          ...buildGenerationOptions(modelId, { temperature: 0.1 }),
+        })
+
+        return {
+          result: result.text,
+          usage: result.usage
+            ? {
+                inputTokens: result.usage.inputTokens,
+                outputTokens: result.usage.outputTokens,
+              }
+            : undefined,
+        }
+      }
+    )
 
     const parsedResult = safeParseAIJson<unknown>(text)
     if (parsedResult.error) {

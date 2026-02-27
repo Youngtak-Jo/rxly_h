@@ -6,6 +6,7 @@ import { useSessionStore } from "@/stores/session-store"
 import { useSettingsStore } from "@/stores/settings-store"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import { useRecordingStore } from "@/stores/recording-store"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 import type { Speaker, TranscriptEntry } from "@/types/session"
 
 const ENTRIES_PER_ATTEMPT = 3
@@ -201,6 +202,7 @@ export function useSpeakerIdentification() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            sessionId: activeSession?.id,
             utterances,
             model: useSettingsStore.getState().aiModel.speakerIdModel,
           }),
@@ -278,5 +280,11 @@ function updateDbSpeakers(
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ updates }),
-  }).catch(console.error)
+  })
+    .then((res) => {
+      if (res.ok) {
+        deleteCachedSession(sessionId)
+      }
+    })
+    .catch(console.error)
 }

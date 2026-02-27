@@ -9,6 +9,8 @@ import { useSessionStore } from "@/stores/session-store"
 import { useSettingsStore } from "@/stores/settings-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import type { TranscriptEntry } from "@/types/session"
+import { trackClientEvent } from "@/lib/telemetry/client-events"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 
 const WAIT_TIMEOUT_MS = 60000
 
@@ -41,7 +43,10 @@ async function fetchDoctorNotes(
   signal: AbortSignal
 ): Promise<string> {
   try {
-    const res = await fetch(`/api/sessions/${sessionId}/notes`, { signal })
+    const res = await fetch(
+      `/api/sessions/${sessionId}/notes?includeSignedUrls=false`,
+      { signal }
+    )
     if (!res.ok) return ""
     const notes = (await res.json()) as Array<{ content: string }>
     return notes
@@ -124,6 +129,11 @@ export async function generatePatientHandout(
   const resolvedLanguage = resolveHandoutLanguage(transcriptStore.entries)
 
   setGenerating(true)
+  trackClientEvent({
+    eventType: "analysis_triggered",
+    feature: "patient_handout",
+    sessionId,
+  })
 
   try {
     const doctorNotes = await fetchDoctorNotes(sessionId, controller.signal)
@@ -139,6 +149,7 @@ export async function generatePatientHandout(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        sessionId,
         transcript,
         doctorNotes,
         insights: {
@@ -188,15 +199,32 @@ export async function generatePatientHandout(
     }
 
     setGeneratedDocument(handout)
+    trackClientEvent({
+      eventType: "analysis_completed",
+      feature: "patient_handout",
+      sessionId,
+    })
 
     fetch(`/api/sessions/${sessionId}/patient-handout`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(handout),
-    }).catch((error) => console.error("Failed to persist patient handout:", error))
+    })
+      .then((res) => {
+        if (res.ok) {
+          deleteCachedSession(sessionId)
+        }
+      })
+      .catch((error) => console.error("Failed to persist patient handout:", error))
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") return
     console.error("Failed to generate patient handout:", error)
+    trackClientEvent({
+      eventType: "analysis_failed",
+      feature: "patient_handout",
+      sessionId,
+      metadata: { reason: "request_error" },
+    })
   } finally {
     if (externalSignal) {
       externalSignal.removeEventListener("abort", abortFromExternal)

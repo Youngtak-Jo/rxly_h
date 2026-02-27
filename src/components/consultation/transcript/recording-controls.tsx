@@ -8,6 +8,7 @@ import { useSessionStore } from "@/stores/session-store"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import { useDeepgram } from "@/hooks/use-deepgram"
 import { useAiDoctor } from "@/hooks/use-ai-doctor"
+import { trackClientEvent } from "@/lib/telemetry/client-events"
 import {
   IconPlayerPause,
   IconPlayerPlay,
@@ -25,6 +26,7 @@ export function RecordingControls() {
   const { endConsultation } = useAiDoctor()
   const mode = useConsultationModeStore((s) => s.mode)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const prevRecordingRef = useRef(isRecording)
 
   const isAiDoctorMode = mode === "ai-doctor"
   const isTranscriptHydrating =
@@ -48,6 +50,29 @@ export function RecordingControls() {
     }
   }, [isRecording, isPaused, duration, setDuration, isSimulating])
 
+  useEffect(() => {
+    if (!activeSession) {
+      prevRecordingRef.current = isRecording
+      return
+    }
+
+    if (!prevRecordingRef.current && isRecording) {
+      trackClientEvent({
+        eventType: "recording_started",
+        feature: isAiDoctorMode ? "ai_doctor" : "transcript",
+        sessionId: activeSession.id,
+      })
+    } else if (prevRecordingRef.current && !isRecording) {
+      trackClientEvent({
+        eventType: "recording_stopped",
+        feature: isAiDoctorMode ? "ai_doctor" : "transcript",
+        sessionId: activeSession.id,
+      })
+    }
+
+    prevRecordingRef.current = isRecording
+  }, [activeSession, isAiDoctorMode, isRecording])
+
   const handleStart = useCallback(async () => {
     if (!activeSession || isSwitching || isTranscriptHydrating) return
     await startListening()
@@ -60,7 +85,7 @@ export function RecordingControls() {
 
   const handleStop = useCallback(() => {
     if (isAiDoctorMode) {
-      endConsultation()
+      void endConsultation()
     } else if (isSimulating && simulationControls) {
       simulationControls.stop()
     } else {

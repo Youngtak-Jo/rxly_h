@@ -99,7 +99,12 @@ export function useAiDoctorStt() {
         useConsultationModeStore.getState().setMicActive(false)
         return
       }
-      const { token } = await tokenRes.json()
+      const tokenPayload = (await tokenRes.json()) as {
+        token: string
+        tokenType?: "bearer" | "token"
+      }
+      const token = tokenPayload.token
+      const tokenType = tokenPayload.tokenType || "bearer"
 
       if (cancelled) return
 
@@ -164,7 +169,7 @@ export function useAiDoctorStt() {
 
       const ws = new WebSocket(
         `wss://api.deepgram.com/v1/listen?${params}`,
-        ["token", token]
+        [tokenType, token]
       )
       wsRef.current = ws
 

@@ -53,12 +53,20 @@ import { useConnectorStore } from "@/stores/connector-store"
 import { useSettingsDialogStore } from "@/stores/settings-store"
 import { toast } from "sonner"
 import { generatePdf, getActiveTabExportHtml } from "@/lib/export-utils"
+import { trackClientEvent } from "@/lib/telemetry/client-events"
+
+const SIMULATION_SPEED_PRESETS = [
+  { value: "1.0", label: "1x (Real-time)" },
+  { value: "0.5", label: "2x" },
+  { value: "0.3333333333", label: "3x" },
+  { value: "0.25", label: "4x" },
+] as const
 
 
 
 function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange?: (open: boolean) => void }) {
   const [internalOpen, setInternalOpen] = useState(false)
-  const [speed, setSpeed] = useState("1.0")
+  const [speed, setSpeed] = useState(SIMULATION_SPEED_PRESETS[0].value)
   const [scenarioId, setScenarioId] = useState(SCENARIOS[0].id)
 
   const isControlled = open !== undefined
@@ -66,7 +74,8 @@ function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange
   const setIsOpen = isControlled ? (onOpenChange ?? (() => { })) : setInternalOpen
 
   const activeSession = useSessionStore((s) => s.activeSession)
-  const { addSession, setActiveSession } = useSessionStore()
+  const addSession = useSessionStore((s) => s.addSession)
+  const setActiveSession = useSessionStore((s) => s.setActiveSession)
   const { isRecording, isSimulating } = useRecordingStore()
   const { startSimulation, stopSimulation } = useSimulatedTranscript()
 
@@ -154,11 +163,11 @@ function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1.0">1x (Real-time)</SelectItem>
-                <SelectItem value="0.5">2x</SelectItem>
-                <SelectItem value="0.25">4x</SelectItem>
-                <SelectItem value="0.1">10x</SelectItem>
-                <SelectItem value="0.067">15x (Fastest)</SelectItem>
+                {SIMULATION_SPEED_PRESETS.map((preset) => (
+                  <SelectItem key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -214,6 +223,14 @@ function MobileHeaderMenu() {
       a.download = filename
       a.click()
       URL.revokeObjectURL(url)
+      if (activeSession) {
+        trackClientEvent({
+          eventType: "export_clicked",
+          feature: "pdf",
+          sessionId: activeSession.id,
+          metadata: { tab: activeTab },
+        })
+      }
       toast.success("PDF downloaded successfully")
     } catch (err) {
       console.error("PDF export error:", err)
@@ -236,6 +253,14 @@ function MobileHeaderMenu() {
 
       if (!res.ok) throw new Error()
 
+      if (activeSession) {
+        trackClientEvent({
+          eventType: "export_clicked",
+          feature: "email",
+          sessionId: activeSession.id,
+          metadata: { tab: activeTab },
+        })
+      }
       toast.success(`Email sent to ${email}`)
       setEmailDialogOpen(false)
       setEmail("")

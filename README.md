@@ -59,7 +59,7 @@ A RAG (Retrieval-Augmented Generation) pipeline connecting **authoritative medic
 Structured SOAP notes (Subjective, Objective, Assessment, Plan) auto-generated from the voice conversation and physician annotations. No more hours spent on charting after clinic.
 
 ### Simulation Mode
-Test and demonstrate the platform capabilities with a built-in simulation engine. Run complex clinical scenarios at up to 15x speed to verify real-time analysis without needing live actors.
+Test and demonstrate the platform capabilities with a built-in simulation engine. Run complex clinical scenarios at up to 4x speed to verify real-time analysis without needing live actors.
 
 ### PWA Support
 Install Rxly as a native-like application on desktop and mobile devices. Offline-capable architecture ensures critical functionality remains accessible.

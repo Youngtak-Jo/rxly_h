@@ -24,10 +24,18 @@ export async function GET(
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
+    const { searchParams } = new URL(req.url)
+    const includeSignedUrls = searchParams.get("includeSignedUrls") !== "false"
+
     const notes = await prisma.note.findMany({
       where: { sessionId: id },
       orderBy: { createdAt: "asc" },
     })
+
+    if (!includeSignedUrls) {
+      logAudit({ userId: user.id, action: "READ", resource: "note", sessionId: id })
+      return NextResponse.json(notes)
+    }
 
     // Batch signed URL generation for all notes
     const allPaths: string[] = []

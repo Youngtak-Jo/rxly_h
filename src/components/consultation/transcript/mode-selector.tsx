@@ -8,6 +8,7 @@ import {
 import { useRecordingStore } from "@/stores/recording-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useAiDoctor } from "@/hooks/use-ai-doctor"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 import { cn } from "@/lib/utils"
 import { IconStethoscope, IconRobot, IconAlertTriangle } from "@tabler/icons-react"
 import {
@@ -72,7 +73,13 @@ export function ModeSelector() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: "AI_DOCTOR" }),
-      }).catch(() => {})
+      })
+        .then((res) => {
+          if (res.ok) {
+            deleteCachedSession(activeSession.id)
+          }
+        })
+        .catch(() => {})
 
       useSessionStore.getState().updateSession(activeSession.id, { mode: "AI_DOCTOR" })
     }

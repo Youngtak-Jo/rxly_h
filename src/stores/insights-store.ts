@@ -22,7 +22,9 @@ interface InsightsState {
   pendingComments: InlineComment[]
   // Global callback for triggering analysis from note submission
   _noteTrigger: (() => void) | null
+  _finalTrigger: (() => Promise<void> | void) | null
   setNoteTrigger: (fn: (() => void) | null) => void
+  setFinalTrigger: (fn: (() => Promise<void> | void) | null) => void
   addComment: (comment: InlineComment) => void
   clearComments: (ids: Set<string>) => void
 
@@ -60,7 +62,9 @@ export const useInsightsStore = create<InsightsState>((set) => ({
   analyzedImages: {},
   pendingComments: [],
   _noteTrigger: null,
+  _finalTrigger: null,
   setNoteTrigger: (fn) => set({ _noteTrigger: fn }),
+  setFinalTrigger: (fn) => set({ _finalTrigger: fn }),
   addComment: (comment) =>
     set((state) => ({ pendingComments: [...state.pendingComments, comment] })),
   clearComments: (ids) =>

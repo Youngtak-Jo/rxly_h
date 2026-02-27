@@ -1,15 +1,39 @@
 "use client"
 
 import { useCallback, useEffect, useRef } from "react"
-import { useRecordStore } from "@/stores/record-store"
+import {
+  computeRecordFingerprint,
+  useRecordStore,
+} from "@/stores/record-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
-import { useNoteStore } from "@/stores/note-store"
+import { buildDoctorNotes, useNoteStore } from "@/stores/note-store"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useSettingsStore } from "@/stores/settings-store"
+import type { ConsultationRecord } from "@/types/record"
+import { trackClientEvent } from "@/lib/telemetry/client-events"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 
 const WAIT_TIMEOUT_MS = 60000
+
+function toPersistableRecordPayload(record: ConsultationRecord) {
+  return {
+    patientName: record.patientName,
+    chiefComplaint: record.chiefComplaint,
+    hpiText: record.hpiText,
+    medications: record.medications,
+    rosText: record.rosText,
+    pmh: record.pmh,
+    socialHistory: record.socialHistory,
+    familyHistory: record.familyHistory,
+    vitals: record.vitals,
+    physicalExam: record.physicalExam,
+    labsStudies: record.labsStudies,
+    assessment: record.assessment,
+    plan: record.plan,
+  }
+}
 
 export async function generateRecord(
   sessionId: string,
@@ -17,7 +41,8 @@ export async function generateRecord(
   existingRecordId?: string,
   signal?: AbortSignal
 ) {
-  const { setGenerating, setRecord } = useRecordStore.getState()
+  const { setGenerating, setRecord, setLastPersistedFingerprint } =
+    useRecordStore.getState()
 
   const transcript = useTranscriptStore.getState().getFullTranscript()
   const { summary, keyFindings } = useInsightsStore.getState()
@@ -25,10 +50,7 @@ export async function generateRecord(
 
   // Use cached notes from store instead of fetching
   const notes = useNoteStore.getState().notes
-  const doctorNotes = notes
-    .map((n) => n.content)
-    .filter(Boolean)
-    .join("\n")
+  const doctorNotes = buildDoctorNotes(notes)
   const imageUrls = notes.flatMap((n) => n.imageUrls || [])
 
   // Need at least transcript, notes, or images to generate
@@ -37,6 +59,11 @@ export async function generateRecord(
   const { aiModel, customInstructions } = useSettingsStore.getState()
 
   setGenerating(true)
+  trackClientEvent({
+    eventType: "analysis_triggered",
+    feature: "record",
+    sessionId,
+  })
   try {
     const res = await fetch("/api/ai/record", {
       method: "POST",
@@ -98,34 +125,53 @@ export async function generateRecord(
         plan: parsed.plan || null,
       }
       setRecord(newRecord)
+      trackClientEvent({
+        eventType: "analysis_completed",
+        feature: "record",
+        sessionId,
+      })
 
-      // Immediately persist to DB (fire-and-forget)
-      fetch(`/api/sessions/${sessionId}/record`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patientName: newRecord.patientName,
-          chiefComplaint: newRecord.chiefComplaint,
-          hpiText: newRecord.hpiText,
-          medications: newRecord.medications,
-          rosText: newRecord.rosText,
-          pmh: newRecord.pmh,
-          socialHistory: newRecord.socialHistory,
-          familyHistory: newRecord.familyHistory,
-          vitals: newRecord.vitals,
-          physicalExam: newRecord.physicalExam,
-          labsStudies: newRecord.labsStudies,
-          assessment: newRecord.assessment,
-          plan: newRecord.plan,
-        }),
-      }).catch((err) => console.error("Failed to persist record:", err))
+      const recordFingerprint = computeRecordFingerprint(newRecord)
+      const lastPersistedFingerprint =
+        useRecordStore.getState().lastPersistedFingerprint
+      const shouldPersistNow =
+        recordFingerprint !== null &&
+        recordFingerprint !== lastPersistedFingerprint
+
+      // Immediately persist to DB (fire-and-forget), unless autosave payload is unchanged.
+      if (shouldPersistNow) {
+        fetch(`/api/sessions/${sessionId}/record`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(toPersistableRecordPayload(newRecord)),
+        })
+          .then((res) => {
+            if (res.ok) {
+              deleteCachedSession(sessionId)
+              setLastPersistedFingerprint(recordFingerprint)
+            }
+          })
+          .catch((err) => console.error("Failed to persist record:", err))
+      }
     } catch {
       console.error("Failed to parse record response")
-      setGenerating(false)
+      trackClientEvent({
+        eventType: "analysis_failed",
+        feature: "record",
+        sessionId,
+        metadata: { reason: "parse_error" },
+      })
     }
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") return
     console.error("Failed to generate record:", error)
+    trackClientEvent({
+      eventType: "analysis_failed",
+      feature: "record",
+      sessionId,
+      metadata: { reason: "request_error" },
+    })
+  } finally {
     setGenerating(false)
   }
 }

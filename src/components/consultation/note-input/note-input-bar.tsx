@@ -6,9 +6,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { useSessionStore } from "@/stores/session-store"
 import { useNoteStore } from "@/stores/note-store"
 import { useInsightsStore } from "@/stores/insights-store"
-import { useDdxStore } from "@/stores/ddx-store"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import { useAiDoctor } from "@/hooks/use-ai-doctor"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 import {
   IconPaperclip,
   IconSend,
@@ -19,6 +19,7 @@ import {
 } from "@tabler/icons-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { trackClientEvent } from "@/lib/telemetry/client-events"
 
 interface Attachment {
   file: File
@@ -109,27 +110,74 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
     [handleFileSelect]
   )
 
+  const uploadAttachments = useCallback(
+    async (sessionId: string): Promise<Array<{ url: string; storagePath?: string }>> => {
+      if (attachments.length === 0) return []
+
+      const uploadResults = await Promise.allSettled(
+        attachments.map(async (attachment) => {
+          const formData = new FormData()
+          formData.append("file", attachment.file)
+          formData.append("sessionId", sessionId)
+
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          })
+
+          if (!res.ok) {
+            throw new Error(`Upload failed (${res.status})`)
+          }
+
+          const data = (await res.json()) as { url?: string; path?: string }
+          if (!data.url) {
+            throw new Error("Upload response missing URL")
+          }
+
+          return {
+            url: data.url,
+            storagePath: data.path || undefined,
+          }
+        })
+      )
+
+      const uploaded = uploadResults
+        .filter(
+          (result): result is PromiseFulfilledResult<{ url: string; storagePath?: string }> =>
+            result.status === "fulfilled"
+        )
+        .map((result) => result.value)
+
+      const failedCount = uploadResults.length - uploaded.length
+      if (failedCount > 0) {
+        console.warn(`Failed to upload ${failedCount} attachment(s)`)
+        toast.error(`${failedCount} image upload(s) failed`)
+      }
+
+      return uploaded
+    },
+    [attachments]
+  )
+
   const handleSendNote = async () => {
     if ((!text.trim() && attachments.length === 0) || !activeSession) return
     setIsSending(true)
 
     try {
       // Upload images first (to Supabase Storage)
-      const imageUrls: string[] = []
-      const storagePaths: string[] = []
-      for (const attachment of attachments) {
-        const formData = new FormData()
-        formData.append("file", attachment.file)
-        formData.append("sessionId", activeSession.id)
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
+      const uploadedImages = await uploadAttachments(activeSession.id)
+      const imageUrls = uploadedImages.map((image) => image.url)
+      const storagePaths = uploadedImages
+        .map((image) => image.storagePath)
+        .filter((path): path is string => !!path)
+
+      if (imageUrls.length > 0) {
+        trackClientEvent({
+          eventType: "image_uploaded",
+          feature: "note",
+          sessionId: activeSession.id,
+          metadata: { count: imageUrls.length },
         })
-        if (res.ok) {
-          const data = await res.json()
-          imageUrls.push(data.url)
-          if (data.path) storagePaths.push(data.path)
-        }
       }
 
       // Send note to DB
@@ -159,9 +207,16 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
         const trigger = useInsightsStore.getState()._noteTrigger
         if (trigger) trigger()
 
-        // Trigger DDx re-analysis
-        const ddxTrigger = useDdxStore.getState()._noteTrigger
-        if (ddxTrigger) ddxTrigger()
+        trackClientEvent({
+          eventType: "note_submitted",
+          feature: "note",
+          sessionId: activeSession.id,
+          metadata: {
+            textLength: text.trim().length,
+            imageCount: imageUrls.length,
+          },
+        })
+        deleteCachedSession(activeSession.id)
       }
 
       setText("")
@@ -184,24 +239,15 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
 
     try {
       // Upload images first (reuse same Supabase upload flow)
-      const uploadedImages: { url: string; storagePath?: string }[] = []
-      for (const attachment of attachments) {
-        const formData = new FormData()
-        formData.append("file", attachment.file)
-        formData.append("sessionId", activeSession.id)
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
+      const uploadedImages = await uploadAttachments(activeSession.id)
+
+      if (uploadedImages.length > 0) {
+        trackClientEvent({
+          eventType: "image_uploaded",
+          feature: "ai_doctor",
+          sessionId: activeSession.id,
+          metadata: { count: uploadedImages.length },
         })
-        if (res.ok) {
-          const data = await res.json()
-          if (data.url) {
-            uploadedImages.push({
-              url: data.url,
-              storagePath: data.path || undefined,
-            })
-          }
-        }
       }
 
       const message = text.trim()
@@ -216,6 +262,16 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
         message,
         uploadedImages.length > 0 ? uploadedImages : undefined
       )
+
+      trackClientEvent({
+        eventType: "note_submitted",
+        feature: "ai_doctor_message",
+        sessionId: activeSession.id,
+        metadata: {
+          textLength: message.length,
+          imageCount: uploadedImages.length,
+        },
+      })
     } catch (error) {
       console.error("Failed to send AI doctor message:", error)
       toast.error("Failed to send message")

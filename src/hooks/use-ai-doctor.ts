@@ -8,7 +8,7 @@ import { useSettingsStore } from "@/stores/settings-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useNoteStore } from "@/stores/note-store"
-import { useDdxStore } from "@/stores/ddx-store"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 import { v4 as uuidv4 } from "uuid"
 import { toast } from "sonner"
 
@@ -54,7 +54,13 @@ export function useAiDoctor() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(entry),
-      }).catch(() => { })
+      })
+        .then((res) => {
+          if (res.ok) {
+            deleteCachedSession(session.id)
+          }
+        })
+        .catch(() => { })
     },
     []
   )
@@ -131,6 +137,7 @@ export function useAiDoctor() {
               source: savedNote.source,
               createdAt: savedNote.createdAt,
             })
+            deleteCachedSession(session.id)
           }
         } catch {
           // Note save is best-effort for analysis pipeline
@@ -169,7 +176,7 @@ export function useAiDoctor() {
         const res = await fetch("/api/ai/ai-doctor", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages, model: modelId }),
+          body: JSON.stringify({ sessionId: session.id, messages, model: modelId }),
           signal: abortControllerRef.current.signal,
         })
 
@@ -199,9 +206,6 @@ export function useAiDoctor() {
           const insightsTrigger =
             useInsightsStore.getState()._noteTrigger
           if (insightsTrigger) insightsTrigger()
-
-          const ddxTrigger = useDdxStore.getState()._noteTrigger
-          if (ddxTrigger) ddxTrigger()
         }
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
@@ -216,14 +220,24 @@ export function useAiDoctor() {
     [addToTranscript]
   )
 
-  const endConsultation = useCallback(() => {
+  const endConsultation = useCallback(async () => {
     // Abort any in-flight request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
       abortControllerRef.current = null
     }
 
-    // Stop recording state (triggers final analysis in useLiveRecord)
+    // Ensure final insights analysis runs before stopping recording.
+    const finalInsightsTrigger = useInsightsStore.getState()._finalTrigger
+    if (finalInsightsTrigger) {
+      try {
+        await finalInsightsTrigger()
+      } catch (error) {
+        console.error("Failed to run final insights analysis:", error)
+      }
+    }
+
+    // Stop recording state (triggers downstream auto-generation hooks).
     useRecordingStore.getState().setRecording(false)
 
     // Deactivate mic

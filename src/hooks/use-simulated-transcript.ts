@@ -5,11 +5,14 @@ import { useRecordingStore } from "@/stores/recording-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useLiveInsights } from "@/hooks/use-live-insights"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 import { SCENARIOS, type MockEntry } from "@/data/scenarios"
 import { v4 as uuid } from "uuid"
 import type { Speaker } from "@/types/session"
 
 const INTERIM_WORD_STEP_MS = 300
+const MIN_SPEED_FACTOR = 0.25
+const MAX_SPEED_FACTOR = 1.0
 
 export interface SimulationOptions {
   speedFactor: number
@@ -21,6 +24,13 @@ const DEFAULT_OPTIONS: SimulationOptions = {
   speedFactor: 1.0,
   skipInterim: false,
   scenario: SCENARIOS[0].entries,
+}
+
+function normalizeSpeedFactor(speedFactor: number): number {
+  if (!Number.isFinite(speedFactor) || speedFactor <= 0) {
+    return DEFAULT_OPTIONS.speedFactor
+  }
+  return Math.min(MAX_SPEED_FACTOR, Math.max(MIN_SPEED_FACTOR, speedFactor))
 }
 
 function resolveSpeaker(rawSpeakerId: number): Speaker {
@@ -147,7 +157,13 @@ export function useSimulatedTranscript() {
             confidence: 0.97,
             rawSpeakerId: capturedRawSpeakerId,
           }),
-        }).catch(console.error)
+        })
+          .then((res) => {
+            if (res.ok) {
+              deleteCachedSession(sessionId)
+            }
+          })
+          .catch(console.error)
 
         // Phase 3: Trigger analysis at speaker changes or every 4 entries
         const isLastEntry = index === entries.length - 1
@@ -252,7 +268,11 @@ export function useSimulatedTranscript() {
       isRunningRef.current = true
       isPausedRef.current = false
 
-      const opts = { ...DEFAULT_OPTIONS, ...options }
+      const baseOptions = { ...DEFAULT_OPTIONS, ...options }
+      const opts = {
+        ...baseOptions,
+        speedFactor: normalizeSpeedFactor(baseOptions.speedFactor),
+      }
       optionsRef.current = opts
 
       const sessionId = useSessionStore.getState().activeSession?.id || ""
@@ -277,7 +297,7 @@ export function useSimulatedTranscript() {
         stop: (options) => stopRef.current(options),
       })
 
-      // Duration timer — ticks faster with speed (e.g. 2x → 500ms, 10x → 100ms)
+      // Duration timer — ticks faster with speed (e.g. 2x → 500ms, 4x → 250ms)
       const tickMs = Math.max(100, 1000 * opts.speedFactor)
       durationIntervalRef.current = setInterval(() => {
         const s = useRecordingStore.getState()

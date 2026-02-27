@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { useDdxStore } from "@/stores/ddx-store"
 import { useSessionStore } from "@/stores/session-store"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 
 const AUTO_SAVE_DEBOUNCE_MS = 2000
 
@@ -45,7 +46,13 @@ export function useDdxAutoSave() {
               sortOrder: dx.sortOrder,
             })),
           }),
-        }).catch(console.error)
+        })
+          .then((res) => {
+            if (res.ok) {
+              deleteCachedSession(currentSession.id)
+            }
+          })
+          .catch(console.error)
       }, AUTO_SAVE_DEBOUNCE_MS)
     })
 

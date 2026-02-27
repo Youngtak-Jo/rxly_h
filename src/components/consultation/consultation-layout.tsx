@@ -39,7 +39,8 @@ export function ConsultationLayout() {
   const activeSession = useSessionStore((s) => s.activeSession)
   const isLoading = useSessionStore((s) => s.isLoading)
   const isSwitching = useSessionStore((s) => s.isSwitching)
-  const { addSession, setActiveSession } = useSessionStore()
+  const addSession = useSessionStore((s) => s.addSession)
+  const setActiveSession = useSessionStore((s) => s.setActiveSession)
   const router = useRouter()
   const activeTab = useConsultationTabStore((s) => s.activeTab)
   const setTranscriptCollapsed = useConsultationTabStore(

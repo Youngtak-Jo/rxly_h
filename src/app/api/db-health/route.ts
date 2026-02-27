@@ -71,6 +71,7 @@ export async function GET(req: Request) {
             longQueries,
         })
     } catch (error) {
+        if (error instanceof NextResponse) return error
         const elapsed = Date.now() - start
         return NextResponse.json(
             {
@@ -128,6 +129,7 @@ export async function POST(req: Request) {
             })),
         })
     } catch (error) {
+        if (error instanceof NextResponse) return error
         return NextResponse.json(
             {
                 status: "error",

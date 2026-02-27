@@ -20,6 +20,7 @@ import {
   getRAGSourceMeta,
 } from "@/lib/connectors"
 import type { ConnectorState } from "@/types/insights"
+import { withAiTelemetry } from "@/lib/telemetry/ai"
 
 type DetectedLanguage = "ko" | "en" | "other"
 
@@ -78,7 +79,7 @@ export async function POST(req: Request) {
     const { allowed } = checkRateLimit(user.id, "ai")
     if (!allowed) return rateLimitResponse()
 
-    const { question, conversationHistory, enabledConnectors, insightsContext, model: modelOverride, customInstructions } =
+    const { question, conversationHistory, enabledConnectors, insightsContext, model: modelOverride, customInstructions, sessionId } =
       await req.json()
 
     if (!question?.trim()) {
@@ -153,15 +154,27 @@ Red Flags: ${JSON.stringify(insightsContext.redFlags || [])}
       customInstructions
     )}\n\n${getLanguageOverrideInstruction(questionLanguage)}`
 
-    const result = streamText({
-      model,
-      system: systemPrompt,
-      messages,
-      ...buildGenerationOptions(modelId, { temperature: 0.3 }),
-    })
+    const response = await withAiTelemetry(
+      {
+        userId: user.id,
+        sessionId: typeof sessionId === "string" ? sessionId : null,
+        feature: "ai_research",
+        model: modelId,
+      },
+      async () => {
+        const result = streamText({
+          model,
+          system: systemPrompt,
+          messages,
+          ...buildGenerationOptions(modelId, { temperature: 0.3 }),
+        })
+
+        return { result: result.toTextStreamResponse() }
+      }
+    )
 
     logAudit({ userId: user.id, action: "READ", resource: "ai_research" })
-    return result.toTextStreamResponse()
+    return response
   } catch (error) {
     if (error instanceof NextResponse) return error
     logger.error("Research generation error:", error)

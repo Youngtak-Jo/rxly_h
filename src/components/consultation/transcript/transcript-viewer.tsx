@@ -70,7 +70,7 @@ export function TranscriptViewer() {
 
   const scrollToBottom = useCallback(() => {
     if (virtuosoRef.current) {
-      virtuosoRef.current.scrollToIndex({ index: "LAST", align: "end", behavior: "smooth" })
+      virtuosoRef.current.scrollTo({ top: Number.MAX_SAFE_INTEGER, behavior: "smooth" })
     }
     isAtBottom.current = true
     setShowScrollButton(false)
@@ -79,9 +79,15 @@ export function TranscriptViewer() {
   // Auto-scroll when new items arrive if we are at bottom
   useEffect(() => {
     if (isAtBottom.current && virtuosoRef.current) {
-      virtuosoRef.current.scrollToIndex({ index: "LAST", align: "end", behavior: "auto" })
+      // Delay slightly so the DOM update (especially footer height) completes
+      const timeoutId = setTimeout(() => {
+        if (virtuosoRef.current) {
+          virtuosoRef.current.scrollTo({ top: Number.MAX_SAFE_INTEGER, behavior: "auto" })
+        }
+      }, 50)
+      return () => clearTimeout(timeoutId)
     }
-  }, [timeline.length, interimText])
+  }, [timeline.length, interimText, singleSpeakerDetected, classifyingEntries, identificationStatus, highlightStatus])
 
   const renderItem = useCallback((index: number, item: TimelineItem) => {
     if (item.type === "note") {
@@ -131,6 +137,8 @@ export function TranscriptViewer() {
           ref={virtuosoRef}
           data={timeline}
           itemContent={renderItem}
+          initialTopMostItemIndex={{ index: "LAST", align: "end" }}
+          followOutput={(isAtBottom) => isAtBottom ? "auto" : false}
           atBottomStateChange={(bottom: boolean) => {
             isAtBottom.current = bottom
             setShowScrollButton(!bottom)

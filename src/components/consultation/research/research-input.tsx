@@ -16,8 +16,10 @@ import { useResearchStore } from "@/stores/research-store"
 import { useConnectorStore } from "@/stores/connector-store"
 import { useSettingsStore } from "@/stores/settings-store"
 import { useInsightsStore } from "@/stores/insights-store"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 import { IconSlash, IconSend, IconPlayerStop, IconTrash } from "@tabler/icons-react"
 import type { ResearchCitation } from "@/stores/research-store"
+import { toast } from "sonner"
 
 const BRACKET_CITATION_RE = /\[\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/gi
 const MARKDOWN_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/gi
@@ -89,6 +91,43 @@ function parseCitations(text: string): ResearchCitation[] {
   return citations
 }
 
+async function persistResearchMessagePair(
+  sessionId: string,
+  question: string,
+  assistantContent: string,
+  citations: ResearchCitation[],
+  retries = 1
+): Promise<boolean> {
+  const payload = JSON.stringify({
+    messages: [
+      { role: "user", content: question, citations: [] },
+      { role: "assistant", content: assistantContent, citations },
+    ],
+  })
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/research`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      })
+      if (res.ok) {
+        deleteCachedSession(sessionId)
+        return true
+      }
+    } catch {
+      // retry below
+    }
+
+    if (attempt < retries) {
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    }
+  }
+
+  return false
+}
+
 export function ResearchInput() {
   const [text, setText] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -132,6 +171,7 @@ export function ResearchInput() {
       const { aiModel, customInstructions } = useSettingsStore.getState()
 
       const body: Record<string, unknown> = {
+        sessionId: activeSession.id,
         question,
         conversationHistory,
         enabledConnectors: connectors,
@@ -177,16 +217,16 @@ export function ResearchInput() {
 
       // Save the new user + assistant message pair to DB
       if (activeSession) {
-        fetch(`/api/sessions/${activeSession.id}/research`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: [
-              { role: "user", content: question, citations: [] },
-              { role: "assistant", content: accumulated, citations },
-            ],
-          }),
-        }).catch(console.error)
+        const saved = await persistResearchMessagePair(
+          activeSession.id,
+          question,
+          accumulated,
+          citations
+        )
+        if (!saved) {
+          console.error("Failed to persist research messages after retries")
+          toast.error("Failed to save research messages")
+        }
       }
     } catch (error) {
       if ((error as Error).name === "AbortError") {
@@ -197,6 +237,19 @@ export function ResearchInput() {
         if (current) {
           const citations = parseCitations(current.content)
           finalizeAssistantMessage(assistantId, current.content, citations)
+
+          if (activeSession) {
+            const saved = await persistResearchMessagePair(
+              activeSession.id,
+              question,
+              current.content,
+              citations
+            )
+            if (!saved) {
+              console.error("Failed to persist aborted research messages after retries")
+              toast.error("Failed to save research messages")
+            }
+          }
         }
       } else {
         console.error("Research stream error:", error)
@@ -263,7 +316,13 @@ export function ResearchInput() {
                     if (activeSession) {
                       fetch(`/api/sessions/${activeSession.id}/research`, {
                         method: "DELETE",
-                      }).catch(console.error)
+                      })
+                        .then((res) => {
+                          if (res.ok) {
+                            deleteCachedSession(activeSession.id)
+                          }
+                        })
+                        .catch(console.error)
                     }
                   }}
                   className="text-destructive focus:text-destructive"

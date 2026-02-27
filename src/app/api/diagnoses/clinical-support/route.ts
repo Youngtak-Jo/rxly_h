@@ -24,6 +24,7 @@ import type {
   EnrichedSource,
 } from "@/types/insights"
 import { logger } from "@/lib/logger"
+import { withAiTelemetry } from "@/lib/telemetry/ai"
 
 async function enrichSources(
   ragContext: RAGContext
@@ -140,6 +141,7 @@ export async function POST(req: Request) {
       citations,
       enabledConnectors,
       model: modelOverride,
+      sessionId,
     } = (await req.json()) as {
       diseaseName: string
       icdCode: string
@@ -148,6 +150,7 @@ export async function POST(req: Request) {
       citations: DiagnosisCitation[]
       enabledConnectors?: ConnectorState
       model?: string
+      sessionId?: string
     }
 
     const modelId = modelOverride || DEFAULT_MODEL
@@ -187,21 +190,39 @@ Evidence from consultation: ${evidence}`
         }
 
         // Run AI generation + source enrichment in parallel
-        const [aiResult, enrichedSources] = await Promise.all([
-          generateText({
-            model,
-            system: CLINICAL_SUPPORT_PROMPT,
-            prompt,
-            ...buildGenerationOptions(modelId, { temperature: 0.2 }),
-          }),
+        const [text, enrichedSources] = await Promise.all([
+          withAiTelemetry(
+            {
+              userId: user.id,
+              sessionId: typeof sessionId === "string" ? sessionId : null,
+              feature: "clinical_support_ai",
+              model: modelId,
+            },
+            async () => {
+              const aiResult = await generateText({
+                model,
+                system: CLINICAL_SUPPORT_PROMPT,
+                prompt,
+                ...buildGenerationOptions(modelId, { temperature: 0.2 }),
+              })
+
+              return {
+                result: aiResult.text,
+                usage: aiResult.usage
+                  ? {
+                      inputTokens: aiResult.usage.inputTokens,
+                      outputTokens: aiResult.usage.outputTokens,
+                    }
+                  : undefined,
+              }
+            }
+          ),
           enrichSources(ragContext),
         ])
 
         sources = enrichedSources
 
-        const parsedResult = safeParseAIJson<ClinicalDecisionSupport>(
-          aiResult.text
-        )
+        const parsedResult = safeParseAIJson<ClinicalDecisionSupport>(text)
         if (parsedResult.error || parsedResult.data === null) {
           logger.error("[clinical-support] AI returned invalid JSON (with RAG)")
           return NextResponse.json({ error: "AI returned invalid response format" }, { status: 502 })
@@ -216,12 +237,32 @@ Evidence from consultation: ${evidence}`
     }
 
     // Fallback: no connectors or RAG failed — run AI alone
-    const { text } = await generateText({
-      model,
-      system: CLINICAL_SUPPORT_PROMPT,
-      prompt,
-      ...buildGenerationOptions(modelId, { temperature: 0.2 }),
-    })
+    const text = await withAiTelemetry(
+      {
+        userId: user.id,
+        sessionId: typeof sessionId === "string" ? sessionId : null,
+        feature: "clinical_support_ai",
+        model: modelId,
+      },
+      async () => {
+        const result = await generateText({
+          model,
+          system: CLINICAL_SUPPORT_PROMPT,
+          prompt,
+          ...buildGenerationOptions(modelId, { temperature: 0.2 }),
+        })
+
+        return {
+          result: result.text,
+          usage: result.usage
+            ? {
+                inputTokens: result.usage.inputTokens,
+                outputTokens: result.usage.outputTokens,
+              }
+            : undefined,
+        }
+      }
+    )
 
     const parsedResult = safeParseAIJson<ClinicalDecisionSupport>(text)
     if (parsedResult.error || parsedResult.data === null) {

@@ -5,6 +5,7 @@ import { NextResponse } from "next/server"
 export interface AuthUser {
   id: string
   email?: string
+  role?: string
 }
 
 /**
@@ -21,7 +22,24 @@ export async function requireAuth(): Promise<AuthUser> {
     throw NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  return { id: user.id, email: user.email ?? undefined }
+  const role =
+    typeof user.app_metadata?.role === "string"
+      ? user.app_metadata.role
+      : undefined
+
+  return { id: user.id, email: user.email ?? undefined, role }
+}
+
+/**
+ * Authenticate and require admin role from Supabase app_metadata.role.
+ * Throws 401/403 JSON NextResponse when denied.
+ */
+export async function requireAdmin(): Promise<AuthUser> {
+  const user = await requireAuth()
+  if (user.role !== "admin") {
+    throw NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+  return user
 }
 
 /**
