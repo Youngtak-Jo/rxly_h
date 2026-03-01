@@ -2,6 +2,7 @@ import { LandingNavbar } from "@/components/landing-navbar"
 import { HeroConsultationDemo } from "@/components/landing/hero-consultation-demo"
 import { LandingSections } from "@/components/landing/landing-sections"
 import { Instrument_Serif } from "next/font/google"
+import { getTranslations } from "next-intl/server"
 
 const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
@@ -10,7 +11,9 @@ const instrumentSerif = Instrument_Serif({
 
 const heroBridgeBackground = "oklch(0.86 0.06 55)"
 
-export default function Home() {
+export default async function Home() {
+  const t = await getTranslations("LandingHero")
+
   return (
     <main
       className="relative min-h-svh overflow-x-clip text-foreground"
@@ -49,11 +52,10 @@ export default function Home() {
               <h1
                 className={`${instrumentSerif.className} text-5xl font-normal leading-tight text-white [text-shadow:0_8px_24px_rgba(0,0,0,0.35)] md:text-7xl lg:text-8xl`}
               >
-                AI Clinical Copilot
+                {t("title")}
               </h1>
               <p className="mt-5 text-base text-white/90 [text-shadow:0_4px_16px_rgba(0,0,0,0.3)] md:text-lg">
-                Turn every consultation into structured clinical intelligence with
-                real-time transcription, live insights, and action-ready next steps.
+                {t("description")}
               </p>
             </div>
 

@@ -1,0 +1,12 @@
+{
+  "GlobalError": {
+    "description": "An unexpected error occurred. Your data is safe.",
+    "title": "Something went wrong",
+    "tryAgain": "Try again"
+  },
+  "ConsultationError": {
+    "description": "An unexpected error occurred during consultation. Your data is safe.",
+    "title": "Something went wrong",
+    "tryAgain": "Try again"
+  }
+}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useRecordingStore } from "@/stores/recording-store"
@@ -12,11 +13,8 @@ import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import { useSessionStore } from "@/stores/session-store"
 import type { Speaker } from "@/types/session"
 
-function speakerLabel(speaker: Speaker) {
-  return speaker === "DOCTOR" ? "Dr" : speaker === "PATIENT" ? "Pt" : "?"
-}
-
 export function MobileTranscriptSection() {
+  const tViewer = useTranslations("TranscriptViewer")
   const [expanded, setExpanded] = useState(false)
   const entries = useTranscriptStore((s) => s.entries)
   const interimText = useTranscriptStore((s) => s.interimText)
@@ -66,7 +64,7 @@ export function MobileTranscriptSection() {
       {!expanded && !lastEntry && !interimText && isRecording && (
         <div className="px-4 py-2 text-center">
           <p className="text-xs text-muted-foreground/50 italic">
-            Listening...
+            {tViewer("listening")}
           </p>
         </div>
       )}
@@ -74,7 +72,7 @@ export function MobileTranscriptSection() {
       {!expanded && !lastEntry && !interimText && !isRecording && isTranscriptHydrating && (
         <div className="px-4 py-2 text-center">
           <p className="text-xs text-muted-foreground/70 italic">
-            Loading transcript history...
+            {tViewer("loadingHistory")}
           </p>
         </div>
       )}
@@ -93,7 +91,7 @@ export function MobileTranscriptSection() {
               className="w-full rounded-none h-8 text-xs text-muted-foreground gap-1"
             >
               <IconChevronUp className="size-3.5" />
-              Collapse
+              {tViewer("collapse")}
             </Button>
           </div>
         </div>
@@ -101,3 +99,10 @@ export function MobileTranscriptSection() {
     </div>
   )
 }
+  function speakerLabel(speaker: Speaker) {
+    return speaker === "DOCTOR"
+      ? t("speaker.doctor")
+      : speaker === "PATIENT"
+        ? t("speaker.patient")
+        : t("speaker.unknown")
+  }

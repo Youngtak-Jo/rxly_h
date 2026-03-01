@@ -1,0 +1,663 @@
+{
+  "AdminShell": {
+    "description": "Insight-first analytics workspace",
+    "loading": "Loading admin workspace...",
+    "refresh": "Refresh",
+    "title": "Admin Intelligence Console"
+  },
+  "AdminNav": {
+    "description": "Intelligence workspace",
+    "groups": {
+      "analytics": "Analytics",
+      "governance": "Governance",
+      "operations": "Operations"
+    },
+    "items": {
+      "aiOps": {
+        "description": "Failure, latency, cost by model",
+        "label": "AI Ops"
+      },
+      "cohorts": {
+        "description": "D1 / D7 / D30 retention",
+        "label": "Cohorts"
+      },
+      "compliance": {
+        "description": "PHI reveal and export signals",
+        "label": "Compliance"
+      },
+      "dataQuality": {
+        "description": "Transcript and telemetry quality",
+        "label": "Data Quality"
+      },
+      "funnel": {
+        "description": "Stage conversion and drop-offs",
+        "label": "Funnel"
+      },
+      "home": {
+        "description": "KPI snapshot and urgent incidents",
+        "label": "Home"
+      },
+      "sessions": {
+        "description": "Problem session drilldowns",
+        "label": "Sessions"
+      },
+      "triage": {
+        "description": "Incident queue and workflow",
+        "label": "Triage"
+      },
+      "users": {
+        "description": "Risk-prioritized users",
+        "label": "Users"
+      }
+    },
+    "title": "Admin Console"
+  },
+  "AdminFilterBar": {
+    "activeRange": "Active range: {from} - {to}",
+    "advanced": "Advanced",
+    "applyFilters": "Apply filters",
+    "globalFilters": "Global Filters",
+    "hasRedFlag": {
+      "all": "All",
+      "no": "No",
+      "yes": "Yes"
+    },
+    "helpText": "All filter changes are staged locally and applied together when you click Apply filters.",
+    "labels": {
+      "feature": "Feature",
+      "from": "From",
+      "hasRedFlag": "Has red flag",
+      "mode": "Mode",
+      "order": "Order",
+      "owner": "Owner",
+      "preset": "Range",
+      "priority": "Priority",
+      "q": "Search",
+      "riskBand": "Risk band",
+      "rule": "Rule",
+      "segment": "Segment",
+      "sessionsSort": "Session sort",
+      "severity": "Severity",
+      "status": "Status",
+      "timezone": "Timezone",
+      "to": "To",
+      "usersSort": "User sort"
+    },
+    "order": {
+      "asc": "Asc",
+      "desc": "Desc"
+    },
+    "pendingChanges": "Pending changes",
+    "placeholders": {
+      "ownerId": "owner id",
+      "rule": "rule",
+      "savedViewName": "Saved view name",
+      "search": "search by id, email, title"
+    },
+    "preset": {
+      "24h": "Last 24h",
+      "30d": "Last 30d",
+      "7d": "Last 7d",
+      "custom": "Custom range"
+    },
+    "prompts": {
+      "savedViewName": "Saved view name"
+    },
+    "query": "Query: {query}",
+    "reset": "Reset",
+    "saveView": "Save view",
+    "savedView": "Saved view",
+    "savedViews": "Saved views",
+    "sessionsSort": {
+      "ai": "AI Calls",
+      "completion": "Record Finalization",
+      "risk": "Risk Score",
+      "startedAt": "Started At"
+    },
+    "synced": "Synced",
+    "timezoneBadge": "TZ: {timezone}",
+    "unknown": "Unknown",
+    "usersSort": {
+      "ai": "AI Calls",
+      "completion": "Record Finalization",
+      "lastActive": "Last Active",
+      "risk": "Risk Score",
+      "sessions": "Sessions"
+    }
+  },
+  "AdminCommon": {
+    "eventSource": {
+      "audit": "Audit",
+      "client": "Client"
+    },
+    "eventStatus": {
+      "failed": "Failed",
+      "info": "Info",
+      "success": "Success"
+    },
+    "feature": {
+      "all": "All features",
+      "ddx": "Differential Dx",
+      "export": "Export",
+      "handout": "Handout",
+      "insights": "Live Insights",
+      "patientHandout": "Patient Handout",
+      "record": "Consultation Record",
+      "research": "Research",
+      "transcript": "Transcript"
+    },
+    "funnelStep": {
+      "ddxDone": "DDx",
+      "exportDone": "Export",
+      "handoutDone": "Handout",
+      "insightsDone": "Insights",
+      "recordDone": "Record Finalized",
+      "researchUsed": "Research",
+      "sessionStarted": "Session Started",
+      "transcriptCaptured": "Transcript Captured"
+    },
+    "mode": {
+      "AI_DOCTOR": "AI Doctor",
+      "ALL": "All",
+      "DOCTOR": "Doctor"
+    },
+    "priority": {
+      "P1": "P1",
+      "P2": "P2",
+      "P3": "P3",
+      "all": "All priorities"
+    },
+    "riskBand": {
+      "all": "All risk bands",
+      "critical": "Critical",
+      "high": "High",
+      "low": "Low",
+      "medium": "Medium"
+    },
+    "rules": {
+      "AiFailureImbalance": {
+        "description": "AI failures are disproportionately high for this user in the selected range: {aiFailureCount} failures, {aiSuccessCount} successes, {aiFailureRate}% failure rate.",
+        "label": "AI failure imbalance",
+        "title": "AI failure imbalance"
+      },
+      "DormantPowerUser": {
+        "description": "User had {last30Days} sessions in the last 30 days but only {last7Days} in the last 7 days.",
+        "label": "Dormant power user",
+        "title": "Dormant power user"
+      },
+      "DropOffBeforeRecord": {
+        "description": "Insights or DDx were generated, but the consultation record plan is still incomplete after 20 minutes.",
+        "label": "Drop-off before record",
+        "title": "Drop-off before record completion"
+      },
+      "ExportRiskSpike": {
+        "description": "User export volume exceeded the risk threshold in the selected period.",
+        "label": "Export activity spike",
+        "title": "Export activity spike"
+      },
+      "FastComplete": {
+        "description": "Transcript, insights, and record were completed quickly with high completion rate.",
+        "label": "Fast complete session",
+        "title": "Fast complete session"
+      },
+      "HighAiRegeneration": {
+        "description": "Session requested AI generation {aiCallCount} times.",
+        "label": "High AI regeneration",
+        "title": "High AI regeneration count"
+      },
+      "LowTranscriptQuality": {
+        "description": "Transcript confidence is {confidence}% and UNKNOWN speaker ratio is {unknownRatio}%.",
+        "label": "Low transcript quality",
+        "title": "Low transcript quality"
+      },
+      "RedFlagUnresolved": {
+        "description": "{redFlagCount} red flags were detected, but the record plan has not been finalized within the threshold time.",
+        "label": "Red flags unresolved",
+        "title": "Red flags unresolved"
+      },
+      "RepeatedAnalysisFailure": {
+        "description": "{feature} analysis failed {failedCount} times in the selected range.",
+        "label": "Repeated analysis failure",
+        "title": "Repeated {feature} failures"
+      },
+      "ResearchHeavyNoClosure": {
+        "description": "Research activity is high, but no handout or finalized record is present.",
+        "label": "Research-heavy session",
+        "title": "Research-heavy session without closure"
+      }
+    },
+    "severity": {
+      "all": "All severities",
+      "high": "High",
+      "low": "Low",
+      "medium": "Medium",
+      "positive": "Positive"
+    },
+    "status": {
+      "ACK": "Acknowledged",
+      "DISMISSED": "Dismissed",
+      "IN_PROGRESS": "In Progress",
+      "NEW": "New",
+      "RESOLVED": "Resolved",
+      "all": "All statuses"
+    },
+    "timelineCategory": {
+      "analysis": "Analysis",
+      "export": "Export",
+      "image": "Image",
+      "navigation": "Navigation",
+      "note": "Note",
+      "recording": "Recording",
+      "system": "System"
+    },
+    "timezone": {
+      "UTC": "UTC",
+      "local": "Local"
+    },
+    "usersOrSessions": {
+      "session": "Session",
+      "sessions": "sessions",
+      "user": "User"
+    }
+  },
+  "AdminHome": {
+    "aiMetrics": {
+      "costConcentration": "Cost Concentration",
+      "costPerSession": "Cost / Session",
+      "p95Latency": "P95 Latency",
+      "totalCost": "Total Cost"
+    },
+    "aiStateDescription": "Root-cause view for latency, failures, and spend.",
+    "aiStateTitle": "AI State",
+    "biggestBottleneck": "Biggest bottleneck",
+    "coverageValue": "Coverage {value}",
+    "delta": "Delta {value}",
+    "description": "Adoption-first operations console with workflow bottlenecks, live attention queue, and AI root-cause context.",
+    "descriptionShort": "Adoption-first operations console with AI root-cause context.",
+    "failed": "Failed to load home",
+    "failuresOfCalls": "Failures {failures} of {calls} calls",
+    "featureAdoptionDescription": "Feature reach in the selected range compared to the previous window.",
+    "featureAdoptionTitle": "Feature Adoption Detail",
+    "funnelDescription": "Stage conversion from session start to export.",
+    "funnelEmptyDescription": "No sessions in the selected range.",
+    "funnelEmptyTitle": "No funnel data",
+    "funnelTitle": "Workflow Funnel",
+    "homeLoading": "Loading home data...",
+    "largestDrop": "Drop {dropCount} ({dropRate})",
+    "liveAlertsDescription": "Read-only live rule hits before incident promotion.",
+    "liveAlertsTitle": "Live Alerts",
+    "noAdoptionDescription": "No sessions matched the current filters.",
+    "noAdoptionTitle": "No adoption data",
+    "noBacklogDescription": "No promoted incidents matched the current filters.",
+    "noBacklogTitle": "No backlog",
+    "noFailingFeatureDescription": "No AI failures were recorded in the selected range.",
+    "noFailingFeatureTitle": "No failing feature/model",
+    "noLiveAlertsDescription": "No rule hits matched the current filters.",
+    "noLiveAlertsTitle": "No live alerts",
+    "noTrendDescription": "No sessions in selected range.",
+    "noTrendTitle": "No trend data",
+    "openAiOps": "Open AI Ops",
+    "openDataQuality": "Open data quality",
+    "openFunnel": "Open funnel",
+    "openTriage": "Open triage",
+    "previous": "Previous {value}",
+    "rateValue": "Rate {value}",
+    "seenAt": "Seen {value}",
+    "session": "Session",
+    "sessionsCount": "{count} sessions",
+    "summary": {
+      "activeUsers": "Active Users",
+      "aiCostPerSession": "AI Cost / Session",
+      "aiFailureRate": "AI Failure Rate",
+      "ddxAdoptionRate": "DDx Adoption Rate",
+      "handoutGenerationRate": "Handout Generation Rate",
+      "recordFinalizationRate": "Record Finalization Rate",
+      "sessionStarts": "Session Starts",
+      "transcriptCaptureRate": "Transcript Capture Rate"
+    },
+    "telemetryMetrics": {
+      "aiCallsNoClientEvents": "AI calls with no client events",
+      "sessionsWithClientEvents": "Sessions with any client events",
+      "transcriptNoAi": "Transcript with no AI"
+    },
+    "telemetryTrustDescription": "Interpret adoption metrics with instrumentation coverage in view.",
+    "telemetryTrustTitle": "Telemetry Trust",
+    "title": "Home",
+    "topCostDetail": "{cost} across {calls} calls",
+    "trend": {
+      "series": {
+        "aiCalls": "AI Calls",
+        "sessions": "Sessions",
+        "workflowProgress": "Workflow Progress"
+      }
+    },
+    "trendDescription": "Sessions, AI calls, and workflow progress by time bucket.",
+    "trendTitle": "Trend",
+    "user": "User",
+    "highestSpendPath": "Highest spend path",
+    "incidentBacklogDescription": "Persisted incident queue with owner/status workflow.",
+    "incidentBacklogTitle": "Incident Backlog"
+  },
+  "AdminOverview": {
+    "description": "Platform-level KPIs, conversion funnel, and trend monitoring.",
+    "failed": "Failed to load overview",
+    "funnelDescription": "Completion by product stage.",
+    "funnelTitle": "Funnel",
+    "kpis": {
+      "activeSessions": {
+        "description": "Sessions started during selected range.",
+        "title": "Active Sessions"
+      },
+      "aiCalls": {
+        "description": "AI-generation calls from audit telemetry.",
+        "title": "AI Calls"
+      },
+      "dau": {
+        "description": "Users active in selected range.",
+        "title": "Distinct Active Users"
+      },
+      "documentGeneration": {
+        "description": "Record or patient handout generated.",
+        "title": "Document Generation"
+      },
+      "exports": {
+        "description": "Export links created in selected range.",
+        "title": "Exports"
+      },
+      "sessionCompletion": {
+        "description": "Sessions with completed plan or assessment.",
+        "title": "Session Completion"
+      }
+    },
+    "loading": "Loading overview data...",
+    "loadingTrendDescription": "Fetching overview metrics...",
+    "loadingTrendTitle": "Loading trend",
+    "noFunnelDescription": "No sessions in selected range.",
+    "noFunnelTitle": "No funnel data",
+    "noTrendDescription": "No sessions in selected range.",
+    "noTrendTitle": "No trend data",
+    "title": "Overview",
+    "trendDescription": "Sessions, AI calls, and completion rate by time bucket.",
+    "trendSeries": {
+      "aiCalls": "AI Calls",
+      "completionRate": "Completion Rate",
+      "sessions": "Sessions"
+    },
+    "trendTitle": "Trend"
+  },
+  "AdminAlerts": {
+    "allRules": "All rules",
+    "description": "Insight queue for risk, drop-off, and quality investigations.",
+    "emptyDescription": "No operational alerts for the current filter set.",
+    "emptyTitle": "No alerts",
+    "failed": "Failed to load alerts",
+    "loading": "Loading alerts...",
+    "loadingDescription": "Evaluating insight rules...",
+    "loadingTitle": "Loading alerts",
+    "openSession": "Open session",
+    "openUser": "Open user",
+    "queueDescription": "Prioritized alerts generated from user and session behavior.",
+    "queueTitle": "Operational Insights",
+    "rulePlaceholder": "Rule",
+    "severityPlaceholder": "Severity",
+    "title": "Alerts"
+  },
+  "AdminFunnel": {
+    "description": "Stage conversion ratio across the workflow.",
+    "dropLabel": "Drop: {dropCount} ({dropRate})",
+    "dropoffsDescription": "Where users are lost between stages.",
+    "dropoffsEmptyDescription": "No staged transitions were detected.",
+    "dropoffsEmptyTitle": "No drop-off data",
+    "dropoffsTitle": "Drop-off Reasons",
+    "failed": "Failed to load funnel",
+    "loading": "Loading funnel...",
+    "stageEmptyDescription": "No sessions in selected range.",
+    "stageEmptyTitle": "No funnel data",
+    "stageTitle": "Stage Conversion",
+    "title": "Funnel"
+  },
+  "AdminUsers": {
+    "columns": {
+      "aiCalls": "AI Calls",
+      "flags": "Flags",
+      "lastActive": "Last Active",
+      "recordFinalization": "Record Finalization",
+      "risk": "Risk",
+      "sessions": "Sessions",
+      "user": "User"
+    },
+    "description": "Risk-prioritized user list with server-side ranking.",
+    "failed": "Failed to load users",
+    "loadMore": "Load More Users",
+    "loading": "Loading users...",
+    "noUsersDescription": "Adjust search or filters to find users.",
+    "noUsersTitle": "No users found",
+    "open": "Open",
+    "periodComparison": "Compared to previous period: {delta} users ({previousTotalCount} → {totalCount})",
+    "title": "Users"
+  },
+  "AdminSessions": {
+    "columns": {
+      "aiCalls": "AI Calls",
+      "flags": "Flags",
+      "mode": "Mode",
+      "recordFinalization": "Record Finalization",
+      "risk": "Risk",
+      "session": "Session"
+    },
+    "description": "Risk-focused session queue with server-side ordering.",
+    "failed": "Failed to load sessions",
+    "loadMore": "Load More Sessions",
+    "loading": "Loading sessions...",
+    "noSessionsDescription": "No sessions matched the current filters.",
+    "noSessionsTitle": "No sessions",
+    "open": "Open",
+    "patient": "Patient",
+    "periodComparison": "Compared to previous period: {delta} sessions ({previousTotalCount} → {totalCount})",
+    "redFlag": "red-flag",
+    "title": "Sessions"
+  },
+  "AdminTriage": {
+    "columns": {
+      "actions": "Actions",
+      "count": "Count",
+      "lastSeen": "Last Seen",
+      "owner": "Owner",
+      "priority": "Priority",
+      "rule": "Rule",
+      "severity": "Severity",
+      "status": "Status"
+    },
+    "description": "Review live alerts first, then promote the cases that need persistent ownership.",
+    "failedIncidents": "Failed to load incidents",
+    "failedLiveAlerts": "Failed to load live alerts",
+    "incidentQueueDescription": "Persistent queue for status, owner, and resolution tracking.",
+    "incidentQueueTitle": "Incident Queue",
+    "incidentsTitle": "Incidents",
+    "liveRuleHitsDescription": "Read-only alerts generated from current behavior. Severity, rule, and search filters apply here.",
+    "liveRuleHitsTitle": "Live Rule Hits",
+    "liveAlertsTitle": "Live Alerts",
+    "loadMore": "Load More Incidents",
+    "loadingMore": "Loading...",
+    "loadingIncidents": "Loading incidents...",
+    "loadingLiveAlerts": "Loading live alerts...",
+    "noIncidentsDescription": "No incidents matched current filters.",
+    "noIncidentsTitle": "No incidents",
+    "noLiveAlertsDescription": "No live rule hits matched the current filters.",
+    "noLiveAlertsTitle": "No live alerts",
+    "ownerPlaceholder": "owner id",
+    "promote": "Promote live alerts to incidents",
+    "promoting": "Promoting...",
+    "save": "Save",
+    "session": "Session",
+    "sessionId": "Session: {id}",
+    "summary": "Live alerts: {liveCount} / Open incidents: {openCount}",
+    "title": "Triage",
+    "user": "User",
+    "userId": "User: {id}"
+  },
+  "AdminCohorts": {
+    "columns": {
+      "cohortDate": "Cohort Date",
+      "size": "Size"
+    },
+    "failed": "Failed to load cohorts",
+    "loading": "Loading cohorts...",
+    "matrixDescription": "First-session cohorts with D1 / D7 / D30 retention.",
+    "matrixTitle": "Retention Matrix",
+    "noDataDescription": "No first-session cohorts found in range.",
+    "noDataTitle": "No cohorts",
+    "title": "Cohorts"
+  },
+  "AdminAiOps": {
+    "columns": {
+      "calls": "Calls",
+      "cost": "Cost (USD)",
+      "failureRate": "Failure Rate",
+      "feature": "Feature",
+      "latency": "P50/P95",
+      "model": "Model"
+    },
+    "failed": "Failed to load AI Ops",
+    "loading": "Loading AI Ops...",
+    "noDataDescription": "No AI usage events in selected range.",
+    "noDataTitle": "No AI usage",
+    "tableDescription": "Failure, latency, and cost by feature and model.",
+    "tableTitle": "Feature/Model Quality",
+    "title": "AI Ops"
+  },
+  "AdminCompliance": {
+    "by": "By",
+    "columns": {
+      "avgAccess": "Avg Access",
+      "exports": "Exports",
+      "user": "User"
+    },
+    "entity": "Entity",
+    "exportSignalsDescription": "Users with high export volume/access patterns.",
+    "exportSignalsNoDataDescription": "No export activity in selected range.",
+    "exportSignalsNoDataTitle": "No export signals",
+    "exportSignalsTitle": "Export Signals",
+    "failed": "Failed to load compliance",
+    "loading": "Loading compliance data...",
+    "phiRevealDescription": "Recent PHI reveal actions from admin users.",
+    "phiRevealNoDataDescription": "No PHI reveals in selected range.",
+    "phiRevealNoDataTitle": "No reveal logs",
+    "phiRevealTitle": "PHI Reveal Log",
+    "reason": "Reason",
+    "title": "Compliance",
+    "unknown": "unknown"
+  },
+  "AdminDataQuality": {
+    "failed": "Failed to load data quality",
+    "loading": "Loading data quality...",
+    "metrics": {
+      "avgConfidence": "Avg confidence",
+      "avgUnknownRatio": "Avg UNKNOWN ratio",
+      "lowQualitySessions": "Low-quality sessions",
+      "sessions": "Sessions"
+    },
+    "telemetryDescription": "Missing or inconsistent event traces.",
+    "telemetry": {
+      "aiCallsNoClientEvents": "AI calls with no client events",
+      "transcriptNoAiCalls": "Transcript with no AI calls"
+    },
+    "telemetryTitle": "Telemetry Integrity",
+    "title": "Data Quality",
+    "transcriptDescription": "Confidence and UNKNOWN speaker ratio baseline.",
+    "transcriptTitle": "Transcript Quality"
+  },
+  "AdminUserDetail": {
+    "backToUsers": "Back to users",
+    "columns": {
+      "flags": "Flags",
+      "mode": "Mode",
+      "recordFinalization": "Record Finalization",
+      "session": "Session"
+    },
+    "failed": "Failed to load user detail",
+    "funnelDescription": "Stage progression for this user.",
+    "funnelTitle": "User Funnel",
+    "insightsDescription": "Behavior-derived risk and quality alerts for selected user.",
+    "insightsTitle": "User Insights",
+    "loading": "Loading user behavior...",
+    "metrics": {
+      "aiSuccessFailure": {
+        "description": "Failure rate {rate}",
+        "title": "AI Success / Failure"
+      },
+      "lastActive": {
+        "description": "Most recent session activity timestamp.",
+        "title": "Last Active"
+      },
+      "recordFinalization": {
+        "description": "Sessions finalized with plan or assessment.",
+        "title": "Record Finalization Rate"
+      },
+      "sessions": {
+        "description": "Sessions in selected period.",
+        "title": "Sessions"
+      }
+    },
+    "noAlertsDescription": "No high-priority risk pattern for this user in current range.",
+    "noAlertsTitle": "No user alerts",
+    "noDataDescription": "User detail is not available.",
+    "noDataTitle": "No user data",
+    "noSessionsDescription": "No sessions matched current filters for this user.",
+    "noSessionsTitle": "No sessions",
+    "noTimelineDescription": "No tracked events for this user in the selected range.",
+    "noTimelineTitle": "No timeline events",
+    "open": "Open",
+    "openSession": "Open Session {id}",
+    "openTriage": "Open triage",
+    "range": "Range: {from} - {to}",
+    "sessionMapDescription": "Sessions with record finalization and risk flags.",
+    "sessionMapTitle": "User Session Map",
+    "timelineDescription": "Chronological client + audit events for investigation.",
+    "timelineTitle": "Behavior Timeline"
+  },
+  "AdminSessionDetail": {
+    "backToSessions": "Back to sessions",
+    "cards": {
+      "redFlags": {
+        "description": "Derived from insights payload in this session.",
+        "title": "Red Flags"
+      },
+      "session": {
+        "mode": "Mode: {value}",
+        "started": "Started: {value}",
+        "title": "Session",
+        "updated": "Updated: {value}"
+      },
+      "signals": {
+        "title": "Signals"
+      },
+      "workflowProgress": {
+        "description": "Transcript + insights + ddx + record + research + handout stages.",
+        "title": "Workflow Progress"
+      }
+    },
+    "failed": "Failed to load session detail",
+    "loading": "Loading session detail...",
+    "openTriage": "Open triage",
+    "revealPlan": "Reveal Plan",
+    "revealReasonPrompt": "Reason for PHI reveal",
+    "revealSummary": "Reveal Summary",
+    "revealText": "Reveal Text",
+    "selectedSession": "Selected session: {id}",
+    "summary": "Summary",
+    "tabs": {
+      "audit": "Audit",
+      "ddx": "DDx",
+      "handout": "Handout",
+      "insights": "Insights",
+      "record": "Record",
+      "research": "Research",
+      "transcript": "Transcript"
+    },
+    "title": "Session Drilldown",
+    "unavailableDescription": "This session could not be loaded. Try reopening it from the Sessions list.",
+    "unavailableTitle": "Session detail unavailable",
+    "unknownSpeaker": "UNKNOWN"
+  }
+}

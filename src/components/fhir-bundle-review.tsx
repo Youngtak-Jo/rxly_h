@@ -1,5 +1,6 @@
 "use client"
 
+import { useLocale, useTranslations } from "next-intl"
 import { useMedplumSyncStore } from "@/stores/medplum-sync-store"
 import {
   Accordion,
@@ -12,8 +13,11 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { IconCheck, IconAlertTriangle } from "@tabler/icons-react"
 import type { BundleEntry } from "@medplum/fhirtypes"
+import type { UiLocale } from "@/i18n/config"
+import { formatDateTime } from "@/i18n/format"
 
 export function FhirBundleReview() {
+  const t = useTranslations("FhirBundleReview")
   const editedBundle = useMedplumSyncStore((s) => s.editedBundle)
   const status = useMedplumSyncStore((s) => s.status)
   const createdResources = useMedplumSyncStore((s) => s.createdResources)
@@ -24,7 +28,7 @@ export function FhirBundleReview() {
       <div className="rounded-md border bg-muted/50 p-3">
         <div className="mb-2 flex items-center gap-2 text-sm font-medium text-green-600">
           <IconCheck className="size-4" />
-          Created {createdResources.length} FHIR resources
+          {t("createdResources", { count: createdResources.length })}
         </div>
         <div className="grid gap-1 text-xs text-muted-foreground">
           {createdResources.map((r) => (
@@ -89,6 +93,7 @@ function groupEntries(entries: BundleEntry[]) {
 // --- Patient Section (editable name) ---
 
 function PatientSection({ entries }: { entries: BundleEntry[] }) {
+  const t = useTranslations("FhirBundleReview")
   const updatePatientName = useMedplumSyncStore((s) => s.updatePatientName)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const patient = entries[0]?.resource as any
@@ -100,10 +105,10 @@ function PatientSection({ entries }: { entries: BundleEntry[] }) {
     <AccordionItem value="Patient">
       <AccordionTrigger>
         <div className="flex items-center gap-2">
-          <span>Patient</span>
+          <span>{t("patient")}</span>
           {isEmpty ? (
             <Badge variant="destructive" className="text-[10px]">
-              Name missing
+              {t("nameMissing")}
             </Badge>
           ) : (
             <Badge variant="secondary">
@@ -115,10 +120,10 @@ function PatientSection({ entries }: { entries: BundleEntry[] }) {
       <AccordionContent>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5">
-            <Label htmlFor="patient-given">Given Name</Label>
+            <Label htmlFor="patient-given">{t("givenName")}</Label>
             <Input
               id="patient-given"
-              placeholder="Enter first name"
+              placeholder={t("placeholders.firstName")}
               defaultValue={currentGiven}
               onBlur={(e) =>
                 updatePatientName(e.target.value, currentFamily)
@@ -126,10 +131,10 @@ function PatientSection({ entries }: { entries: BundleEntry[] }) {
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="patient-family">Family Name</Label>
+            <Label htmlFor="patient-family">{t("familyName")}</Label>
             <Input
               id="patient-family"
-              placeholder="Enter last name"
+              placeholder={t("placeholders.lastName")}
               defaultValue={currentFamily}
               onBlur={(e) =>
                 updatePatientName(currentGiven, e.target.value)
@@ -139,12 +144,12 @@ function PatientSection({ entries }: { entries: BundleEntry[] }) {
         </div>
         {patient?.gender && (
           <div className="mt-2 text-xs text-muted-foreground">
-            Gender: {patient.gender}
+            {t("gender")}: {patient.gender}
           </div>
         )}
         {patient?.birthDate && (
           <div className="text-xs text-muted-foreground">
-            Birth Date: {patient.birthDate}
+            {t("birthDate")}: {patient.birthDate}
           </div>
         )}
       </AccordionContent>
@@ -155,36 +160,38 @@ function PatientSection({ entries }: { entries: BundleEntry[] }) {
 // --- Encounter Section ---
 
 function EncounterSection({ entries }: { entries: BundleEntry[] }) {
+  const t = useTranslations("FhirBundleReview")
+  const locale = useLocale() as UiLocale
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const encounter = entries[0]?.resource as any
   return (
     <AccordionItem value="Encounter">
       <AccordionTrigger>
         <div className="flex items-center gap-2">
-          <span>Encounter</span>
-          <Badge variant="secondary">{encounter?.status || "unknown"}</Badge>
+          <span>{t("encounter")}</span>
+          <Badge variant="secondary">{encounter?.status || t("unknownStatus")}</Badge>
         </div>
       </AccordionTrigger>
       <AccordionContent>
         <div className="grid gap-1.5 text-sm">
           {encounter?.reasonCode?.[0]?.text && (
             <div>
-              <span className="text-muted-foreground">Reason: </span>
+              <span className="text-muted-foreground">{t("reason")}: </span>
               {encounter.reasonCode[0].text}
             </div>
           )}
           {encounter?.period?.start && (
             <div>
-              <span className="text-muted-foreground">Period: </span>
-              {new Date(encounter.period.start).toLocaleString()} —{" "}
+              <span className="text-muted-foreground">{t("period")}: </span>
+              {formatDateTime(encounter.period.start, locale)} -{" "}
               {encounter.period.end
-                ? new Date(encounter.period.end).toLocaleString()
-                : "ongoing"}
+                ? formatDateTime(encounter.period.end, locale)
+                : t("ongoing")}
             </div>
           )}
           {encounter?.class?.display && (
             <div>
-              <span className="text-muted-foreground">Class: </span>
+              <span className="text-muted-foreground">{t("class")}: </span>
               {encounter.class.display}
             </div>
           )}
@@ -197,11 +204,12 @@ function EncounterSection({ entries }: { entries: BundleEntry[] }) {
 // --- Condition Section ---
 
 function ConditionSection({ entries }: { entries: BundleEntry[] }) {
+  const t = useTranslations("FhirBundleReview")
   return (
     <AccordionItem value="Condition">
       <AccordionTrigger>
         <div className="flex items-center gap-2">
-          <span>Conditions</span>
+          <span>{t("conditions")}</span>
           <Badge variant="secondary">{entries.length}</Badge>
         </div>
       </AccordionTrigger>
@@ -213,11 +221,11 @@ function ConditionSection({ entries }: { entries: BundleEntry[] }) {
             return (
               <div key={i} className="rounded-md border p-2.5 text-sm">
                 <div className="font-medium">
-                  {c?.code?.text || "Unknown"}
+                  {c?.code?.text || t("unknown")}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {c?.code?.coding?.[0]?.code && (
-                    <span>ICD: {c.code.coding[0].code}</span>
+                    <span>{t("verificationIcd")}: {c.code.coding[0].code}</span>
                   )}
                   {c?.verificationStatus?.coding?.[0]?.code && (
                     <span> | {c.verificationStatus.coding[0].code}</span>
@@ -240,11 +248,12 @@ function ConditionSection({ entries }: { entries: BundleEntry[] }) {
 // --- Observation Section ---
 
 function ObservationSection({ entries }: { entries: BundleEntry[] }) {
+  const t = useTranslations("FhirBundleReview")
   return (
     <AccordionItem value="Observation">
       <AccordionTrigger>
         <div className="flex items-center gap-2">
-          <span>Observations</span>
+          <span>{t("observations")}</span>
           <Badge variant="secondary">{entries.length}</Badge>
         </div>
       </AccordionTrigger>
@@ -253,7 +262,7 @@ function ObservationSection({ entries }: { entries: BundleEntry[] }) {
           {entries.map((entry, i) => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const obs = entry.resource as any
-            const display = obs?.code?.coding?.[0]?.display || "Observation"
+            const display = obs?.code?.coding?.[0]?.display || t("observation")
             const value = obs?.valueQuantity
               ? `${obs.valueQuantity.value} ${obs.valueQuantity.unit || ""}`
               : obs?.component
@@ -286,14 +295,15 @@ function ObservationSection({ entries }: { entries: BundleEntry[] }) {
 // --- ClinicalImpression Section ---
 
 function ClinicalImpressionSection({ entries }: { entries: BundleEntry[] }) {
+  const t = useTranslations("FhirBundleReview")
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const impression = entries[0]?.resource as any
   return (
     <AccordionItem value="ClinicalImpression">
       <AccordionTrigger>
         <div className="flex items-center gap-2">
-          <span>Clinical Impression</span>
-          <Badge variant="secondary">{impression?.status || "unknown"}</Badge>
+          <span>{t("clinicalImpression")}</span>
+          <Badge variant="secondary">{impression?.status || t("unknownStatus")}</Badge>
         </div>
       </AccordionTrigger>
       <AccordionContent>
@@ -301,7 +311,7 @@ function ClinicalImpressionSection({ entries }: { entries: BundleEntry[] }) {
           {impression?.summary && (
             <div>
               <div className="mb-1 text-xs font-medium text-muted-foreground">
-                Summary
+                {t("summary")}
               </div>
               <p>{impression.summary}</p>
             </div>
@@ -309,14 +319,14 @@ function ClinicalImpressionSection({ entries }: { entries: BundleEntry[] }) {
           {impression?.finding?.length > 0 && (
             <div>
               <div className="mb-1 text-xs font-medium text-muted-foreground">
-                Findings
+                {t("findings")}
               </div>
               <ul className="list-inside list-disc text-xs">
                 {impression.finding.map(
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   (f: any, i: number) => (
                     <li key={i}>
-                      {f.itemCodeableConcept?.text || "Finding"}
+                      {f.itemCodeableConcept?.text || t("finding")}
                     </li>
                   )
                 )}
@@ -326,7 +336,7 @@ function ClinicalImpressionSection({ entries }: { entries: BundleEntry[] }) {
           {impression?.note?.length > 0 && (
             <div>
               <div className="mb-1 text-xs font-medium text-muted-foreground">
-                Red Flags
+                {t("redFlags")}
               </div>
               <ul className="list-inside list-disc text-xs text-destructive">
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -345,6 +355,7 @@ function ClinicalImpressionSection({ entries }: { entries: BundleEntry[] }) {
 // --- Composition Section ---
 
 function CompositionSection({ entries }: { entries: BundleEntry[] }) {
+  const t = useTranslations("FhirBundleReview")
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const composition = entries[0]?.resource as any
   const sections = composition?.section || []
@@ -353,8 +364,8 @@ function CompositionSection({ entries }: { entries: BundleEntry[] }) {
     <AccordionItem value="Composition">
       <AccordionTrigger>
         <div className="flex items-center gap-2">
-          <span>Consultation Record</span>
-          <Badge variant="secondary">{sections.length} sections</Badge>
+          <span>{t("consultationRecord")}</span>
+          <Badge variant="secondary">{t("sections", { count: sections.length })}</Badge>
         </div>
       </AccordionTrigger>
       <AccordionContent>

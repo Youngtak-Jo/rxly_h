@@ -4,6 +4,7 @@ import type {
   AdminFeatureAdoptionRow,
   AdminFunnelDropoff,
   AdminFeature,
+  AdminFunnelStepKey,
   AdminFunnelStep,
   AdminInterval,
   AdminKpis,
@@ -201,15 +202,15 @@ export function buildFunnel(signals: SessionSignals[]): AdminFunnelStep[] {
     exportDone: signals.filter((s) => s.hasExport).length,
   }
 
-  const steps: Array<[string, number]> = [
-    ["Session Started", count.sessionStarted],
-    ["Transcript Captured", count.transcriptCaptured],
-    ["Insights", count.insightsDone],
-    ["DDx", count.ddxDone],
-    ["Record Finalized", count.recordDone],
-    ["Research", count.researchUsed],
-    ["Handout", count.handoutDone],
-    ["Export", count.exportDone],
+  const steps: Array<[AdminFunnelStepKey, number]> = [
+    ["sessionStarted", count.sessionStarted],
+    ["transcriptCaptured", count.transcriptCaptured],
+    ["insightsDone", count.insightsDone],
+    ["ddxDone", count.ddxDone],
+    ["recordDone", count.recordDone],
+    ["researchUsed", count.researchUsed],
+    ["handoutDone", count.handoutDone],
+    ["exportDone", count.exportDone],
   ]
 
   return steps.map(([step, stepCount]) => ({

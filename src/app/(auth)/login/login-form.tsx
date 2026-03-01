@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Loader2, ArrowLeft, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -21,6 +22,7 @@ import { login } from "./actions"
 type View = "credentials" | "otp-request" | "otp-verify"
 
 export function LoginForm() {
+  const t = useTranslations("LoginForm")
   const [view, setView] = useState<View>("credentials")
   const [isPending, startTransition] = useTransition()
   const [otpEmail, setOtpEmail] = useState("")
@@ -36,12 +38,12 @@ export function LoginForm() {
       if (description) {
         toast.error(decodeURIComponent(description))
       } else if (error === "auth_callback_failed") {
-        toast.error("Authentication failed. Please try again.")
+        toast.error(t("authFailed"))
       } else {
-        toast.error("Authentication failed. Please try again.")
+        toast.error(t("authFailed"))
       }
     }
-  }, [searchParams])
+  }, [searchParams, t])
 
   useEffect(() => {
     if (resendCooldown <= 0) return
@@ -60,7 +62,7 @@ export function LoginForm() {
 
   const handleSendOtp = async () => {
     if (!otpEmail) {
-      toast.error("Please enter your email address")
+      toast.error(t("enterEmail"))
       return
     }
     setOtpLoading(true)
@@ -74,11 +76,11 @@ export function LoginForm() {
         toast.error(error.message)
         return
       }
-      toast.success("Verification code sent to your email")
+      toast.success(t("otpSent"))
       setView("otp-verify")
       setResendCooldown(60)
     } catch {
-      toast.error("Failed to send verification code")
+      toast.error(t("sendCodeFailed"))
     } finally {
       setOtpLoading(false)
     }
@@ -101,13 +103,13 @@ export function LoginForm() {
         }
         window.location.href = "/consultation"
       } catch {
-        toast.error("Verification failed")
+        toast.error(t("verifyFailed"))
         setOtpValue("")
       } finally {
         setOtpLoading(false)
       }
     },
-    [otpEmail]
+    [otpEmail, t]
   )
 
   const handleResendOtp = async () => {
@@ -123,11 +125,11 @@ export function LoginForm() {
         toast.error(error.message)
         return
       }
-      toast.success("New code sent to your email")
+      toast.success(t("resendSuccess"))
       setResendCooldown(60)
       setOtpValue("")
     } catch {
-      toast.error("Failed to resend code")
+      toast.error(t("resendFailed"))
     } finally {
       setOtpLoading(false)
     }
@@ -146,17 +148,16 @@ export function LoginForm() {
           className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm transition-colors"
         >
           <ArrowLeft className="size-4" />
-          Back
+          {t("back")}
         </button>
 
         <div className="flex flex-col items-center gap-2 text-center">
           <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
             <Mail className="size-6 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold">Check your email</h1>
+          <h1 className="text-2xl font-bold">{t("checkEmailTitle")}</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            We sent a verification code to{" "}
-            <span className="font-medium text-foreground">{otpEmail}</span>
+            {t("checkEmailDescription", { email: otpEmail })}
           </p>
         </div>
 
@@ -184,20 +185,22 @@ export function LoginForm() {
           {otpLoading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Verifying...
+              {t("verifying")}
             </div>
           )}
         </div>
 
         <div className="text-center text-sm text-muted-foreground">
-          Didn&apos;t receive a code?{" "}
+          {t("didNotReceiveCode")}{" "}
           <button
             type="button"
             onClick={handleResendOtp}
             disabled={resendCooldown > 0 || otpLoading}
             className="underline underline-offset-4 hover:text-primary disabled:opacity-50 disabled:no-underline"
           >
-            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend"}
+            {resendCooldown > 0
+              ? t("resendIn", { seconds: resendCooldown })
+              : t("resend")}
           </button>
         </div>
       </div>
@@ -214,23 +217,23 @@ export function LoginForm() {
           className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm transition-colors"
         >
           <ArrowLeft className="size-4" />
-          Back to sign in
+          {t("backToSignIn")}
         </button>
 
         <div className="flex flex-col gap-2 text-center">
-          <h1 className="text-2xl font-bold">Sign in with email code</h1>
+          <h1 className="text-2xl font-bold">{t("emailCodeTitle")}</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            We&apos;ll send a verification code to your email
+            {t("emailCodeDescription")}
           </p>
         </div>
 
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="otp-email">Email</Label>
+            <Label htmlFor="otp-email">{t("emailLabel")}</Label>
             <Input
               id="otp-email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("emailPlaceholder")}
               value={otpEmail}
               onChange={(e) => setOtpEmail(e.target.value)}
               onKeyDown={(e) => {
@@ -250,10 +253,10 @@ export function LoginForm() {
             {otpLoading ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Sending...
+                {t("sending")}
               </>
             ) : (
-              "Send Code"
+              t("sendCode")
             )}
           </Button>
         </div>
@@ -265,9 +268,9 @@ export function LoginForm() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2 text-center">
-        <h1 className="text-2xl font-bold">Welcome back</h1>
+        <h1 className="text-2xl font-bold">{t("credentialsTitle")}</h1>
         <p className="text-muted-foreground text-sm text-balance">
-          Sign in to your account
+          {t("credentialsDescription")}
         </p>
       </div>
 
@@ -275,37 +278,37 @@ export function LoginForm() {
 
       <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
         <span className="bg-background text-muted-foreground relative z-10 px-2">
-          or continue with email
+          {t("signInWithEmailDivider")}
         </span>
       </div>
 
       <form action={handleLogin}>
         <div className="flex flex-col gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("emailLabel")}</Label>
             <Input
               id="email"
               name="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("emailPlaceholder")}
               required
             />
           </div>
           <div className="grid gap-2">
             <div className="flex items-center">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("password")}</Label>
               <Link
                 href="/forgot-password"
                 className="ml-auto text-sm underline-offset-4 hover:underline"
               >
-                Forgot password?
+                {t("forgotPassword")}
               </Link>
             </div>
             <Input
               id="password"
               name="password"
               type="password"
-              placeholder="••••••••"
+              placeholder={t("passwordPlaceholder")}
               required
               minLength={6}
             />
@@ -314,10 +317,10 @@ export function LoginForm() {
             {isPending ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Signing in...
+                {t("signingIn")}
               </>
             ) : (
-              "Sign In"
+              t("signIn")
             )}
           </Button>
         </div>
@@ -328,16 +331,16 @@ export function LoginForm() {
         onClick={() => setView("otp-request")}
         className="text-muted-foreground hover:text-primary text-center text-sm underline-offset-4 hover:underline"
       >
-        Sign in with email code
+        {t("useEmailCode")}
       </button>
 
       <div className="text-center text-sm">
-        Don&apos;t have an account?{" "}
+        {t("signUpPrompt")}{" "}
         <Link
           href="/signup"
           className="underline underline-offset-4 hover:text-primary"
         >
-          Sign up
+          {t("signUp")}
         </Link>
       </div>
     </div>

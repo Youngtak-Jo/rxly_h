@@ -1,0 +1,663 @@
+{
+  "AdminShell": {
+    "description": "인사이트 중심 분석 워크스페이스",
+    "loading": "관리자 워크스페이스를 불러오는 중...",
+    "refresh": "새로고침",
+    "title": "관리자 인텔리전스 콘솔"
+  },
+  "AdminNav": {
+    "description": "인텔리전스 워크스페이스",
+    "groups": {
+      "analytics": "분석",
+      "governance": "거버넌스",
+      "operations": "운영"
+    },
+    "items": {
+      "aiOps": {
+        "description": "모델별 실패, 지연, 비용",
+        "label": "AI Ops"
+      },
+      "cohorts": {
+        "description": "D1 / D7 / D30 잔존율",
+        "label": "코호트"
+      },
+      "compliance": {
+        "description": "PHI 조회 및 내보내기 신호",
+        "label": "컴플라이언스"
+      },
+      "dataQuality": {
+        "description": "전사 및 텔레메트리 품질",
+        "label": "데이터 품질"
+      },
+      "funnel": {
+        "description": "단계별 전환과 이탈",
+        "label": "퍼널"
+      },
+      "home": {
+        "description": "KPI 스냅샷과 긴급 이슈",
+        "label": "홈"
+      },
+      "sessions": {
+        "description": "문제 세션 상세 분석",
+        "label": "세션"
+      },
+      "triage": {
+        "description": "인시던트 큐와 처리 흐름",
+        "label": "트리아지"
+      },
+      "users": {
+        "description": "위험도 우선 사용자 목록",
+        "label": "사용자"
+      }
+    },
+    "title": "관리자 콘솔"
+  },
+  "AdminFilterBar": {
+    "activeRange": "적용 범위: {from} - {to}",
+    "advanced": "고급",
+    "applyFilters": "필터 적용",
+    "globalFilters": "전역 필터",
+    "hasRedFlag": {
+      "all": "전체",
+      "no": "아니오",
+      "yes": "예"
+    },
+    "helpText": "모든 필터 변경은 로컬에 임시 저장되며, 필터 적용을 눌렀을 때 한 번에 반영됩니다.",
+    "labels": {
+      "feature": "기능",
+      "from": "시작",
+      "hasRedFlag": "레드 플래그 여부",
+      "mode": "모드",
+      "order": "정렬 순서",
+      "owner": "담당자",
+      "preset": "범위",
+      "priority": "우선순위",
+      "q": "검색",
+      "riskBand": "위험 구간",
+      "rule": "규칙",
+      "segment": "세그먼트",
+      "sessionsSort": "세션 정렬",
+      "severity": "심각도",
+      "status": "상태",
+      "timezone": "시간대",
+      "to": "종료",
+      "usersSort": "사용자 정렬"
+    },
+    "order": {
+      "asc": "오름차순",
+      "desc": "내림차순"
+    },
+    "pendingChanges": "변경 사항 있음",
+    "placeholders": {
+      "ownerId": "담당자 id",
+      "rule": "규칙",
+      "savedViewName": "저장할 뷰 이름",
+      "search": "id, 이메일, 제목으로 검색"
+    },
+    "preset": {
+      "24h": "최근 24시간",
+      "30d": "최근 30일",
+      "7d": "최근 7일",
+      "custom": "사용자 지정 범위"
+    },
+    "prompts": {
+      "savedViewName": "저장할 뷰 이름"
+    },
+    "query": "검색어: {query}",
+    "reset": "초기화",
+    "saveView": "뷰 저장",
+    "savedView": "저장된 뷰",
+    "savedViews": "저장된 뷰 목록",
+    "sessionsSort": {
+      "ai": "AI 호출 수",
+      "completion": "기록 완료",
+      "risk": "위험 점수",
+      "startedAt": "시작 시각"
+    },
+    "synced": "동기화됨",
+    "timezoneBadge": "시간대: {timezone}",
+    "unknown": "알 수 없음",
+    "usersSort": {
+      "ai": "AI 호출 수",
+      "completion": "기록 완료",
+      "lastActive": "마지막 활동",
+      "risk": "위험 점수",
+      "sessions": "세션 수"
+    }
+  },
+  "AdminCommon": {
+    "eventSource": {
+      "audit": "감사 로그",
+      "client": "클라이언트"
+    },
+    "eventStatus": {
+      "failed": "실패",
+      "info": "정보",
+      "success": "성공"
+    },
+    "feature": {
+      "all": "전체 기능",
+      "ddx": "감별진단",
+      "export": "내보내기",
+      "handout": "안내문",
+      "insights": "실시간 인사이트",
+      "patientHandout": "환자 안내문",
+      "record": "진료 기록",
+      "research": "리서치",
+      "transcript": "전사"
+    },
+    "funnelStep": {
+      "ddxDone": "감별진단",
+      "exportDone": "내보내기",
+      "handoutDone": "안내문",
+      "insightsDone": "인사이트",
+      "recordDone": "기록 완료",
+      "researchUsed": "리서치",
+      "sessionStarted": "세션 시작",
+      "transcriptCaptured": "전사 캡처"
+    },
+    "mode": {
+      "AI_DOCTOR": "AI Doctor",
+      "ALL": "전체",
+      "DOCTOR": "Doctor"
+    },
+    "priority": {
+      "P1": "P1",
+      "P2": "P2",
+      "P3": "P3",
+      "all": "전체 우선순위"
+    },
+    "riskBand": {
+      "all": "전체 위험 구간",
+      "critical": "치명적",
+      "high": "높음",
+      "low": "낮음",
+      "medium": "중간"
+    },
+    "rules": {
+      "AiFailureImbalance": {
+        "description": "선택한 기간 동안 이 사용자의 AI 실패 비율이 높습니다: 실패 {aiFailureCount}건, 성공 {aiSuccessCount}건, 실패율 {aiFailureRate}%.",
+        "label": "AI 실패 불균형",
+        "title": "AI 실패 불균형"
+      },
+      "DormantPowerUser": {
+        "description": "최근 30일 동안 {last30Days}회 세션이 있었지만 최근 7일 동안은 {last7Days}회만 있었습니다.",
+        "label": "휴면 파워 유저",
+        "title": "휴면 파워 유저"
+      },
+      "DropOffBeforeRecord": {
+        "description": "인사이트 또는 DDx는 생성됐지만 20분이 지나도 진료 기록 계획이 완료되지 않았습니다.",
+        "label": "기록 전 이탈",
+        "title": "진료 기록 완료 전 이탈"
+      },
+      "ExportRiskSpike": {
+        "description": "선택한 기간 동안 사용자의 내보내기 볼륨이 위험 임계치를 초과했습니다.",
+        "label": "내보내기 급증",
+        "title": "내보내기 활동 급증"
+      },
+      "FastComplete": {
+        "description": "전사, 인사이트, 기록이 높은 완료율과 함께 빠르게 완료되었습니다.",
+        "label": "빠른 완료 세션",
+        "title": "빠른 완료 세션"
+      },
+      "HighAiRegeneration": {
+        "description": "이 세션에서 AI 생성이 {aiCallCount}회 요청되었습니다.",
+        "label": "AI 재생성 과다",
+        "title": "AI 재생성 횟수 과다"
+      },
+      "LowTranscriptQuality": {
+        "description": "전사 신뢰도는 {confidence}%, UNKNOWN 화자 비율은 {unknownRatio}%입니다.",
+        "label": "전사 품질 저하",
+        "title": "전사 품질 저하"
+      },
+      "RedFlagUnresolved": {
+        "description": "{redFlagCount}개의 레드 플래그가 감지됐지만 임계 시간 내에 기록 계획이 완료되지 않았습니다.",
+        "label": "레드 플래그 미해결",
+        "title": "레드 플래그 미해결"
+      },
+      "RepeatedAnalysisFailure": {
+        "description": "선택한 기간 동안 {feature} 분석이 {failedCount}회 실패했습니다.",
+        "label": "반복 분석 실패",
+        "title": "{feature} 반복 실패"
+      },
+      "ResearchHeavyNoClosure": {
+        "description": "리서치 활동은 많지만 안내문이나 최종 기록이 없습니다.",
+        "label": "리서치 과다 세션",
+        "title": "마무리 없는 리서치 과다 세션"
+      }
+    },
+    "severity": {
+      "all": "전체 심각도",
+      "high": "높음",
+      "low": "낮음",
+      "medium": "중간",
+      "positive": "긍정"
+    },
+    "status": {
+      "ACK": "확인됨",
+      "DISMISSED": "무시됨",
+      "IN_PROGRESS": "진행 중",
+      "NEW": "신규",
+      "RESOLVED": "해결됨",
+      "all": "전체 상태"
+    },
+    "timelineCategory": {
+      "analysis": "분석",
+      "export": "내보내기",
+      "image": "이미지",
+      "navigation": "이동",
+      "note": "메모",
+      "recording": "녹음",
+      "system": "시스템"
+    },
+    "timezone": {
+      "UTC": "UTC",
+      "local": "로컬"
+    },
+    "usersOrSessions": {
+      "session": "세션",
+      "sessions": "세션",
+      "user": "사용자"
+    }
+  },
+  "AdminHome": {
+    "aiMetrics": {
+      "costConcentration": "비용 집중도",
+      "costPerSession": "세션당 비용",
+      "p95Latency": "P95 지연 시간",
+      "totalCost": "총 비용"
+    },
+    "aiStateDescription": "지연, 실패, 비용에 대한 원인 중심 보기입니다.",
+    "aiStateTitle": "AI 상태",
+    "biggestBottleneck": "가장 큰 병목",
+    "coverageValue": "커버리지 {value}",
+    "delta": "변화량 {value}",
+    "description": "워크플로 병목, 실시간 주의 큐, AI 원인 분석을 중심으로 보는 운영 콘솔입니다.",
+    "descriptionShort": "AI 원인 분석 중심의 운영 콘솔입니다.",
+    "failed": "홈 데이터를 불러오지 못했습니다",
+    "failuresOfCalls": "총 {calls}회 호출 중 실패 {failures}회",
+    "featureAdoptionDescription": "선택한 기간의 기능 도달률을 이전 기간과 비교합니다.",
+    "featureAdoptionTitle": "기능 채택 상세",
+    "funnelDescription": "세션 시작부터 내보내기까지의 단계 전환입니다.",
+    "funnelEmptyDescription": "선택한 기간에 세션이 없습니다.",
+    "funnelEmptyTitle": "퍼널 데이터 없음",
+    "funnelTitle": "워크플로 퍼널",
+    "homeLoading": "홈 데이터를 불러오는 중...",
+    "largestDrop": "{dropCount}건 이탈 ({dropRate})",
+    "liveAlertsDescription": "인시던트 승격 전 읽기 전용 실시간 규칙 적중 목록입니다.",
+    "liveAlertsTitle": "실시간 알림",
+    "noAdoptionDescription": "현재 필터와 일치하는 세션이 없습니다.",
+    "noAdoptionTitle": "채택 데이터 없음",
+    "noBacklogDescription": "현재 필터와 일치하는 승격 인시던트가 없습니다.",
+    "noBacklogTitle": "백로그 없음",
+    "noFailingFeatureDescription": "선택한 기간에 AI 실패가 기록되지 않았습니다.",
+    "noFailingFeatureTitle": "실패한 기능/모델 없음",
+    "noLiveAlertsDescription": "현재 필터와 일치하는 규칙 적중이 없습니다.",
+    "noLiveAlertsTitle": "실시간 알림 없음",
+    "noTrendDescription": "선택한 기간에 세션이 없습니다.",
+    "noTrendTitle": "추세 데이터 없음",
+    "openAiOps": "AI Ops 열기",
+    "openDataQuality": "데이터 품질 열기",
+    "openFunnel": "퍼널 열기",
+    "openTriage": "트리아지 열기",
+    "previous": "이전 값 {value}",
+    "rateValue": "비율 {value}",
+    "seenAt": "{value}에 감지",
+    "session": "세션",
+    "sessionsCount": "{count}개 세션",
+    "summary": {
+      "activeUsers": "활성 사용자",
+      "aiCostPerSession": "세션당 AI 비용",
+      "aiFailureRate": "AI 실패율",
+      "ddxAdoptionRate": "DDx 채택률",
+      "handoutGenerationRate": "안내문 생성률",
+      "recordFinalizationRate": "기록 완료율",
+      "sessionStarts": "세션 시작 수",
+      "transcriptCaptureRate": "전사 캡처율"
+    },
+    "telemetryMetrics": {
+      "aiCallsNoClientEvents": "클라이언트 이벤트 없는 AI 호출",
+      "sessionsWithClientEvents": "클라이언트 이벤트가 있는 세션",
+      "transcriptNoAi": "AI 호출 없는 전사 세션"
+    },
+    "telemetryTrustDescription": "계측 커버리지를 함께 보며 채택 지표를 해석합니다.",
+    "telemetryTrustTitle": "텔레메트리 신뢰도",
+    "title": "홈",
+    "topCostDetail": "{cost}, 총 {calls}회 호출",
+    "trend": {
+      "series": {
+        "aiCalls": "AI 호출",
+        "sessions": "세션",
+        "workflowProgress": "워크플로 진행률"
+      }
+    },
+    "trendDescription": "시간 버킷별 세션 수, AI 호출 수, 워크플로 진행률입니다.",
+    "trendTitle": "추세",
+    "user": "사용자",
+    "highestSpendPath": "가장 높은 비용 경로",
+    "incidentBacklogDescription": "담당자/상태 워크플로가 있는 영속 인시던트 큐입니다.",
+    "incidentBacklogTitle": "인시던트 백로그"
+  },
+  "AdminOverview": {
+    "description": "플랫폼 수준 KPI, 전환 퍼널, 추세 모니터링입니다.",
+    "failed": "개요를 불러오지 못했습니다",
+    "funnelDescription": "제품 단계별 완료 현황입니다.",
+    "funnelTitle": "퍼널",
+    "kpis": {
+      "activeSessions": {
+        "description": "선택한 기간에 시작된 세션입니다.",
+        "title": "활성 세션"
+      },
+      "aiCalls": {
+        "description": "감사 텔레메트리에서 집계한 AI 생성 호출 수입니다.",
+        "title": "AI 호출"
+      },
+      "dau": {
+        "description": "선택한 기간에 활동한 사용자입니다.",
+        "title": "순 활성 사용자"
+      },
+      "documentGeneration": {
+        "description": "기록 또는 환자 안내문이 생성된 비율입니다.",
+        "title": "문서 생성"
+      },
+      "exports": {
+        "description": "선택한 기간에 생성된 내보내기 링크 수입니다.",
+        "title": "내보내기"
+      },
+      "sessionCompletion": {
+        "description": "계획 또는 평가가 완료된 세션 비율입니다.",
+        "title": "세션 완료율"
+      }
+    },
+    "loading": "개요 데이터를 불러오는 중...",
+    "loadingTrendDescription": "개요 지표를 가져오는 중입니다...",
+    "loadingTrendTitle": "추세 불러오는 중",
+    "noFunnelDescription": "선택한 기간에 세션이 없습니다.",
+    "noFunnelTitle": "퍼널 데이터 없음",
+    "noTrendDescription": "선택한 기간에 세션이 없습니다.",
+    "noTrendTitle": "추세 데이터 없음",
+    "title": "개요",
+    "trendDescription": "시간 버킷별 세션 수, AI 호출 수, 완료율입니다.",
+    "trendSeries": {
+      "aiCalls": "AI 호출",
+      "completionRate": "완료율",
+      "sessions": "세션"
+    },
+    "trendTitle": "추세"
+  },
+  "AdminAlerts": {
+    "allRules": "전체 규칙",
+    "description": "위험, 이탈, 품질 조사용 인사이트 큐입니다.",
+    "emptyDescription": "현재 필터 조건에 해당하는 운영 알림이 없습니다.",
+    "emptyTitle": "알림 없음",
+    "failed": "알림을 불러오지 못했습니다",
+    "loading": "알림을 불러오는 중...",
+    "loadingDescription": "인사이트 규칙을 평가하는 중입니다...",
+    "loadingTitle": "알림 불러오는 중",
+    "openSession": "세션 열기",
+    "openUser": "사용자 열기",
+    "queueDescription": "사용자와 세션 행동을 기반으로 생성된 우선순위 알림입니다.",
+    "queueTitle": "운영 인사이트",
+    "rulePlaceholder": "규칙",
+    "severityPlaceholder": "심각도",
+    "title": "알림"
+  },
+  "AdminFunnel": {
+    "description": "워크플로 전반의 단계별 전환 비율입니다.",
+    "dropLabel": "{dropCount}건 이탈 ({dropRate})",
+    "dropoffsDescription": "사용자가 어느 단계 사이에서 이탈하는지 보여줍니다.",
+    "dropoffsEmptyDescription": "감지된 단계 전환이 없습니다.",
+    "dropoffsEmptyTitle": "이탈 데이터 없음",
+    "dropoffsTitle": "이탈 구간",
+    "failed": "퍼널을 불러오지 못했습니다",
+    "loading": "퍼널을 불러오는 중...",
+    "stageEmptyDescription": "선택한 기간에 세션이 없습니다.",
+    "stageEmptyTitle": "퍼널 데이터 없음",
+    "stageTitle": "단계별 전환",
+    "title": "퍼널"
+  },
+  "AdminUsers": {
+    "columns": {
+      "aiCalls": "AI 호출 수",
+      "flags": "플래그",
+      "lastActive": "마지막 활동",
+      "recordFinalization": "기록 완료",
+      "risk": "위험도",
+      "sessions": "세션 수",
+      "user": "사용자"
+    },
+    "description": "서버 측 랭킹이 적용된 위험 우선 사용자 목록입니다.",
+    "failed": "사용자를 불러오지 못했습니다",
+    "loadMore": "사용자 더 불러오기",
+    "loading": "사용자를 불러오는 중...",
+    "noUsersDescription": "검색어나 필터를 조정해 사용자를 찾아보세요.",
+    "noUsersTitle": "사용자를 찾을 수 없음",
+    "open": "열기",
+    "periodComparison": "이전 기간 대비: {delta}명 ({previousTotalCount} → {totalCount})",
+    "title": "사용자"
+  },
+  "AdminSessions": {
+    "columns": {
+      "aiCalls": "AI 호출 수",
+      "flags": "플래그",
+      "mode": "모드",
+      "recordFinalization": "기록 완료",
+      "risk": "위험도",
+      "session": "세션"
+    },
+    "description": "서버 정렬 기반의 위험 중심 세션 큐입니다.",
+    "failed": "세션을 불러오지 못했습니다",
+    "loadMore": "세션 더 불러오기",
+    "loading": "세션을 불러오는 중...",
+    "noSessionsDescription": "현재 필터와 일치하는 세션이 없습니다.",
+    "noSessionsTitle": "세션 없음",
+    "open": "열기",
+    "patient": "환자",
+    "periodComparison": "이전 기간 대비: {delta}개 세션 ({previousTotalCount} → {totalCount})",
+    "redFlag": "레드 플래그",
+    "title": "세션"
+  },
+  "AdminTriage": {
+    "columns": {
+      "actions": "작업",
+      "count": "횟수",
+      "lastSeen": "마지막 감지",
+      "owner": "담당자",
+      "priority": "우선순위",
+      "rule": "규칙",
+      "severity": "심각도",
+      "status": "상태"
+    },
+    "description": "먼저 실시간 알림을 검토하고, 지속적인 담당이 필요한 항목만 인시던트로 승격합니다.",
+    "failedIncidents": "인시던트를 불러오지 못했습니다",
+    "failedLiveAlerts": "실시간 알림을 불러오지 못했습니다",
+    "incidentQueueDescription": "상태, 담당자, 해결 추적을 위한 영속 큐입니다.",
+    "incidentQueueTitle": "인시던트 큐",
+    "incidentsTitle": "인시던트",
+    "liveRuleHitsDescription": "현재 행동에서 생성된 읽기 전용 알림입니다. 심각도, 규칙, 검색 필터가 적용됩니다.",
+    "liveRuleHitsTitle": "실시간 규칙 적중",
+    "liveAlertsTitle": "실시간 알림",
+    "loadMore": "인시던트 더 불러오기",
+    "loadingMore": "불러오는 중...",
+    "loadingIncidents": "인시던트를 불러오는 중...",
+    "loadingLiveAlerts": "실시간 알림을 불러오는 중...",
+    "noIncidentsDescription": "현재 필터와 일치하는 인시던트가 없습니다.",
+    "noIncidentsTitle": "인시던트 없음",
+    "noLiveAlertsDescription": "현재 필터와 일치하는 실시간 규칙 적중이 없습니다.",
+    "noLiveAlertsTitle": "실시간 알림 없음",
+    "ownerPlaceholder": "담당자 id",
+    "promote": "실시간 알림을 인시던트로 승격",
+    "promoting": "승격 중...",
+    "save": "저장",
+    "session": "세션",
+    "sessionId": "세션: {id}",
+    "summary": "실시간 알림: {liveCount} / 열린 인시던트: {openCount}",
+    "title": "트리아지",
+    "user": "사용자",
+    "userId": "사용자: {id}"
+  },
+  "AdminCohorts": {
+    "columns": {
+      "cohortDate": "코호트 날짜",
+      "size": "크기"
+    },
+    "failed": "코호트를 불러오지 못했습니다",
+    "loading": "코호트를 불러오는 중...",
+    "matrixDescription": "첫 세션 기준 D1 / D7 / D30 잔존율입니다.",
+    "matrixTitle": "잔존율 매트릭스",
+    "noDataDescription": "범위 내 첫 세션 코호트가 없습니다.",
+    "noDataTitle": "코호트 없음",
+    "title": "코호트"
+  },
+  "AdminAiOps": {
+    "columns": {
+      "calls": "호출 수",
+      "cost": "비용 (USD)",
+      "failureRate": "실패율",
+      "feature": "기능",
+      "latency": "P50/P95",
+      "model": "모델"
+    },
+    "failed": "AI Ops를 불러오지 못했습니다",
+    "loading": "AI Ops를 불러오는 중...",
+    "noDataDescription": "선택한 기간에 AI 사용 이벤트가 없습니다.",
+    "noDataTitle": "AI 사용 데이터 없음",
+    "tableDescription": "기능과 모델별 실패, 지연, 비용입니다.",
+    "tableTitle": "기능/모델 품질",
+    "title": "AI Ops"
+  },
+  "AdminCompliance": {
+    "by": "조회자",
+    "columns": {
+      "avgAccess": "평균 접근 수",
+      "exports": "내보내기 수",
+      "user": "사용자"
+    },
+    "entity": "엔터티",
+    "exportSignalsDescription": "내보내기 볼륨이나 접근 패턴이 높은 사용자입니다.",
+    "exportSignalsNoDataDescription": "선택한 기간에 내보내기 활동이 없습니다.",
+    "exportSignalsNoDataTitle": "내보내기 신호 없음",
+    "exportSignalsTitle": "내보내기 신호",
+    "failed": "컴플라이언스 데이터를 불러오지 못했습니다",
+    "loading": "컴플라이언스 데이터를 불러오는 중...",
+    "phiRevealDescription": "관리자 사용자의 최근 PHI 조회 기록입니다.",
+    "phiRevealNoDataDescription": "선택한 기간에 PHI 조회가 없습니다.",
+    "phiRevealNoDataTitle": "조회 로그 없음",
+    "phiRevealTitle": "PHI 조회 로그",
+    "reason": "사유",
+    "title": "컴플라이언스",
+    "unknown": "알 수 없음"
+  },
+  "AdminDataQuality": {
+    "failed": "데이터 품질을 불러오지 못했습니다",
+    "loading": "데이터 품질을 불러오는 중...",
+    "metrics": {
+      "avgConfidence": "평균 신뢰도",
+      "avgUnknownRatio": "평균 UNKNOWN 비율",
+      "lowQualitySessions": "저품질 세션",
+      "sessions": "세션 수"
+    },
+    "telemetryDescription": "누락되거나 일관되지 않은 이벤트 추적입니다.",
+    "telemetry": {
+      "aiCallsNoClientEvents": "클라이언트 이벤트 없는 AI 호출",
+      "transcriptNoAiCalls": "AI 호출 없는 전사 세션"
+    },
+    "telemetryTitle": "텔레메트리 무결성",
+    "title": "데이터 품질",
+    "transcriptDescription": "신뢰도와 UNKNOWN 화자 비율 기준선입니다.",
+    "transcriptTitle": "전사 품질"
+  },
+  "AdminUserDetail": {
+    "backToUsers": "사용자 목록으로",
+    "columns": {
+      "flags": "플래그",
+      "mode": "모드",
+      "recordFinalization": "기록 완료",
+      "session": "세션"
+    },
+    "failed": "사용자 상세를 불러오지 못했습니다",
+    "funnelDescription": "이 사용자의 단계별 진행 현황입니다.",
+    "funnelTitle": "사용자 퍼널",
+    "insightsDescription": "선택한 사용자에 대한 행동 기반 위험 및 품질 알림입니다.",
+    "insightsTitle": "사용자 인사이트",
+    "loading": "사용자 행동 데이터를 불러오는 중...",
+    "metrics": {
+      "aiSuccessFailure": {
+        "description": "실패율 {rate}",
+        "title": "AI 성공 / 실패"
+      },
+      "lastActive": {
+        "description": "가장 최근 세션 활동 시각입니다.",
+        "title": "마지막 활동"
+      },
+      "recordFinalization": {
+        "description": "계획 또는 평가가 완료된 세션 비율입니다.",
+        "title": "기록 완료율"
+      },
+      "sessions": {
+        "description": "선택한 기간의 세션 수입니다.",
+        "title": "세션 수"
+      }
+    },
+    "noAlertsDescription": "현재 기간에 이 사용자에 대한 높은 우선순위 위험 패턴이 없습니다.",
+    "noAlertsTitle": "사용자 알림 없음",
+    "noDataDescription": "사용자 상세 정보를 사용할 수 없습니다.",
+    "noDataTitle": "사용자 데이터 없음",
+    "noSessionsDescription": "현재 필터와 일치하는 사용자 세션이 없습니다.",
+    "noSessionsTitle": "세션 없음",
+    "noTimelineDescription": "선택한 기간에 추적된 이벤트가 없습니다.",
+    "noTimelineTitle": "타임라인 이벤트 없음",
+    "open": "열기",
+    "openSession": "세션 열기 {id}",
+    "openTriage": "트리아지 열기",
+    "range": "범위: {from} - {to}",
+    "sessionMapDescription": "기록 완료와 위험 플래그가 포함된 세션 목록입니다.",
+    "sessionMapTitle": "사용자 세션 맵",
+    "timelineDescription": "조사용 시간순 클라이언트 + 감사 이벤트입니다.",
+    "timelineTitle": "행동 타임라인"
+  },
+  "AdminSessionDetail": {
+    "backToSessions": "세션 목록으로",
+    "cards": {
+      "redFlags": {
+        "description": "이 세션의 인사이트 페이로드에서 파생된 값입니다.",
+        "title": "레드 플래그"
+      },
+      "session": {
+        "mode": "모드: {value}",
+        "started": "시작: {value}",
+        "title": "세션",
+        "updated": "업데이트: {value}"
+      },
+      "signals": {
+        "title": "시그널"
+      },
+      "workflowProgress": {
+        "description": "전사 + 인사이트 + DDx + 기록 + 리서치 + 안내문 단계 기준입니다.",
+        "title": "워크플로 진행률"
+      }
+    },
+    "failed": "세션 상세를 불러오지 못했습니다",
+    "loading": "세션 상세를 불러오는 중...",
+    "openTriage": "트리아지 열기",
+    "revealPlan": "플랜 보기",
+    "revealReasonPrompt": "PHI 조회 사유",
+    "revealSummary": "요약 보기",
+    "revealText": "텍스트 보기",
+    "selectedSession": "선택한 세션: {id}",
+    "summary": "요약",
+    "tabs": {
+      "audit": "감사",
+      "ddx": "DDx",
+      "handout": "안내문",
+      "insights": "인사이트",
+      "record": "기록",
+      "research": "리서치",
+      "transcript": "전사"
+    },
+    "title": "세션 드릴다운",
+    "unavailableDescription": "이 세션을 불러올 수 없습니다. 세션 목록에서 다시 열어보세요.",
+    "unavailableTitle": "세션 상세를 사용할 수 없음",
+    "unknownSpeaker": "UNKNOWN"
+  }
+}

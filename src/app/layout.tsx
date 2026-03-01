@@ -1,10 +1,18 @@
 import type { Metadata, Viewport } from "next"
+import { cookies, headers } from "next/headers"
 import { Geist, Geist_Mono } from "next/font/google"
 import { ThemeProvider } from "next-themes"
 import { Toaster } from "sonner"
 import { Analytics } from "@vercel/analytics/next"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { AppearanceProvider } from "@/components/appearance-provider"
+import { IntlProvider } from "@/components/intl-provider"
+import {
+  UI_LOCALE_COOKIE,
+  detectRequestUiLocale,
+  normalizeUiLocale,
+} from "@/i18n/config"
+import { loadMessages } from "@/i18n/load-messages"
 
 import "./globals.css"
 
@@ -60,13 +68,22 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const cookieStore = await cookies()
+  const headerStore = await headers()
+  const defaultLocale = detectRequestUiLocale(
+    headerStore.get("accept-language")
+  )
+  const locale =
+    normalizeUiLocale(cookieStore.get(UI_LOCALE_COOKIE)?.value) ?? defaultLocale
+  const messages = await loadMessages(locale)
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -76,13 +93,18 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AppearanceProvider />
-          <TooltipProvider>
-            {children}
-            <Toaster position="bottom-right" richColors />
-            <Analytics />
-
-          </TooltipProvider>
+          <IntlProvider
+            defaultLocale={defaultLocale}
+            locale={locale}
+            messages={messages}
+          >
+            <AppearanceProvider />
+            <TooltipProvider>
+              {children}
+              <Toaster position="bottom-right" richColors />
+              <Analytics />
+            </TooltipProvider>
+          </IntlProvider>
         </ThemeProvider>
       </body>
     </html>

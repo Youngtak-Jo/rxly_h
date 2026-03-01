@@ -1,0 +1,11 @@
+{
+  "ExportViewer": {
+    "accessExpires": "This is a secure, time-limited export. Access expires {date}.",
+    "accessDeniedDescription": "You do not have permission to view this export.",
+    "accessDeniedTitle": "Access Denied",
+    "expiredDescription": "This export link has expired. Please generate a new export from the application.",
+    "expiredTitle": "Link Expired",
+    "notFoundDescription": "This export link is invalid or has been removed.",
+    "notFoundTitle": "Export Not Found"
+  }
+}

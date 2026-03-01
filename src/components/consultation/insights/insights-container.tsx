@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
+import { useTranslations } from "next-intl"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useNoteStore } from "@/stores/note-store"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -20,6 +21,7 @@ import {
 import { InlineCommentPopover } from "./inline-comment-popover"
 
 export function InsightsContainer() {
+  const t = useTranslations("InsightsPanel")
   const summary = useInsightsStore((s) => s.summary)
   const rawKeyFindings = useInsightsStore((s) => s.keyFindings)
   const rawRedFlags = useInsightsStore((s) => s.redFlags)
@@ -49,11 +51,11 @@ export function InsightsContainer() {
 
   return (
     <div ref={containerRef} data-tour="insights-panel" className={`space-y-6 ${isProcessing && hasContent ? "animate-breathe insights-shimmer-overlay" : ""}`}>
-      <h1 className="sr-only">Live Insights</h1>
+      <h1 className="sr-only">{t("liveInsights")}</h1>
       {isProcessing && !hasContent && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
           <span className="h-2 w-2 rounded-full bg-blue-500" />
-          Analyzing conversation...
+          {t("analyzing")}
         </div>
       )}
 
@@ -62,7 +64,7 @@ export function InsightsContainer() {
       <section data-section="summary">
         <h3 className="flex items-center gap-2 text-sm font-medium mb-2">
           <IconFileText className="size-4 text-blue-500" />
-          Summary
+          {t("summary")}
         </h3>
         {summary ? (
           <p className="text-sm text-muted-foreground leading-relaxed">
@@ -70,7 +72,7 @@ export function InsightsContainer() {
           </p>
         ) : (
           <p className="text-sm text-muted-foreground/50 italic">
-            Summary will appear here as the conversation progresses...
+            {t("summaryEmpty")}
           </p>
         )}
       </section>
@@ -79,7 +81,7 @@ export function InsightsContainer() {
       <section data-section="keyFindings">
         <h3 className="flex items-center gap-2 text-sm font-medium mb-2">
           <IconSearch className="size-4 text-emerald-500" />
-          Key Findings
+          {t("keyFindings")}
           {Array.isArray(keyFindings) && keyFindings.length > 0 && (
             <Badge variant="secondary" className="text-[10px]">
               {keyFindings.length}
@@ -100,7 +102,7 @@ export function InsightsContainer() {
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground/50 italic">
-            Key findings will be identified as the conversation progresses...
+            {t("keyFindingsEmpty")}
           </p>
         )}
       </section>
@@ -110,7 +112,7 @@ export function InsightsContainer() {
         <section data-section="redFlags">
           <h3 className="flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400 mb-2">
             <IconAlertTriangle className="size-4" />
-            Red Flags
+            {t("redFlags")}
             <Badge variant="destructive" className="text-[10px]">
               {redFlags.length}
             </Badge>
@@ -133,7 +135,7 @@ export function InsightsContainer() {
       <section>
         <h3 className="flex items-center gap-2 text-sm font-medium mb-2">
           <IconChecklist className="size-4 text-violet-500" />
-          Checklist
+          {t("checklist")}
           {checklistItems.length > 0 && (
             <Badge variant="secondary" className="text-[10px]">
               {checkedCount}/{checklistItems.length}
@@ -142,7 +144,7 @@ export function InsightsContainer() {
         </h3>
         {checklistItems.length === 0 ? (
           <p className="text-sm text-muted-foreground/50 italic">
-            Checklist items will appear as the AI identifies action items...
+            {t("checklistEmpty")}
           </p>
         ) : (
           <div className="space-y-2">
@@ -164,7 +166,7 @@ export function InsightsContainer() {
                   {item.label}
                   {item.isAutoChecked && (
                     <span className="ml-1.5 text-[10px] text-muted-foreground/60">
-                      (auto)
+                      ({t("auto")})
                     </span>
                   )}
                 </label>
@@ -179,7 +181,7 @@ export function InsightsContainer() {
         <section>
           <h3 className="flex items-center gap-2 text-sm font-medium mb-2">
             <IconPhoto className="size-4 text-amber-500" />
-            Imaging Uploads
+            {t("imagingUploads")}
             <Badge variant="secondary" className="text-[10px]">
               {uploadedImages.length}
             </Badge>
@@ -194,7 +196,7 @@ export function InsightsContainer() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img.url}
-                  alt={img.noteContent || "Medical image"}
+                  alt={img.noteContent || t("medicalImage")}
                   className="h-full w-full object-cover"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
@@ -208,7 +210,7 @@ export function InsightsContainer() {
       {pendingComments.length > 0 && (
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-pulse">
           <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-          {pendingComments.length} comment{pendingComments.length > 1 ? "s" : ""} pending...
+          {t("pendingComments", { count: pendingComments.length })}
         </div>
       )}
 
@@ -221,11 +223,11 @@ export function InsightsContainer() {
         onOpenChange={() => setSelectedImage(null)}
       >
         <DialogContent className="max-w-[95vw] md:max-w-3xl p-2">
-          <DialogTitle className="sr-only">Medical Image</DialogTitle>
+          <DialogTitle className="sr-only">{t("medicalImage")}</DialogTitle>
           {selectedImage && (
             <img // eslint-disable-line @next/next/no-img-element
               src={selectedImage}
-              alt="Medical image"
+              alt={t("medicalImage")}
               className="w-full h-auto rounded-md"
             />
           )}

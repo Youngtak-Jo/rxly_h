@@ -1,0 +1,121 @@
+{
+  "Dashboard": {
+    "chart": {
+      "descriptionLong": "Total for the last 3 months",
+      "desktop": "Desktop",
+      "mobile": "Mobile",
+      "ranges": {
+        "30d": "Last 30 days",
+        "7d": "Last 7 days",
+        "90d": "Last 3 months"
+      },
+      "selectRange": "Select a time range",
+      "title": "Total Visitors",
+      "visitors": "Visitors"
+    },
+    "sectionCards": {
+      "cards": {
+        "accounts": {
+          "description": "Engagement exceeds targets",
+          "title": "Active Accounts",
+          "trend": "Strong user retention"
+        },
+        "customers": {
+          "description": "Acquisition needs attention",
+          "title": "New Customers",
+          "trend": "Down 20% this period"
+        },
+        "growth": {
+          "description": "Meets growth projections",
+          "title": "Growth Rate",
+          "trend": "Steady performance increase"
+        },
+        "revenue": {
+          "description": "Visitors for the last 6 months",
+          "title": "Total Revenue",
+          "trend": "Trending up this month"
+        }
+      }
+    },
+    "table": {
+      "accessibility": {
+        "drag": "Drag to reorder",
+        "openMenu": "Open menu",
+        "selectAll": "Select all",
+        "selectRow": "Select row"
+      },
+      "actions": {
+        "delete": "Delete",
+        "edit": "Edit",
+        "favorite": "Favorite",
+        "makeCopy": "Make a copy"
+      },
+      "addSection": "Add Section",
+      "columns": {
+        "header": "Header",
+        "limit": "Limit",
+        "reviewer": "Reviewer",
+        "sectionType": "Section Type",
+        "status": "Status",
+        "target": "Target"
+      },
+      "columnsButton": "Columns",
+      "customizeColumns": "Customize Columns",
+      "device": {
+        "desktop": "Desktop",
+        "mobile": "Mobile"
+      },
+      "done": "Done",
+      "drawer": {
+        "body": "Showing total visitors for the last 6 months. This sample copy is here to verify drawer layout and wrapping behavior.",
+        "description": "Showing total visitors for the last 6 months",
+        "trending": "Trending up by 5.2% this month"
+      },
+      "noResults": "No results.",
+      "pageOf": "Page {page} of {total}",
+      "pagination": {
+        "first": "Go to first page",
+        "last": "Go to last page",
+        "next": "Go to next page",
+        "previous": "Go to previous page"
+      },
+      "reviewers": {
+        "assign": "Assign reviewer"
+      },
+      "rowsPerPage": "Rows per page",
+      "selectReviewer": "Select a reviewer",
+      "selectStatus": "Select a status",
+      "selectType": "Select a type",
+      "selectView": "Select a view",
+      "selectionSummary": "{selected} of {total} row(s) selected.",
+      "status": {
+        "done": "Done",
+        "inProcess": "In Process",
+        "notStarted": "Not Started"
+      },
+      "submit": "Submit",
+      "tabs": {
+        "focusDocuments": "Focus Documents",
+        "keyPersonnel": "Key Personnel",
+        "outline": "Outline",
+        "pastPerformance": "Past Performance"
+      },
+      "toast": {
+        "done": "Done",
+        "error": "Error",
+        "saving": "Saving {header}"
+      },
+      "types": {
+        "coverPage": "Cover page",
+        "financial": "Financial",
+        "legal": "Legal",
+        "narrative": "Narrative",
+        "plainLanguage": "Plain language",
+        "tableOfContents": "Table of contents",
+        "technicalContent": "Technical content",
+        "visual": "Visual"
+      },
+      "view": "View"
+    }
+  }
+}

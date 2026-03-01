@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { ChevronDown, ChevronUp, Filter, Save } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -22,31 +23,18 @@ import {
   localDateTimeInputToIso,
   parseAdminFilters,
 } from "@/lib/admin/filters"
+import {
+  getAdminFeatureLabel,
+  getAdminModeLabel,
+  getAdminPriorityLabel,
+  getAdminRiskBandLabel,
+  getAdminSeverityLabel,
+  getAdminStatusLabel,
+  getAdminTimezoneLabel,
+} from "@/lib/admin/localization"
 import { fmtDateTime } from "@/components/admin/admin-utils"
 import { cn } from "@/lib/utils"
 import type { AdminFilters, AdminSavedView } from "@/types/admin"
-
-const PRESET_LABELS: Record<AdminFilters["preset"], string> = {
-  "24h": "Last 24h",
-  "7d": "Last 7d",
-  "30d": "Last 30d",
-  custom: "Custom range",
-}
-
-const MODE_LABELS: Record<AdminFilters["mode"], string> = {
-  ALL: "All",
-  DOCTOR: "Doctor",
-  AI_DOCTOR: "AI Doctor",
-}
-
-const FEATURE_LABELS: Record<string, string> = {
-  all: "All features",
-  insights: "Live Insights",
-  ddx: "Differential Dx",
-  record: "Consultation Record",
-  research: "Research",
-  patientHandout: "Patient Handout",
-}
 
 function buildCustomRange(fromInput: string, toInput: string): { from: string; to: string } {
   const fallback = buildRangeFromPreset("7d")
@@ -85,6 +73,8 @@ function getPageKey(pathname: string): string {
 }
 
 export function AdminFilterBar() {
+  const t = useTranslations("AdminFilterBar")
+  const tCommon = useTranslations("AdminCommon")
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -200,7 +190,7 @@ export function AdminFilterBar() {
   }, [pathname, router])
 
   const saveView = useCallback(async () => {
-    const name = window.prompt("Saved view name")?.trim()
+    const name = window.prompt(t("prompts.savedViewName"))?.trim()
     if (!name) return
 
     const params = filtersToSearchParams(draft)
@@ -220,7 +210,7 @@ export function AdminFilterBar() {
     if (res.ok) {
       await loadSavedViews()
     }
-  }, [draft, loadSavedViews, pageKey])
+  }, [draft, loadSavedViews, pageKey, t])
 
   const applySavedView = useCallback(
     (savedViewId: string) => {
@@ -237,7 +227,14 @@ export function AdminFilterBar() {
     [pathname, router, savedViews]
   )
 
-  const featureLabel = FEATURE_LABELS[appliedFilters.feature] || appliedFilters.feature || "Unknown"
+  const presetLabel = useCallback(
+    (preset: AdminFilters["preset"]) => t(`preset.${preset}`),
+    [t]
+  )
+  const featureLabel =
+    appliedFilters.feature
+      ? getAdminFeatureLabel(tCommon, appliedFilters.feature)
+      : t("unknown")
 
   return (
     <div className="px-4 py-3 lg:px-6">
@@ -246,33 +243,40 @@ export function AdminFilterBar() {
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
               <Filter className="size-3.5" />
-              <span>Global Filters</span>
+              <span>{t("globalFilters")}</span>
               <Badge variant={isDirty ? "secondary" : "outline"}>
-                {isDirty ? "Pending changes" : "Synced"}
+                {isDirty ? t("pendingChanges") : t("synced")}
               </Badge>
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
-              <Badge variant="outline">{PRESET_LABELS[appliedFilters.preset]}</Badge>
-              <Badge variant="outline">{MODE_LABELS[appliedFilters.mode]}</Badge>
+              <Badge variant="outline">{presetLabel(appliedFilters.preset)}</Badge>
+              <Badge variant="outline">{getAdminModeLabel(tCommon, appliedFilters.mode)}</Badge>
               <Badge variant="outline">{featureLabel}</Badge>
-              <Badge variant="outline">TZ: {appliedFilters.timezone}</Badge>
+              <Badge variant="outline">
+                {t("timezoneBadge", {
+                  timezone: getAdminTimezoneLabel(tCommon, appliedFilters.timezone),
+                })}
+              </Badge>
               {supportsQuery && appliedFilters.q ? (
                 <Badge variant="ghost" className="max-w-[22rem] truncate">
-                  Query: {appliedFilters.q}
+                  {t("query", { query: appliedFilters.q })}
                 </Badge>
               ) : null}
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Active range: {fmtDateTime(appliedFilters.from)} - {fmtDateTime(appliedFilters.to)}
+              {t("activeRange", {
+                from: fmtDateTime(appliedFilters.from),
+                to: fmtDateTime(appliedFilters.to),
+              })}
             </p>
           </div>
 
           <div className="flex w-full flex-col gap-2 xl:w-auto xl:min-w-[40rem]">
             {supportsQuery ? (
               <Input
-                placeholder="search by id, email, title"
+                placeholder={t("placeholders.search")}
                 value={draft.q}
                 onChange={(event) =>
                   setDraft((prev) => ({ ...prev, q: event.target.value }))
@@ -283,10 +287,10 @@ export function AdminFilterBar() {
             <div className="flex flex-wrap items-center gap-2 xl:justify-end">
               <Select onValueChange={applySavedView} value="__none__">
                 <SelectTrigger className="w-44">
-                  <SelectValue placeholder="Saved view" />
+                  <SelectValue placeholder={t("savedView")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Saved views</SelectItem>
+                  <SelectItem value="__none__">{t("savedViews")}</SelectItem>
                   {savedViews.map((view) => (
                     <SelectItem key={view.id} value={view.id}>
                       {view.name}
@@ -297,7 +301,7 @@ export function AdminFilterBar() {
 
               <Button size="sm" variant="outline" onClick={saveView}>
                 <Save className="size-3.5" />
-                Save view
+                {t("saveView")}
               </Button>
 
               <Button
@@ -306,15 +310,15 @@ export function AdminFilterBar() {
                 onClick={() => setIsAdvancedOpen((prev) => !prev)}
                 aria-expanded={isAdvancedOpen}
               >
-                Advanced
+                {t("advanced")}
                 {isAdvancedOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
               </Button>
 
               <Button size="sm" onClick={apply} disabled={!isDirty}>
-                Apply filters
+                {t("applyFilters")}
               </Button>
               <Button size="sm" variant="outline" onClick={reset}>
-                Reset
+                {t("reset")}
               </Button>
             </div>
           </div>
@@ -332,7 +336,7 @@ export function AdminFilterBar() {
             <div className="border-t pt-3">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <div>
-                  <Label className="text-xs">Range</Label>
+                  <Label className="text-xs">{t("labels.preset")}</Label>
                   <Select
                     value={draft.preset}
                     onValueChange={(value) =>
@@ -343,16 +347,16 @@ export function AdminFilterBar() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="24h">Last 24h</SelectItem>
-                      <SelectItem value="7d">Last 7d</SelectItem>
-                      <SelectItem value="30d">Last 30d</SelectItem>
-                      <SelectItem value="custom">Custom</SelectItem>
+                      <SelectItem value="24h">{t("preset.24h")}</SelectItem>
+                      <SelectItem value="7d">{t("preset.7d")}</SelectItem>
+                      <SelectItem value="30d">{t("preset.30d")}</SelectItem>
+                      <SelectItem value="custom">{t("preset.custom")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
-                  <Label className="text-xs">Timezone</Label>
+                  <Label className="text-xs">{t("labels.timezone")}</Label>
                   <Select
                     value={draft.timezone}
                     onValueChange={(value) =>
@@ -363,14 +367,18 @@ export function AdminFilterBar() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="local">Local</SelectItem>
-                      <SelectItem value="UTC">UTC</SelectItem>
+                      <SelectItem value="local">
+                        {getAdminTimezoneLabel(tCommon, "local")}
+                      </SelectItem>
+                      <SelectItem value="UTC">
+                        {getAdminTimezoneLabel(tCommon, "UTC")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
-                  <Label className="text-xs">Mode</Label>
+                  <Label className="text-xs">{t("labels.mode")}</Label>
                   <Select
                     value={draft.mode}
                     onValueChange={(value) =>
@@ -381,15 +389,21 @@ export function AdminFilterBar() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ALL">All</SelectItem>
-                      <SelectItem value="DOCTOR">Doctor</SelectItem>
-                      <SelectItem value="AI_DOCTOR">AI Doctor</SelectItem>
+                      <SelectItem value="ALL">
+                        {getAdminModeLabel(tCommon, "ALL")}
+                      </SelectItem>
+                      <SelectItem value="DOCTOR">
+                        {getAdminModeLabel(tCommon, "DOCTOR")}
+                      </SelectItem>
+                      <SelectItem value="AI_DOCTOR">
+                        {getAdminModeLabel(tCommon, "AI_DOCTOR")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
-                  <Label className="text-xs">Feature</Label>
+                  <Label className="text-xs">{t("labels.feature")}</Label>
                   <Select
                     value={draft.feature}
                     onValueChange={(value) =>
@@ -400,12 +414,24 @@ export function AdminFilterBar() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="insights">Live Insights</SelectItem>
-                      <SelectItem value="ddx">Differential Dx</SelectItem>
-                      <SelectItem value="record">Consultation Record</SelectItem>
-                      <SelectItem value="research">Research</SelectItem>
-                      <SelectItem value="patientHandout">Patient Handout</SelectItem>
+                      <SelectItem value="all">
+                        {getAdminFeatureLabel(tCommon, "all")}
+                      </SelectItem>
+                      <SelectItem value="insights">
+                        {getAdminFeatureLabel(tCommon, "insights")}
+                      </SelectItem>
+                      <SelectItem value="ddx">
+                        {getAdminFeatureLabel(tCommon, "ddx")}
+                      </SelectItem>
+                      <SelectItem value="record">
+                        {getAdminFeatureLabel(tCommon, "record")}
+                      </SelectItem>
+                      <SelectItem value="research">
+                        {getAdminFeatureLabel(tCommon, "research")}
+                      </SelectItem>
+                      <SelectItem value="patientHandout">
+                        {getAdminFeatureLabel(tCommon, "patientHandout")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -414,7 +440,7 @@ export function AdminFilterBar() {
               {draft.preset === "custom" ? (
                 <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
-                    <Label className="text-xs">From</Label>
+                    <Label className="text-xs">{t("labels.from")}</Label>
                     <Input
                       type="datetime-local"
                       value={fromInput}
@@ -423,7 +449,7 @@ export function AdminFilterBar() {
                   </div>
 
                   <div>
-                    <Label className="text-xs">To</Label>
+                    <Label className="text-xs">{t("labels.to")}</Label>
                     <Input
                       type="datetime-local"
                       value={toInput}
@@ -436,7 +462,7 @@ export function AdminFilterBar() {
               {isTriagePage ? (
                 <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
                   <div>
-                    <Label className="text-xs">Severity</Label>
+                    <Label className="text-xs">{t("labels.severity")}</Label>
                     <Select
                       value={draft.severity}
                       onValueChange={(value) =>
@@ -447,17 +473,27 @@ export function AdminFilterBar() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All severities</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="positive">Positive</SelectItem>
+                        <SelectItem value="all">
+                          {getAdminSeverityLabel(tCommon, "all")}
+                        </SelectItem>
+                        <SelectItem value="high">
+                          {getAdminSeverityLabel(tCommon, "high")}
+                        </SelectItem>
+                        <SelectItem value="medium">
+                          {getAdminSeverityLabel(tCommon, "medium")}
+                        </SelectItem>
+                        <SelectItem value="low">
+                          {getAdminSeverityLabel(tCommon, "low")}
+                        </SelectItem>
+                        <SelectItem value="positive">
+                          {getAdminSeverityLabel(tCommon, "positive")}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <Label className="text-xs">Status</Label>
+                    <Label className="text-xs">{t("labels.status")}</Label>
                     <Select
                       value={draft.status}
                       onValueChange={(value) =>
@@ -468,18 +504,30 @@ export function AdminFilterBar() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All statuses</SelectItem>
-                        <SelectItem value="NEW">NEW</SelectItem>
-                        <SelectItem value="ACK">ACK</SelectItem>
-                        <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
-                        <SelectItem value="RESOLVED">RESOLVED</SelectItem>
-                        <SelectItem value="DISMISSED">DISMISSED</SelectItem>
+                        <SelectItem value="all">
+                          {getAdminStatusLabel(tCommon, "all")}
+                        </SelectItem>
+                        <SelectItem value="NEW">
+                          {getAdminStatusLabel(tCommon, "NEW")}
+                        </SelectItem>
+                        <SelectItem value="ACK">
+                          {getAdminStatusLabel(tCommon, "ACK")}
+                        </SelectItem>
+                        <SelectItem value="IN_PROGRESS">
+                          {getAdminStatusLabel(tCommon, "IN_PROGRESS")}
+                        </SelectItem>
+                        <SelectItem value="RESOLVED">
+                          {getAdminStatusLabel(tCommon, "RESOLVED")}
+                        </SelectItem>
+                        <SelectItem value="DISMISSED">
+                          {getAdminStatusLabel(tCommon, "DISMISSED")}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <Label className="text-xs">Priority</Label>
+                    <Label className="text-xs">{t("labels.priority")}</Label>
                     <Select
                       value={draft.priority}
                       onValueChange={(value) =>
@@ -490,33 +538,41 @@ export function AdminFilterBar() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All priorities</SelectItem>
-                        <SelectItem value="P1">P1</SelectItem>
-                        <SelectItem value="P2">P2</SelectItem>
-                        <SelectItem value="P3">P3</SelectItem>
+                        <SelectItem value="all">
+                          {getAdminPriorityLabel(tCommon, "all")}
+                        </SelectItem>
+                        <SelectItem value="P1">
+                          {getAdminPriorityLabel(tCommon, "P1")}
+                        </SelectItem>
+                        <SelectItem value="P2">
+                          {getAdminPriorityLabel(tCommon, "P2")}
+                        </SelectItem>
+                        <SelectItem value="P3">
+                          {getAdminPriorityLabel(tCommon, "P3")}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <Label className="text-xs">Rule</Label>
+                    <Label className="text-xs">{t("labels.rule")}</Label>
                     <Input
                       value={draft.rule}
                       onChange={(event) =>
                         setDraft((prev) => ({ ...prev, rule: event.target.value }))
                       }
-                      placeholder="rule"
+                      placeholder={t("placeholders.rule")}
                     />
                   </div>
 
                   <div>
-                    <Label className="text-xs">Owner</Label>
+                    <Label className="text-xs">{t("labels.owner")}</Label>
                     <Input
                       value={draft.owner}
                       onChange={(event) =>
                         setDraft((prev) => ({ ...prev, owner: event.target.value }))
                       }
-                      placeholder="owner id"
+                      placeholder={t("placeholders.ownerId")}
                     />
                   </div>
                 </div>
@@ -525,151 +581,171 @@ export function AdminFilterBar() {
               {isUsersPage ? (
                 <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
                   <div>
-                    <Label className="text-xs">Sort</Label>
+                    <Label className="text-xs">{t("labels.usersSort")}</Label>
                     <Select
                       value={draft.usersSort}
                       onValueChange={(value) =>
                         setDraft((prev) => ({ ...prev, usersSort: value as AdminFilters["usersSort"] }))
                       }
                     >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="sessions">Sessions</SelectItem>
-                        <SelectItem value="completion">Record Finalization</SelectItem>
-                        <SelectItem value="ai">AI Calls</SelectItem>
-                        <SelectItem value="lastActive">Last Active</SelectItem>
-                        <SelectItem value="risk">Risk Score</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label className="text-xs">Order</Label>
-                    <Select
-                      value={draft.order}
-                      onValueChange={(value) =>
-                        setDraft((prev) => ({ ...prev, order: value as AdminFilters["order"] }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="desc">Desc</SelectItem>
-                        <SelectItem value="asc">Asc</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label className="text-xs">Risk Band</Label>
-                    <Select
-                      value={draft.riskBand}
-                      onValueChange={(value) =>
-                        setDraft((prev) => ({ ...prev, riskBand: value as AdminFilters["riskBand"] }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="critical">Critical</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="sessions">{t("usersSort.sessions")}</SelectItem>
+                        <SelectItem value="completion">{t("usersSort.completion")}</SelectItem>
+                        <SelectItem value="ai">{t("usersSort.ai")}</SelectItem>
+                        <SelectItem value="lastActive">{t("usersSort.lastActive")}</SelectItem>
+                        <SelectItem value="risk">{t("usersSort.risk")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+
+                <div>
+                    <Label className="text-xs">{t("labels.order")}</Label>
+                  <Select
+                    value={draft.order}
+                    onValueChange={(value) =>
+                      setDraft((prev) => ({ ...prev, order: value as AdminFilters["order"] }))
+                    }
+                    >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="desc">{t("order.desc")}</SelectItem>
+                        <SelectItem value="asc">{t("order.asc")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                    <Label className="text-xs">{t("labels.riskBand")}</Label>
+                  <Select
+                    value={draft.riskBand}
+                    onValueChange={(value) =>
+                      setDraft((prev) => ({ ...prev, riskBand: value as AdminFilters["riskBand"] }))
+                      }
+                    >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">
+                          {getAdminRiskBandLabel(tCommon, "all")}
+                        </SelectItem>
+                        <SelectItem value="critical">
+                          {getAdminRiskBandLabel(tCommon, "critical")}
+                        </SelectItem>
+                        <SelectItem value="high">
+                          {getAdminRiskBandLabel(tCommon, "high")}
+                        </SelectItem>
+                        <SelectItem value="medium">
+                          {getAdminRiskBandLabel(tCommon, "medium")}
+                        </SelectItem>
+                        <SelectItem value="low">
+                          {getAdminRiskBandLabel(tCommon, "low")}
+                        </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               ) : null}
 
               {isSessionsPage ? (
                 <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
                   <div>
-                    <Label className="text-xs">Sort</Label>
+                    <Label className="text-xs">{t("labels.sessionsSort")}</Label>
                     <Select
                       value={draft.sessionsSort}
                       onValueChange={(value) =>
                         setDraft((prev) => ({ ...prev, sessionsSort: value as AdminFilters["sessionsSort"] }))
                       }
                     >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="startedAt">Started At</SelectItem>
-                        <SelectItem value="completion">Record Finalization</SelectItem>
-                        <SelectItem value="ai">AI Calls</SelectItem>
-                        <SelectItem value="risk">Risk Score</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="startedAt">{t("sessionsSort.startedAt")}</SelectItem>
+                        <SelectItem value="completion">{t("sessionsSort.completion")}</SelectItem>
+                        <SelectItem value="ai">{t("sessionsSort.ai")}</SelectItem>
+                        <SelectItem value="risk">{t("sessionsSort.risk")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                  <div>
-                    <Label className="text-xs">Order</Label>
-                    <Select
-                      value={draft.order}
-                      onValueChange={(value) =>
-                        setDraft((prev) => ({ ...prev, order: value as AdminFilters["order"] }))
+                <div>
+                    <Label className="text-xs">{t("labels.order")}</Label>
+                  <Select
+                    value={draft.order}
+                    onValueChange={(value) =>
+                      setDraft((prev) => ({ ...prev, order: value as AdminFilters["order"] }))
+                    }
+                    >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="desc">{t("order.desc")}</SelectItem>
+                        <SelectItem value="asc">{t("order.asc")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                    <Label className="text-xs">{t("labels.riskBand")}</Label>
+                  <Select
+                    value={draft.riskBand}
+                    onValueChange={(value) =>
+                      setDraft((prev) => ({ ...prev, riskBand: value as AdminFilters["riskBand"] }))
                       }
                     >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="desc">Desc</SelectItem>
-                        <SelectItem value="asc">Asc</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">
+                          {getAdminRiskBandLabel(tCommon, "all")}
+                        </SelectItem>
+                        <SelectItem value="critical">
+                          {getAdminRiskBandLabel(tCommon, "critical")}
+                        </SelectItem>
+                        <SelectItem value="high">
+                          {getAdminRiskBandLabel(tCommon, "high")}
+                        </SelectItem>
+                        <SelectItem value="medium">
+                          {getAdminRiskBandLabel(tCommon, "medium")}
+                        </SelectItem>
+                        <SelectItem value="low">
+                          {getAdminRiskBandLabel(tCommon, "low")}
+                        </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                  <div>
-                    <Label className="text-xs">Risk Band</Label>
-                    <Select
-                      value={draft.riskBand}
-                      onValueChange={(value) =>
-                        setDraft((prev) => ({ ...prev, riskBand: value as AdminFilters["riskBand"] }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="critical">Critical</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label className="text-xs">Has Red Flag</Label>
+                <div>
+                    <Label className="text-xs">{t("labels.hasRedFlag")}</Label>
                     <Select
                       value={draft.hasRedFlag}
                       onValueChange={(value) =>
                         setDraft((prev) => ({ ...prev, hasRedFlag: value as AdminFilters["hasRedFlag"] }))
                       }
                     >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">{t("hasRedFlag.all")}</SelectItem>
+                        <SelectItem value="yes">{t("hasRedFlag.yes")}</SelectItem>
+                        <SelectItem value="no">{t("hasRedFlag.no")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
               ) : null}
 
               <p className="mt-3 text-xs text-muted-foreground">
-                All filter changes are staged locally and applied together when you click Apply filters.
+                {t("helpText")}
               </p>
             </div>
           </div>

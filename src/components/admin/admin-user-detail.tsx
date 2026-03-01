@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useMemo } from "react"
 import { Loader2 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,9 +26,21 @@ import {
   parseAdminFilters,
   toAdminApiParams,
 } from "@/lib/admin/filters"
+import {
+  getAdminAlertCopy,
+  getAdminFunnelStepLabel,
+  getAdminModeLabel,
+  getAdminRuleLabel,
+  getAdminSeverityLabel,
+  getAdminTimelineCategoryLabel,
+  getAdminTimelineSourceLabel,
+  getAdminTimelineStatusLabel,
+} from "@/lib/admin/localization"
 import type { AdminUserDetailResponse } from "@/types/admin"
 
 export function AdminUserDetail({ userId }: { userId: string }) {
+  const t = useTranslations("AdminUserDetail")
+  const tCommon = useTranslations("AdminCommon")
   const searchParams = useSearchParams()
   const filters = useMemo(() => parseAdminFilters(searchParams), [searchParams])
   const refreshToken = useAdminRefreshToken()
@@ -58,24 +71,24 @@ export function AdminUserDetail({ userId }: { userId: string }) {
     <section className="space-y-4">
       <div className="flex items-center gap-2">
         <Button asChild variant="outline" size="sm">
-          <Link href={`/admin/users?${filterQuery}`}>Back to users</Link>
+          <Link href={`/admin/users?${filterQuery}`}>{t("backToUsers")}</Link>
         </Button>
         <Button asChild variant="outline" size="sm">
-          <Link href={`/admin/triage?${filterQuery}&q=${userId}`}>Open triage</Link>
+          <Link href={`/admin/triage?${filterQuery}&q=${userId}`}>{t("openTriage")}</Link>
         </Button>
         {isRefreshing ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
       </div>
 
       {error ? (
-        <AdminEmptyState title="Failed to load user detail" description={error} />
+        <AdminEmptyState title={t("failed")} description={error} />
       ) : null}
 
       {isInitialLoading ? (
-        <AdminLoadingState label="Loading user behavior..." />
+        <AdminLoadingState label={t("loading")} />
       ) : null}
 
       {!isInitialLoading && !data ? (
-        <AdminEmptyState title="No user data" description="User detail is not available." />
+        <AdminEmptyState title={t("noDataTitle")} description={t("noDataDescription")} />
       ) : null}
 
       {data ? (
@@ -86,53 +99,55 @@ export function AdminUserDetail({ userId }: { userId: string }) {
                 {data.displayName || data.email || data.userId}
               </CardTitle>
               <CardDescription>
-                Range: {fmtDateTime(data.from)} - {fmtDateTime(data.to)}
+                {t("range", { from: fmtDateTime(data.from), to: fmtDateTime(data.to) })}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardDescription>Sessions</CardDescription>
+                  <CardDescription>{t("metrics.sessions.title")}</CardDescription>
                   <CardTitle className="text-2xl">{data.behavior.sessionCount}</CardTitle>
                 </CardHeader>
                 <CardContent className="text-xs text-muted-foreground">
-                  Sessions in selected period.
+                  {t("metrics.sessions.description")}
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="pb-2">
-                  <CardDescription>Record Finalization Rate</CardDescription>
+                  <CardDescription>{t("metrics.recordFinalization.title")}</CardDescription>
                   <CardTitle className="text-2xl">
                     {toPercent(data.behavior.completionRate)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="text-xs text-muted-foreground">
-                  Sessions finalized with plan or assessment.
+                  {t("metrics.recordFinalization.description")}
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="pb-2">
-                  <CardDescription>AI Success / Failure</CardDescription>
+                  <CardDescription>{t("metrics.aiSuccessFailure.title")}</CardDescription>
                   <CardTitle className="text-2xl">
                     {data.behavior.aiSuccessCount}/{data.behavior.aiFailureCount}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="text-xs text-muted-foreground">
-                  Failure rate {toPercent(data.behavior.aiFailureRate)}
+                  {t("metrics.aiSuccessFailure.description", {
+                    rate: toPercent(data.behavior.aiFailureRate),
+                  })}
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="pb-2">
-                  <CardDescription>Last Active</CardDescription>
+                  <CardDescription>{t("metrics.lastActive.title")}</CardDescription>
                   <CardTitle className="text-sm font-medium">
                     {fmtDateTime(data.behavior.lastActiveAt)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="text-xs text-muted-foreground">
-                  Most recent session activity timestamp.
+                  {t("metrics.lastActive.description")}
                 </CardContent>
               </Card>
             </CardContent>
@@ -141,8 +156,8 @@ export function AdminUserDetail({ userId }: { userId: string }) {
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">User Funnel</CardTitle>
-                <CardDescription>Stage progression for this user.</CardDescription>
+                <CardTitle className="text-base">{t("funnelTitle")}</CardTitle>
+                <CardDescription>{t("funnelDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {data.funnel.map((step) => (
@@ -150,7 +165,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
                     key={step.step}
                     className="flex items-center justify-between rounded-md border px-2 py-1 text-xs"
                   >
-                    <span>{step.step}</span>
+                    <span>{getAdminFunnelStepLabel(tCommon, step.step)}</span>
                     <span className="font-medium">
                       {step.count} ({toPercent(step.rate)})
                     </span>
@@ -161,30 +176,34 @@ export function AdminUserDetail({ userId }: { userId: string }) {
 
             <Card className="xl:col-span-2">
               <CardHeader>
-                <CardTitle className="text-base">User Insights</CardTitle>
+                <CardTitle className="text-base">{t("insightsTitle")}</CardTitle>
                 <CardDescription>
-                  Behavior-derived risk and quality alerts for selected user.
+                  {t("insightsDescription")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {data.alerts.length === 0 ? (
                   <AdminEmptyState
-                    title="No user alerts"
-                    description="No high-priority risk pattern for this user in current range."
+                    title={t("noAlertsTitle")}
+                    description={t("noAlertsDescription")}
                   />
                 ) : (
-                  data.alerts.map((alert) => (
-                    <div key={alert.id} className="rounded-md border p-2 text-xs">
-                      <div className="mb-1 flex items-center gap-2">
-                        <Badge variant={severityBadgeVariant(alert.severity)}>
-                          {alert.severity}
-                        </Badge>
-                        <span className="font-medium">{alert.rule}</span>
+                  data.alerts.map((alert) => {
+                    const copy = getAdminAlertCopy(tCommon, alert)
+
+                    return (
+                      <div key={alert.id} className="rounded-md border p-2 text-xs">
+                        <div className="mb-1 flex items-center gap-2">
+                          <Badge variant={severityBadgeVariant(alert.severity)}>
+                            {getAdminSeverityLabel(tCommon, alert.severity)}
+                          </Badge>
+                          <span className="font-medium">{copy.label}</span>
+                        </div>
+                        <div className="font-medium">{copy.title}</div>
+                        <div className="text-muted-foreground">{copy.description}</div>
                       </div>
-                      <div className="font-medium">{alert.title}</div>
-                      <div className="text-muted-foreground">{alert.description}</div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </CardContent>
             </Card>
@@ -193,23 +212,27 @@ export function AdminUserDetail({ userId }: { userId: string }) {
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Behavior Timeline</CardTitle>
+                <CardTitle className="text-base">{t("timelineTitle")}</CardTitle>
                 <CardDescription>
-                  Chronological client + audit events for investigation.
+                  {t("timelineDescription")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {data.timeline.length === 0 ? (
                   <AdminEmptyState
-                    title="No timeline events"
-                    description="No tracked events for this user in the selected range."
+                    title={t("noTimelineTitle")}
+                    description={t("noTimelineDescription")}
                   />
                 ) : (
                   data.timeline.map((event) => (
                     <div key={event.id} className="rounded-md border p-2 text-xs">
                       <div className="mb-1 flex items-center gap-2">
-                        <Badge variant="outline">{event.source}</Badge>
-                        <Badge variant="outline">{event.category}</Badge>
+                        <Badge variant="outline">
+                          {getAdminTimelineSourceLabel(tCommon, event.source)}
+                        </Badge>
+                        <Badge variant="outline">
+                          {getAdminTimelineCategoryLabel(tCommon, event.category)}
+                        </Badge>
                         <Badge
                           variant={
                             event.status === "failed"
@@ -219,7 +242,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
                                 : "secondary"
                           }
                         >
-                          {event.status}
+                          {getAdminTimelineStatusLabel(tCommon, event.status)}
                         </Badge>
                         <span className="ml-auto text-muted-foreground">
                           {fmtDateTime(event.timestamp)}
@@ -232,7 +255,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
                       {event.sessionId ? (
                         <Button asChild variant="link" className="h-auto p-0 text-xs">
                           <Link href={`/admin/sessions/${event.sessionId}?${filterQuery}`}>
-                            Open Session {event.sessionId.slice(0, 8)}
+                            {t("openSession", { id: event.sessionId.slice(0, 8) })}
                           </Link>
                         </Button>
                       ) : null}
@@ -244,9 +267,9 @@ export function AdminUserDetail({ userId }: { userId: string }) {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">User Session Map</CardTitle>
+                <CardTitle className="text-base">{t("sessionMapTitle")}</CardTitle>
                 <CardDescription>
-                  Sessions with record finalization and risk flags.
+                  {t("sessionMapDescription")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -254,10 +277,10 @@ export function AdminUserDetail({ userId }: { userId: string }) {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Session</TableHead>
-                        <TableHead>Mode</TableHead>
-                        <TableHead>Record Finalization</TableHead>
-                        <TableHead>Flags</TableHead>
+                        <TableHead>{t("columns.session")}</TableHead>
+                        <TableHead>{t("columns.mode")}</TableHead>
+                        <TableHead>{t("columns.recordFinalization")}</TableHead>
+                        <TableHead>{t("columns.flags")}</TableHead>
                         <TableHead />
                       </TableRow>
                     </TableHeader>
@@ -272,7 +295,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
                               {fmtDateTime(session.startedAt)}
                             </div>
                           </TableCell>
-                          <TableCell>{session.mode}</TableCell>
+                          <TableCell>{getAdminModeLabel(tCommon, session.mode)}</TableCell>
                           <TableCell>{toPercent(session.recordFinalizationRate)}</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
@@ -281,7 +304,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
                               ) : (
                                 session.riskFlags.map((flag) => (
                                   <Badge key={flag} variant="outline" className="text-[10px]">
-                                    {flag}
+                                    {getAdminRuleLabel(tCommon, flag)}
                                   </Badge>
                                 ))
                               )}
@@ -290,7 +313,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
                           <TableCell>
                             <Button asChild size="sm" variant="outline">
                               <Link href={`/admin/sessions/${session.id}?${filterQuery}`}>
-                                Open
+                                {t("open")}
                               </Link>
                             </Button>
                           </TableCell>
@@ -300,8 +323,8 @@ export function AdminUserDetail({ userId }: { userId: string }) {
                         <TableRow>
                           <TableCell colSpan={5}>
                             <AdminEmptyState
-                              title="No sessions"
-                              description="No sessions matched current filters for this user."
+                              title={t("noSessionsTitle")}
+                              description={t("noSessionsDescription")}
                             />
                           </TableCell>
                         </TableRow>

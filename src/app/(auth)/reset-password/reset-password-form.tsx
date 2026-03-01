@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Loader2, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 
 export function ResetPasswordForm() {
+  const t = useTranslations("ResetPasswordForm")
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const router = useRouter()
@@ -21,12 +23,12 @@ export function ResetPasswordForm() {
     const confirmPassword = formData.get("confirmPassword") as string
 
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match")
+      toast.error(t("mismatch"))
       return
     }
 
     if (password.length < 6) {
-      toast.error("Password must be at least 6 characters")
+      toast.error(t("passwordTooShort"))
       return
     }
 
@@ -41,10 +43,10 @@ export function ResetPasswordForm() {
       }
 
       setIsSuccess(true)
-      toast.success("Password updated successfully")
+      toast.success(t("updateSuccess"))
       setTimeout(() => router.push("/consultation"), 2000)
     } catch {
-      toast.error("Failed to update password")
+      toast.error(t("updateFailed"))
     } finally {
       setIsLoading(false)
     }
@@ -57,10 +59,9 @@ export function ResetPasswordForm() {
           <CheckCircle2 className="size-6 text-primary" />
         </div>
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold">Password updated</h1>
+          <h1 className="text-2xl font-bold">{t("successTitle")}</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            Your password has been updated successfully. Redirecting you to the
-            app...
+            {t("successDescription")}
           </p>
         </div>
       </div>
@@ -70,32 +71,32 @@ export function ResetPasswordForm() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2 text-center">
-        <h1 className="text-2xl font-bold">Reset your password</h1>
+        <h1 className="text-2xl font-bold">{t("resetTitle")}</h1>
         <p className="text-muted-foreground text-sm text-balance">
-          Enter your new password below
+          {t("resetDescription")}
         </p>
       </div>
 
       <form onSubmit={handleSubmit}>
         <div className="flex flex-col gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="password">New Password</Label>
+            <Label htmlFor="password">{t("newPassword")}</Label>
             <Input
               id="password"
               name="password"
               type="password"
-              placeholder="••••••••"
+              placeholder={t("newPasswordPlaceholder")}
               required
               minLength={6}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="confirmPassword">Confirm New Password</Label>
+            <Label htmlFor="confirmPassword">{t("confirmNewPassword")}</Label>
             <Input
               id="confirmPassword"
               name="confirmPassword"
               type="password"
-              placeholder="••••••••"
+              placeholder={t("confirmNewPasswordPlaceholder")}
               required
               minLength={6}
             />
@@ -104,10 +105,10 @@ export function ResetPasswordForm() {
             {isLoading ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Updating...
+                {t("updating")}
               </>
             ) : (
-              "Update Password"
+              t("updatePassword")
             )}
           </Button>
         </div>

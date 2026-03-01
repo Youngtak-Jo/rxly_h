@@ -2,6 +2,7 @@
 
 import { useMemo } from "react"
 import { Loader2 } from "lucide-react"
+import { useLocale, useTranslations } from "next-intl"
 import {
   Area,
   AreaChart,
@@ -18,10 +19,16 @@ import { parseAdminFilters, toAdminApiParams } from "@/lib/admin/filters"
 import { useAdminQuery } from "@/hooks/use-admin-query"
 import { useAdminRefreshToken } from "@/components/admin/admin-shell"
 import { useSearchParams } from "next/navigation"
+import { getAdminFunnelStepLabel } from "@/lib/admin/localization"
+import { formatNumber } from "@/i18n/format"
+import type { UiLocale } from "@/i18n/config"
 import type { AdminOverviewResponse } from "@/types/admin"
 import { toPercent } from "@/components/admin/admin-utils"
 
 export function AdminOverview() {
+  const t = useTranslations("AdminOverview")
+  const tCommon = useTranslations("AdminCommon")
+  const locale = useLocale() as UiLocale
   const searchParams = useSearchParams()
   const filters = useMemo(() => parseAdminFilters(searchParams), [searchParams])
   const refreshToken = useAdminRefreshToken()
@@ -49,13 +56,11 @@ export function AdminOverview() {
     return (
       <section className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold">Overview</h2>
-          <p className="text-xs text-muted-foreground">
-            Platform-level KPIs, conversion funnel, and trend monitoring.
-          </p>
+          <h2 className="text-lg font-semibold">{t("title")}</h2>
+          <p className="text-xs text-muted-foreground">{t("description")}</p>
         </div>
 
-        <AdminLoadingState label="Loading overview data..." />
+        <AdminLoadingState label={t("loading")} />
       </section>
     )
   }
@@ -63,89 +68,87 @@ export function AdminOverview() {
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold">Overview</h2>
+        <h2 className="text-lg font-semibold">{t("title")}</h2>
         {isRefreshing ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
       </div>
       <div>
-        <p className="text-xs text-muted-foreground">
-          Platform-level KPIs, conversion funnel, and trend monitoring.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("description")}</p>
       </div>
 
       {error ? (
-        <AdminEmptyState title="Failed to load overview" description={error} />
+        <AdminEmptyState title={t("failed")} description={error} />
       ) : null}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Distinct Active Users</CardDescription>
+            <CardDescription>{t("kpis.dau.title")}</CardDescription>
             <CardTitle className="text-2xl">
-              {String(kpis?.dau ?? 0)}
+              {formatNumber(kpis?.dau ?? 0, locale)}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Users active in selected range.
+            {t("kpis.dau.description")}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Active Sessions</CardDescription>
+            <CardDescription>{t("kpis.activeSessions.title")}</CardDescription>
             <CardTitle className="text-2xl">
-              {String(kpis?.activeSessions ?? 0)}
+              {formatNumber(kpis?.activeSessions ?? 0, locale)}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Sessions started during selected range.
+            {t("kpis.activeSessions.description")}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Session Completion</CardDescription>
+            <CardDescription>{t("kpis.sessionCompletion.title")}</CardDescription>
             <CardTitle className="text-2xl">
               {toPercent(kpis?.sessionCompletionRate ?? 0)}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Sessions with completed plan or assessment.
+            {t("kpis.sessionCompletion.description")}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>AI Calls</CardDescription>
+            <CardDescription>{t("kpis.aiCalls.title")}</CardDescription>
             <CardTitle className="text-2xl">
-              {String(kpis?.aiCalls ?? 0)}
+              {formatNumber(kpis?.aiCalls ?? 0, locale)}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            AI-generation calls from audit telemetry.
+            {t("kpis.aiCalls.description")}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Document Generation</CardDescription>
+            <CardDescription>{t("kpis.documentGeneration.title")}</CardDescription>
             <CardTitle className="text-2xl">
               {toPercent(kpis?.documentGenerationRate ?? 0)}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Record or patient handout generated.
+            {t("kpis.documentGeneration.description")}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Exports</CardDescription>
+            <CardDescription>{t("kpis.exports.title")}</CardDescription>
             <CardTitle className="text-2xl">
-              {String(kpis?.exportCount ?? 0)}
+              {formatNumber(kpis?.exportCount ?? 0, locale)}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Export links created in selected range.
+            {t("kpis.exports.description")}
           </CardContent>
         </Card>
       </div>
@@ -153,19 +156,22 @@ export function AdminOverview() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Trend</CardTitle>
+            <CardTitle className="text-base">{t("trendTitle")}</CardTitle>
             <CardDescription>
-              Sessions, AI calls, and completion rate by time bucket.
+              {t("trendDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent className="h-72">
             {isInitialLoading ? (
               <AdminEmptyState
-                title="Loading trend"
-                description="Fetching overview metrics..."
+                title={t("loadingTrendTitle")}
+                description={t("loadingTrendDescription")}
               />
             ) : (data?.trends || []).length === 0 ? (
-              <AdminEmptyState title="No trend data" description="No sessions in selected range." />
+              <AdminEmptyState
+                title={t("noTrendTitle")}
+                description={t("noTrendDescription")}
+              />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data?.trends || []}>
@@ -183,6 +189,7 @@ export function AdminOverview() {
                     yAxisId="left"
                     type="monotone"
                     dataKey="sessions"
+                    name={t("trendSeries.sessions")}
                     stroke="#1d4ed8"
                     fill="#93c5fd"
                     fillOpacity={0.3}
@@ -191,6 +198,7 @@ export function AdminOverview() {
                     yAxisId="left"
                     type="monotone"
                     dataKey="aiCalls"
+                    name={t("trendSeries.aiCalls")}
                     stroke="#0f766e"
                     fill="#5eead4"
                     fillOpacity={0.25}
@@ -199,6 +207,7 @@ export function AdminOverview() {
                     yAxisId="right"
                     type="monotone"
                     dataKey="completionRate"
+                    name={t("trendSeries.completionRate")}
                     stroke="#7c3aed"
                     fill="#c4b5fd"
                     fillOpacity={0.2}
@@ -211,8 +220,8 @@ export function AdminOverview() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Funnel</CardTitle>
-            <CardDescription>Completion by product stage.</CardDescription>
+            <CardTitle className="text-base">{t("funnelTitle")}</CardTitle>
+            <CardDescription>{t("funnelDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {(data?.funnel || []).map((step) => (
@@ -220,14 +229,17 @@ export function AdminOverview() {
                 key={step.step}
                 className="flex items-center justify-between rounded-md border px-2 py-1 text-xs"
               >
-                <span>{step.step}</span>
+                <span>{getAdminFunnelStepLabel(tCommon, step.step)}</span>
                 <span className="font-medium">
-                  {step.count} ({toPercent(step.rate)})
+                  {formatNumber(step.count, locale)} ({toPercent(step.rate)})
                 </span>
               </div>
             ))}
             {!isInitialLoading && !data?.funnel.length ? (
-              <AdminEmptyState title="No funnel data" description="No sessions in selected range." />
+              <AdminEmptyState
+                title={t("noFunnelTitle")}
+                description={t("noFunnelDescription")}
+              />
             ) : null}
           </CardContent>
         </Card>

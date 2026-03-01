@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -40,6 +41,8 @@ const CONNECTORS: {
   ]
 
 export function ConnectorsDialog() {
+  const t = useTranslations("ConnectorsDialog")
+  const tSettings = useTranslations("SettingsDialog")
   const [open, setOpen] = useState(false)
   const { connectors, toggleConnector } = useConnectorStore()
   const activeSession = useSessionStore((s) => s.activeSession)
@@ -64,11 +67,8 @@ export function ConnectorsDialog() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Knowledge Connectors</DialogTitle>
-          <DialogDescription>
-            Enable external medical databases for evidence-based diagnosis
-            support.
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           {CONNECTORS.map((connector) => (
@@ -81,10 +81,10 @@ export function ConnectorsDialog() {
                   htmlFor={`connector-${connector.key}`}
                   className="text-sm font-medium"
                 >
-                  {connector.label}
+                  {tSettings(`connectors.items.${connector.key}.label`)}
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  {connector.description}
+                  {tSettings(`connectors.items.${connector.key}.description`)}
                 </p>
               </div>
               <Switch

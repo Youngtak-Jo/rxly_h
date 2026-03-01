@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useNoteStore, type NoteEntry } from "@/stores/note-store"
 import { cn } from "@/lib/utils"
@@ -20,9 +21,8 @@ type TimelineItem =
   | { type: "transcript"; data: TranscriptEntry }
   | { type: "note"; data: NoteEntry }
 
-const SCROLL_THRESHOLD = 50
-
 export function TranscriptViewer() {
+  const t = useTranslations("TranscriptViewer")
   const { entries, interimText, interimSpeaker } = useTranscriptStore()
   const identificationStatus = useTranscriptStore(
     (s) => s.identificationStatus
@@ -122,7 +122,7 @@ export function TranscriptViewer() {
           <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-6 text-center shrink-0">
             <Loader2 className="size-4 animate-spin text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              Loading transcript history...
+              {t("loadingHistory")}
             </p>
           </div>
         ) : (
@@ -186,7 +186,7 @@ export function TranscriptViewer() {
                   >
                     <p className="text-sm leading-relaxed italic">{interimText}</p>
                     <span className="text-[10px] text-muted-foreground/60">
-                      typing...
+                      {t("typing")}
                     </span>
                   </div>
                 </div>
@@ -199,10 +199,10 @@ export function TranscriptViewer() {
                         <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500 mt-0.5 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-amber-900 dark:text-amber-100">
-                            Only one speaker detected
+                            {t("singleSpeakerDetectedTitle")}
                           </p>
                           <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
-                            Are you playing both doctor and patient roles?
+                            {t("singleSpeakerDetectedDescription")}
                           </p>
                           <div className="flex gap-2 mt-2">
                             <Button
@@ -223,7 +223,9 @@ export function TranscriptViewer() {
                                 }
                               }}
                             >
-                              {classifyingEntries ? "Classifying..." : "Yes, I am"}
+                              {classifyingEntries
+                                ? t("classifyingRoles")
+                                : t("singleSpeakerConfirm")}
                             </Button>
                             <Button
                               size="sm"
@@ -233,7 +235,7 @@ export function TranscriptViewer() {
                                 useTranscriptStore.getState().dismissSingleSpeakerPrompt()
                               }}
                             >
-                              Dismiss
+                              {t("dismiss")}
                             </Button>
                           </div>
                         </div>
@@ -244,19 +246,19 @@ export function TranscriptViewer() {
 
                 <div className={cn("flex justify-center mt-3", !classifyingEntries && "hidden")}>
                   <span className="text-[10px] px-3 py-1 rounded-full bg-muted/50 text-muted-foreground animate-pulse">
-                    Classifying roles...
+                    {t("classifyingRoles")}
                   </span>
                 </div>
 
                 <div className={cn("flex justify-center mt-3", identificationStatus !== "identifying" && "hidden")}>
                   <span className="text-[10px] px-3 py-1 rounded-full bg-muted/50 text-muted-foreground animate-pulse">
-                    Identifying speakers...
+                    {t("identifyingSpeakers")}
                   </span>
                 </div>
 
                 <div className={cn("flex justify-center mt-3", highlightStatus !== "loading" && "hidden")}>
                   <span className="text-[10px] px-3 py-1 rounded-full bg-muted/50 text-muted-foreground animate-pulse">
-                    Analyzing diagnostic keywords...
+                    {t("analyzingKeywords")}
                   </span>
                 </div>
               </div>
@@ -268,6 +270,8 @@ export function TranscriptViewer() {
           <button
             onClick={scrollToBottom}
             className="absolute bottom-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-background/80 border shadow-md backdrop-blur-sm transition-opacity hover:bg-background"
+            aria-label={t("scrollToLatest")}
+            title={t("scrollToLatest")}
           >
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </button>

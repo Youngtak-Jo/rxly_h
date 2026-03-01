@@ -1,0 +1,648 @@
+{
+  "AppSidebar": {
+    "admin": "Admin",
+    "fallbackUserName": "User",
+    "help": "Help",
+    "settings": "Settings"
+  },
+  "ConsultationTabs": {
+    "ddx": "Differential Diagnosis",
+    "insights": "Live Insights",
+    "patientHandout": "Patient Handout",
+    "record": "Consultation Record",
+    "research": "Research"
+  },
+  "ExportDropdown": {
+    "consultationFallback": "Consultation",
+    "downloadPdf": "Download as PDF",
+    "emailFailed": "Failed to send email",
+    "emailSent": "Email sent to {email}",
+    "export": "Export",
+    "menuLabel": "Export: {tab}",
+    "pdfFailed": "Failed to generate PDF",
+    "pdfSuccess": "PDF downloaded successfully",
+    "recipientEmail": "Recipient Email",
+    "sendEmail": "Send Email",
+    "sendViaEmail": "Send via Email",
+    "sendViaEmailDescription": "Send the current {tab} content to an email address.",
+    "sendViaEmailTitle": "Send via Email",
+    "sending": "Sending..."
+  },
+  "NavSessions": {
+    "actions": "Session actions",
+    "createFailed": "Failed to create session",
+    "delete": "Delete",
+    "deleteFailed": "Failed to delete session",
+    "newConsultation": "New Consultation",
+    "newSessionTitle": "New Session",
+    "noSessions": "No sessions yet. Click + to start.",
+    "rename": "Rename",
+    "renameFailed": "Failed to rename session",
+    "sectionLabel": "Sessions",
+    "untitledSession": "Untitled Session"
+  },
+  "SettingsDialog": {
+    "accessibility": {
+      "enhancedFocusIndicatorsDescription": "Show larger, more visible focus rings when navigating with keyboard.",
+      "enhancedFocusIndicatorsLabel": "Enhanced Focus Indicators",
+      "highContrastDescription": "Increase text and border contrast for better readability.",
+      "highContrastLabel": "High Contrast",
+      "largeClickTargetsDescription": "Enforce minimum 44px touch targets on all interactive elements.",
+      "largeClickTargetsLabel": "Large Click Targets",
+      "reducedMotionDescription": "Disable animations and transitions throughout the interface.",
+      "reducedMotionLabel": "Reduced Motion",
+      "subtitle": "Adjust settings for improved readability and interaction. These preferences are saved locally and apply immediately.",
+      "textSpacingDescription": "Increase line height, letter spacing, and word spacing for easier reading.",
+      "textSpacingLabel": "Text Spacing"
+    },
+    "analysis": {
+      "ddxFrequencyDescription": "How often differential diagnosis is updated during recording.",
+      "ddxFrequencyLabel": "Differential Dx Frequency",
+      "insightsFrequencyDescription": "How often real-time insights are generated during recording.",
+      "insightsFrequencyLabel": "Insights Frequency",
+      "options": {
+        "balancedDdx": "Balanced (50w / 20s)",
+        "balancedInsights": "Balanced (30w / 12s)",
+        "conservativeDdx": "Conservative (80w / 30s)",
+        "conservativeInsights": "Conservative (60w / 20s)",
+        "frequentDdx": "Frequent (25w / 10s)",
+        "frequentInsights": "Frequent (15w / 6s)"
+      },
+      "subtitle": "Higher frequency increases API usage and cost."
+    },
+    "appearance": {
+      "borderRadiusDescription": "Set the corner roundness for UI elements.",
+      "borderRadiusLabel": "Border Radius",
+      "borderRadiusOptions": {
+        "default": "Default",
+        "large": "Large",
+        "none": "None",
+        "small": "Small"
+      },
+      "fontSizeDescription": "Adjust the text size across the interface.",
+      "fontSizeLabel": "Font Size",
+      "fontSizeOptions": {
+        "default": "Default",
+        "extra-large": "Extra Large",
+        "large": "Large",
+        "small": "Small"
+      },
+      "themeDescription": "Select the color theme for the interface.",
+      "themeLabel": "Theme",
+      "themeOptions": {
+        "dark": "Dark",
+        "light": "Light",
+        "system": "System"
+      },
+      "uiDensityDescription": "Control the spacing and padding of interface elements.",
+      "uiDensityLabel": "UI Density",
+      "uiDensityOptions": {
+        "comfortable": "Comfortable",
+        "compact": "Compact",
+        "default": "Default"
+      }
+    },
+    "close": "Close",
+    "connectors": {
+      "items": {
+        "clinical_trials": {
+          "description": "NIH clinical trial database (440K+ studies)",
+          "label": "ClinicalTrials.gov"
+        },
+        "dailymed": {
+          "description": "FDA-approved drug labeling information",
+          "label": "DailyMed"
+        },
+        "europe_pmc": {
+          "description": "European biomedical literature (33M+ publications)",
+          "label": "Europe PMC"
+        },
+        "icd11": {
+          "description": "WHO International Classification of Diseases",
+          "label": "ICD-11"
+        },
+        "openfda": {
+          "description": "FDA drug adverse events & safety reports",
+          "label": "OpenFDA"
+        },
+        "pubmed": {
+          "description": "NCBI biomedical literature search (36M+ articles)",
+          "label": "PubMed"
+        }
+      },
+      "subtitle": "Enable external medical databases for evidence-based diagnosis support."
+    },
+    "customInstructions": {
+      "fields": {
+        "ddx": {
+          "description": "Custom instructions for differential diagnosis generation.",
+          "label": "Differential Dx",
+          "placeholder": "e.g., Prioritize rare diseases when common ones are ruled out. Always include ICD codes. Consider autoimmune conditions."
+        },
+        "insights": {
+          "description": "Custom instructions for real-time clinical insight generation.",
+          "label": "Live Insights",
+          "placeholder": "e.g., Always highlight medication interactions. Focus on pediatric considerations. Summarize in bullet points."
+        },
+        "patientHandout": {
+          "description": "Custom instructions for patient education handout generation.",
+          "label": "Patient Handout",
+          "placeholder": "e.g., Keep language at 8th-grade reading level. Emphasize self-care steps and warning signs clearly."
+        },
+        "record": {
+          "description": "Custom instructions for medical record generation.",
+          "label": "Consultation Record",
+          "placeholder": "e.g., Use SOAP format strictly. Include detailed ROS. Always document allergies prominently."
+        },
+        "research": {
+          "description": "Custom instructions for medical research assistance.",
+          "label": "Research",
+          "placeholder": "e.g., Focus on recent studies (last 5 years). Prefer systematic reviews and meta-analyses. Include dosage recommendations."
+        }
+      },
+      "subtitle": "Add custom instructions for each AI feature. These will be included in every request to guide the AI's behavior."
+    },
+    "dialogDescription": "Configure UI language, transcription, analysis, AI models, EMR/EHR, knowledge connectors, accessibility, and appearance settings.",
+    "dialogTitle": "Settings",
+    "emr": {
+      "providerDescription": "The EMR/EHR system that receives exported FHIR data.",
+      "providerLabel": "EMR Provider",
+      "subtitle": "Select which Electronic Medical Record (EMR/EHR) system to use for exporting clinical data as FHIR resources."
+    },
+    "language": {
+      "description": "Changes the language used across the interface.",
+      "label": "UI Language",
+      "options": {
+        "en": "English",
+        "ko": "한국어"
+      },
+      "subtitle": "Choose the app display language. The default follows the user's browser language."
+    },
+    "models": {
+      "aiDoctorDescription": "Used for AI doctor consultations.",
+      "aiDoctorLabel": "AI Doctor Model",
+      "clinicalSupportDescription": "Used for clinical decision support on diagnoses.",
+      "clinicalSupportLabel": "Clinical Support Model",
+      "diagnosticKeywordsDescription": "Used for extracting diagnostic keywords.",
+      "diagnosticKeywordsLabel": "Diagnostic Keywords Model",
+      "ddxDescription": "Used for differential diagnosis.",
+      "ddxLabel": "DDx Model",
+      "fhirMappingDescription": "Used to convert clinical data into FHIR R4 resources for EMR/EHR export.",
+      "fhirMappingLabel": "FHIR Mapping Model",
+      "insightsDescription": "Used for real-time clinical insights.",
+      "insightsLabel": "Insights Model",
+      "patientHandoutDescription": "Used for patient-friendly handout generation.",
+      "patientHandoutLabel": "Patient Handout Model",
+      "recommended": "(Recommended)",
+      "recordDescription": "Used for medical record generation.",
+      "recordLabel": "Record Model",
+      "researchDescription": "Used for medical research.",
+      "researchLabel": "Research Model",
+      "speakerIdentificationDescription": "Used for identifying doctor/patient speakers.",
+      "speakerIdentificationLabel": "Speaker Identification Model",
+      "subtitle": "Changing models may affect quality and response speed."
+    },
+    "nav": {
+      "accessibility": "Accessibility",
+      "analysis": "Analysis",
+      "appearance": "Appearance",
+      "connectors": "Knowledge Connectors",
+      "emr": "EMR/EHR",
+      "instructions": "Custom Instructions",
+      "language": "Language",
+      "models": "AI Models",
+      "speech": "Transcription"
+    },
+    "reset": {
+      "button": "Reset to Defaults",
+      "cancel": "Cancel",
+      "confirm": "Reset",
+      "description": "All settings will be restored to their default values. This action cannot be undone.",
+      "title": "Reset to Defaults"
+    },
+    "speech": {
+      "echoCancellationDescription": "Prevent audio feedback loops.",
+      "echoCancellationLabel": "Echo Cancellation",
+      "endpointingDescription": "How quickly silence is detected as end of speech.",
+      "endpointingLabel": "Endpointing Sensitivity",
+      "endpointingOptions": {
+        "balanced": "Balanced (400ms)",
+        "clinical": "Clinical (600ms)",
+        "fast": "Fast (200ms)",
+        "relaxed": "Relaxed (800ms)"
+      },
+      "noiseSuppressionDescription": "Reduce background noise from the microphone.",
+      "noiseSuppressionLabel": "Noise Suppression",
+      "smartFormattingDescription": "Automatically format dates, numbers, and currency.",
+      "smartFormattingLabel": "Smart Formatting",
+      "speakerDiarizationDescription": "Identify and label different speakers.",
+      "speakerDiarizationLabel": "Speaker Diarization",
+      "speechRecognitionLanguageDescription": "Select the spoken language used for speech recognition.",
+      "speechRecognitionLanguageLabel": "Speech Recognition Language",
+      "languageOptions": {
+        "multi": "Multilingual (Auto-detect)",
+        "en": "English (Recommended)",
+        "en-US": "English (US) (Recommended)",
+        "en-GB": "English (UK) (Recommended)",
+        "en-AU": "English (Australia) (Recommended)",
+        "en-IN": "English (India) (Recommended)",
+        "en-NZ": "English (New Zealand) (Recommended)",
+        "ko": "한국어",
+        "ko-KR": "한국어 (대한민국)",
+        "ja": "日本語",
+        "es": "Español",
+        "es-419": "Español (Latinoamérica)",
+        "fr": "Français",
+        "fr-CA": "Français (Canada)",
+        "de": "Deutsch",
+        "de-CH": "Deutsch (Schweiz)",
+        "pt": "Português",
+        "pt-BR": "Português (Brasil)",
+        "it": "Italiano",
+        "nl": "Nederlands",
+        "nl-BE": "Vlaams",
+        "ru": "Русский",
+        "hi": "हिन्दी",
+        "ar": "العربية",
+        "tr": "Türkçe",
+        "pl": "Polski",
+        "sv": "Svenska",
+        "da": "Dansk",
+        "no": "Norsk",
+        "fi": "Suomi",
+        "id": "Bahasa Indonesia",
+        "vi": "Tiếng Việt",
+        "uk": "Українська",
+        "cs": "Čeština",
+        "ro": "Română",
+        "hu": "Magyar",
+        "el": "Ελληνικά",
+        "he": "עברית",
+        "fa": "فارسی",
+        "ta": "தமிழ்",
+        "te": "తెలుగు",
+        "bn": "বাংলা",
+        "ur": "اردو",
+        "mr": "मराठी",
+        "kn": "ಕನ್ನಡ",
+        "ms": "Bahasa Melayu",
+        "tl": "Tagalog",
+        "bg": "Български",
+        "hr": "Hrvatski",
+        "sr": "Српски",
+        "sk": "Slovenčina",
+        "sl": "Slovenščina",
+        "lt": "Lietuvių",
+        "lv": "Latviešu",
+        "et": "Eesti",
+        "ca": "Català",
+        "bs": "Bosanski",
+        "mk": "Македонски",
+        "be": "Беларуская"
+      },
+      "subtitle": "Changes apply to the next recording session.",
+      "utteranceEndDescription": "Time to wait before finalizing an utterance.",
+      "utteranceEndLabel": "Utterance End Timeout",
+      "utteranceEndOptions": {
+        "clinical": "Clinical (1800ms)",
+        "extended": "Extended (2500ms)",
+        "short": "Short (800ms)",
+        "standard": "Standard (1200ms)"
+      }
+    },
+    "title": "Settings"
+  },
+  "SiteHeader": {
+    "connectors": "Connectors",
+    "consultationFallback": "Consultation",
+    "defaultTitle": "Rxly Consultation",
+    "emailFailed": "Failed to send email",
+    "emailSent": "Email sent to {email}",
+    "exportPdf": "Export PDF",
+    "hideTranscript": "Hide transcript",
+    "mobileEmailDescription": "Send the current {tab} content to an email address.",
+    "mobileEmailTitle": "Send via Email",
+    "newConsultation": "New Consultation",
+    "pdfFailed": "Failed to generate PDF",
+    "pdfSuccess": "PDF downloaded successfully",
+    "preparing": "Preparing...",
+    "recipientEmail": "Recipient Email",
+    "scenarios": {
+      "acute-appendicitis": "Acute Appendicitis",
+      "anxiety": "Generalized Anxiety Disorder",
+      "asthma": "Asthma Exacerbation",
+      "chest-pain": "Chest Pain Evaluation",
+      "diabetes": "Type 2 Diabetes Management",
+      "gerd": "Gastroesophageal Reflux Disease",
+      "hypothyroidism": "Hypothyroidism",
+      "iron-deficiency-anemia": "Iron Deficiency Anemia",
+      "low-back-pain": "Acute Low Back Pain",
+      "migraine": "Migraine Diagnosis",
+      "otitis-media": "Acute Otitis Media",
+      "pediatric-fever": "Pediatric Fever Evaluation",
+      "pneumonia": "Community-Acquired Pneumonia",
+      "rheumatoid-arthritis": "Rheumatoid Arthritis",
+      "uti": "Urinary Tract Infection"
+    },
+    "reviewFhirData": "Review FHIR Data",
+    "scenario": "Scenario",
+    "sendEmail": "Send Email",
+    "sendViaEmail": "Send via Email",
+    "sending": "Sending...",
+    "showTranscript": "Show transcript",
+    "simulation": "Simulation",
+    "simulationDescription": "Simulate a doctor-patient conversation to test the full pipeline without a microphone.",
+    "simulationTitle": "Simulation",
+    "speed": "Speed",
+    "speedOptions": {
+      "realTime": "1x (Real-time)",
+      "x2": "2x",
+      "x3": "3x",
+      "x4": "4x"
+    },
+    "startSimulation": "Start Simulation",
+    "stopSimulation": "Stop Simulation",
+    "syncToEmr": "Sync to EMR",
+    "syncing": "Syncing..."
+  },
+  "ConsultationLayout": {
+    "loading": "Loading consultation...",
+    "newConsultation": "New Consultation",
+    "noActiveDescription": "Create a new session to start recording and analyzing a consultation.",
+    "noActiveTitle": "No Active Consultation",
+    "preparing": "Preparing consultation...",
+    "startNew": "Start New Consultation"
+  },
+  "ResearchInput": {
+    "askPlaceholder": "Ask a medical research question...",
+    "clearChat": "Clear Chat",
+    "includeInsights": "Live Insights",
+    "includeInsightsDescription": "Include current session insights in research context",
+    "responseError": "An error occurred while generating the response. Please try again.",
+    "saveFailed": "Failed to save research messages",
+    "startSessionPlaceholder": "Start a session first..."
+  },
+  "ResearchMessageList": {
+    "description": "Select which medical databases to use for research.",
+    "searching": "Searching medical databases...",
+    "title": "Knowledge Connectors"
+  },
+  "ConnectorsDialog": {
+    "description": "Enable external medical databases for evidence-based diagnosis support.",
+    "title": "Knowledge Connectors"
+  },
+  "NoteInputBar": {
+    "attachmentAlt": "Attachment",
+    "fileTooLarge": "File size must be under 10MB",
+    "imageUploadFailed": "{count} image upload(s) failed",
+    "onlyImages": "Only image files are supported",
+    "placeholderAiDoctor": "Type your message...",
+    "placeholderDefault": "Add a note to the consultation...",
+    "placeholderNoSession": "Start a session first...",
+    "sendMessageFailed": "Failed to send message",
+    "sendNoteFailed": "Failed to send note"
+  },
+  "ModeSelector": {
+    "agree": "I Agree",
+    "cancel": "Cancel",
+    "chooseMode": "Choose your consultation mode",
+    "disclaimerItems": {
+      "accuracy": "The accuracy of AI responses is not guaranteed. Always consult a qualified healthcare provider for medical decisions.",
+      "emergency": "In case of an emergency, please call 119 or visit the nearest emergency room immediately.",
+      "liability": "By proceeding, you acknowledge that you use this feature at your own risk and that the service provider is not liable for any outcomes resulting from the use of this AI consultation.",
+      "notLicensed": "The AI Doctor is not a licensed medical professional and does not replace professional medical advice, diagnosis, or treatment.",
+      "referenceOnly": "All information provided is for reference purposes only and should not be considered a medical diagnosis or prescription."
+    },
+    "disclaimerIntro": "Before proceeding, please read and agree to the following:",
+    "disclaimerTitle": "AI Doctor Disclaimer",
+    "doctorDescription": "Record a live consultation with your patient.",
+    "doctorLabel": "I am the doctor.",
+    "virtualDescription": "Chat with an AI doctor for a virtual consultation.",
+    "virtualLabel": "I need an AI doctor"
+  },
+  "InsightsPanel": {
+    "addComment": "Add your comment...",
+    "addItem": "Add item...",
+    "addNote": "Add a note...",
+    "addedByAi": "Added by AI",
+    "addedManually": "Added manually",
+    "analyzing": "Analyzing conversation...",
+    "auto": "auto",
+    "cancel": "Cancel",
+    "checklist": "Checklist",
+    "checklistEmpty": "Checklist items will appear as the AI identifies action items...",
+    "commentSent": "Comment sent",
+    "commentSentDescription": "Insights will update shortly",
+    "editNote": "Edit note",
+    "imagingUploads": "Imaging Uploads",
+    "keyFindings": "Key Findings",
+    "keyFindingsEmpty": "Key findings will be identified as the conversation progresses...",
+    "liveInsights": "Live Insights",
+    "medicalImage": "Medical image",
+    "notePrefix": "Note: {note}",
+    "pendingComments": "{count} pending comment(s)...",
+    "redFlags": "Red Flags",
+    "removeItem": "Remove item",
+    "send": "Send",
+    "shortcut": "{modifier}+Enter to send",
+    "summary": "Summary",
+    "summaryEmpty": "Summary will appear here as the conversation progresses..."
+  },
+  "TranscriptBubble": {
+    "keywordCategories": {
+      "diagnosis": "Diagnosis",
+      "finding": "Finding",
+      "medication": "Medication",
+      "symptom": "Symptom",
+      "vital": "Vital"
+    },
+    "speaker": {
+      "doctor": "Dr",
+      "patient": "Pt",
+      "unknown": "?"
+    }
+  },
+  "Record": {
+    "consultationTitle": "Consultation Record",
+    "emptyState": "Click \"Generate Record\" to create a structured consultation record from the transcript.",
+    "generate": "Generate Record",
+    "generating": "Generating...",
+    "generatingRecord": "Generating consultation record...",
+    "regenerate": "Regenerate",
+    "unknownPatient": "Unknown Patient",
+    "updatingRecord": "Updating consultation record...",
+    "vitals": "Vitals",
+    "sections": {
+      "assessment": "Assessment",
+      "chiefComplaint": "Chief Complaint",
+      "familyHistory": "Family History",
+      "hpiText": "History of Present Illness (HPI)",
+      "labsStudies": "Labs / Studies",
+      "medications": "Current Medications",
+      "physicalExam": "Physical Exam",
+      "plan": "Plan",
+      "pmh": "Past Medical History (PMH)",
+      "rosText": "Review of Systems (ROS)",
+      "socialHistory": "Social History"
+    }
+  },
+  "PatientHandout": {
+    "added": "Added",
+    "conditionNotInDdx": "Condition not in DDx? Search ICD-11",
+    "ddxSectionLabel": "Select Conditions (DDx)",
+    "emptyState": "No differential diagnoses yet. Add conditions via ICD-11 search below.",
+    "generate": "Generate Handout",
+    "generating": "Generating...",
+    "generatingDescription": "Generating patient handout...",
+    "icd11Search": "ICD-11 search",
+    "languageHint": "Handout language is automatically detected from the patient conversation.",
+    "noCode": "No code",
+    "regenerate": "Regenerate Handout",
+    "searchDescription": "Add a condition that is not currently in DDx.",
+    "searchIcd11Condition": "Search ICD-11 Condition",
+    "searchPlaceholder": "Search ICD-11 condition...",
+    "searching": "Searching ICD-11...",
+    "searchNoResults": "No results found.",
+    "selectCondition": "{name} select",
+    "source": "Source",
+    "sourceDdx": "DDx",
+    "sourceIcd11": "ICD-11 search",
+    "subtitle": "Generate patient-friendly guidance for selected conditions.",
+    "title": "Patient Handout",
+    "notGenerated": "[Not generated]",
+    "editSection": "Edit {title}",
+    "confidence": {
+      "high": "High",
+      "low": "Low",
+      "moderate": "Moderate"
+    },
+    "sections": {
+      "additionalAdviceFollowUp": "Additional Advice / Follow-Up",
+      "causesRiskFactors": "Causes / Risk Factors",
+      "complications": "Complications",
+      "conditionOverview": "Condition Overview",
+      "disclaimer": "Disclaimer",
+      "signsSymptoms": "Signs / Symptoms",
+      "treatmentOptions": "Treatment Options",
+      "whenToSeekHelp": "When to Seek Help"
+    }
+  },
+  "FhirBundleReview": {
+    "birthDate": "Birth Date",
+    "class": "Class",
+    "clinicalImpression": "Clinical Impression",
+    "conditions": "Conditions",
+    "consultationRecord": "Consultation Record",
+    "createdResources": "Created {count} FHIR resources",
+    "encounter": "Encounter",
+    "familyName": "Family Name",
+    "finding": "Finding",
+    "findings": "Findings",
+    "gender": "Gender",
+    "givenName": "Given Name",
+    "nameMissing": "Name missing",
+    "observations": "Observations",
+    "observation": "Observation",
+    "ongoing": "ongoing",
+    "patient": "Patient",
+    "period": "Period",
+    "reason": "Reason",
+    "redFlags": "Red Flags",
+    "sections": "{count} sections",
+    "summary": "Summary",
+    "unknown": "Unknown",
+    "unknownStatus": "unknown",
+    "verificationIcd": "ICD",
+    "placeholders": {
+      "firstName": "Enter first name",
+      "lastName": "Enter last name"
+    }
+  },
+  "MedplumSync": {
+    "buttonTitles": {
+      "error": "Sync failed (click to retry)",
+      "idle": "Sync to EMR",
+      "preparing": "Preparing FHIR data...",
+      "ready": "Review FHIR data (click to open)",
+      "reviewing": "Reviewing FHIR data",
+      "success": "Sync complete (click to reset)",
+      "syncing": "Sending to EMR..."
+    },
+    "cancel": "Cancel",
+    "close": "Close",
+    "description": "Review and edit the generated FHIR resources before sending to your EMR.",
+    "send": "Send to EMR",
+    "sending": "Sending...",
+    "title": "Review FHIR Data"
+  },
+  "TranscriptViewer": {
+    "analyzingKeywords": "Analyzing diagnostic keywords...",
+    "classifyingRoles": "Classifying roles...",
+    "collapse": "Collapse",
+    "dismiss": "Dismiss",
+    "dropImagesHere": "Drop images here",
+    "headerAiConsultation": "AI Consultation",
+    "headerTranscript": "Transcript",
+    "identifyingSpeakers": "Identifying speakers...",
+    "listening": "Listening...",
+    "loadingHistory": "Loading transcript history...",
+    "pause": "Pause recording",
+    "resume": "Resume recording",
+    "scrollToLatest": "Scroll to latest",
+    "singleSpeakerConfirm": "Yes, I am",
+    "singleSpeakerDetectedDescription": "Are you playing both doctor and patient roles?",
+    "singleSpeakerDetectedTitle": "Only one speaker detected",
+    "startRecording": "Start Recording",
+    "status": {
+      "active": "ACTIVE",
+      "live": "LIVE",
+      "paused": "PAUSED"
+    },
+    "stop": "Stop recording",
+    "typing": "typing..."
+  },
+  "DiagnosisSupport": {
+    "title": "Differential Diagnosis",
+    "emptyState": "Diagnosis suggestions will appear as the AI identifies possible conditions...",
+    "references": "References",
+    "moreSources": "+{count, plural, one {# more source} other {# more sources}}",
+    "confidence": "Confidence",
+    "evidence": "Evidence",
+    "retry": "Retry",
+    "detailsLoadFailed": "Failed to load diagnosis details. Please try again.",
+    "tabs": {
+      "clinical": "Clinical Decision Support",
+      "references": "References"
+    },
+    "clinicalSections": {
+      "diagnosticCriteria": "Diagnostic Criteria",
+      "recommendedWorkup": "Recommended Workup",
+      "treatmentOptions": "Treatment Options",
+      "firstLine": "First-line",
+      "alternatives": "Alternatives",
+      "nonPharmacologic": "Non-pharmacologic",
+      "keyDifferentiatingFeatures": "Key Differentiating Features",
+      "escalationCriteria": "Escalation Criteria",
+      "clinicalPearls": "Clinical Pearls"
+    },
+    "confidenceLevels": {
+      "high": "High",
+      "moderate": "Moderate",
+      "low": "Low"
+    },
+    "viewSource": "View source",
+    "viewArticle": "View article",
+    "supportUnavailable": "Clinical decision support could not be generated at this time.",
+    "noReferences": "No references available from external sources.",
+    "loadingReferences": "Loading additional references...",
+    "externalSourcesFailed": "Some external sources could not be loaded",
+    "failures": {
+      "icdLookupFailed": "ICD-11 reference lookup failed.",
+      "icdLookupTimedOut": "ICD-11 reference lookup timed out.",
+      "icdCredentialsMissing": "ICD-11 credentials are not configured.",
+      "articleIdParseFailed": "{source} reference parsing failed.",
+      "articleFetchTimedOut": "{source} reference retrieval timed out.",
+      "articleFetchFailed": "{source} reference retrieval failed."
+    }
+  }
+}

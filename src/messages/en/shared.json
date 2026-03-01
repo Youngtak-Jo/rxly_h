@@ -1,0 +1,34 @@
+{
+  "Common": {
+    "add": "Add",
+    "added": "Added",
+    "back": "Back",
+    "backToHome": "Back to Home",
+    "backToSignIn": "Back to sign in",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirmPassword": "Confirm Password",
+    "delete": "Delete",
+    "done": "Done",
+    "edit": "Edit",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "loading": "Loading...",
+    "more": "More",
+    "open": "Open",
+    "password": "Password",
+    "passwordPlaceholder": "••••••••",
+    "save": "Save",
+    "search": "Search",
+    "send": "Send",
+    "share": "Share",
+    "unknown": "Unknown"
+  },
+  "NavDocuments": {
+    "delete": "Delete",
+    "groupLabel": "Documents",
+    "more": "More",
+    "open": "Open",
+    "share": "Share"
+  }
+}

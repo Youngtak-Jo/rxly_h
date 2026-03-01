@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { useTranslations } from "next-intl"
 import { driver, type Driver } from "driver.js"
 import "driver.js/dist/driver.css"
 import { useTourStore } from "@/stores/tour-store"
@@ -15,6 +16,7 @@ import {
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 
 export function TourProvider() {
+  const t = useTranslations("Tour")
   const driverRef = useRef<Driver | null>(null)
   const snapshotRef = useRef<TourSnapshot | null>(null)
   const isActive = useTourStore((s) => s.isActive)
@@ -30,7 +32,46 @@ export function TourProvider() {
 
     // Small delay to let session state propagate and layout render
     const initTimer = setTimeout(() => {
-      const steps = createTourSteps(driverRef)
+      const steps = createTourSteps(driverRef, {
+        steps: {
+          insights: {
+            title: t("steps.insights.title"),
+            description: t("steps.insights.description"),
+          },
+          ddx: {
+            title: t("steps.ddx.title"),
+            description: t("steps.ddx.description"),
+          },
+          record: {
+            title: t("steps.record.title"),
+            description: t("steps.record.description"),
+          },
+          research: {
+            title: t("steps.research.title"),
+            description: t("steps.research.description"),
+          },
+          transcript: {
+            title: t("steps.transcript.title"),
+            description: t("steps.transcript.description"),
+          },
+          keywords: {
+            title: t("steps.keywords.title"),
+            description: t("steps.keywords.description"),
+          },
+          noteInput: {
+            title: t("steps.noteInput.title"),
+            description: t("steps.noteInput.description"),
+          },
+          toolbar: {
+            title: t("steps.toolbar.title"),
+            description: t("steps.toolbar.description"),
+          },
+          settings: {
+            title: t("steps.settings.title"),
+            description: t("steps.settings.description"),
+          },
+        },
+      })
 
       const d = driver({
         showProgress: true,
@@ -42,10 +83,10 @@ export function TourProvider() {
         stageRadius: 8,
         disableActiveInteraction: true,
         popoverClass: "rxly-tour-popover",
-        progressText: "{{current}} / {{total}}",
-        nextBtnText: "Next",
-        prevBtnText: "Previous",
-        doneBtnText: "Done",
+        progressText: t("progressText"),
+        nextBtnText: t("next"),
+        prevBtnText: t("previous"),
+        doneBtnText: t("done"),
         steps,
         onDestroyed: () => {
           // Restore snapshot
@@ -81,7 +122,7 @@ export function TourProvider() {
         driverRef.current = null
       }
     }
-  }, [isActive])
+  }, [isActive, t])
 
   return null
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Textarea } from "@/components/ui/textarea"
 import { IconPencil } from "@tabler/icons-react"
 
@@ -15,6 +16,7 @@ export function PatientHandoutSection({
   value,
   onChange,
 }: PatientHandoutSectionProps) {
+  const t = useTranslations("PatientHandout")
   const [isEditing, setIsEditing] = useState(false)
 
   return (
@@ -28,7 +30,7 @@ export function PatientHandoutSection({
             type="button"
             onClick={() => setIsEditing(true)}
             className="opacity-0 group-hover:opacity-100 transition-opacity"
-            aria-label={`Edit ${title}`}
+            aria-label={t("editSection", { title })}
           >
             <IconPencil className="size-3 text-muted-foreground" />
           </button>
@@ -52,7 +54,7 @@ export function PatientHandoutSection({
           }`}
           onClick={() => setIsEditing(true)}
         >
-          {value || "[Not generated]"}
+          {value || t("notGenerated")}
         </p>
       )}
     </div>

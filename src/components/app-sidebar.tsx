@@ -7,6 +7,7 @@ import {
   IconShield,
   type Icon,
 } from "@tabler/icons-react"
+import { useTranslations } from "next-intl"
 
 
 import { NavSessions } from "@/components/nav-sessions"
@@ -30,6 +31,7 @@ import Link from "next/link"
 import logoSymbol from "@/app/icon1.png"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const t = useTranslations("AppSidebar")
   const { user, loading } = useUser()
   const openSettings = useSettingsDialogStore((s) => s.openSettings)
 
@@ -37,7 +39,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     name:
       user?.user_metadata?.full_name ||
       user?.email?.split("@")[0] ||
-      "User",
+      t("fallbackUserName"),
     email: user?.email || "",
     avatar: user?.user_metadata?.avatar_url || "",
   }
@@ -50,14 +52,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     dataTour?: string
   }[] = [
     {
-      title: "Settings",
+      title: t("settings"),
       url: "#",
       icon: IconSettings,
       onClick: () => openSettings(),
       dataTour: "settings-btn",
     },
     {
-      title: "Help",
+      title: t("help"),
       url: "#",
       icon: IconHelp,
       onClick: () => useTourStore.getState().startTour(),
@@ -71,7 +73,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   if (role === "admin") {
     navSecondary.unshift({
-      title: "Admin",
+      title: t("admin"),
       url: "/admin/home",
       icon: IconShield,
     })

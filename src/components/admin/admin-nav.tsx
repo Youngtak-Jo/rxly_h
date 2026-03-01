@@ -3,6 +3,7 @@
 import Link from "next/link"
 import type { ComponentType } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import {
   Activity,
   AlertTriangle,
@@ -29,83 +30,73 @@ import { parseAdminFilters, filtersToSearchParams } from "@/lib/admin/filters"
 
 type NavItem = {
   href: string
-  label: string
+  key: string
   icon: ComponentType<{ className?: string }>
-  description: string
 }
 
 type NavGroup = {
-  label: string
+  key: string
   items: NavItem[]
 }
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Operations",
+    key: "operations",
     items: [
       {
         href: "/admin/home",
-        label: "Home",
+        key: "home",
         icon: LayoutDashboard,
-        description: "KPI snapshot and urgent incidents",
       },
       {
         href: "/admin/triage",
-        label: "Triage",
+        key: "triage",
         icon: AlertTriangle,
-        description: "Incident queue and workflow",
       },
       {
         href: "/admin/users",
-        label: "Users",
+        key: "users",
         icon: Users,
-        description: "Risk-prioritized users",
       },
       {
         href: "/admin/sessions",
-        label: "Sessions",
+        key: "sessions",
         icon: Activity,
-        description: "Problem session drilldowns",
       },
     ],
   },
   {
-    label: "Analytics",
+    key: "analytics",
     items: [
       {
         href: "/admin/funnel",
-        label: "Funnel",
+        key: "funnel",
         icon: Workflow,
-        description: "Stage conversion and drop-offs",
       },
       {
         href: "/admin/cohorts",
-        label: "Cohorts",
+        key: "cohorts",
         icon: BarChart3,
-        description: "D1 / D7 / D30 retention",
       },
       {
         href: "/admin/ai-ops",
-        label: "AI Ops",
+        key: "aiOps",
         icon: Bot,
-        description: "Failure, latency, cost by model",
       },
     ],
   },
   {
-    label: "Governance",
+    key: "governance",
     items: [
       {
         href: "/admin/compliance",
-        label: "Compliance",
+        key: "compliance",
         icon: FileWarning,
-        description: "PHI reveal and export signals",
       },
       {
         href: "/admin/data-quality",
-        label: "Data Quality",
+        key: "dataQuality",
         icon: Database,
-        description: "Transcript and telemetry quality",
       },
     ],
   },
@@ -117,6 +108,7 @@ function isActive(pathname: string, href: string): boolean {
 }
 
 export function AdminNav() {
+  const t = useTranslations("AdminNav")
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const filters = parseAdminFilters(searchParams)
@@ -130,9 +122,9 @@ export function AdminNav() {
             <Shield className="size-4" />
           </div>
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">Admin Console</div>
+            <div className="truncate text-sm font-semibold">{t("title")}</div>
             <div className="truncate text-xs text-muted-foreground">
-              Intelligence workspace
+              {t("description")}
             </div>
           </div>
         </div>
@@ -140,19 +132,19 @@ export function AdminNav() {
 
       <SidebarContent>
         {NAV_GROUPS.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+          <SidebarGroup key={group.key}>
+            <SidebarGroupLabel>{t(`groups.${group.key}`)}</SidebarGroupLabel>
             <SidebarMenu>
               {group.items.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild
                     isActive={isActive(pathname, item.href)}
-                    tooltip={item.description}
+                    tooltip={t(`items.${item.key}.description`)}
                   >
                     <Link href={`${item.href}?${query}`}>
                       <item.icon className="size-4" />
-                      <span>{item.label}</span>
+                      <span>{t(`items.${item.key}.label`)}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

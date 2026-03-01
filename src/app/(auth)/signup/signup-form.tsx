@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useCallback } from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Loader2, ArrowLeft, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -18,6 +19,7 @@ import { createClient } from "@/lib/supabase/client"
 import { signup } from "./actions"
 
 export function SignupForm() {
+  const t = useTranslations("SignupForm")
   const [isPending, startTransition] = useTransition()
   const [view, setView] = useState<"form" | "otp">("form")
   const [email, setEmail] = useState("")
@@ -42,7 +44,7 @@ export function SignupForm() {
         setEmail(formData.get("email") as string)
         setView("otp")
         setResendCooldown(60)
-        toast.success("Verification code sent to your email")
+        toast.success(t("verificationSent"))
       }
     })
   }
@@ -62,16 +64,16 @@ export function SignupForm() {
           setOtpValue("")
           return
         }
-        toast.success("Account verified!")
+        toast.success(t("accountVerified"))
         window.location.href = "/consultation"
       } catch {
-        toast.error("Verification failed")
+        toast.error(t("verificationFailed"))
         setOtpValue("")
       } finally {
         setOtpLoading(false)
       }
     },
-    [email]
+    [email, t]
   )
 
   const handleResendOtp = async () => {
@@ -87,11 +89,11 @@ export function SignupForm() {
         toast.error(error.message)
         return
       }
-      toast.success("New code sent to your email")
+      toast.success(t("resendSuccess"))
       setResendCooldown(60)
       setOtpValue("")
     } catch {
-      toast.error("Failed to resend code")
+      toast.error(t("resendFailed"))
     } finally {
       setOtpLoading(false)
     }
@@ -110,17 +112,16 @@ export function SignupForm() {
           className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm transition-colors"
         >
           <ArrowLeft className="size-4" />
-          Back
+          {t("back")}
         </button>
 
         <div className="flex flex-col items-center gap-2 text-center">
           <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
             <Mail className="size-6 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold">Verify your email</h1>
+          <h1 className="text-2xl font-bold">{t("otpTitle")}</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            Enter the 6-digit code sent to{" "}
-            <span className="font-medium text-foreground">{email}</span>
+            {t("otpDescription", { email })}
           </p>
         </div>
 
@@ -148,20 +149,22 @@ export function SignupForm() {
           {otpLoading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Verifying...
+              {t("verifying")}
             </div>
           )}
         </div>
 
         <div className="text-center text-sm text-muted-foreground">
-          Didn&apos;t receive a code?{" "}
+          {t("didNotReceiveCode")}{" "}
           <button
             type="button"
             onClick={handleResendOtp}
             disabled={resendCooldown > 0 || otpLoading}
             className="underline underline-offset-4 hover:text-primary disabled:opacity-50 disabled:no-underline"
           >
-            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend"}
+            {resendCooldown > 0
+              ? t("resendIn", { seconds: resendCooldown })
+              : t("resend")}
           </button>
         </div>
       </div>
@@ -172,9 +175,9 @@ export function SignupForm() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2 text-center">
-        <h1 className="text-2xl font-bold">Create an account</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
         <p className="text-muted-foreground text-sm text-balance">
-          Enter your details to get started
+          {t("description")}
         </p>
       </div>
 
@@ -182,40 +185,40 @@ export function SignupForm() {
 
       <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
         <span className="bg-background text-muted-foreground relative z-10 px-2">
-          or continue with email
+          {t("orContinueWithEmail")}
         </span>
       </div>
 
       <form action={handleSubmit}>
         <div className="flex flex-col gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("email")}</Label>
             <Input
               id="email"
               name="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("emailPlaceholder")}
               required
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t("password")}</Label>
             <Input
               id="password"
               name="password"
               type="password"
-              placeholder="••••••••"
+              placeholder={t("passwordPlaceholder")}
               required
               minLength={6}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Label htmlFor="confirmPassword">{t("confirmPassword")}</Label>
             <Input
               id="confirmPassword"
               name="confirmPassword"
               type="password"
-              placeholder="••••••••"
+              placeholder={t("confirmPasswordPlaceholder")}
               required
               minLength={6}
             />
@@ -224,22 +227,22 @@ export function SignupForm() {
             {isPending ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Creating account...
+                {t("createAccountLoading")}
               </>
             ) : (
-              "Create Account"
+              t("createAccount")
             )}
           </Button>
         </div>
       </form>
 
       <div className="text-center text-sm">
-        Already have an account?{" "}
+        {t("alreadyHaveAccount")}{" "}
         <Link
           href="/login"
           className="underline underline-offset-4 hover:text-primary"
         >
-          Sign in
+          {t("signIn")}
         </Link>
       </div>
     </div>

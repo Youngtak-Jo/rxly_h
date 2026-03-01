@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import { useTranslations } from "next-intl"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import type { ResearchMessage } from "@/stores/research-store"
@@ -33,6 +34,7 @@ export function ResearchMessageBubble({
   message,
   isStreaming,
 }: ResearchMessageProps) {
+  const t = useTranslations("ResearchMessageList")
   const processed = useMemo(
     () => preprocessCitations(message.content),
     [message.content]
@@ -96,7 +98,7 @@ export function ResearchMessageBubble({
         <div className="flex items-center gap-1.5 py-2">
           <span className="h-2 w-2 rounded-full bg-violet-500 animate-pulse" />
           <span className="text-xs text-muted-foreground">
-            Searching medical databases...
+            {t("searching")}
           </span>
         </div>
       ) : null}

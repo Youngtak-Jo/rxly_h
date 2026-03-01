@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
@@ -56,15 +57,20 @@ import { generatePdf, getActiveTabExportHtml } from "@/lib/export-utils"
 import { trackClientEvent } from "@/lib/telemetry/client-events"
 
 const SIMULATION_SPEED_PRESETS = [
-  { value: "1.0", label: "1x (Real-time)" },
-  { value: "0.5", label: "2x" },
-  { value: "0.3333333333", label: "3x" },
-  { value: "0.25", label: "4x" },
+  { value: "1.0", labelKey: "realTime" },
+  { value: "0.5", labelKey: "x2" },
+  { value: "0.3333333333", labelKey: "x3" },
+  { value: "0.25", labelKey: "x4" },
 ] as const
 
-
-
-function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange?: (open: boolean) => void }) {
+function SimulationDialog({
+  open,
+  onOpenChange,
+}: {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}) {
+  const t = useTranslations("SiteHeader")
   const [internalOpen, setInternalOpen] = useState(false)
   const [speed, setSpeed] = useState<string>(SIMULATION_SPEED_PRESETS[0].value)
   const [scenarioId, setScenarioId] = useState(SCENARIOS[0].id)
@@ -89,7 +95,7 @@ function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange
         const res = await fetch("/api/sessions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: "New Consultation" }),
+          body: JSON.stringify({ title: t("newConsultation") }),
         })
         if (res.ok) {
           const session = await res.json()
@@ -132,16 +138,13 @@ function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange
       )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Simulation</DialogTitle>
-          <DialogDescription>
-            Simulate a doctor-patient conversation to test the full pipeline
-            without a microphone.
-          </DialogDescription>
+          <DialogTitle>{t("simulationTitle")}</DialogTitle>
+          <DialogDescription>{t("simulationDescription")}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
           <div className="grid gap-2">
-            <Label>Scenario</Label>
+            <Label>{t("scenario")}</Label>
             <Select value={scenarioId} onValueChange={setScenarioId}>
               <SelectTrigger>
                 <SelectValue />
@@ -149,7 +152,7 @@ function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange
               <SelectContent>
                 {SCENARIOS.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.name}
+                    {t(`scenarios.${s.id}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -157,7 +160,7 @@ function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange
           </div>
 
           <div className="grid gap-2">
-            <Label>Speed</Label>
+            <Label>{t("speed")}</Label>
             <Select value={speed} onValueChange={setSpeed}>
               <SelectTrigger>
                 <SelectValue />
@@ -165,7 +168,7 @@ function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange
               <SelectContent>
                 {SIMULATION_SPEED_PRESETS.map((preset) => (
                   <SelectItem key={preset.value} value={preset.value}>
-                    {preset.label}
+                    {t(`speedOptions.${preset.labelKey}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -176,11 +179,11 @@ function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange
         <DialogFooter>
           {isSimulating ? (
             <Button variant="destructive" onClick={handleStop}>
-              Stop Simulation
+              {t("stopSimulation")}
             </Button>
           ) : (
             <Button onClick={handleStart} disabled={isRecording}>
-              Start Simulation
+              {t("startSimulation")}
             </Button>
           )}
         </DialogFooter>
@@ -189,20 +192,16 @@ function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange
   )
 }
 
-const TAB_LABELS: Record<string, string> = {
-  insights: "Live Insights",
-  ddx: "Differential Diagnosis",
-  record: "Consultation Record",
-  research: "Research",
-  patientHandout: "Patient Handout",
-}
-
 function MobileHeaderMenu() {
+  const t = useTranslations("SiteHeader")
+  const tTabs = useTranslations("ConsultationTabs")
+  const tCommon = useTranslations("Common")
   const activeSession = useSessionStore((s) => s.activeSession)
   const connectors = useConnectorStore((s) => s.connectors)
   const openSettings = useSettingsDialogStore((s) => s.openSettings)
   const enabledCount = Object.values(connectors).filter(Boolean).length
   const activeTab = useConsultationTabStore((s) => s.activeTab)
+  const activeTabLabel = tTabs(activeTab)
 
   const syncStatus = useMedplumSyncStore((s) => s.status)
   const startPrepare = useMedplumSyncStore((s) => s.startPrepare)
@@ -231,10 +230,10 @@ function MobileHeaderMenu() {
           metadata: { tab: activeTab, channel: "pdf" },
         })
       }
-      toast.success("PDF downloaded successfully")
+      toast.success(t("pdfSuccess"))
     } catch (err) {
       console.error("PDF export error:", err)
-      toast.error("Failed to generate PDF")
+      toast.error(t("pdfFailed"))
     }
   }
 
@@ -243,7 +242,7 @@ function MobileHeaderMenu() {
     setIsSending(true)
     try {
       const { html, tabLabel } = getActiveTabExportHtml()
-      const subject = `Rxly — ${tabLabel}: ${activeSession?.title || "Consultation"}`
+      const subject = `Rxly — ${tabLabel}: ${activeSession?.title || t("consultationFallback")}`
 
       const res = await fetch("/api/export/email", {
         method: "POST",
@@ -261,11 +260,11 @@ function MobileHeaderMenu() {
           metadata: { tab: activeTab, channel: "email" },
         })
       }
-      toast.success(`Email sent to ${email}`)
+      toast.success(t("emailSent", { email }))
       setEmailDialogOpen(false)
       setEmail("")
     } catch {
-      toast.error("Failed to send email")
+      toast.error(t("emailFailed"))
     } finally {
       setIsSending(false)
     }
@@ -286,16 +285,16 @@ function MobileHeaderMenu() {
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={handlePdfExport} disabled={!activeSession}>
             <IconFileTypePdf className="size-4" />
-            Export PDF
+            {t("exportPdf")}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={!activeSession}>
             <IconMail className="size-4" />
-            Send via Email
+            {t("sendViaEmail")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => openSettings("connectors")} disabled={!activeSession}>
             <IconPlug className="size-4" />
-            Connectors
+            {t("connectors")}
             {enabledCount > 0 && (
               <Badge variant="secondary" className="ml-auto text-[10px] h-5 px-1.5">
                 {enabledCount}
@@ -305,7 +304,7 @@ function MobileHeaderMenu() {
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setSimDialogOpen(true)}>
             <IconTestPipe className="size-4" />
-            Simulation
+            {t("simulation")}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
@@ -320,12 +319,12 @@ function MobileHeaderMenu() {
           >
             <SyncButtonIcon status={syncStatus} />
             {syncStatus === "preparing"
-              ? "Preparing..."
+              ? t("preparing")
               : syncStatus === "ready"
-                ? "Review FHIR Data"
+                ? t("reviewFhirData")
                 : syncStatus === "syncing"
-                  ? "Syncing..."
-                  : "Sync to EMR"}
+                  ? t("syncing")
+                  : t("syncToEmr")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -333,18 +332,18 @@ function MobileHeaderMenu() {
       <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Send via Email</DialogTitle>
+            <DialogTitle>{t("mobileEmailTitle")}</DialogTitle>
             <DialogDescription>
-              Send the current {TAB_LABELS[activeTab]} content to an email address.
+              {t("mobileEmailDescription", { tab: activeTabLabel })}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="mobile-export-email">Recipient Email</Label>
+              <Label htmlFor="mobile-export-email">{t("recipientEmail")}</Label>
               <Input
                 id="mobile-export-email"
                 type="email"
-                placeholder="doctor@hospital.com"
+                placeholder={tCommon("emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleEmailSend()}
@@ -354,7 +353,7 @@ function MobileHeaderMenu() {
           <DialogFooter>
             <Button onClick={handleEmailSend} disabled={!email || isSending}>
               {isSending && <IconLoader2 className="size-4 animate-spin" />}
-              {isSending ? "Sending..." : "Send Email"}
+              {isSending ? t("sending") : t("sendEmail")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -366,6 +365,7 @@ function MobileHeaderMenu() {
 }
 
 export function SiteHeader() {
+  const t = useTranslations("SiteHeader")
   const activeSession = useSessionStore((s) => s.activeSession)
   const isTranscriptCollapsed = useConsultationTabStore(
     (s) => s.isTranscriptCollapsed
@@ -386,7 +386,7 @@ export function SiteHeader() {
           className="mx-2 data-[orientation=vertical]:h-4"
         />
         <h1 className="text-sm font-medium truncate min-w-0">
-          {activeSession?.title || "Rxly Consultation"}
+          {activeSession?.title || t("defaultTitle")}
         </h1>
 
         <div data-tour="header-actions" className="ml-auto flex items-center gap-1">
@@ -397,7 +397,7 @@ export function SiteHeader() {
               size="icon"
               className="hidden md:inline-flex size-8 text-muted-foreground hover:text-foreground"
               onClick={_toggleTranscript}
-              title={isTranscriptCollapsed ? "Show transcript" : "Hide transcript"}
+              title={isTranscriptCollapsed ? t("showTranscript") : t("hideTranscript")}
             >
               {isTranscriptCollapsed ? (
                 <IconLayoutSidebarRightExpand className="size-4" />

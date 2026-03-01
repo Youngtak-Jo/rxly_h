@@ -64,15 +64,25 @@ export interface AdminKpis {
   unresolvedIncidents: number
 }
 
+export type AdminFunnelStepKey =
+  | "sessionStarted"
+  | "transcriptCaptured"
+  | "insightsDone"
+  | "ddxDone"
+  | "recordDone"
+  | "researchUsed"
+  | "handoutDone"
+  | "exportDone"
+
 export interface AdminFunnelStep {
-  step: string
+  step: AdminFunnelStepKey
   count: number
   rate: number
 }
 
 export interface AdminFunnelDropoff {
-  fromStep: string
-  toStep: string
+  fromStep: AdminFunnelStepKey
+  toStep: AdminFunnelStepKey
   dropCount: number
   dropRate: number
 }

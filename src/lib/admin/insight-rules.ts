@@ -46,6 +46,9 @@ export function buildSessionAlerts(
           sessionId: session.sessionId,
           title: "High AI regeneration count",
           description: `Session requested AI generation ${session.aiCallCount} times.`,
+          metadata: {
+            aiCallCount: session.aiCallCount,
+          },
         })
       )
     }

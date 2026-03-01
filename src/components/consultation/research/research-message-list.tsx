@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useEffect, useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { useResearchStore } from "@/stores/research-store"
 import { useConnectorStore } from "@/stores/connector-store"
 import { ResearchMessageBubble } from "./research-message"
@@ -47,6 +48,8 @@ const CONNECTORS: {
 ]
 
 export function ResearchMessageList() {
+  const t = useTranslations("ResearchMessageList")
+  const tSettings = useTranslations("SettingsDialog")
   const messages = useResearchStore((s) => s.messages)
   const isStreaming = useResearchStore((s) => s.isStreaming)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -85,9 +88,9 @@ export function ResearchMessageList() {
               <IconPlug className="h-5 w-5 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-sm font-medium">Knowledge Connectors</p>
+              <p className="text-sm font-medium">{t("title")}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Select which medical databases to use for research.
+                {t("description")}
               </p>
             </div>
           </div>
@@ -103,10 +106,10 @@ export function ResearchMessageList() {
                     htmlFor={`research-connector-${connector.key}`}
                     className="text-sm font-medium cursor-pointer"
                   >
-                    {connector.label}
+                    {tSettings(`connectors.items.${connector.key}.label`)}
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    {connector.description}
+                    {tSettings(`connectors.items.${connector.key}.description`)}
                   </p>
                 </div>
                 <Switch

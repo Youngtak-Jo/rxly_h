@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Loader2 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -25,6 +26,10 @@ import {
   parseAdminFilters,
   toAdminApiParams,
 } from "@/lib/admin/filters"
+import {
+  getAdminRiskBandLabel,
+  getAdminRuleLabel,
+} from "@/lib/admin/localization"
 import type { AdminUserRow, AdminUsersResponse } from "@/types/admin"
 
 function buildPreviousRange(
@@ -48,6 +53,8 @@ function formatDelta(value: number): string {
 }
 
 export function AdminUsers() {
+  const t = useTranslations("AdminUsers")
+  const tCommon = useTranslations("AdminCommon")
   const searchParams = useSearchParams()
   const filters = useMemo(() => parseAdminFilters(searchParams), [searchParams])
   const refreshToken = useAdminRefreshToken()
@@ -124,25 +131,28 @@ export function AdminUsers() {
     <section className="space-y-4">
       <div>
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold">Users</h2>
+          <h2 className="text-lg font-semibold">{t("title")}</h2>
           {isRefreshing ? (
             <Loader2 className="size-4 animate-spin text-muted-foreground" />
           ) : null}
         </div>
         <p className="text-xs text-muted-foreground">
-          Risk-prioritized user list with server-side ranking.
+          {t("description")}
         </p>
         <p className="text-xs text-muted-foreground">
-          Compared to previous period: {formatDelta(countDelta)} users ({previousTotalCount}{" "}
-          &rarr; {totalCount})
+          {t("periodComparison", {
+            delta: formatDelta(countDelta),
+            previousTotalCount,
+            totalCount,
+          })}
         </p>
       </div>
 
       {error ? (
-        <AdminEmptyState title="Failed to load users" description={error} />
+        <AdminEmptyState title={t("failed")} description={error} />
       ) : null}
 
-      {isInitialLoading ? <AdminLoadingState label="Loading users..." /> : null}
+      {isInitialLoading ? <AdminLoadingState label={t("loading")} /> : null}
 
       {!isInitialLoading ? (
         <Card>
@@ -151,13 +161,13 @@ export function AdminUsers() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Sessions</TableHead>
-                    <TableHead>AI Calls</TableHead>
-                    <TableHead>Record Finalization</TableHead>
-                    <TableHead>Risk</TableHead>
-                    <TableHead>Last Active</TableHead>
-                    <TableHead>Flags</TableHead>
+                    <TableHead>{t("columns.user")}</TableHead>
+                    <TableHead>{t("columns.sessions")}</TableHead>
+                    <TableHead>{t("columns.aiCalls")}</TableHead>
+                    <TableHead>{t("columns.recordFinalization")}</TableHead>
+                    <TableHead>{t("columns.risk")}</TableHead>
+                    <TableHead>{t("columns.lastActive")}</TableHead>
+                    <TableHead>{t("columns.flags")}</TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
@@ -176,7 +186,7 @@ export function AdminUsers() {
                       <TableCell>{toPercent(user.completionRate)}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="mr-1">
-                          {user.riskBand}
+                          {getAdminRiskBandLabel(tCommon, user.riskBand)}
                         </Badge>
                         <span className="text-xs text-muted-foreground">{user.riskScore.toFixed(2)}</span>
                       </TableCell>
@@ -188,7 +198,7 @@ export function AdminUsers() {
                           ) : (
                             user.riskFlags.map((flag) => (
                               <Badge key={flag} variant="outline" className="text-[10px]">
-                                {flag}
+                                {getAdminRuleLabel(tCommon, flag)}
                               </Badge>
                             ))
                           )}
@@ -197,7 +207,7 @@ export function AdminUsers() {
                       <TableCell>
                         <Button asChild size="sm" variant="outline">
                           <Link href={`/admin/users/${user.userId}?${filterQuery}`}>
-                            Open
+                            {t("open")}
                           </Link>
                         </Button>
                       </TableCell>
@@ -208,8 +218,8 @@ export function AdminUsers() {
                     <TableRow>
                       <TableCell colSpan={8}>
                         <AdminEmptyState
-                          title="No users found"
-                          description="Adjust search or filters to find users."
+                          title={t("noUsersTitle")}
+                          description={t("noUsersDescription")}
                         />
                       </TableCell>
                     </TableRow>
@@ -222,13 +232,13 @@ export function AdminUsers() {
               {nextCursor ? (
                 <Button variant="outline" onClick={() => void loadMore()} disabled={isLoadingMore}>
                   {isLoadingMore ? <Loader2 className="size-4 animate-spin" /> : null}
-                  {isLoadingMore ? "Loading..." : "Load More Users"}
+                  {isLoadingMore ? t("loading") : t("loadMore")}
                 </Button>
               ) : null}
               {isLoading && rows.length > 0 ? (
                 <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                   <Loader2 className="size-3.5 animate-spin" />
-                  Loading users...
+                  {t("loading")}
                 </span>
               ) : null}
             </div>

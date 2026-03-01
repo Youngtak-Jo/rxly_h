@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -47,6 +48,7 @@ export function SyncButtonIcon({ status }: { status: MedplumSyncStatus }) {
 // --- Main component ---
 
 export function MedplumSyncButton() {
+  const t = useTranslations("MedplumSync")
   const activeSession = useSessionStore((s) => s.activeSession)
   const status = useMedplumSyncStore((s) => s.status)
   const dialogOpen = useMedplumSyncStore((s) => s.dialogOpen)
@@ -90,7 +92,7 @@ export function MedplumSyncButton() {
         className="size-8 text-muted-foreground hover:text-foreground"
         disabled={isDisabled}
         onClick={handleClick}
-        title={getButtonTitle(status)}
+        title={getButtonTitle(status, t)}
       >
         <SyncButtonIcon status={status} />
       </Button>
@@ -103,11 +105,8 @@ export function MedplumSyncButton() {
       >
         <DialogContent className="sm:max-w-2xl max-h-[85dvh] sm:max-h-[80vh] flex flex-col overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Review FHIR Data</DialogTitle>
-            <DialogDescription>
-              Review and edit the generated FHIR resources before sending to
-              your EMR.
-            </DialogDescription>
+            <DialogTitle>{t("title")}</DialogTitle>
+            <DialogDescription>{t("description")}</DialogDescription>
           </DialogHeader>
 
           <div className="-mx-6 flex-1 min-h-0 overflow-y-auto px-6">
@@ -117,12 +116,12 @@ export function MedplumSyncButton() {
           <DialogFooter>
             {status === "success" ? (
               <Button variant="outline" onClick={closeDialog}>
-                Close
+                {t("close")}
               </Button>
             ) : (
               <>
                 <Button variant="outline" onClick={closeDialog}>
-                  Cancel
+                  {t("cancel")}
                 </Button>
                 <Button
                   onClick={confirmSync}
@@ -131,7 +130,7 @@ export function MedplumSyncButton() {
                   {status === "syncing" && (
                     <IconLoader2 className="size-4 animate-spin" />
                   )}
-                  {status === "syncing" ? "Sending..." : "Send to EMR"}
+                  {status === "syncing" ? t("sending") : t("send")}
                 </Button>
               </>
             )}
@@ -142,21 +141,24 @@ export function MedplumSyncButton() {
   )
 }
 
-function getButtonTitle(status: MedplumSyncStatus): string {
+function getButtonTitle(
+  status: MedplumSyncStatus,
+  t: ReturnType<typeof useTranslations>
+): string {
   switch (status) {
     case "idle":
-      return "Sync to EMR"
+      return t("buttonTitles.idle")
     case "preparing":
-      return "Preparing FHIR data..."
+      return t("buttonTitles.preparing")
     case "ready":
-      return "Review FHIR data (click to open)"
+      return t("buttonTitles.ready")
     case "reviewing":
-      return "Reviewing FHIR data"
+      return t("buttonTitles.reviewing")
     case "syncing":
-      return "Sending to EMR..."
+      return t("buttonTitles.syncing")
     case "success":
-      return "Sync complete (click to reset)"
+      return t("buttonTitles.success")
     case "error":
-      return "Sync failed (click to retry)"
+      return t("buttonTitles.error")
   }
 }

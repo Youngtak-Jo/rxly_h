@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { usePathname, useRouter } from "next/navigation"
 import {
   IconBulb,
@@ -72,6 +73,8 @@ function formatShortTimeAgo(date: Date): string {
 }
 
 export function NavSessions() {
+  const t = useTranslations("NavSessions")
+  const tTabs = useTranslations("ConsultationTabs")
   const router = useRouter()
   const pathname = usePathname()
   const { sessions, activeSession, setActiveSession, addSession, setSessions } =
@@ -184,9 +187,10 @@ export function NavSessions() {
 
     const tempId = uuidv4()
     const now = new Date().toISOString()
+    const newConsultationTitle = t("newConsultation")
     const optimisticSession: Session = {
       id: tempId,
-      title: "New Consultation",
+      title: newConsultationTitle,
       patientName: null,
       mode: "DOCTOR",
       startedAt: now,
@@ -223,7 +227,7 @@ export function NavSessions() {
       const res = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: tempId, title: "New Consultation" }),
+        body: JSON.stringify({ id: tempId, title: newConsultationTitle }),
       })
       if (!res.ok) throw new Error("Failed to create session")
       const realSession = await res.json()
@@ -256,7 +260,7 @@ export function NavSessions() {
       }
     } catch (error) {
       console.error("Failed to create session:", error)
-      toast.error("Failed to create session")
+      toast.error(t("createFailed"))
       deleteCachedSession(tempId)
       const store = useSessionStore.getState()
       store.setSessions(previousSessions)
@@ -329,7 +333,7 @@ export function NavSessions() {
           await restorePreviousSessionContext(previousActiveSession)
         }
       }
-      toast.error("Failed to delete session")
+      toast.error(t("deleteFailed"))
     } finally {
       setDeletingId(null)
     }
@@ -341,7 +345,7 @@ export function NavSessions() {
 
   const startRename = (sessionId: string, currentTitle: string) => {
     setEditingId(sessionId)
-    setEditingTitle(currentTitle || "Untitled Session")
+    setEditingTitle(currentTitle || t("untitledSession"))
   }
 
   const commitRename = async () => {
@@ -365,7 +369,7 @@ export function NavSessions() {
         deleteCachedSession(targetId)
       } catch (error) {
         console.error("Failed to rename session:", error)
-        toast.error("Failed to rename session")
+        toast.error(t("renameFailed"))
       } finally {
         renameInFlightIdRef.current = null
       }
@@ -377,14 +381,14 @@ export function NavSessions() {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Sessions</SidebarGroupLabel>
-      <SidebarGroupAction onClick={createSession} title="New Session">
+      <SidebarGroupLabel>{t("sectionLabel")}</SidebarGroupLabel>
+      <SidebarGroupAction onClick={createSession} title={t("newSessionTitle")}>
         <IconPlus />
       </SidebarGroupAction>
       <SidebarMenu>
         {sessions.length === 0 && (
           <div className="px-3 py-2 text-xs text-muted-foreground">
-            No sessions yet. Click + to start.
+            {t("noSessions")}
           </div>
         )}
         {sessions.map((session) => {
@@ -425,7 +429,7 @@ export function NavSessions() {
                     className="h-auto items-start py-2"
                   >
                     <span className="line-clamp-2 min-w-0 flex-1">
-                      {session.title || "Untitled Session"}
+                      {session.title || t("untitledSession")}
                     </span>
                     <div className="ml-auto w-11 shrink-0 pr-4">
                       {isDeleting ? (
@@ -444,7 +448,7 @@ export function NavSessions() {
                               onPointerDown={(event) => event.stopPropagation()}
                             >
                               <span
-                                aria-label="Session actions"
+                                aria-label={t("actions")}
                                 className="flex size-5 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent md:absolute md:right-0 md:top-0 md:opacity-0 md:pointer-events-none md:group-hover/session:opacity-100 md:group-hover/session:pointer-events-auto"
                               >
                                 <IconDots className="size-4" />
@@ -458,7 +462,7 @@ export function NavSessions() {
                                 }}
                               >
                                 <IconPencil className="mr-2 size-4" />
-                                Rename
+                                {t("rename")}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onSelect={(event) => {
@@ -469,7 +473,7 @@ export function NavSessions() {
                                 className="text-destructive"
                               >
                                 <IconTrash className="mr-2 size-4" />
-                                Delete
+                                {t("delete")}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -489,7 +493,7 @@ export function NavSessions() {
                     >
                       <button onClick={() => setActiveTab("insights")}>
                         <IconBulb className="size-4" />
-                        <span className="truncate">Live Insights</span>
+                        <span className="truncate">{tTabs("insights")}</span>
                         {isInsightsProcessing ? (
                           <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
                         ) : unseenUpdates.insights && activeTab !== "insights" ? (
@@ -507,7 +511,7 @@ export function NavSessions() {
                     >
                       <button onClick={() => setActiveTab("ddx")}>
                         <IconStethoscope className="size-4" />
-                        <span className="truncate">Differential Dx</span>
+                        <span className="truncate">{tTabs("ddx")}</span>
                         {isDdxProcessing && diagnosisCount === 0 ? (
                           <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
                         ) : diagnosisCount > 0 ? (
@@ -534,7 +538,7 @@ export function NavSessions() {
                     >
                       <button onClick={() => setActiveTab("record")}>
                         <IconFileText className="size-4" />
-                        <span className="truncate">Consultation Record</span>
+                        <span className="truncate">{tTabs("record")}</span>
                         {isRecordGenerating ? (
                           <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
                         ) : unseenUpdates.record && activeTab !== "record" ? (
@@ -552,7 +556,7 @@ export function NavSessions() {
                     >
                       <button onClick={() => setActiveTab("research")}>
                         <IconSearch className="size-4" />
-                        <span className="truncate">Research</span>
+                        <span className="truncate">{tTabs("research")}</span>
                         {isResearchStreaming ? (
                           <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
                         ) : unseenUpdates.research && activeTab !== "research" ? (
@@ -570,7 +574,7 @@ export function NavSessions() {
                     >
                       <button onClick={() => setActiveTab("patientHandout")}>
                         <IconFileText className="size-4" />
-                        <span className="truncate">Patient Handout</span>
+                        <span className="truncate">{tTabs("patientHandout")}</span>
                         {isPatientHandoutGenerating ? (
                           <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
                         ) : unseenUpdates.patientHandout &&

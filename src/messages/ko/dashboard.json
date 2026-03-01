@@ -1,0 +1,121 @@
+{
+  "Dashboard": {
+    "chart": {
+      "descriptionLong": "최근 3개월 전체",
+      "desktop": "데스크톱",
+      "mobile": "모바일",
+      "ranges": {
+        "30d": "최근 30일",
+        "7d": "최근 7일",
+        "90d": "최근 3개월"
+      },
+      "selectRange": "기간 선택",
+      "title": "총 방문자",
+      "visitors": "방문자"
+    },
+    "sectionCards": {
+      "cards": {
+        "accounts": {
+          "description": "참여도가 목표를 상회합니다",
+          "title": "활성 계정",
+          "trend": "강한 사용자 유지"
+        },
+        "customers": {
+          "description": "획득 지표에 주의가 필요합니다",
+          "title": "신규 고객",
+          "trend": "이번 기간 20% 감소"
+        },
+        "growth": {
+          "description": "성장 전망치를 충족합니다",
+          "title": "성장률",
+          "trend": "안정적인 성과 상승"
+        },
+        "revenue": {
+          "description": "최근 6개월 방문자 기준",
+          "title": "총매출",
+          "trend": "이번 달 상승세"
+        }
+      }
+    },
+    "table": {
+      "accessibility": {
+        "drag": "순서 변경을 위해 드래그",
+        "openMenu": "메뉴 열기",
+        "selectAll": "전체 선택",
+        "selectRow": "행 선택"
+      },
+      "actions": {
+        "delete": "삭제",
+        "edit": "편집",
+        "favorite": "즐겨찾기",
+        "makeCopy": "사본 만들기"
+      },
+      "addSection": "섹션 추가",
+      "columns": {
+        "header": "헤더",
+        "limit": "한도",
+        "reviewer": "검토자",
+        "sectionType": "섹션 유형",
+        "status": "상태",
+        "target": "목표"
+      },
+      "columnsButton": "열",
+      "customizeColumns": "열 사용자 지정",
+      "device": {
+        "desktop": "데스크톱",
+        "mobile": "모바일"
+      },
+      "done": "완료",
+      "drawer": {
+        "body": "최근 6개월 방문자 총합을 보여주는 예시 텍스트입니다. 드로어 레이아웃과 줄바꿈 동작을 확인하기 위한 샘플 복사본입니다.",
+        "description": "최근 6개월 방문자 총합 표시",
+        "trending": "이번 달 5.2% 상승 추세"
+      },
+      "noResults": "결과가 없습니다.",
+      "pageOf": "{total}페이지 중 {page}페이지",
+      "pagination": {
+        "first": "첫 페이지로 이동",
+        "last": "마지막 페이지로 이동",
+        "next": "다음 페이지로 이동",
+        "previous": "이전 페이지로 이동"
+      },
+      "reviewers": {
+        "assign": "검토자 지정"
+      },
+      "rowsPerPage": "페이지당 행 수",
+      "selectReviewer": "검토자 선택",
+      "selectStatus": "상태 선택",
+      "selectType": "유형 선택",
+      "selectView": "보기 선택",
+      "selectionSummary": "{total}개 중 {selected}개 행 선택됨",
+      "status": {
+        "done": "완료",
+        "inProcess": "진행 중",
+        "notStarted": "시작 전"
+      },
+      "submit": "제출",
+      "tabs": {
+        "focusDocuments": "집중 문서",
+        "keyPersonnel": "핵심 인력",
+        "outline": "개요",
+        "pastPerformance": "과거 실적"
+      },
+      "toast": {
+        "done": "완료",
+        "error": "오류",
+        "saving": "{header} 저장 중"
+      },
+      "types": {
+        "coverPage": "표지",
+        "financial": "재무",
+        "legal": "법률",
+        "narrative": "서술형",
+        "plainLanguage": "쉬운 문장",
+        "tableOfContents": "목차",
+        "technicalContent": "기술 콘텐츠",
+        "visual": "시각 자료"
+      },
+      "view": "보기"
+    }
+  }
+}

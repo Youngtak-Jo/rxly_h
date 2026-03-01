@@ -1,0 +1,11 @@
+{
+  "ExportViewer": {
+    "accessExpires": "이 내보내기는 보안이 적용된 시간 제한 링크입니다. 접근 만료 시각: {date}.",
+    "accessDeniedDescription": "이 내보내기를 볼 권한이 없습니다.",
+    "accessDeniedTitle": "접근 거부",
+    "expiredDescription": "이 내보내기 링크는 만료되었습니다. 애플리케이션에서 새 내보내기를 생성해 주세요.",
+    "expiredTitle": "링크 만료",
+    "notFoundDescription": "이 내보내기 링크가 유효하지 않거나 삭제되었습니다.",
+    "notFoundTitle": "내보내기를 찾을 수 없음"
+  }
+}

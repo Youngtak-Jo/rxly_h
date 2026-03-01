@@ -1,0 +1,12 @@
+{
+  "GlobalError": {
+    "description": "예기치 않은 오류가 발생했습니다. 데이터는 안전합니다.",
+    "title": "문제가 발생했습니다",
+    "tryAgain": "다시 시도"
+  },
+  "ConsultationError": {
+    "description": "진료 중 예기치 않은 오류가 발생했습니다. 데이터는 안전합니다.",
+    "title": "문제가 발생했습니다",
+    "tryAgain": "다시 시도"
+  }
+}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useTranslations } from "next-intl"
 import LiquidGlass from "liquid-glass-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -21,10 +22,6 @@ import {
 } from "./hero-consultation-demo-data"
 import styles from "./hero-consultation-demo.module.css"
 
-function speakerLabel(entry: HeroDemoTranscriptEntry) {
-  return entry.speaker === "DOCTOR" ? "Dr" : "Pt"
-}
-
 function ddxLikelihoodClass(likelihood: "High" | "Moderate" | "Lower") {
   if (likelihood === "High") {
     return "bg-red-500/15 text-red-700 dark:text-red-300"
@@ -38,21 +35,60 @@ function ddxLikelihoodClass(likelihood: "High" | "Moderate" | "Lower") {
 }
 
 const INITIAL_DDX_ID = HERO_DEMO_DDX_STATE.candidates[0]?.id ?? ""
-const COMPACT_MODE_LABELS: Record<HeroDemoMode, string> = {
-  insights: "LI",
-  ddx: "DDx",
-  record: "CR",
-  research: "Ref",
-  patientHandout: "Pt Ed",
-}
 
 export function HeroConsultationDemo() {
+  const t = useTranslations("LandingHeroDemo")
   const [activeMode, setActiveMode] = useState<HeroDemoMode>("insights")
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
   const [selectedDdxId, setSelectedDdxId] = useState(INITIAL_DDX_ID)
   const transcriptRef = useRef<HTMLElement | null>(null)
   const activePanelId = `hero-demo-panel-${activeMode}`
+  const modeLabels: Record<HeroDemoMode, string> = {
+    insights: t("modeLabels.insights"),
+    ddx: t("modeLabels.ddx"),
+    record: t("modeLabels.record"),
+    research: t("modeLabels.research"),
+    patientHandout: t("modeLabels.patientHandout"),
+  }
+  const compactModeLabels: Record<HeroDemoMode, string> = {
+    insights: t("modeShortLabels.insights"),
+    ddx: t("modeShortLabels.ddx"),
+    record: t("modeShortLabels.record"),
+    research: t("modeShortLabels.research"),
+    patientHandout: t("modeShortLabels.patientHandout"),
+  }
+  const speakerLabels: Record<HeroDemoTranscriptEntry["speaker"], string> = {
+    DOCTOR: t("speaker.doctor"),
+    PATIENT: t("speaker.patient"),
+  }
+  const likelihoodLabels = {
+    High: t("likelihood.high"),
+    Moderate: t("likelihood.moderate"),
+    Lower: t("likelihood.lower"),
+  }
+  const fhirStatusLabels = {
+    Ready: t("fhir.status.ready"),
+    "Needs Review": t("fhir.status.needsReview"),
+  }
+  const vitalLabels: Record<string, string> = {
+    Temp: t("record.vitals.temp"),
+    HR: t("record.vitals.hr"),
+    BP: t("record.vitals.bp"),
+    RR: t("record.vitals.rr"),
+    SpO2: t("record.vitals.spo2"),
+    Pain: t("record.vitals.pain"),
+  }
+  const recordSectionTitles: Record<string, string> = {
+    "record-1": t("record.sections.chiefComplaint"),
+    "record-2": t("record.sections.hpi"),
+    "record-3": t("record.sections.ros"),
+    "record-4": t("record.sections.physicalExam"),
+    "record-5": t("record.sections.labsAndImaging"),
+    "record-6": t("record.sections.assessment"),
+    "record-7": t("record.sections.plan"),
+    "record-8": t("record.sections.sharedDecisionNotes"),
+  }
 
   const isInsightsMode = activeMode === "insights"
   const isPlaying = isInsightsMode && !prefersReducedMotion
@@ -138,7 +174,7 @@ export function HeroConsultationDemo() {
             style={{ position: "absolute", top: "50%", left: "50%" }}
           >
             <div className={styles.modeToggleViewport}>
-              <div role="tablist" aria-label="Hero demo modes" className={styles.modeToggleTrack}>
+              <div role="tablist" aria-label={t("tablistLabel")} className={styles.modeToggleTrack}>
                 {HERO_DEMO_MODE_OPTIONS.map((modeOption) => {
                   const isActive = modeOption.id === activeMode
                   return (
@@ -148,16 +184,16 @@ export function HeroConsultationDemo() {
                       type="button"
                       role="tab"
                       aria-selected={isActive}
-                      aria-label={modeOption.label}
+                      aria-label={modeLabels[modeOption.id]}
                       aria-controls={`hero-demo-panel-${modeOption.id}`}
                       onClick={() => setActiveMode(modeOption.id)}
                       className={cn(styles.modeToggleButton, isActive && styles.modeToggleButtonActive)}
                     >
                       <span aria-hidden="true" className={styles.modeToggleLabelLong}>
-                        {modeOption.label}
+                        {modeLabels[modeOption.id]}
                       </span>
                       <span aria-hidden="true" className={styles.modeToggleLabelShort}>
-                        {COMPACT_MODE_LABELS[modeOption.id]}
+                        {compactModeLabels[modeOption.id]}
                       </span>
                     </button>
                   )
@@ -169,7 +205,7 @@ export function HeroConsultationDemo() {
       </div>
 
       <section
-        aria-label="Rxly product simulation"
+        aria-label={t("simulationLabel")}
         className="relative flex h-[34rem] w-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/85 text-left shadow-[0_30px_90px_-46px_oklch(0.24_0.03_45/0.65)] backdrop-blur-xl sm:h-[36rem] md:h-[38rem]"
       >
         <div className="flex items-center border-b border-border/80 px-4 py-3">
@@ -177,7 +213,7 @@ export function HeroConsultationDemo() {
             <span className="size-2.5 rounded-full bg-[#ff5f57]" />
             <span className="size-2.5 rounded-full bg-[#febc2e]" />
             <span className="size-2.5 rounded-full bg-[#28c840]" />
-            <p className="ml-2 text-xs font-medium text-foreground/90">Acute Appendicitis Session</p>
+            <p className="ml-2 text-xs font-medium text-foreground/90">{t("sessionTitle")}</p>
           </div>
         </div>
 
@@ -196,12 +232,12 @@ export function HeroConsultationDemo() {
                   styles.panelIn,
                   "relative flex min-h-0 flex-col overflow-y-auto ring-1 ring-primary/35"
                 )}
-                aria-label="Live insights panel"
+                aria-label={t("panels.insights")}
               >
                 <header className="relative z-10 mb-2 flex items-center">
                   <div className="flex items-center gap-1.5">
                     <Activity className="size-3.5 text-primary" />
-                    <h3 className="text-xs font-semibold">Live Insights</h3>
+                    <h3 className="text-xs font-semibold">{t("headings.liveInsights")}</h3>
                   </div>
                 </header>
 
@@ -215,14 +251,14 @@ export function HeroConsultationDemo() {
                 >
                   <article>
                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Summary
+                      {t("headings.summary")}
                     </p>
                     <p className="text-foreground/90">{currentStep.insights.summary}</p>
                   </article>
 
                   <article>
                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Key Findings ({currentStep.insights.keyFindings.length})
+                      {t("headings.keyFindings")} ({currentStep.insights.keyFindings.length})
                     </p>
                     <ul className="space-y-1 text-foreground/90">
                       {currentStep.insights.keyFindings.map((finding) => (
@@ -236,10 +272,10 @@ export function HeroConsultationDemo() {
 
                   <article>
                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Red Flags ({currentStep.insights.redFlags.length})
+                      {t("headings.redFlags")} ({currentStep.insights.redFlags.length})
                     </p>
                     {currentStep.insights.redFlags.length === 0 ? (
-                      <p className="text-muted-foreground">No critical warning signs yet.</p>
+                      <p className="text-muted-foreground">{t("noCriticalWarningSigns")}</p>
                     ) : (
                       <ul className="space-y-1 text-foreground/90">
                         {currentStep.insights.redFlags.map((flag) => (
@@ -254,7 +290,7 @@ export function HeroConsultationDemo() {
 
                   <article>
                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Checklist
+                      {t("headings.checklist")}
                     </p>
                     <ul className="space-y-1">
                       {currentStep.insights.checklist.map((item) => (
@@ -286,10 +322,10 @@ export function HeroConsultationDemo() {
                   styles.panelIn,
                   "flex min-h-0 flex-col overflow-y-auto ring-1 ring-primary/20"
                 )}
-                aria-label="Transcript panel"
+                aria-label={t("panels.transcript")}
               >
                 <header className="mb-2 flex items-center">
-                  <h3 className="text-xs font-semibold">Real-time Transcript</h3>
+                  <h3 className="text-xs font-semibold">{t("headings.transcript")}</h3>
                 </header>
 
                 <div className="flex flex-col gap-2 pr-1">
@@ -315,7 +351,7 @@ export function HeroConsultationDemo() {
                               isDoctor ? "text-primary/75" : "text-muted-foreground"
                             )}
                           >
-                            {speakerLabel(entry)}
+                            {speakerLabels[entry.speaker]}
                           </p>
                         </article>
                       </div>
@@ -324,7 +360,7 @@ export function HeroConsultationDemo() {
 
                   {isPlaying && (
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                      <span>listening</span>
+                      <span>{t("listening")}</span>
                       <span className="flex items-center gap-1">
                         <span className={cn("size-1.5 rounded-full bg-primary/75", styles.typingDot)} />
                         <span
@@ -357,20 +393,21 @@ export function HeroConsultationDemo() {
                   styles.panelIn,
                   "flex min-h-0 flex-col overflow-y-auto ring-1 ring-amber-500/35"
                 )}
-                aria-label="Differential diagnosis panel"
+                aria-label={t("panels.ddx")}
               >
                 <header className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="text-xs font-semibold">Differential Dx</h3>
+                  <h3 className="text-xs font-semibold">{t("headings.differentialDx")}</h3>
                   <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
-                    Active Triage
+                    {t("headings.activeTriage")}
                   </span>
                 </header>
 
                 <p className="text-[11px] text-foreground/90 md:text-xs">
-                  <span className="font-semibold">Chief concern:</span> {HERO_DEMO_DDX_STATE.chiefConcern}
+                  <span className="font-semibold">{t("headings.chiefConcern")}:</span>{" "}
+                  {HERO_DEMO_DDX_STATE.chiefConcern}
                 </p>
                 <p className="mt-1 text-[11px] text-muted-foreground md:text-xs">
-                  <span className="font-semibold text-foreground/80">Signal:</span>{" "}
+                  <span className="font-semibold text-foreground/80">{t("headings.signal")}:</span>{" "}
                   {HERO_DEMO_DDX_STATE.triageSignal}
                 </p>
 
@@ -399,14 +436,14 @@ export function HeroConsultationDemo() {
                               ddxLikelihoodClass(candidate.likelihood)
                             )}
                           >
-                            {candidate.likelihood}
+                            {likelihoodLabels[candidate.likelihood]}
                           </span>
                         </div>
                         <p className="mt-1 text-left text-[11px] text-muted-foreground md:text-xs">
                           {candidate.rationale}
                         </p>
                         <p className="mt-1.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                          Next Step
+                          {t("headings.nextStep")}
                         </p>
                         <p className="text-left text-[11px] text-foreground/90 md:text-xs">
                           {candidate.nextStep}
@@ -423,10 +460,10 @@ export function HeroConsultationDemo() {
                   styles.panelIn,
                   "flex min-h-0 flex-col overflow-y-auto ring-1 ring-amber-500/20"
                 )}
-                aria-label="Clinical decision support panel"
+                aria-label={t("panels.support")}
               >
                 <header className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="text-xs font-semibold">Clinical Decision Support</h3>
+                  <h3 className="text-xs font-semibold">{t("headings.clinicalDecisionSupport")}</h3>
                   {selectedDdxSupport && (
                     <span
                       className={cn(
@@ -434,7 +471,9 @@ export function HeroConsultationDemo() {
                         ddxLikelihoodClass(selectedDdxSupport.confidence)
                       )}
                     >
-                      {selectedDdxSupport.confidence} confidence
+                      {t("confidenceFormat", {
+                        value: likelihoodLabels[selectedDdxSupport.confidence],
+                      })}
                     </span>
                   )}
                 </header>
@@ -443,7 +482,7 @@ export function HeroConsultationDemo() {
                   <div className="space-y-3 pr-1 text-[11px] md:text-xs">
                     <article className="rounded-lg border border-border/70 bg-background/70 p-2.5">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                        Selected Diagnosis
+                        {t("headings.selectedDiagnosis")}
                       </p>
                       <p className="mt-1 font-semibold text-foreground">{selectedDdxCandidate.diagnosis}</p>
                       <p className="mt-1 text-muted-foreground">{selectedDdxSupport.summary}</p>
@@ -451,7 +490,7 @@ export function HeroConsultationDemo() {
 
                     <article>
                       <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                        Priority Tests
+                        {t("headings.priorityTests")}
                       </p>
                       <ul className="space-y-1.5 text-foreground/90">
                         {selectedDdxSupport.priorityTests.map((item) => (
@@ -465,7 +504,7 @@ export function HeroConsultationDemo() {
 
                     <article>
                       <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                        Immediate Management
+                        {t("headings.immediateManagement")}
                       </p>
                       <ul className="space-y-1.5 text-foreground/90">
                         {selectedDdxSupport.immediateManagement.map((item) => (
@@ -479,7 +518,7 @@ export function HeroConsultationDemo() {
 
                     <article>
                       <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                        Medication and Monitoring
+                        {t("headings.medicationAndMonitoring")}
                       </p>
                       <ul className="space-y-1.5 text-foreground/90">
                         {selectedDdxSupport.medicationAndMonitoring.map((item) => (
@@ -493,7 +532,7 @@ export function HeroConsultationDemo() {
 
                     <article className="rounded-lg border border-red-500/25 bg-red-500/5 p-2.5">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-red-700 dark:text-red-300">
-                        Red Flags
+                        {t("headings.redFlags")}
                       </p>
                       <ul className="mt-1 space-y-1.5 text-foreground/90">
                         {selectedDdxSupport.redFlags.map((item) => (
@@ -507,14 +546,14 @@ export function HeroConsultationDemo() {
 
                     <article className="rounded-lg border border-border/70 bg-background/70 p-2.5">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                        Disposition
+                        {t("headings.disposition")}
                       </p>
                       <p className="mt-1 text-foreground/90">{selectedDdxSupport.disposition}</p>
                     </article>
 
                     <article>
                       <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                        Key References
+                        {t("headings.keyReferences")}
                       </p>
                       <div className="space-y-1.5">
                         {selectedDdxSupport.references.map((ref) => (
@@ -543,10 +582,10 @@ export function HeroConsultationDemo() {
                   styles.panelIn,
                   "flex min-h-0 flex-col overflow-y-auto ring-1 ring-emerald-500/35"
                 )}
-                aria-label="Consultation record overview"
+                aria-label={t("panels.record")}
               >
                 <header className="mb-3">
-                  <h3 className="text-xs font-semibold">Consultation Record</h3>
+                  <h3 className="text-xs font-semibold">{t("headings.consultationRecord")}</h3>
                   <p className="mt-1 text-[11px] text-muted-foreground md:text-xs">
                     {HERO_DEMO_RECORD_STATE.patient} | {HERO_DEMO_RECORD_STATE.encounterDate}
                   </p>
@@ -554,12 +593,14 @@ export function HeroConsultationDemo() {
 
                 <div className="rounded-lg border border-border/70 bg-background/70 p-2.5">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                    Vitals
+                    {t("headings.vitals")}
                   </p>
                   <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] md:text-xs">
                     {HERO_DEMO_RECORD_STATE.vitals.map((vital) => (
                       <div key={vital.label}>
-                        <p className="text-[10px] uppercase text-muted-foreground">{vital.label}</p>
+                        <p className="text-[10px] uppercase text-muted-foreground">
+                          {vitalLabels[vital.label] ?? vital.label}
+                        </p>
                         <p className="font-medium text-foreground/90">{vital.value}</p>
                       </div>
                     ))}
@@ -573,7 +614,7 @@ export function HeroConsultationDemo() {
                       className="rounded-lg border border-border/70 bg-background/70 p-2.5"
                     >
                       <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                        {section.title}
+                        {recordSectionTitles[section.id] ?? section.title}
                       </p>
                       <p className="mt-1 text-[11px] text-foreground/90 md:text-xs">{section.content}</p>
                     </article>
@@ -581,7 +622,7 @@ export function HeroConsultationDemo() {
 
                   <article className="rounded-lg border border-border/70 bg-background/70 p-2.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Plan Checklist
+                      {t("headings.planChecklist")}
                     </p>
                     <ul className="mt-2 space-y-1.5">
                       {HERO_DEMO_RECORD_STATE.planChecklist.map((item) => (
@@ -606,7 +647,7 @@ export function HeroConsultationDemo() {
                   styles.panelIn,
                   "flex min-h-0 flex-col overflow-hidden ring-1 ring-emerald-500/20"
                 )}
-                aria-label="Review FHIR data dialog preview"
+                aria-label={t("panels.fhir")}
               >
                 <div
                   className={cn(
@@ -615,9 +656,9 @@ export function HeroConsultationDemo() {
                   )}
                 >
                   <header className="border-b border-border/80 px-3 py-2.5">
-                    <h3 className="text-xs font-semibold">{HERO_DEMO_FHIR_REVIEW_STATE.title}</h3>
+                    <h3 className="text-xs font-semibold">{t("fhir.title")}</h3>
                     <p className="mt-1 text-[11px] text-muted-foreground md:text-xs">
-                      {HERO_DEMO_FHIR_REVIEW_STATE.description}
+                      {t("fhir.description")}
                     </p>
                     <p className="mt-1 text-[10px] font-medium text-foreground/80">
                       {HERO_DEMO_FHIR_REVIEW_STATE.patientDisplay}
@@ -643,7 +684,7 @@ export function HeroConsultationDemo() {
                                   : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
                               )}
                             >
-                              {resource.status}
+                              {fhirStatusLabels[resource.status]}
                             </span>
                           </div>
                           <p className="mt-1 text-muted-foreground">{resource.summary}</p>
@@ -661,7 +702,7 @@ export function HeroConsultationDemo() {
 
                     <article className="rounded-lg border border-border/70 bg-background/70 p-2.5 text-[11px] md:text-xs">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                        Validation Notes
+                        {t("headings.validationNotes")}
                       </p>
                       <ul className="mt-2 space-y-1.5 text-foreground/90">
                         {HERO_DEMO_FHIR_REVIEW_STATE.validationChecks.map((check) => (
@@ -679,13 +720,13 @@ export function HeroConsultationDemo() {
                       type="button"
                       className="rounded-md border border-border/80 bg-background px-3 py-1.5 text-[11px] font-medium text-foreground/90 transition-colors hover:bg-muted md:text-xs"
                     >
-                      {HERO_DEMO_FHIR_REVIEW_STATE.cancelLabel}
+                      {t("fhir.cancel")}
                     </button>
                     <button
                       type="button"
                       className="rounded-md bg-emerald-600 px-3 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-emerald-700 md:text-xs"
                     >
-                      {HERO_DEMO_FHIR_REVIEW_STATE.sendLabel}
+                      {t("fhir.sendToEmr")}
                     </button>
                   </footer>
                 </div>
@@ -701,15 +742,15 @@ export function HeroConsultationDemo() {
                   styles.panelIn,
                   "flex h-full min-h-0 flex-col overflow-y-auto ring-1 ring-sky-500/35"
                 )}
-                aria-label="Research panel"
+                aria-label={t("panels.research")}
               >
                 <header className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="text-xs font-semibold">Research</h3>
+                  <h3 className="text-xs font-semibold">{t("headings.research")}</h3>
                   <div className="text-right">
                     <p className="text-[10px] font-medium text-sky-700 dark:text-sky-300">
                       {HERO_DEMO_RESEARCH_STATE.modelLabel}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">{HERO_DEMO_RESEARCH_STATE.generatedAt}</p>
+                    <p className="text-[10px] text-muted-foreground">{t("research.generatedAt")}</p>
                   </div>
                 </header>
 
@@ -717,7 +758,7 @@ export function HeroConsultationDemo() {
                   <div className="flex justify-end">
                     <article className="max-w-[98%] rounded-2xl rounded-br-sm border border-primary/25 bg-primary/10 px-3 py-2 text-[11px] leading-relaxed md:text-xs">
                       <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-primary/80">
-                        User Query
+                        {t("headings.userQuery")}
                       </p>
                       <p className="text-foreground/95">{HERO_DEMO_RESEARCH_STATE.userQuery}</p>
                     </article>
@@ -741,11 +782,11 @@ export function HeroConsultationDemo() {
                   styles.panelIn,
                   "flex h-full min-h-0 flex-col overflow-y-auto ring-1 ring-cyan-500/35"
                 )}
-                aria-label="Patient handout panel"
+                aria-label={t("panels.patientHandout")}
               >
                 <header className="mb-3 flex items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-xs font-semibold">Patient Handout</h3>
+                    <h3 className="text-xs font-semibold">{t("headings.patientHandout")}</h3>
                     <p className="mt-1 text-[11px] text-muted-foreground md:text-xs">
                       {HERO_DEMO_PATIENT_HANDOUT_STATE.patientDisplay}
                     </p>
@@ -753,10 +794,10 @@ export function HeroConsultationDemo() {
                   <button
                     type="button"
                     className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/35 bg-cyan-500/10 px-2.5 py-1.5 text-[11px] font-medium text-cyan-700 transition-colors hover:bg-cyan-500/15 dark:text-cyan-200"
-                    aria-label="Download patient handout PDF (demo)"
+                    aria-label={t("patientHandout.downloadPdfAria")}
                   >
                     <FileDown className="size-3.5" />
-                    Download PDF
+                    {t("patientHandout.downloadPdf")}
                   </button>
                 </header>
 

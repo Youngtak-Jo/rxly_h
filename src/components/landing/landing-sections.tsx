@@ -1,17 +1,13 @@
 import Image from "next/image"
 import Link from "next/link"
+import { getTranslations } from "next-intl/server"
 import { LandingCta } from "./landing-cta"
 import { Instrument_Serif } from "next/font/google"
 import {
-  Search,
-  PenTool,
   Fingerprint,
   Lock,
   CheckCircle2,
   FileJson,
-  Briefcase,
-  Zap,
-  MousePointer2,
   ChevronRight,
   Settings,
   SlidersHorizontal,
@@ -37,7 +33,9 @@ const instrumentSerif = Instrument_Serif({
   weight: "400",
 })
 
-export function LandingSections() {
+export async function LandingSections() {
+  const t = await getTranslations("LandingSections")
+
   return (
     <div className={styles.surface}>
       <div aria-hidden className={`${styles.driftBlob} ${styles.blobOne}`} />
@@ -53,13 +51,13 @@ export function LandingSections() {
             <div className={styles.textContent}>
               <p className={styles.eyebrow}>Connectors</p>
               <h2 className={`${instrumentSerif.className} ${styles.title}`}>
-                Trusted medical sources, always in the loop
+                {t("connectors.title")}
               </h2>
               <p className={styles.description}>
-                Rxly can be wired to tier-1 clinical data endpoints so evidence appears at the point of care.
+                {t("connectors.description")}
               </p>
               <Link href="/features/connectors" className={styles.learnMoreLink}>
-                Learn more <ChevronRight className={styles.learnMoreIcon} />
+                {t("learnMore")} <ChevronRight className={styles.learnMoreIcon} />
               </Link>
             </div>
             <div className={`${styles.visualSquare} ${styles.connectorsSquare}`}>
@@ -91,22 +89,22 @@ export function LandingSections() {
         <div className={styles.inner}>
           <div className={`${styles.sectionInner} ${styles.sectionInnerReverse}`}>
             <div className={styles.textContent}>
-              <p className={styles.eyebrow}>Customization</p>
+              <p className={styles.eyebrow}>{t("customization.eyebrow")}</p>
               <h2 className={`${instrumentSerif.className} ${styles.title}`}>
-                Settings that adapt to each clinical environment
+                {t("customization.title")}
               </h2>
               <p className={styles.description}>
-                From model selection to instruction policy, teams can shape Rxly around real clinic workflows.
+                {t("customization.description")}
               </p>
               <Link href="/features/customization" className={styles.learnMoreLink}>
-                Learn more <ChevronRight className={styles.learnMoreIcon} />
+                {t("learnMore")} <ChevronRight className={styles.learnMoreIcon} />
               </Link>
             </div>
             <div className={`${styles.visualSquare} ${styles.customSquare}`}>
               <div className={`${styles.mockUiGlass} ${styles.settingsDialog}`}>
                 <div className={styles.settingsHeader}>
                   <Settings className={styles.settingsHeaderIcon} />
-                  <span>Clinic Preferences</span>
+                  <span>{t("customization.header")}</span>
                 </div>
                 <div className={styles.settingsBody}>
                   {/* Row 1: AI Model (Select Box) */}
@@ -116,8 +114,8 @@ export function LandingSections() {
                         <Bot className="w-4 h-4 text-orange-600" />
                       </div>
                       <div className={styles.settingsRowText}>
-                        <span className={styles.settingsRowTitle}>AI Model</span>
-                        <span className={styles.settingsRowDesc}>Primary reasoning engine</span>
+                        <span className={styles.settingsRowTitle}>{t("customization.aiModel")}</span>
+                        <span className={styles.settingsRowDesc}>{t("customization.aiModelDescription")}</span>
                       </div>
                     </div>
                     <div className={styles.mockSelect}>
@@ -133,13 +131,13 @@ export function LandingSections() {
                         <SlidersHorizontal className="w-4 h-4 text-pink-600" />
                       </div>
                       <div className={styles.settingsRowText}>
-                        <span className={styles.settingsRowTitle}>Tone & Style</span>
-                        <span className={styles.settingsRowDesc}>Response formatting</span>
+                        <span className={styles.settingsRowTitle}>{t("customization.toneStyle")}</span>
+                        <span className={styles.settingsRowDesc}>{t("customization.toneStyleDescription")}</span>
                       </div>
                     </div>
                     <div className={styles.mockSegmentedControl}>
-                      <span className={`${styles.mockSegment} ${styles.mockSegmentActive}`}>Professional</span>
-                      <span className={styles.mockSegment}>Concise</span>
+                      <span className={`${styles.mockSegment} ${styles.mockSegmentActive}`}>{t("customization.professional")}</span>
+                      <span className={styles.mockSegment}>{t("customization.concise")}</span>
                     </div>
                   </div>
 
@@ -150,8 +148,8 @@ export function LandingSections() {
                         <Languages className="w-4 h-4 text-blue-600" />
                       </div>
                       <div className={styles.settingsRowText}>
-                        <span className={styles.settingsRowTitle}>Auto-translate</span>
-                        <span className={styles.settingsRowDesc}>Output in patient's language</span>
+                        <span className={styles.settingsRowTitle}>{t("customization.autoTranslate")}</span>
+                        <span className={styles.settingsRowDesc}>{t("customization.autoTranslateDescription")}</span>
                       </div>
                     </div>
                     <div className={`${styles.mockToggle} ${styles.mockToggleActive}`}></div>
@@ -160,8 +158,8 @@ export function LandingSections() {
                   {/* Row 4: Evidence Level (Slider) */}
                   <div className={`${styles.settingsRow} ${styles.settingsRowVertical}`}>
                     <div className={styles.settingsRowHeader}>
-                      <span className={styles.settingsRowTitle}>Evidence Threshold</span>
-                      <span className={styles.settingsRowValue}>High Confidence</span>
+                      <span className={styles.settingsRowTitle}>{t("customization.evidenceThreshold")}</span>
+                      <span className={styles.settingsRowValue}>{t("customization.highConfidence")}</span>
                     </div>
                     <div className={styles.mockSliderContainer}>
                       <div className={styles.mockSliderTrack}>
@@ -169,9 +167,9 @@ export function LandingSections() {
                         <div className={styles.mockSliderThumb} style={{ left: '85%' }}></div>
                       </div>
                       <div className={styles.mockSliderScale}>
-                        <span>Low</span>
-                        <span>Med</span>
-                        <span>High</span>
+                        <span>{t("customization.low")}</span>
+                        <span>{t("customization.medium")}</span>
+                        <span>{t("customization.high")}</span>
                       </div>
                     </div>
                   </div>
@@ -190,16 +188,15 @@ export function LandingSections() {
         <div className={styles.inner}>
           <div className={styles.sectionInner}>
             <div className={styles.textContent}>
-              <p className={styles.eyebrow}>Security</p>
+              <p className={styles.eyebrow}>{t("security.eyebrow")}</p>
               <h2 className={`${instrumentSerif.className} ${styles.title}`}>
-                Encryption-first with HIPAA-aligned safeguards
+                {t("security.title")}
               </h2>
               <p className={styles.description}>
-                Security controls are designed for healthcare handling requirements across storage, transport, and
-                operational access.
+                {t("security.description")}
               </p>
               <Link href="/features/security" className={styles.learnMoreLink}>
-                Learn more <ChevronRight className={styles.learnMoreIcon} />
+                {t("learnMore")} <ChevronRight className={styles.learnMoreIcon} />
               </Link>
             </div>
             <div className={`${styles.visualSquare} ${styles.securitySquare}`}>
@@ -216,8 +213,8 @@ export function LandingSections() {
                 </div>
 
                 <div className={styles.securityStatusPanel}>
-                  <span className={styles.securityStatusLabel}>System Status</span>
-                  <span className={styles.securityStatusValue}>Protected & Compliant</span>
+                  <span className={styles.securityStatusLabel}>{t("security.systemStatus")}</span>
+                  <span className={styles.securityStatusValue}>{t("security.protected")}</span>
                 </div>
 
                 <div className={styles.securityList}>
@@ -226,8 +223,8 @@ export function LandingSections() {
                       <Lock className="w-4 h-4 text-emerald-600" />
                     </div>
                     <div className={styles.securityItemText}>
-                      <span className={styles.securityItemTitle}>AES-256 Encryption</span>
-                      <span className={styles.securityItemSub}>Data encrypted at rest</span>
+                      <span className={styles.securityItemTitle}>{t("security.aes")}</span>
+                      <span className={styles.securityItemSub}>{t("security.aesDescription")}</span>
                     </div>
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                   </div>
@@ -237,8 +234,8 @@ export function LandingSections() {
                       <Fingerprint className="w-4 h-4 text-blue-600" />
                     </div>
                     <div className={styles.securityItemText}>
-                      <span className={styles.securityItemTitle}>Strict HTTPS</span>
-                      <span className={styles.securityItemSub}>TLS 1.3 transit security</span>
+                      <span className={styles.securityItemTitle}>{t("security.https")}</span>
+                      <span className={styles.securityItemSub}>{t("security.httpsDescription")}</span>
                     </div>
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                   </div>
@@ -248,8 +245,8 @@ export function LandingSections() {
                       <Activity className="w-4 h-4 text-purple-600" />
                     </div>
                     <div className={styles.securityItemText}>
-                      <span className={styles.securityItemTitle}>Audit-ready Logging</span>
-                      <span className={styles.securityItemSub}>Immutable event trails</span>
+                      <span className={styles.securityItemTitle}>{t("security.audit")}</span>
+                      <span className={styles.securityItemSub}>{t("security.auditDescription")}</span>
                     </div>
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                   </div>
@@ -268,14 +265,13 @@ export function LandingSections() {
         <div className={styles.inner}>
           <div className={`${styles.sectionInner} ${styles.sectionInnerReverse}`}>
             <div className={styles.textContent}>
-              <p className={styles.eyebrow}>EHR</p>
-              <h2 className={`${instrumentSerif.className} ${styles.title}`}>FHIR R4-ready handoff for EMR/EHR</h2>
+              <p className={styles.eyebrow}>{t("ehr.eyebrow")}</p>
+              <h2 className={`${instrumentSerif.className} ${styles.title}`}>{t("ehr.title")}</h2>
               <p className={styles.description}>
-                Data is staged as structured FHIR R4 resources, reviewed by clinicians, and then dispatched into your
-                EHR flow.
+                {t("ehr.description")}
               </p>
               <Link href="/features/ehr" className={styles.learnMoreLink}>
-                Learn more <ChevronRight className={styles.learnMoreIcon} />
+                {t("learnMore")} <ChevronRight className={styles.learnMoreIcon} />
               </Link>
             </div>
             <div className={`${styles.visualSquare} ${styles.ehrSquare}`}>

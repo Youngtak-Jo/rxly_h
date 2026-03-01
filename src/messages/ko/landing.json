@@ -1,0 +1,281 @@
+{
+  "LandingNavbar": {
+    "connectors": "커넥터",
+    "customization": "맞춤설정",
+    "security": "보안",
+    "ehr": "EHR",
+    "start": "시작",
+    "consultation": "진료",
+    "toggleNavigation": "탐색 메뉴 전환"
+  },
+  "LandingHero": {
+    "title": "AI Clinical Copilot",
+    "description": "실시간 전사, 라이브 인사이트, 실행 가능한 다음 단계로 모든 진료를 구조화된 임상 인텔리전스로 전환하세요."
+  },
+  "LandingSections": {
+    "learnMore": "자세히 보기",
+    "connectors": {
+      "eyebrow": "커넥터",
+      "title": "신뢰할 수 있는 의료 데이터 소스를 항상 연결합니다",
+      "description": "Rxly는 진료 현장에서 바로 근거를 확인할 수 있도록 최고 수준의 임상 데이터 엔드포인트와 연결될 수 있습니다."
+    },
+    "customization": {
+      "eyebrow": "맞춤설정",
+      "title": "각 임상 환경에 맞게 조정되는 설정",
+      "description": "모델 선택부터 지침 정책까지, 팀은 실제 진료 워크플로우에 맞게 Rxly를 구성할 수 있습니다.",
+      "header": "클리닉 환경설정",
+      "aiModel": "AI 모델",
+      "aiModelDescription": "주요 추론 엔진",
+      "toneStyle": "톤 및 스타일",
+      "toneStyleDescription": "응답 형식",
+      "professional": "전문적",
+      "concise": "간결함",
+      "autoTranslate": "자동 번역",
+      "autoTranslateDescription": "환자 언어로 출력",
+      "evidenceThreshold": "근거 임계값",
+      "highConfidence": "높은 신뢰도",
+      "low": "낮음",
+      "medium": "중간",
+      "high": "높음"
+    },
+    "security": {
+      "eyebrow": "보안",
+      "title": "HIPAA 기준에 맞춘 암호화 중심 보호 체계",
+      "description": "보안 제어는 저장, 전송, 운영 접근 전반에서 의료 데이터 처리 요구사항을 충족하도록 설계되었습니다.",
+      "systemStatus": "시스템 상태",
+      "protected": "보호 및 규정 준수",
+      "aes": "AES-256 암호화",
+      "aesDescription": "저장 데이터 암호화",
+      "https": "엄격한 HTTPS",
+      "httpsDescription": "TLS 1.3 전송 보안",
+      "audit": "감사 대응형 로깅",
+      "auditDescription": "변조 불가능한 이벤트 이력"
+    },
+    "ehr": {
+      "eyebrow": "EHR",
+      "title": "EMR/EHR를 위한 FHIR R4 기반 전달",
+      "description": "데이터는 구조화된 FHIR R4 리소스로 준비되고, 임상의 검토 후 EHR 흐름으로 전달됩니다."
+    }
+  },
+  "LandingCta": {
+    "title": "임상 워크플로우를 바꿀 준비가 되었나요?",
+    "description": "지능적이고 안전하며 통합된 Rxly 플랫폼으로 의료의 미래를 시작하세요.",
+    "start": "시작",
+    "contactSales": "영업 문의"
+  },
+  "LandingHeroDemo": {
+    "tablistLabel": "히어로 데모 모드",
+    "simulationLabel": "Rxly 제품 시뮬레이션",
+    "sessionTitle": "급성 충수염 세션",
+    "modeLabels": {
+      "insights": "실시간 인사이트",
+      "ddx": "감별진단",
+      "record": "진료 기록",
+      "research": "리서치",
+      "patientHandout": "환자 안내문"
+    },
+    "modeShortLabels": {
+      "insights": "요약",
+      "ddx": "DDx",
+      "record": "기록",
+      "research": "연구",
+      "patientHandout": "안내"
+    },
+    "panels": {
+      "insights": "실시간 인사이트 패널",
+      "transcript": "전사 패널",
+      "ddx": "감별진단 패널",
+      "support": "임상 의사결정 지원 패널",
+      "record": "진료 기록 개요",
+      "fhir": "FHIR 데이터 검토 대화상자 미리보기",
+      "research": "리서치 패널",
+      "patientHandout": "환자 안내문 패널"
+    },
+    "headings": {
+      "liveInsights": "실시간 인사이트",
+      "summary": "요약",
+      "keyFindings": "핵심 소견",
+      "redFlags": "레드 플래그",
+      "checklist": "체크리스트",
+      "transcript": "실시간 전사",
+      "differentialDx": "감별진단",
+      "activeTriage": "활성 트리아지",
+      "chiefConcern": "주요 우려",
+      "signal": "신호",
+      "nextStep": "다음 단계",
+      "clinicalDecisionSupport": "임상 의사결정 지원",
+      "selectedDiagnosis": "선택된 진단",
+      "priorityTests": "우선 검사",
+      "immediateManagement": "즉각적 처치",
+      "medicationAndMonitoring": "약물 및 모니터링",
+      "disposition": "처치 계획",
+      "keyReferences": "주요 참고 자료",
+      "consultationRecord": "진료 기록",
+      "vitals": "활력징후",
+      "planChecklist": "계획 체크리스트",
+      "validationNotes": "검증 메모",
+      "research": "리서치",
+      "userQuery": "사용자 질의",
+      "patientHandout": "환자 안내문"
+    },
+    "noCriticalWarningSigns": "아직 중요한 경고 신호는 없습니다.",
+    "speaker": {
+      "doctor": "의사",
+      "patient": "환자"
+    },
+    "listening": "청취 중",
+    "likelihood": {
+      "high": "높음",
+      "moderate": "중간",
+      "lower": "낮음"
+    },
+    "confidenceFormat": "{value} 신뢰도",
+    "record": {
+      "vitals": {
+        "temp": "체온",
+        "hr": "심박수",
+        "bp": "혈압",
+        "rr": "호흡수",
+        "spo2": "SpO2",
+        "pain": "통증"
+      },
+      "sections": {
+        "chiefComplaint": "주호소",
+        "hpi": "현병력 (HPI)",
+        "ros": "계통문진 (ROS)",
+        "physicalExam": "신체진찰",
+        "labsAndImaging": "검사 및 영상",
+        "assessment": "평가",
+        "plan": "계획",
+        "sharedDecisionNotes": "공유 의사결정 메모"
+      }
+    },
+    "fhir": {
+      "title": "FHIR 데이터 검토",
+      "description": "생성된 FHIR 리소스를 EMR로 보내기 전에 검토하고 수정하세요.",
+      "cancel": "취소",
+      "sendToEmr": "EMR로 보내기",
+      "status": {
+        "ready": "준비 완료",
+        "needsReview": "검토 필요"
+      }
+    },
+    "research": {
+      "generatedAt": "3분 전에 생성됨"
+    },
+    "patientHandout": {
+      "downloadPdf": "PDF 다운로드",
+      "downloadPdfAria": "환자 안내문 PDF 다운로드 (데모)"
+    }
+  },
+  "FeatureConnectors": {
+    "backToHome": "홈으로 돌아가기",
+    "badge": "데이터 엔드포인트",
+    "title": "신뢰할 수 있는 의료 데이터 소스를 항상 연결합니다",
+    "description": "Rxly는 최고 수준의 임상 데이터 엔드포인트에 직접 연결되어, 제시되는 근거가 항상 최신이며 권위 있고 환자 맥락에 맞도록 보장합니다.",
+    "cards": {
+      "search": {
+        "title": "실시간 검색",
+        "description": "질의는 원본 API에 직접 실시간으로 실행됩니다. 오래된 벡터 데이터베이스나 구식 인덱스에 의존하지 않습니다."
+      },
+      "parallel": {
+        "title": "병렬 실행",
+        "description": "커넥터는 동시에 실행됩니다. 하나의 임상 질의로 시험, 라벨, 문헌을 즉시 교차 참조할 수 있습니다."
+      },
+      "citations": {
+        "title": "검증 가능한 출처",
+        "description": "제시되는 모든 사실에는 임상 검증을 위한 원문 데이터베이스 링크가 함께 제공됩니다."
+      }
+    },
+    "sectionTitle": "사용 가능한 커넥터",
+    "live": "사용 가능",
+    "connectors": {
+      "pubmed": "MEDLINE, 생명과학 저널, 온라인 서적을 포함한 3,500만 건 이상의 생의학 문헌 인용에 접근합니다.",
+      "icd11": "세계보건기구(WHO)가 제공하는 글로벌 진단 건강 정보 표준입니다.",
+      "europe-pmc": "생명과학 출판물과 프리프린트를 무료로 제공하는 전 세계 컬렉션입니다.",
+      "openfda": "이상반응, 리콜, 라벨링에 관한 FDA 공개 데이터입니다.",
+      "clinicaltrials": "전 세계에서 수행되는 민간 및 공공 임상연구 데이터베이스입니다.",
+      "dailymed": "FDA 라벨 정보(패키지 인서트)의 공식 제공처입니다."
+    }
+  },
+  "FeatureCustomization": {
+    "backToHome": "홈으로 돌아가기",
+    "badge": "클리닉 환경설정",
+    "title": "각 임상 환경에 맞게 조정되는 설정",
+    "description": "의료는 획일적이지 않습니다. Rxly는 AI 동작을 세밀하게 제어할 수 있게 하여, 임상 팀이 각자의 워크플로우와 환자군에 맞게 시스템 출력을 조정할 수 있도록 합니다.",
+    "settings": {
+      "model": {
+        "title": "AI 모델 선택",
+        "description": "주요 추론 엔진을 선택하세요. 기본 분류용 초고속 모델과 복잡한 감별진단용 고성능 모델 사이를 전환할 수 있습니다."
+      },
+      "tone": {
+        "title": "톤 및 스타일",
+        "description": "클리닉 스타일에 맞게 응답 형식을 조정하세요. 빠른 검토용 간결한 불릿 포인트와 인수인계용 전문 서술형 사이를 전환할 수 있습니다."
+      },
+      "translation": {
+        "title": "자동 번역",
+        "description": "임상 요약과 환자 안내를 환자 모국어로 바로 출력해 의사소통 간극을 줄입니다."
+      },
+      "evidence": {
+        "title": "근거 임계값",
+        "description": "Rxly가 인사이트를 노출하기 전에 요구하는 신뢰 수준을 조정합니다. 널리 합의된 가이드만 원할 때는 높게 설정하세요."
+      }
+    }
+  },
+  "FeatureSecurity": {
+    "backToHome": "홈으로 돌아가기",
+    "badge": "보호 및 규정 준수",
+    "title": "HIPAA 기준에 맞춘 암호화 중심 보호 체계",
+    "description": "의료 보안은 타협할 수 없습니다. Rxly 아키텍처는 다층 방어 원칙 위에 구축되어 환자 데이터가 엄격히 분리되고 암호화되며 모니터링되도록 합니다.",
+    "protocols": {
+      "encryption": {
+        "title": "AES-256-GCM 암호화",
+        "description": "모든 보호 대상 건강 정보(PHI)는 레코드별 salt와 함께 AES-256-GCM으로 저장 시 암호화됩니다."
+      },
+      "transit": {
+        "title": "엄격한 HTTPS (TLS 1.3)",
+        "description": "브라우저, 임상 엔드포인트, Rxly 서비스 간 전송 데이터는 강제 TLS 1.3으로 보호됩니다."
+      },
+      "audit": {
+        "title": "감사 대응형 로깅",
+        "description": "PHI에 대한 모든 읽기, 쓰기, 수정은 규정 준수 검토를 위한 변조 불가능한 감사 추적에 기록됩니다."
+      }
+    }
+  },
+  "FeatureEhr": {
+    "backToHome": "홈으로 돌아가기",
+    "badge": "FHIR R4 표준",
+    "title": "EMR/EHR를 위한 FHIR R4 기반 전달",
+    "description": "중복 문서화를 줄이세요. Rxly는 임상 서사를 표준 FHIR R4 번들로 구조화해 기록 시스템으로 전달할 준비를 마칩니다.",
+    "workflowTitle": "연동 워크플로우",
+    "workflow": {
+      "review": {
+        "title": "1. 임상 검토",
+        "description": "임상의는 Rxly 워크스페이스에서 생성된 인사이트를 검토하고 필요한 수정을 수행합니다."
+      },
+      "staging": {
+        "title": "2. 리소스 스테이징",
+        "description": "Rxly는 검증된 데이터를 매핑된 하위 리소스를 포함한 FHIR R4 Bundle로 구성합니다."
+      },
+      "dispatch": {
+        "title": "3. EHR 전송",
+        "description": "번들은 대상 EHR API 엔드포인트로 안전하게 전송됩니다."
+      }
+    },
+    "resourcesTitle": "핵심 매핑 리소스",
+    "resources": {
+      "encounter": {
+        "title": "Encounter 매핑",
+        "description": "진료 세션은 시간, 참여자, 임상 맥락을 포함한 FHIR Encounter 리소스로 매핑됩니다."
+      },
+      "condition": {
+        "title": "Condition 동기화",
+        "description": "식별된 진단과 만성 문제는 FHIR Condition 리소스로 구조화됩니다."
+      },
+      "observation": {
+        "title": "Observation 추출",
+        "description": "활력징후, 검사 결과, 임상 소견은 FHIR Observation 리소스로 코딩됩니다."
+      }
+    }
+  }
+}

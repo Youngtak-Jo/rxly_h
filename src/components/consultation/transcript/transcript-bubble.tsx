@@ -1,14 +1,13 @@
+"use client"
+
 import { memo } from "react"
+import { useTranslations } from "next-intl"
 import type { TranscriptEntry, DiagnosticKeyword, Speaker } from "@/types/session"
 import { cn } from "@/lib/utils"
 
 function formatTime(createdAt: string) {
     const date = new Date(createdAt)
     return `${date.getHours()}:${date.getMinutes().toString().padStart(2, "0")}`
-}
-
-function speakerLabel(speaker: Speaker) {
-    return speaker === "DOCTOR" ? "Dr" : speaker === "PATIENT" ? "Pt" : "?"
 }
 
 const HIGHLIGHT_COLORS: Record<
@@ -111,8 +110,17 @@ export const TranscriptBubble = memo(function TranscriptBubble({
     diagnosticKeywords: DiagnosticKeyword[]
     isFirst: boolean
 }) {
+    const t = useTranslations("TranscriptBubble")
     const isSameSpeaker = prevSpeaker === entry.speaker
     const showMeta = !isSameSpeaker
+
+    function speakerLabel(speaker: Speaker) {
+        return speaker === "DOCTOR"
+            ? t("speaker.doctor")
+            : speaker === "PATIENT"
+                ? t("speaker.patient")
+                : t("speaker.unknown")
+    }
 
     const align = !isIdentified
         ? "center"
@@ -156,7 +164,7 @@ export const TranscriptBubble = memo(function TranscriptBubble({
                                             "rounded px-0.5 -mx-0.5",
                                             HIGHLIGHT_COLORS[seg.keyword.category].light
                                         )}
-                                        title={seg.keyword.category}
+                                        title={t(`keywordCategories.${seg.keyword.category}`)}
                                     >
                                         {seg.text}
                                     </mark>

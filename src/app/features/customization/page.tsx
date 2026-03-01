@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import Link from "next/link"
 import { ChevronLeft, Settings, Bot, SlidersHorizontal, Languages } from "lucide-react"
+import { getTranslations } from "next-intl/server"
 
 export const metadata: Metadata = {
     title: "Customization | Rxly",
@@ -14,7 +15,8 @@ const SETTINGS = [
     { id: "evidence", title: "Evidence Threshold", icon: Settings, color: "text-emerald-600", bg: "bg-emerald-50", desc: "Calibrate the confidence level required before Rxly surfaces an insight. Set to 'High' to only show universally accepted guidelines." },
 ]
 
-export default function CustomizationPage() {
+export default async function CustomizationPage() {
+    const t = await getTranslations("FeatureCustomization")
     return (
         <div className="min-h-screen bg-[#FAFAFA] text-[#111111] font-sans selection:bg-black selection:text-white">
             {/* Navigation */}
@@ -22,7 +24,7 @@ export default function CustomizationPage() {
                 <div className="flex-1">
                     <Link href="/" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-black transition-colors rounded-full pl-2 pr-4 py-1.5 hover:bg-black/5">
                         <ChevronLeft className="w-4 h-4" />
-                        <span>Back to Home</span>
+                        <span>{t("backToHome")}</span>
                     </Link>
                 </div>
             </nav>
@@ -32,13 +34,13 @@ export default function CustomizationPage() {
                 <header className="mb-16 max-w-2xl">
                     <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-indigo-50 border border-indigo-100/50">
                         <Settings className="w-4 h-4 text-indigo-600" />
-                        <span className="text-xs font-semibold uppercase tracking-wider text-indigo-800">Clinic Preferences</span>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-indigo-800">{t("badge")}</span>
                     </div>
                     <h1 className="text-4xl md:text-5xl font-serif text-black mb-6 tracking-tight leading-tight">
-                        Settings that adapt to each clinical environment
+                        {t("title")}
                     </h1>
                     <p className="text-lg text-gray-600 leading-relaxed">
-                        Healthcare isn't one-size-fits-all. Rxly provides granular control over the AI's behavior, allowing clinical teams to tune the system's output to match their specific workflows and patient populations.
+                        {t("description")}
                     </p>
                 </header>
 
@@ -50,10 +52,10 @@ export default function CustomizationPage() {
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${setting.bg}`}>
                                     <setting.icon className={`w-6 h-6 ${setting.color}`} />
                                 </div>
-                                <h3 className="text-xl font-semibold text-black">{setting.title}</h3>
+                                <h3 className="text-xl font-semibold text-black">{t(`settings.${setting.id}.title`)}</h3>
                             </div>
                             <p className="text-base text-gray-600 leading-relaxed group-hover:text-gray-900 transition-colors">
-                                {setting.desc}
+                                {t(`settings.${setting.id}.description`)}
                             </p>
                         </div>
                     ))}

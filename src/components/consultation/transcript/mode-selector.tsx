@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import {
   useConsultationModeStore,
   type ConsultationMode,
@@ -24,25 +25,20 @@ import {
 
 const OPTIONS: {
   value: ConsultationMode
-  label: string
-  description: string
   icon: typeof IconStethoscope
 }[] = [
     {
       value: "doctor",
-      label: "I am the doctor.",
-      description: "Record a live consultation with your patient.",
       icon: IconStethoscope,
     },
     {
       value: "ai-doctor",
-      label: "I need an AI doctor",
-      description: "Chat with an AI doctor for a virtual consultation.",
       icon: IconRobot,
     },
   ]
 
 export function ModeSelector() {
+  const t = useTranslations("ModeSelector")
   const mode = useConsultationModeStore((s) => s.mode)
   const setMode = useConsultationModeStore((s) => s.setMode)
   const consultationStarted = useConsultationModeStore(
@@ -89,11 +85,17 @@ export function ModeSelector() {
     <>
       <div className="flex flex-col gap-3 py-6 px-4">
         <p className="text-xs text-muted-foreground/60 mb-1">
-          Choose your consultation mode
+          {t("chooseMode")}
         </p>
         {OPTIONS.map((option) => {
           const selected = mode === option.value
           const Icon = option.icon
+          const label =
+            option.value === "doctor" ? t("doctorLabel") : t("virtualLabel")
+          const description =
+            option.value === "doctor"
+              ? t("doctorDescription")
+              : t("virtualDescription")
           return (
             <button
               key={option.value}
@@ -133,11 +135,11 @@ export function ModeSelector() {
                       selected ? "text-primary" : "text-foreground"
                     )}
                   >
-                    {option.label}
+                    {label}
                   </span>
                 </div>
                 <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-                  {option.description}
+                  {description}
                 </p>
               </div>
             </button>
@@ -151,36 +153,24 @@ export function ModeSelector() {
             <div className="mx-auto inline-flex size-12 items-center justify-center rounded-full bg-amber-500/10">
               <IconAlertTriangle className="size-6 text-amber-500" />
             </div>
-            <AlertDialogTitle>AI Doctor Disclaimer</AlertDialogTitle>
+            <AlertDialogTitle>{t("disclaimerTitle")}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3 text-sm text-muted-foreground">
-                <p>
-                  Before proceeding, please read and agree to the following:
-                </p>
+                <p>{t("disclaimerIntro")}</p>
                 <ul className="list-disc pl-4 space-y-1.5 text-left text-xs">
-                  <li>
-                    The AI Doctor is <strong>not a licensed medical professional</strong> and does not replace professional medical advice, diagnosis, or treatment.
-                  </li>
-                  <li>
-                    All information provided is <strong>for reference purposes only</strong> and should not be considered a medical diagnosis or prescription.
-                  </li>
-                  <li>
-                    <strong>The accuracy of AI responses is not guaranteed.</strong> Always consult a qualified healthcare provider for medical decisions.
-                  </li>
-                  <li>
-                    In case of an emergency, please call <strong>119</strong> or visit the nearest emergency room immediately.
-                  </li>
-                  <li>
-                    By proceeding, you acknowledge that you use this feature <strong>at your own risk</strong> and that the service provider is not liable for any outcomes resulting from the use of this AI consultation.
-                  </li>
+                  <li>{t("disclaimerItems.notLicensed")}</li>
+                  <li>{t("disclaimerItems.referenceOnly")}</li>
+                  <li>{t("disclaimerItems.accuracy")}</li>
+                  <li>{t("disclaimerItems.emergency")}</li>
+                  <li>{t("disclaimerItems.liability")}</li>
                 </ul>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleConsent}>
-              I Agree
+              {t("agree")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

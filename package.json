@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "i18n:check": "node scripts/check-i18n-parity.mjs",
     "start": "next start",
     "lint": "eslint"
   },
@@ -40,6 +41,7 @@
     "liquid-glass-react": "^1.1.1",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
+    "next-intl": "^4.8.3",
     "next-themes": "^0.4.6",
     "openai": "^6.21.0",
     "radix-ui": "^1.4.3",

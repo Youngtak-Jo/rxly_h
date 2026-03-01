@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Loader2, RefreshCw } from "lucide-react"
 import { useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -38,6 +39,12 @@ import {
   parseAdminFilters,
   toAdminApiParams,
 } from "@/lib/admin/filters"
+import {
+  getAdminAlertCopy,
+  getAdminPriorityLabel,
+  getAdminSeverityLabel,
+  getAdminStatusLabel,
+} from "@/lib/admin/localization"
 import type {
   AdminIncidentRow,
   AdminIncidentsResponse,
@@ -78,6 +85,8 @@ function matchesLiveAlertFilters(
 }
 
 export function AdminTriage() {
+  const t = useTranslations("AdminTriage")
+  const tCommon = useTranslations("AdminCommon")
   const searchParams = useSearchParams()
   const filters = useMemo(() => parseAdminFilters(searchParams), [searchParams])
   const refreshToken = useAdminRefreshToken()
@@ -204,16 +213,17 @@ export function AdminTriage() {
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold">Triage</h2>
+            <h2 className="text-lg font-semibold">{t("title")}</h2>
             {isRefreshing || isLiveRefreshing ? (
               <Loader2 className="size-4 animate-spin text-muted-foreground" />
             ) : null}
           </div>
+          <p className="text-xs text-muted-foreground">{t("description")}</p>
           <p className="text-xs text-muted-foreground">
-            Review live alerts first, then promote the cases that need persistent ownership.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Live alerts: {liveData?.alerts.length ?? 0} / Open incidents: {data?.openCount ?? 0}
+            {t("summary", {
+              liveCount: liveData?.alerts.length ?? 0,
+              openCount: data?.openCount ?? 0,
+            })}
           </p>
         </div>
 
@@ -223,59 +233,67 @@ export function AdminTriage() {
           disabled={isSyncing || filteredLiveAlerts.length === 0}
         >
           {isSyncing ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-          {isSyncing ? "Promoting..." : "Promote live alerts to incidents"}
+          {isSyncing ? t("promoting") : t("promote")}
         </Button>
       </div>
 
       <Tabs defaultValue="live" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="live">Live Alerts</TabsTrigger>
-          <TabsTrigger value="incidents">Incidents</TabsTrigger>
+          <TabsTrigger value="live">{t("liveAlertsTitle")}</TabsTrigger>
+          <TabsTrigger value="incidents">{t("incidentsTitle")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="live" className="space-y-4">
-          {liveError ? <AdminEmptyState title="Failed to load live alerts" description={liveError} /> : null}
-          {isInitialLiveLoading ? <AdminLoadingState label="Loading live alerts..." /> : null}
+          {liveError ? <AdminEmptyState title={t("failedLiveAlerts")} description={liveError} /> : null}
+          {isInitialLiveLoading ? <AdminLoadingState label={t("loadingLiveAlerts")} /> : null}
 
           {!isInitialLiveLoading ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Live Rule Hits</CardTitle>
+                <CardTitle className="text-base">{t("liveRuleHitsTitle")}</CardTitle>
                 <CardDescription>
-                  Read-only alerts generated from current behavior. Severity, rule, and search filters apply here.
+                  {t("liveRuleHitsDescription")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {!filteredLiveAlerts.length ? (
                   <AdminEmptyState
-                    title="No live alerts"
-                    description="No live rule hits matched the current filters."
+                    title={t("noLiveAlertsTitle")}
+                    description={t("noLiveAlertsDescription")}
                   />
                 ) : (
-                  filteredLiveAlerts.map((alert) => (
-                    <div key={alert.id} className="rounded-md border p-3 text-xs">
-                      <div className="mb-1 flex items-center gap-2">
-                        <Badge variant={severityBadgeVariant(alert.severity)}>
-                          {alert.severity}
-                        </Badge>
-                        <span className="font-medium">{alert.rule}</span>
+                  filteredLiveAlerts.map((alert) => {
+                    const copy = getAdminAlertCopy(tCommon, alert)
+
+                    return (
+                      <div key={alert.id} className="rounded-md border p-3 text-xs">
+                        <div className="mb-1 flex items-center gap-2">
+                          <Badge variant={severityBadgeVariant(alert.severity)}>
+                            {getAdminSeverityLabel(tCommon, alert.severity)}
+                          </Badge>
+                          <span className="font-medium">{copy.label}</span>
+                        </div>
+                        <div className="font-medium">{copy.title}</div>
+                        <div className="text-muted-foreground">{copy.description}</div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {alert.userId ? (
+                            <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
+                              <Link href={`/admin/users/${alert.userId}?${filterQuery}`}>
+                                {t("user")}
+                              </Link>
+                            </Button>
+                          ) : null}
+                          {alert.sessionId ? (
+                            <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
+                              <Link href={`/admin/sessions/${alert.sessionId}?${filterQuery}`}>
+                                {t("session")}
+                              </Link>
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
-                      <div className="font-medium">{alert.title}</div>
-                      <div className="text-muted-foreground">{alert.description}</div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {alert.userId ? (
-                          <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
-                            <Link href={`/admin/users/${alert.userId}?${filterQuery}`}>User</Link>
-                          </Button>
-                        ) : null}
-                        {alert.sessionId ? (
-                          <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
-                            <Link href={`/admin/sessions/${alert.sessionId}?${filterQuery}`}>Session</Link>
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </CardContent>
             </Card>
@@ -283,136 +301,159 @@ export function AdminTriage() {
         </TabsContent>
 
         <TabsContent value="incidents" className="space-y-4">
-          {error ? <AdminEmptyState title="Failed to load incidents" description={error} /> : null}
-          {isInitialLoading ? <AdminLoadingState label="Loading incidents..." /> : null}
+          {error ? <AdminEmptyState title={t("failedIncidents")} description={error} /> : null}
+          {isInitialLoading ? <AdminLoadingState label={t("loadingIncidents")} /> : null}
 
           {!isInitialLoading ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Incident Queue</CardTitle>
+                <CardTitle className="text-base">{t("incidentQueueTitle")}</CardTitle>
                 <CardDescription>
-                  Persistent queue for status, owner, and resolution tracking.
+                  {t("incidentQueueDescription")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {!rows.length ? (
-                  <AdminEmptyState title="No incidents" description="No incidents matched current filters." />
+                  <AdminEmptyState
+                    title={t("noIncidentsTitle")}
+                    description={t("noIncidentsDescription")}
+                  />
                 ) : (
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Rule</TableHead>
-                          <TableHead>Severity</TableHead>
-                          <TableHead>Priority</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Owner</TableHead>
-                          <TableHead>Last Seen</TableHead>
-                          <TableHead>Count</TableHead>
-                          <TableHead>Actions</TableHead>
+                          <TableHead>{t("columns.rule")}</TableHead>
+                          <TableHead>{t("columns.severity")}</TableHead>
+                          <TableHead>{t("columns.priority")}</TableHead>
+                          <TableHead>{t("columns.status")}</TableHead>
+                          <TableHead>{t("columns.owner")}</TableHead>
+                          <TableHead>{t("columns.lastSeen")}</TableHead>
+                          <TableHead>{t("columns.count")}</TableHead>
+                          <TableHead>{t("columns.actions")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {rows.map((incident) => (
-                          <TableRow key={incident.id}>
-                            <TableCell>
-                              <div className="text-xs font-medium">{incident.rule}</div>
-                              <div className="text-xs text-muted-foreground">{incident.title}</div>
-                              {incident.sessionId ? (
-                                <div className="text-xs text-muted-foreground">Session: {incident.sessionId.slice(0, 8)}</div>
-                              ) : null}
-                              {incident.userId ? (
-                                <div className="text-xs text-muted-foreground">User: {incident.userId}</div>
-                              ) : null}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={severityBadgeVariant(incident.severity)}>{incident.severity}</Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={incident.priority}
-                                onValueChange={(value) => {
-                                  void patchIncident(incident.id, { priority: value })
-                                }}
-                              >
-                                <SelectTrigger className="h-8 w-20 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="P1">P1</SelectItem>
-                                  <SelectItem value="P2">P2</SelectItem>
-                                  <SelectItem value="P3">P3</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={incident.status}
-                                onValueChange={(value) => {
-                                  void patchIncident(incident.id, {
-                                    status: value,
-                                  })
-                                }}
-                              >
-                                <SelectTrigger className="h-8 w-32 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="NEW">NEW</SelectItem>
-                                  <SelectItem value="ACK">ACK</SelectItem>
-                                  <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
-                                  <SelectItem value="RESOLVED">RESOLVED</SelectItem>
-                                  <SelectItem value="DISMISSED">DISMISSED</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-1">
-                                <Input
-                                  value={ownerDraft[incident.id] ?? ""}
-                                  onChange={(event) =>
-                                    setOwnerDraft((prev) => ({
-                                      ...prev,
-                                      [incident.id]: event.target.value,
-                                    }))
-                                  }
-                                  className="h-8 min-w-[10rem] text-xs"
-                                  placeholder="owner id"
-                                />
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 px-2 text-xs"
-                                  onClick={() =>
-                                    void patchIncident(incident.id, {
-                                      ownerId: (ownerDraft[incident.id] || "").trim() || null,
-                                    })
-                                  }
-                                >
-                                  Save
-                                </Button>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-xs text-muted-foreground">
-                              {fmtDateTime(incident.lastSeenAt)}
-                            </TableCell>
-                            <TableCell>{incident.occurrenceCount}</TableCell>
-                            <TableCell>
-                              <div className="flex flex-wrap gap-1">
-                                {incident.userId ? (
-                                  <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
-                                    <Link href={`/admin/users/${incident.userId}?${filterQuery}`}>User</Link>
-                                  </Button>
-                                ) : null}
+                        {rows.map((incident) => {
+                          const copy = getAdminAlertCopy(tCommon, incident)
+
+                          return (
+                            <TableRow key={incident.id}>
+                              <TableCell>
+                                <div className="text-xs font-medium">{copy.label}</div>
+                                <div className="text-xs text-muted-foreground">{copy.title}</div>
                                 {incident.sessionId ? (
-                                  <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
-                                    <Link href={`/admin/sessions/${incident.sessionId}?${filterQuery}`}>Session</Link>
-                                  </Button>
+                                  <div className="text-xs text-muted-foreground">
+                                    {t("sessionId", { id: incident.sessionId.slice(0, 8) })}
+                                  </div>
                                 ) : null}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                                {incident.userId ? (
+                                  <div className="text-xs text-muted-foreground">
+                                    {t("userId", { id: incident.userId })}
+                                  </div>
+                                ) : null}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={severityBadgeVariant(incident.severity)}>
+                                  {getAdminSeverityLabel(tCommon, incident.severity)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  value={incident.priority}
+                                  onValueChange={(value) => {
+                                    void patchIncident(incident.id, { priority: value })
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 w-20 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="P1">{getAdminPriorityLabel(tCommon, "P1")}</SelectItem>
+                                    <SelectItem value="P2">{getAdminPriorityLabel(tCommon, "P2")}</SelectItem>
+                                    <SelectItem value="P3">{getAdminPriorityLabel(tCommon, "P3")}</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  value={incident.status}
+                                  onValueChange={(value) => {
+                                    void patchIncident(incident.id, {
+                                      status: value,
+                                    })
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 w-32 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="NEW">{getAdminStatusLabel(tCommon, "NEW")}</SelectItem>
+                                    <SelectItem value="ACK">{getAdminStatusLabel(tCommon, "ACK")}</SelectItem>
+                                    <SelectItem value="IN_PROGRESS">
+                                      {getAdminStatusLabel(tCommon, "IN_PROGRESS")}
+                                    </SelectItem>
+                                    <SelectItem value="RESOLVED">
+                                      {getAdminStatusLabel(tCommon, "RESOLVED")}
+                                    </SelectItem>
+                                    <SelectItem value="DISMISSED">
+                                      {getAdminStatusLabel(tCommon, "DISMISSED")}
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  <Input
+                                    value={ownerDraft[incident.id] ?? ""}
+                                    onChange={(event) =>
+                                      setOwnerDraft((prev) => ({
+                                        ...prev,
+                                        [incident.id]: event.target.value,
+                                      }))
+                                    }
+                                    className="h-8 min-w-[10rem] text-xs"
+                                    placeholder={t("ownerPlaceholder")}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 px-2 text-xs"
+                                    onClick={() =>
+                                      void patchIncident(incident.id, {
+                                        ownerId: (ownerDraft[incident.id] || "").trim() || null,
+                                      })
+                                    }
+                                  >
+                                    {t("save")}
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground">
+                                {fmtDateTime(incident.lastSeenAt)}
+                              </TableCell>
+                              <TableCell>{incident.occurrenceCount}</TableCell>
+                              <TableCell>
+                                <div className="flex flex-wrap gap-1">
+                                  {incident.userId ? (
+                                    <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
+                                      <Link href={`/admin/users/${incident.userId}?${filterQuery}`}>
+                                        {t("user")}
+                                      </Link>
+                                    </Button>
+                                  ) : null}
+                                  {incident.sessionId ? (
+                                    <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
+                                      <Link href={`/admin/sessions/${incident.sessionId}?${filterQuery}`}>
+                                        {t("session")}
+                                      </Link>
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -422,7 +463,7 @@ export function AdminTriage() {
                   {nextCursor ? (
                     <Button variant="outline" onClick={() => void loadMore()} disabled={isLoadingMore}>
                       {isLoadingMore ? <Loader2 className="size-4 animate-spin" /> : null}
-                      {isLoadingMore ? "Loading..." : "Load More Incidents"}
+                      {isLoadingMore ? t("loadingMore") : t("loadMore")}
                     </Button>
                   ) : null}
                 </div>

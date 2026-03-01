@@ -50,6 +50,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
+import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { z } from "zod"
 
@@ -105,6 +106,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import { formatDate } from "@/i18n/format"
+import type { UiLocale } from "@/i18n/config"
 
 export const schema = z.object({
   id: z.number(),
@@ -116,8 +119,76 @@ export const schema = z.object({
   reviewer: z.string(),
 })
 
+type DashboardTranslations = (
+  key: string,
+  values?: Record<string, string | number>
+) => string
+
+const TYPE_KEY_BY_VALUE: Record<string, string> = {
+  "Cover page": "coverPage",
+  Financial: "financial",
+  Legal: "legal",
+  Narrative: "narrative",
+  "Plain language": "plainLanguage",
+  "Table of contents": "tableOfContents",
+  "Technical content": "technicalContent",
+  Visual: "visual",
+}
+
+const STATUS_KEY_BY_VALUE: Record<string, string> = {
+  Done: "done",
+  "In Process": "inProcess",
+  "Not Started": "notStarted",
+}
+
+const MONTH_INDEX_BY_NAME: Record<string, number> = {
+  April: 3,
+  August: 7,
+  December: 11,
+  February: 1,
+  January: 0,
+  July: 6,
+  June: 5,
+  March: 2,
+  May: 4,
+  November: 10,
+  October: 9,
+  September: 8,
+}
+
+function getTypeLabel(t: DashboardTranslations, value: string): string {
+  const key = TYPE_KEY_BY_VALUE[value]
+  return key ? t(`types.${key}`) : value
+}
+
+function getStatusLabel(t: DashboardTranslations, value: string): string {
+  const key = STATUS_KEY_BY_VALUE[value]
+  return key ? t(`status.${key}`) : value
+}
+
+function getMonthLabel(
+  monthName: string,
+  locale: UiLocale,
+  width: "short" | "long" = "short"
+): string {
+  const monthIndex = MONTH_INDEX_BY_NAME[monthName]
+  if (monthIndex === undefined) return monthName
+  return formatDate(new Date(2024, monthIndex, 1), locale, { month: width })
+}
+
+function showSaveToast(
+  t: DashboardTranslations,
+  header: string
+) {
+  toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
+    loading: t("toast.saving", { header }),
+    success: t("toast.done"),
+    error: t("toast.error"),
+  })
+}
+
 // Create a separate component for the drag handle
-function DragHandle({ id }: { id: number }) {
+function DragHandle({ id, label }: { id: number; label: string }) {
   const { attributes, listeners } = useSortable({
     id,
   })
@@ -131,185 +202,187 @@ function DragHandle({ id }: { id: number }) {
       className="text-muted-foreground size-7 hover:bg-transparent"
     >
       <IconGripVertical className="text-muted-foreground size-3" />
-      <span className="sr-only">Drag to reorder</span>
+      <span className="sr-only">{label}</span>
     </Button>
   )
 }
 
-const columns: ColumnDef<z.infer<typeof schema>>[] = [
-  {
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original.id} />,
-  },
-  {
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
+function createColumns(
+  t: DashboardTranslations,
+  locale: UiLocale
+): ColumnDef<z.infer<typeof schema>>[] {
+  return [
+    {
+      id: "drag",
+      header: () => null,
+      cell: ({ row }) => (
+        <DragHandle
+          id={row.original.id}
+          label={t("accessibility.drag")}
         />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "header",
-    header: "Header",
-    cell: ({ row }) => {
-      return <TableCellViewer item={row.original} />
+      ),
     },
-    enableHiding: false,
-  },
-  {
-    accessorKey: "type",
-    header: "Section Type",
-    cell: ({ row }) => (
-      <div className="w-32">
+    {
+      id: "select",
+      header: ({ table }) => (
+        <div className="flex items-center justify-center">
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label={t("accessibility.selectAll")}
+          />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center justify-center">
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label={t("accessibility.selectRow")}
+          />
+        </div>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "header",
+      header: t("columns.header"),
+      cell: ({ row }) => {
+        return <TableCellViewer item={row.original} t={t} locale={locale} />
+      },
+      enableHiding: false,
+    },
+    {
+      accessorKey: "type",
+      header: t("columns.sectionType"),
+      cell: ({ row }) => (
+        <div className="w-32">
+          <Badge variant="outline" className="text-muted-foreground px-1.5">
+            {getTypeLabel(t, row.original.type)}
+          </Badge>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: t("columns.status"),
+      cell: ({ row }) => (
         <Badge variant="outline" className="text-muted-foreground px-1.5">
-          {row.original.type}
+          {row.original.status === "Done" ? (
+            <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
+          ) : (
+            <IconLoader />
+          )}
+          {getStatusLabel(t, row.original.status)}
         </Badge>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => (
-      <Badge variant="outline" className="text-muted-foreground px-1.5">
-        {row.original.status === "Done" ? (
-          <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
-        ) : (
-          <IconLoader />
-        )}
-        {row.original.status}
-      </Badge>
-    ),
-  },
-  {
-    accessorKey: "target",
-    header: () => <div className="w-full text-right">Target</div>,
-    cell: ({ row }) => (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.header}`,
-            success: "Done",
-            error: "Error",
-          })
-        }}
-      >
-        <Label htmlFor={`${row.original.id}-target`} className="sr-only">
-          Target
-        </Label>
-        <Input
-          className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
-          defaultValue={row.original.target}
-          id={`${row.original.id}-target`}
-        />
-      </form>
-    ),
-  },
-  {
-    accessorKey: "limit",
-    header: () => <div className="w-full text-right">Limit</div>,
-    cell: ({ row }) => (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.header}`,
-            success: "Done",
-            error: "Error",
-          })
-        }}
-      >
-        <Label htmlFor={`${row.original.id}-limit`} className="sr-only">
-          Limit
-        </Label>
-        <Input
-          className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
-          defaultValue={row.original.limit}
-          id={`${row.original.id}-limit`}
-        />
-      </form>
-    ),
-  },
-  {
-    accessorKey: "reviewer",
-    header: "Reviewer",
-    cell: ({ row }) => {
-      const isAssigned = row.original.reviewer !== "Assign reviewer"
-
-      if (isAssigned) {
-        return row.original.reviewer
-      }
-
-      return (
-        <>
-          <Label htmlFor={`${row.original.id}-reviewer`} className="sr-only">
-            Reviewer
-          </Label>
-          <Select>
-            <SelectTrigger
-              className="w-38 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
-              size="sm"
-              id={`${row.original.id}-reviewer`}
-            >
-              <SelectValue placeholder="Assign reviewer" />
-            </SelectTrigger>
-            <SelectContent align="end">
-              <SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
-              <SelectItem value="Jamik Tashpulatov">
-                Jamik Tashpulatov
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </>
-      )
+      ),
     },
-  },
-  {
-    id: "actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
-            size="icon"
-          >
-            <IconDotsVertical />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem>Edit</DropdownMenuItem>
-          <DropdownMenuItem>Make a copy</DropdownMenuItem>
-          <DropdownMenuItem>Favorite</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-  },
-]
+    {
+      accessorKey: "target",
+      header: () => <div className="w-full text-right">{t("columns.target")}</div>,
+      cell: ({ row }) => (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            showSaveToast(t, row.original.header)
+          }}
+        >
+          <Label htmlFor={`${row.original.id}-target`} className="sr-only">
+            {t("columns.target")}
+          </Label>
+          <Input
+            className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
+            defaultValue={row.original.target}
+            id={`${row.original.id}-target`}
+          />
+        </form>
+      ),
+    },
+    {
+      accessorKey: "limit",
+      header: () => <div className="w-full text-right">{t("columns.limit")}</div>,
+      cell: ({ row }) => (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            showSaveToast(t, row.original.header)
+          }}
+        >
+          <Label htmlFor={`${row.original.id}-limit`} className="sr-only">
+            {t("columns.limit")}
+          </Label>
+          <Input
+            className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
+            defaultValue={row.original.limit}
+            id={`${row.original.id}-limit`}
+          />
+        </form>
+      ),
+    },
+    {
+      accessorKey: "reviewer",
+      header: t("columns.reviewer"),
+      cell: ({ row }) => {
+        const isAssigned = row.original.reviewer !== "Assign reviewer"
+
+        if (isAssigned) {
+          return row.original.reviewer
+        }
+
+        return (
+          <>
+            <Label htmlFor={`${row.original.id}-reviewer`} className="sr-only">
+              {t("columns.reviewer")}
+            </Label>
+            <Select>
+              <SelectTrigger
+                className="w-38 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
+                size="sm"
+                id={`${row.original.id}-reviewer`}
+              >
+                <SelectValue placeholder={t("reviewers.assign")} />
+              </SelectTrigger>
+              <SelectContent align="end">
+                <SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
+                <SelectItem value="Jamik Tashpulatov">
+                  Jamik Tashpulatov
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </>
+        )
+      },
+    },
+    {
+      id: "actions",
+      cell: () => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
+              size="icon"
+            >
+              <IconDotsVertical />
+              <span className="sr-only">{t("accessibility.openMenu")}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-32">
+            <DropdownMenuItem>{t("actions.edit")}</DropdownMenuItem>
+            <DropdownMenuItem>{t("actions.makeCopy")}</DropdownMenuItem>
+            <DropdownMenuItem>{t("actions.favorite")}</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive">{t("actions.delete")}</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ]
+}
 
 function DraggableRow({ row }: { row: Row<z.infer<typeof schema>> }) {
   const { transform, transition, setNodeRef, isDragging } = useSortable({
@@ -341,6 +414,8 @@ export function DataTable({
 }: {
   data: z.infer<typeof schema>[]
 }) {
+  const t = useTranslations("Dashboard.table")
+  const locale = useLocale() as UiLocale
   const [data, setData] = React.useState(() => initialData)
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -364,6 +439,7 @@ export function DataTable({
     () => data?.map(({ id }) => id) || [],
     [data]
   )
+  const columns = React.useMemo(() => createColumns(t, locale), [locale, t])
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table is not fully compatible with React Compiler
   const table = useReactTable({
@@ -409,7 +485,7 @@ export function DataTable({
     >
       <div className="flex items-center justify-between px-4 lg:px-6">
         <Label htmlFor="view-selector" className="sr-only">
-          View
+          {t("view")}
         </Label>
         <Select defaultValue="outline">
           <SelectTrigger
@@ -417,32 +493,32 @@ export function DataTable({
             size="sm"
             id="view-selector"
           >
-            <SelectValue placeholder="Select a view" />
+            <SelectValue placeholder={t("selectView")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="outline">Outline</SelectItem>
-            <SelectItem value="past-performance">Past Performance</SelectItem>
-            <SelectItem value="key-personnel">Key Personnel</SelectItem>
-            <SelectItem value="focus-documents">Focus Documents</SelectItem>
+            <SelectItem value="outline">{t("tabs.outline")}</SelectItem>
+            <SelectItem value="past-performance">{t("tabs.pastPerformance")}</SelectItem>
+            <SelectItem value="key-personnel">{t("tabs.keyPersonnel")}</SelectItem>
+            <SelectItem value="focus-documents">{t("tabs.focusDocuments")}</SelectItem>
           </SelectContent>
         </Select>
         <TabsList className="**:data-[slot=badge]:bg-muted-foreground/30 hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 @4xl/main:flex">
-          <TabsTrigger value="outline">Outline</TabsTrigger>
+          <TabsTrigger value="outline">{t("tabs.outline")}</TabsTrigger>
           <TabsTrigger value="past-performance">
-            Past Performance <Badge variant="secondary">3</Badge>
+            {t("tabs.pastPerformance")} <Badge variant="secondary">3</Badge>
           </TabsTrigger>
           <TabsTrigger value="key-personnel">
-            Key Personnel <Badge variant="secondary">2</Badge>
+            {t("tabs.keyPersonnel")} <Badge variant="secondary">2</Badge>
           </TabsTrigger>
-          <TabsTrigger value="focus-documents">Focus Documents</TabsTrigger>
+          <TabsTrigger value="focus-documents">{t("tabs.focusDocuments")}</TabsTrigger>
         </TabsList>
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <IconLayoutColumns />
-                <span className="hidden lg:inline">Customize Columns</span>
-                <span className="lg:hidden">Columns</span>
+                <span className="hidden lg:inline">{t("customizeColumns")}</span>
+                <span className="lg:hidden">{t("columnsButton")}</span>
                 <IconChevronDown />
               </Button>
             </DropdownMenuTrigger>
@@ -472,7 +548,7 @@ export function DataTable({
           </DropdownMenu>
           <Button variant="outline" size="sm">
             <IconPlus />
-            <span className="hidden lg:inline">Add Section</span>
+            <span className="hidden lg:inline">{t("addSection")}</span>
           </Button>
         </div>
       </div>
@@ -523,7 +599,7 @@ export function DataTable({
                       colSpan={columns.length}
                       className="h-24 text-center"
                     >
-                      No results.
+                      {t("noResults")}
                     </TableCell>
                   </TableRow>
                 )}
@@ -533,13 +609,15 @@ export function DataTable({
         </div>
         <div className="flex items-center justify-between px-4">
           <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {table.getFilteredRowModel().rows.length} row(s) selected.
+            {t("selectionSummary", {
+              selected: table.getFilteredSelectedRowModel().rows.length,
+              total: table.getFilteredRowModel().rows.length,
+            })}
           </div>
           <div className="flex w-full items-center gap-8 lg:w-fit">
             <div className="hidden items-center gap-2 lg:flex">
               <Label htmlFor="rows-per-page" className="text-sm font-medium">
-                Rows per page
+                {t("rowsPerPage")}
               </Label>
               <Select
                 value={`${table.getState().pagination.pageSize}`}
@@ -562,8 +640,10 @@ export function DataTable({
               </Select>
             </div>
             <div className="flex w-fit items-center justify-center text-sm font-medium">
-              Page {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount()}
+              {t("pageOf", {
+                page: table.getState().pagination.pageIndex + 1,
+                total: table.getPageCount(),
+              })}
             </div>
             <div className="ml-auto flex items-center gap-2 lg:ml-0">
               <Button
@@ -572,7 +652,7 @@ export function DataTable({
                 onClick={() => table.setPageIndex(0)}
                 disabled={!table.getCanPreviousPage()}
               >
-                <span className="sr-only">Go to first page</span>
+                <span className="sr-only">{t("pagination.first")}</span>
                 <IconChevronsLeft />
               </Button>
               <Button
@@ -582,7 +662,7 @@ export function DataTable({
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
               >
-                <span className="sr-only">Go to previous page</span>
+                <span className="sr-only">{t("pagination.previous")}</span>
                 <IconChevronLeft />
               </Button>
               <Button
@@ -592,7 +672,7 @@ export function DataTable({
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
               >
-                <span className="sr-only">Go to next page</span>
+                <span className="sr-only">{t("pagination.next")}</span>
                 <IconChevronRight />
               </Button>
               <Button
@@ -602,7 +682,7 @@ export function DataTable({
                 onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                 disabled={!table.getCanNextPage()}
               >
-                <span className="sr-only">Go to last page</span>
+                <span className="sr-only">{t("pagination.last")}</span>
                 <IconChevronsRight />
               </Button>
             </div>
@@ -637,19 +717,26 @@ const chartData = [
   { month: "June", desktop: 214, mobile: 140 },
 ]
 
-const chartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "var(--primary)",
-  },
-  mobile: {
-    label: "Mobile",
-    color: "var(--primary)",
-  },
-} satisfies ChartConfig
-
-function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
+function TableCellViewer({
+  item,
+  t,
+  locale,
+}: {
+  item: z.infer<typeof schema>
+  t: DashboardTranslations
+  locale: UiLocale
+}) {
   const isMobile = useIsMobile()
+  const chartConfig = {
+    desktop: {
+      label: t("device.desktop"),
+      color: "var(--primary)",
+    },
+    mobile: {
+      label: t("device.mobile"),
+      color: "var(--primary)",
+    },
+  } satisfies ChartConfig
 
   return (
     <Drawer direction={isMobile ? "bottom" : "right"}>
@@ -662,7 +749,7 @@ function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
         <DrawerHeader className="gap-1">
           <DrawerTitle>{item.header}</DrawerTitle>
           <DrawerDescription>
-            Showing total visitors for the last 6 months
+            {t("drawer.description")}
           </DrawerDescription>
         </DrawerHeader>
         <div className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">
@@ -683,7 +770,7 @@ function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
                     tickLine={false}
                     axisLine={false}
                     tickMargin={8}
-                    tickFormatter={(value) => value.slice(0, 3)}
+                    tickFormatter={(value) => getMonthLabel(value, locale)}
                     hide
                   />
                   <ChartTooltip
@@ -711,13 +798,11 @@ function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
               <Separator />
               <div className="grid gap-2">
                 <div className="flex gap-2 leading-none font-medium">
-                  Trending up by 5.2% this month{" "}
+                  {t("drawer.trending")}{" "}
                   <IconTrendingUp className="size-4" />
                 </div>
                 <div className="text-muted-foreground">
-                  Showing total visitors for the last 6 months. This is just
-                  some random text to test the layout. It spans multiple lines
-                  and should wrap around.
+                  {t("drawer.body")}
                 </div>
               </div>
               <Separator />
@@ -725,65 +810,56 @@ function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
           )}
           <form className="flex flex-col gap-4">
             <div className="flex flex-col gap-3">
-              <Label htmlFor="header">Header</Label>
+              <Label htmlFor="header">{t("columns.header")}</Label>
               <Input id="header" defaultValue={item.header} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-3">
-                <Label htmlFor="type">Type</Label>
+                <Label htmlFor="type">{t("columns.sectionType")}</Label>
                 <Select defaultValue={item.type}>
                   <SelectTrigger id="type" className="w-full">
-                    <SelectValue placeholder="Select a type" />
+                    <SelectValue placeholder={t("selectType")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Table of Contents">
-                      Table of Contents
-                    </SelectItem>
-                    <SelectItem value="Executive Summary">
-                      Executive Summary
-                    </SelectItem>
-                    <SelectItem value="Technical Approach">
-                      Technical Approach
-                    </SelectItem>
-                    <SelectItem value="Design">Design</SelectItem>
-                    <SelectItem value="Capabilities">Capabilities</SelectItem>
-                    <SelectItem value="Focus Documents">
-                      Focus Documents
-                    </SelectItem>
-                    <SelectItem value="Narrative">Narrative</SelectItem>
-                    <SelectItem value="Cover Page">Cover Page</SelectItem>
+                    {Object.keys(TYPE_KEY_BY_VALUE).map((typeValue) => (
+                      <SelectItem key={typeValue} value={typeValue}>
+                        {getTypeLabel(t, typeValue)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex flex-col gap-3">
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor="status">{t("columns.status")}</Label>
                 <Select defaultValue={item.status}>
                   <SelectTrigger id="status" className="w-full">
-                    <SelectValue placeholder="Select a status" />
+                    <SelectValue placeholder={t("selectStatus")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Done">Done</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Not Started">Not Started</SelectItem>
+                    {Object.keys(STATUS_KEY_BY_VALUE).map((statusValue) => (
+                      <SelectItem key={statusValue} value={statusValue}>
+                        {getStatusLabel(t, statusValue)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-3">
-                <Label htmlFor="target">Target</Label>
+                <Label htmlFor="target">{t("columns.target")}</Label>
                 <Input id="target" defaultValue={item.target} />
               </div>
               <div className="flex flex-col gap-3">
-                <Label htmlFor="limit">Limit</Label>
+                <Label htmlFor="limit">{t("columns.limit")}</Label>
                 <Input id="limit" defaultValue={item.limit} />
               </div>
             </div>
             <div className="flex flex-col gap-3">
-              <Label htmlFor="reviewer">Reviewer</Label>
+              <Label htmlFor="reviewer">{t("columns.reviewer")}</Label>
               <Select defaultValue={item.reviewer}>
                 <SelectTrigger id="reviewer" className="w-full">
-                  <SelectValue placeholder="Select a reviewer" />
+                  <SelectValue placeholder={t("selectReviewer")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
@@ -791,15 +867,16 @@ function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
                     Jamik Tashpulatov
                   </SelectItem>
                   <SelectItem value="Emily Whalen">Emily Whalen</SelectItem>
+                  <SelectItem value="Assign reviewer">{t("reviewers.assign")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </form>
         </div>
         <DrawerFooter>
-          <Button>Submit</Button>
+          <Button>{t("submit")}</Button>
           <DrawerClose asChild>
-            <Button variant="outline">Done</Button>
+            <Button variant="outline">{t("done")}</Button>
           </DrawerClose>
         </DrawerFooter>
       </DrawerContent>

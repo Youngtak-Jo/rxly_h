@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { v4 as uuid } from "uuid"
 import { Textarea } from "@/components/ui/textarea"
@@ -62,6 +63,7 @@ export function InlineCommentPopover({
 }: {
   containerRef: React.RefObject<HTMLDivElement | null>
 }) {
+  const t = useTranslations("InsightsPanel")
   const [popover, setPopover] = useState<PopoverState | null>(null)
   const [comment, setComment] = useState("")
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -234,8 +236,8 @@ export function InlineCommentPopover({
     // Trigger immediate re-analysis
     useInsightsStore.getState()._noteTrigger?.()
 
-    toast.success("Comment sent", {
-      description: "Insights will update shortly",
+    toast.success(t("commentSent"), {
+      description: t("commentSentDescription"),
       position: "bottom-center",
     })
     close()
@@ -274,7 +276,7 @@ export function InlineCommentPopover({
         value={comment}
         onChange={(e) => setComment(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Add your comment..."
+        placeholder={t("addComment")}
         className="min-h-[56px] max-h-[120px] resize-none text-sm"
         rows={2}
       />
@@ -282,12 +284,14 @@ export function InlineCommentPopover({
       {/* Actions */}
       <div className="flex items-center justify-between mt-2">
         <span className="text-[10px] text-muted-foreground hidden sm:inline">
-          {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to send
+          {t("shortcut", {
+            modifier: navigator.platform.includes("Mac") ? "⌘" : "Ctrl",
+          })}
         </span>
         <div className="flex gap-1.5">
           <Button variant="ghost" size="sm" onClick={close} className="h-7 px-2 text-xs">
             <IconX className="size-3.5 mr-1" />
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             size="sm"
@@ -295,7 +299,7 @@ export function InlineCommentPopover({
             disabled={!comment.trim()}
             className="h-7 px-3 text-xs"
           >
-            Send
+            {t("send")}
           </Button>
         </div>
       </div>

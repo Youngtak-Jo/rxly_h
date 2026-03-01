@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +25,7 @@ import {
 } from "@tabler/icons-react"
 
 export function ChecklistCard() {
+  const t = useTranslations("InsightsPanel")
   const {
     checklistItems,
     toggleChecklistItem,
@@ -48,7 +50,7 @@ export function ChecklistCard() {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <IconChecklist className="size-4 text-violet-500" />
-          Checklist
+          {t("checklist")}
           {checklistItems.length > 0 && (
             <Badge variant="secondary" className="ml-auto text-[10px]">
               {checkedCount}/{checklistItems.length}
@@ -59,7 +61,7 @@ export function ChecklistCard() {
       <CardContent className="space-y-2">
         {checklistItems.length === 0 && (
           <p className="text-sm text-muted-foreground/50 italic">
-            Checklist items will appear as the AI identifies action items...
+            {t("checklistEmpty")}
           </p>
         )}
 
@@ -88,13 +90,13 @@ export function ChecklistCard() {
                     className="text-xs text-muted-foreground mt-0.5 cursor-pointer hover:text-foreground"
                     onClick={() => setEditingNoteId(item.id)}
                   >
-                    Note: {item.doctorNote}
+                    {t("notePrefix", { note: item.doctorNote || "" })}
                   </p>
                 )}
                 {editingNoteId === item.id && (
                   <Textarea
                     defaultValue={item.doctorNote || ""}
-                    placeholder="Add a note..."
+                    placeholder={t("addNote")}
                     className="mt-1 text-xs h-16"
                     onBlur={(e) => {
                       updateChecklistNote(item.id, e.target.value)
@@ -126,7 +128,7 @@ export function ChecklistCard() {
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {item.source === "AI" ? "Added by AI" : "Added manually"}
+                    {item.source === "AI" ? t("addedByAi") : t("addedManually")}
                   </TooltipContent>
                 </Tooltip>
                 {editingNoteId !== item.id && (
@@ -135,6 +137,7 @@ export function ChecklistCard() {
                     size="icon"
                     className="h-5 w-5"
                     onClick={() => setEditingNoteId(item.id)}
+                    title={t("editNote")}
                   >
                     <IconNote className="size-3" />
                   </Button>
@@ -144,6 +147,7 @@ export function ChecklistCard() {
                   size="icon"
                   className="h-5 w-5 text-destructive"
                   onClick={() => removeChecklistItem(item.id)}
+                  title={t("removeItem")}
                 >
                   <IconTrash className="size-3" />
                 </Button>
@@ -154,7 +158,7 @@ export function ChecklistCard() {
 
         <div className="flex items-center gap-2 pt-2">
           <Input
-            placeholder="Add item..."
+            placeholder={t("addItem")}
             value={newItemLabel}
             onChange={(e) => setNewItemLabel(e.target.value)}
             onKeyDown={(e) => {

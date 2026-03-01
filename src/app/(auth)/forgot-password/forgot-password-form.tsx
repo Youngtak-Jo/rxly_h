@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Loader2, ArrowLeft, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { forgotPassword } from "./actions"
 
 export function ForgotPasswordForm() {
+  const t = useTranslations("ForgotPasswordForm")
   const [isPending, startTransition] = useTransition()
   const [emailSent, setEmailSent] = useState(false)
 
@@ -33,17 +35,16 @@ export function ForgotPasswordForm() {
           <Mail className="size-6 text-primary" />
         </div>
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold">Check your email</h1>
+          <h1 className="text-2xl font-bold">{t("checkEmailTitle")}</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            We&apos;ve sent you a password reset link. Please check your inbox
-            and click the link to reset your password.
+            {t("checkEmailDescription")}
           </p>
         </div>
         <Link
           href="/login"
           className="text-sm underline underline-offset-4 hover:text-primary"
         >
-          Back to Sign In
+          {t("backToSignIn")}
         </Link>
       </div>
     )
@@ -56,13 +57,13 @@ export function ForgotPasswordForm() {
         className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm transition-colors"
       >
         <ArrowLeft className="size-4" />
-        Back to sign in
+        {t("backToSignIn")}
       </Link>
 
       <div className="flex flex-col gap-2 text-center">
-        <h1 className="text-2xl font-bold">Forgot your password?</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
         <p className="text-muted-foreground text-sm text-balance">
-          Enter your email and we&apos;ll send you a reset link
+          {t("description")}
         </p>
       </div>
 
@@ -74,7 +75,7 @@ export function ForgotPasswordForm() {
               id="email"
               name="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("emailPlaceholder")}
               required
             />
           </div>
@@ -82,10 +83,10 @@ export function ForgotPasswordForm() {
             {isPending ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Sending...
+                {t("sending")}
               </>
             ) : (
-              "Send Reset Link"
+              t("sendLink")
             )}
           </Button>
         </div>

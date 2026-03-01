@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useRecordingStore } from "@/stores/recording-store"
@@ -16,6 +17,7 @@ import {
 } from "@tabler/icons-react"
 
 export function RecordingControls() {
+  const t = useTranslations("TranscriptViewer")
   const { isRecording, isPaused, duration, setDuration, isSimulating, simulationControls } =
     useRecordingStore()
   const activeSession = useSessionStore((s) => s.activeSession)
@@ -109,7 +111,9 @@ export function RecordingControls() {
     }
   }, [isPaused, isSimulating, simulationControls, pauseListening, resumeListening])
 
-  const headerLabel = isAiDoctorMode ? "AI Consultation" : "Transcript"
+  const headerLabel = isAiDoctorMode
+    ? t("headerAiConsultation")
+    : t("headerTranscript")
 
   return (
     <div className="flex items-center gap-2 border-b px-4 py-3">
@@ -121,7 +125,11 @@ export function RecordingControls() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
             </span>
-            {isAiDoctorMode ? "ACTIVE" : isPaused ? "PAUSED" : "LIVE"}
+            {isAiDoctorMode
+              ? t("status.active")
+              : isPaused
+                ? t("status.paused")
+                : t("status.live")}
           </Badge>
         )}
       </div>
@@ -134,7 +142,7 @@ export function RecordingControls() {
               className="gap-1.5 h-8"
               disabled={isStartDisabled}
             >
-              Start Recording
+              {t("startRecording")}
             </Button>
           ) : null
         ) : (
@@ -146,6 +154,8 @@ export function RecordingControls() {
                 variant="outline"
                 size="icon"
                 className="h-8 w-8"
+                title={isPaused ? t("resume") : t("pause")}
+                aria-label={isPaused ? t("resume") : t("pause")}
               >
                 {isPaused ? (
                   <IconPlayerPlay className="size-3.5" />
@@ -159,6 +169,8 @@ export function RecordingControls() {
               variant="destructive"
               size="icon"
               className="h-8 w-8"
+              title={t("stop")}
+              aria-label={t("stop")}
             >
               <IconPlayerStop className="size-3.5" />
             </Button>

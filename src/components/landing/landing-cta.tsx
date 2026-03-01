@@ -4,6 +4,7 @@ import Link from "next/link"
 import LiquidGlass from "liquid-glass-react"
 import { ChevronRight } from "lucide-react"
 import { Instrument_Serif } from "next/font/google"
+import { useTranslations } from "next-intl"
 import styles from "./landing-sections.module.css"
 
 const instrumentSerif = Instrument_Serif({
@@ -12,6 +13,7 @@ const instrumentSerif = Instrument_Serif({
 })
 
 export function LandingCta() {
+    const t = useTranslations("LandingCta")
     return (
         <section className={`px-6 pb-24 md:px-10 md:pb-32 ${styles.section} ${styles.delayFour} ${styles.ctaSection}`}>
             <div className={styles.inner}>
@@ -32,19 +34,19 @@ export function LandingCta() {
                                 <div className={styles.ctaContentFull}>
                                     <div className={styles.ctaTextContainer}>
                                         <h2 className={`${instrumentSerif.className} ${styles.ctaTitleFull}`}>
-                                            Ready to transform your clinical workflow?
+                                            {t("title")}
                                         </h2>
                                         <p className={styles.ctaDescriptionFull}>
-                                            Join the future of healthcare with Rxly's intelligent, secure, and integrated platform.
+                                            {t("description")}
                                         </p>
                                     </div>
                                     <div className={styles.ctaButtonGroupFull}>
                                         <div className={styles.ctaPrimaryButtonFull}>
-                                            Start
+                                            {t("start")}
                                             <ChevronRight className="w-5 h-5" />
                                         </div>
                                         <div className={styles.ctaSecondaryButtonFull}>
-                                            Contact Sales
+                                            {t("contactSales")}
                                         </div>
                                     </div>
                                 </div>
@@ -70,19 +72,19 @@ export function LandingCta() {
                                 <div className={styles.ctaContentFull}>
                                     <div className={styles.ctaTextContainer}>
                                         <h2 className={`${instrumentSerif.className} ${styles.ctaTitleFull}`}>
-                                            Ready to transform your clinical workflow?
+                                            {t("title")}
                                         </h2>
                                         <p className={styles.ctaDescriptionFull}>
-                                            Join the future of healthcare with Rxly's intelligent, secure, and integrated platform.
+                                            {t("description")}
                                         </p>
                                     </div>
                                     <div className={styles.ctaButtonGroupFull}>
                                         <Link href="/consultation" className={styles.ctaPrimaryButtonFull}>
-                                            Start
+                                            {t("start")}
                                             <ChevronRight className="w-5 h-5" />
                                         </Link>
                                         <a href="mailto:contact@rxly.ai" className={styles.ctaSecondaryButtonFull}>
-                                            Contact Sales
+                                            {t("contactSales")}
                                         </a>
                                     </div>
                                 </div>

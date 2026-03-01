@@ -1,11 +1,13 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useInsightsStore } from "@/stores/insights-store"
 import { IconAlertTriangle } from "@tabler/icons-react"
 
 export function RedFlagsCard() {
+  const t = useTranslations("InsightsPanel")
   const redFlags = useInsightsStore((s) => s.redFlags)
 
   if (redFlags.length === 0) return null
@@ -15,7 +17,7 @@ export function RedFlagsCard() {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400">
           <IconAlertTriangle className="size-4" />
-          Red Flags
+          {t("redFlags")}
           <Badge
             variant="destructive"
             className="ml-auto text-[10px]"

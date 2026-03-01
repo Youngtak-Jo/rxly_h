@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -30,6 +31,7 @@ function GoogleIcon() {
 }
 
 export function SocialLoginButtons() {
+  const t = useTranslations("SocialLoginButtons")
   const [loading, setLoading] = useState(false)
 
   const handleGoogleLogin = async () => {
@@ -37,9 +39,7 @@ export function SocialLoginButtons() {
     try {
       await signInWithOAuth("google")
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Authentication failed"
-      )
+      toast.error(err instanceof Error ? err.message : t("errorFallback"))
       setLoading(false)
     }
   }
@@ -57,7 +57,7 @@ export function SocialLoginButtons() {
         ) : (
           <GoogleIcon />
         )}
-        Continue with Google
+        {t("continueWithGoogle")}
       </Button>
     </div>
   )

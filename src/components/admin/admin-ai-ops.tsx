@@ -3,6 +3,7 @@
 import { useMemo } from "react"
 import { Loader2 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -17,10 +18,13 @@ import { AdminLoadingState } from "@/components/admin/admin-loading-state"
 import { parseAdminFilters, toAdminApiParams } from "@/lib/admin/filters"
 import { useAdminQuery } from "@/hooks/use-admin-query"
 import { useAdminRefreshToken } from "@/components/admin/admin-shell"
+import { getAdminFeatureLabel } from "@/lib/admin/localization"
 import type { AdminAiOpsResponse } from "@/types/admin"
 import { toPercent } from "@/components/admin/admin-utils"
 
 export function AdminAiOps() {
+  const t = useTranslations("AdminAiOps")
+  const tCommon = useTranslations("AdminCommon")
   const searchParams = useSearchParams()
   const filters = useMemo(() => parseAdminFilters(searchParams), [searchParams])
   const refreshToken = useAdminRefreshToken()
@@ -37,42 +41,42 @@ export function AdminAiOps() {
   })
 
   if (isLoading && !data) {
-    return <AdminLoadingState label="Loading AI Ops..." />
+    return <AdminLoadingState label={t("loading")} />
   }
 
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold">AI Ops</h2>
+        <h2 className="text-lg font-semibold">{t("title")}</h2>
         {isRefreshing ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
       </div>
 
-      {error ? <AdminEmptyState title="Failed to load AI Ops" description={error} /> : null}
+      {error ? <AdminEmptyState title={t("failed")} description={error} /> : null}
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Feature/Model Quality</CardTitle>
-          <CardDescription>Failure, latency, and cost by feature and model.</CardDescription>
+          <CardTitle className="text-base">{t("tableTitle")}</CardTitle>
+          <CardDescription>{t("tableDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           {!data?.rows.length ? (
-            <AdminEmptyState title="No AI usage" description="No AI usage events in selected range." />
+            <AdminEmptyState title={t("noDataTitle")} description={t("noDataDescription")} />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Feature</TableHead>
-                  <TableHead>Model</TableHead>
-                  <TableHead>Calls</TableHead>
-                  <TableHead>Failure Rate</TableHead>
-                  <TableHead>P50/P95</TableHead>
-                  <TableHead>Cost (USD)</TableHead>
+                  <TableHead>{t("columns.feature")}</TableHead>
+                  <TableHead>{t("columns.model")}</TableHead>
+                  <TableHead>{t("columns.calls")}</TableHead>
+                  <TableHead>{t("columns.failureRate")}</TableHead>
+                  <TableHead>{t("columns.latency")}</TableHead>
+                  <TableHead>{t("columns.cost")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.rows.map((row) => (
                   <TableRow key={`${row.feature}:${row.model}`}>
-                    <TableCell>{row.feature}</TableCell>
+                    <TableCell>{getAdminFeatureLabel(tCommon, row.feature)}</TableCell>
                     <TableCell>{row.model}</TableCell>
                     <TableCell>{row.calls}</TableCell>
                     <TableCell>{toPercent(row.failureRate)}</TableCell>

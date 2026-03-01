@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect, forwardRef, useImperativeHandle } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useSessionStore } from "@/stores/session-store"
@@ -31,6 +32,7 @@ export interface NoteInputBarHandle {
 }
 
 export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar(_props, ref) {
+  const t = useTranslations("NoteInputBar")
   const [text, setText] = useState("")
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [isSending, setIsSending] = useState(false)
@@ -62,11 +64,11 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
       const newAttachments: Attachment[] = []
       Array.from(files).forEach((file) => {
         if (!file.type.startsWith("image/")) {
-          toast.error("Only image files are supported")
+          toast.error(t("onlyImages"))
           return
         }
         if (file.size > 10 * 1024 * 1024) {
-          toast.error("File size must be under 10MB")
+          toast.error(t("fileTooLarge"))
           return
         }
         newAttachments.push({
@@ -76,7 +78,7 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
       })
       setAttachments((prev) => [...prev, ...newAttachments])
     },
-    []
+    [t]
   )
 
   useImperativeHandle(ref, () => ({
@@ -151,12 +153,12 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
       const failedCount = uploadResults.length - uploaded.length
       if (failedCount > 0) {
         console.warn(`Failed to upload ${failedCount} attachment(s)`)
-        toast.error(`${failedCount} image upload(s) failed`)
+        toast.error(t("imageUploadFailed", { count: failedCount }))
       }
 
       return uploaded
     },
-    [attachments]
+    [attachments, t]
   )
 
   const handleSendNote = async () => {
@@ -227,7 +229,7 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
       textareaRef.current?.focus()
     } catch (error) {
       console.error("Failed to send note:", error)
-      toast.error("Failed to send note")
+      toast.error(t("sendNoteFailed"))
     } finally {
       setIsSending(false)
     }
@@ -274,7 +276,7 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
       })
     } catch (error) {
       console.error("Failed to send AI doctor message:", error)
-      toast.error("Failed to send message")
+      toast.error(t("sendMessageFailed"))
     } finally {
       setIsSending(false)
     }
@@ -296,9 +298,9 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
   }
 
   const getPlaceholder = () => {
-    if (!activeSession) return "Start a session first..."
-    if (isAiDoctorMode) return "Type your message..."
-    return "Add a note to the consultation..."
+    if (!activeSession) return t("placeholderNoSession")
+    if (isAiDoctorMode) return t("placeholderAiDoctor")
+    return t("placeholderDefault")
   }
 
   const isSendDisabled =
@@ -316,7 +318,7 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={attachment.preview}
-                alt="Attachment"
+                alt={t("attachmentAlt")}
                 className="h-16 w-16 rounded-md object-cover border"
               />
               <button

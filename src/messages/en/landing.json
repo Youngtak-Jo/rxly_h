@@ -1,0 +1,281 @@
+{
+  "LandingNavbar": {
+    "connectors": "Connectors",
+    "customization": "Customization",
+    "security": "Security",
+    "ehr": "EHR",
+    "start": "Start",
+    "consultation": "Consultation",
+    "toggleNavigation": "Toggle navigation menu"
+  },
+  "LandingHero": {
+    "title": "AI Clinical Copilot",
+    "description": "Turn every consultation into structured clinical intelligence with real-time transcription, live insights, and action-ready next steps."
+  },
+  "LandingSections": {
+    "learnMore": "Learn more",
+    "connectors": {
+      "eyebrow": "Connectors",
+      "title": "Trusted medical sources, always in the loop",
+      "description": "Rxly can be wired to tier-1 clinical data endpoints so evidence appears at the point of care."
+    },
+    "customization": {
+      "eyebrow": "Customization",
+      "title": "Settings that adapt to each clinical environment",
+      "description": "From model selection to instruction policy, teams can shape Rxly around real clinic workflows.",
+      "header": "Clinic Preferences",
+      "aiModel": "AI Model",
+      "aiModelDescription": "Primary reasoning engine",
+      "toneStyle": "Tone & Style",
+      "toneStyleDescription": "Response formatting",
+      "professional": "Professional",
+      "concise": "Concise",
+      "autoTranslate": "Auto-translate",
+      "autoTranslateDescription": "Output in patient's language",
+      "evidenceThreshold": "Evidence Threshold",
+      "highConfidence": "High Confidence",
+      "low": "Low",
+      "medium": "Med",
+      "high": "High"
+    },
+    "security": {
+      "eyebrow": "Security",
+      "title": "Encryption-first with HIPAA-aligned safeguards",
+      "description": "Security controls are designed for healthcare handling requirements across storage, transport, and operational access.",
+      "systemStatus": "System Status",
+      "protected": "Protected & Compliant",
+      "aes": "AES-256 Encryption",
+      "aesDescription": "Data encrypted at rest",
+      "https": "Strict HTTPS",
+      "httpsDescription": "TLS 1.3 transit security",
+      "audit": "Audit-ready Logging",
+      "auditDescription": "Immutable event trails"
+    },
+    "ehr": {
+      "eyebrow": "EHR",
+      "title": "FHIR R4-ready handoff for EMR/EHR",
+      "description": "Data is staged as structured FHIR R4 resources, reviewed by clinicians, and then dispatched into your EHR flow."
+    }
+  },
+  "LandingCta": {
+    "title": "Ready to transform your clinical workflow?",
+    "description": "Join the future of healthcare with Rxly's intelligent, secure, and integrated platform.",
+    "start": "Start",
+    "contactSales": "Contact Sales"
+  },
+  "LandingHeroDemo": {
+    "tablistLabel": "Hero demo modes",
+    "simulationLabel": "Rxly product simulation",
+    "sessionTitle": "Acute Appendicitis Session",
+    "modeLabels": {
+      "insights": "Live Insights",
+      "ddx": "Differential Dx",
+      "record": "Consultation Record",
+      "research": "Research",
+      "patientHandout": "Patient Handout"
+    },
+    "modeShortLabels": {
+      "insights": "LI",
+      "ddx": "DDx",
+      "record": "CR",
+      "research": "Ref",
+      "patientHandout": "Pt Ed"
+    },
+    "panels": {
+      "insights": "Live insights panel",
+      "transcript": "Transcript panel",
+      "ddx": "Differential diagnosis panel",
+      "support": "Clinical decision support panel",
+      "record": "Consultation record overview",
+      "fhir": "Review FHIR data dialog preview",
+      "research": "Research panel",
+      "patientHandout": "Patient handout panel"
+    },
+    "headings": {
+      "liveInsights": "Live Insights",
+      "summary": "Summary",
+      "keyFindings": "Key Findings",
+      "redFlags": "Red Flags",
+      "checklist": "Checklist",
+      "transcript": "Real-time Transcript",
+      "differentialDx": "Differential Dx",
+      "activeTriage": "Active Triage",
+      "chiefConcern": "Chief concern",
+      "signal": "Signal",
+      "nextStep": "Next Step",
+      "clinicalDecisionSupport": "Clinical Decision Support",
+      "selectedDiagnosis": "Selected Diagnosis",
+      "priorityTests": "Priority Tests",
+      "immediateManagement": "Immediate Management",
+      "medicationAndMonitoring": "Medication and Monitoring",
+      "disposition": "Disposition",
+      "keyReferences": "Key References",
+      "consultationRecord": "Consultation Record",
+      "vitals": "Vitals",
+      "planChecklist": "Plan Checklist",
+      "validationNotes": "Validation Notes",
+      "research": "Research",
+      "userQuery": "User Query",
+      "patientHandout": "Patient Handout"
+    },
+    "noCriticalWarningSigns": "No critical warning signs yet.",
+    "speaker": {
+      "doctor": "Dr",
+      "patient": "Pt"
+    },
+    "listening": "listening",
+    "likelihood": {
+      "high": "High",
+      "moderate": "Moderate",
+      "lower": "Lower"
+    },
+    "confidenceFormat": "{value} confidence",
+    "record": {
+      "vitals": {
+        "temp": "Temp",
+        "hr": "HR",
+        "bp": "BP",
+        "rr": "RR",
+        "spo2": "SpO2",
+        "pain": "Pain"
+      },
+      "sections": {
+        "chiefComplaint": "Chief Complaint",
+        "hpi": "History of Present Illness (HPI)",
+        "ros": "Review of Systems (ROS)",
+        "physicalExam": "Physical Exam",
+        "labsAndImaging": "Labs and Imaging",
+        "assessment": "Assessment",
+        "plan": "Plan",
+        "sharedDecisionNotes": "Shared Decision Notes"
+      }
+    },
+    "fhir": {
+      "title": "Review FHIR Data",
+      "description": "Review and edit generated FHIR resources before sending to your EMR.",
+      "cancel": "Cancel",
+      "sendToEmr": "Send to EMR",
+      "status": {
+        "ready": "Ready",
+        "needsReview": "Needs Review"
+      }
+    },
+    "research": {
+      "generatedAt": "Generated 3 min ago"
+    },
+    "patientHandout": {
+      "downloadPdf": "Download PDF",
+      "downloadPdfAria": "Download patient handout PDF (demo)"
+    }
+  },
+  "FeatureConnectors": {
+    "backToHome": "Back to Home",
+    "badge": "Data Endpoints",
+    "title": "Trusted medical sources, always in the loop",
+    "description": "Rxly connects directly to tier-1 clinical data endpoints, ensuring that the evidence presented is always current, authoritative, and relevant to the patient context.",
+    "cards": {
+      "search": {
+        "title": "Real-time Search",
+        "description": "Queries are executed live against source APIs. No stale vector databases or outdated indexes."
+      },
+      "parallel": {
+        "title": "Parallel Execution",
+        "description": "Connectors run simultaneously. A single clinical query can cross-reference trials, labels, and literature instantly."
+      },
+      "citations": {
+        "title": "Verified Citations",
+        "description": "Every fact presented includes a direct source link to the original database record for clinical verification."
+      }
+    },
+    "sectionTitle": "Available Connectors",
+    "live": "Live",
+    "connectors": {
+      "pubmed": "Access more than 35 million citations for biomedical literature from MEDLINE, life science journals, and online books.",
+      "icd11": "The global standard for diagnostic health information by the World Health Organization.",
+      "europe-pmc": "Worldwide, free-access collection of life science publications and preprints.",
+      "openfda": "Public FDA data on adverse events, drug recalls, and labeling.",
+      "clinicaltrials": "Database of privately and publicly funded clinical studies conducted around the world.",
+      "dailymed": "Official provider of FDA label information (package inserts)."
+    }
+  },
+  "FeatureCustomization": {
+    "backToHome": "Back to Home",
+    "badge": "Clinic Preferences",
+    "title": "Settings that adapt to each clinical environment",
+    "description": "Healthcare isn't one-size-fits-all. Rxly provides granular control over the AI's behavior, allowing clinical teams to tune the system's output to match their specific workflows and patient populations.",
+    "settings": {
+      "model": {
+        "title": "AI Model Selection",
+        "description": "Choose your primary reasoning engine. Toggle between ultra-fast models for basic triage or advanced frontier models for complex differential diagnosis."
+      },
+      "tone": {
+        "title": "Tone & Style",
+        "description": "Format responses to match your clinic's style. Switch between concise bullet points for rapid review, or professional narrative style for patient hand-offs."
+      },
+      "translation": {
+        "title": "Auto-translate",
+        "description": "Output clinical summaries and patient instructions directly in the patient's native language, bridging communication gaps instantly."
+      },
+      "evidence": {
+        "title": "Evidence Threshold",
+        "description": "Calibrate the confidence level required before Rxly surfaces an insight. Set it high when you only want broadly accepted guidance."
+      }
+    }
+  },
+  "FeatureSecurity": {
+    "backToHome": "Back to Home",
+    "badge": "Protected & Compliant",
+    "title": "Encryption-first with HIPAA-aligned safeguards",
+    "description": "Security in healthcare is non-negotiable. Rxly's architecture is built around defense-in-depth principles, ensuring that patient data remains strictly isolated, encrypted, and monitored.",
+    "protocols": {
+      "encryption": {
+        "title": "AES-256-GCM Encryption",
+        "description": "All Protected Health Information (PHI) is encrypted at rest using AES-256-GCM with per-record salting for stronger protection."
+      },
+      "transit": {
+        "title": "Strict HTTPS (TLS 1.3)",
+        "description": "Data in transit is secured using forced TLS 1.3 between your browser, clinical endpoints, and Rxly services."
+      },
+      "audit": {
+        "title": "Audit-ready Logging",
+        "description": "Every read, write, and modification of PHI is tracked in an immutable audit trail for compliance review."
+      }
+    }
+  },
+  "FeatureEhr": {
+    "backToHome": "Back to Home",
+    "badge": "FHIR R4 Standard",
+    "title": "FHIR R4-ready handoff for EMR/EHR",
+    "description": "Eliminate double documentation. Rxly structures the clinical narrative into standard FHIR R4 bundles, ready to move into your system of record.",
+    "workflowTitle": "Integration Workflow",
+    "workflow": {
+      "review": {
+        "title": "1. Clinical Review",
+        "description": "The clinician reviews the generated insights inside the Rxly workspace and makes any needed adjustments."
+      },
+      "staging": {
+        "title": "2. Resource Staging",
+        "description": "Rxly compiles the validated data into a FHIR R4 Bundle containing the mapped sub-resources."
+      },
+      "dispatch": {
+        "title": "3. EHR Dispatch",
+        "description": "The bundle is securely transmitted to the target EHR API endpoint."
+      }
+    },
+    "resourcesTitle": "Core Mapped Resources",
+    "resources": {
+      "encounter": {
+        "title": "Encounter Mapping",
+        "description": "Consultation sessions are mapped to FHIR Encounter resources with timestamps, participants, and context."
+      },
+      "condition": {
+        "title": "Condition Syncing",
+        "description": "Identified diagnoses and chronic issues are structured into FHIR Condition resources."
+      },
+      "observation": {
+        "title": "Observation Extraction",
+        "description": "Vital signs, lab results, and clinical findings are codified as FHIR Observation resources."
+      }
+    }
+  }
+}

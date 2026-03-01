@@ -1,14 +1,19 @@
 import { redirect } from "next/navigation"
+import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
 import { decryptField } from "@/lib/encryption"
 import sanitizeHtml from "sanitize-html"
+import { formatDateTime } from "@/i18n/format"
+import { resolveServerUiLocale } from "@/i18n/server"
 
 export default async function ExportViewerPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  const t = await getTranslations("ExportViewer")
+  const locale = await resolveServerUiLocale()
   const { id } = await params
 
   // Require authentication
@@ -30,9 +35,9 @@ export default async function ExportViewerPage({
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Export Not Found</h1>
+          <h1 className="text-2xl font-bold mb-2">{t("notFoundTitle")}</h1>
           <p className="text-muted-foreground">
-            This export link is invalid or has been removed.
+            {t("notFoundDescription")}
           </p>
         </div>
       </div>
@@ -44,9 +49,9 @@ export default async function ExportViewerPage({
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+          <h1 className="text-2xl font-bold mb-2">{t("accessDeniedTitle")}</h1>
           <p className="text-muted-foreground">
-            You do not have permission to view this export.
+            {t("accessDeniedDescription")}
           </p>
         </div>
       </div>
@@ -58,10 +63,9 @@ export default async function ExportViewerPage({
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Link Expired</h1>
+          <h1 className="text-2xl font-bold mb-2">{t("expiredTitle")}</h1>
           <p className="text-muted-foreground">
-            This export link has expired. Please generate a new export from the
-            application.
+            {t("expiredDescription")}
           </p>
         </div>
       </div>
@@ -85,8 +89,9 @@ export default async function ExportViewerPage({
       <div className="max-w-4xl mx-auto">
         <div className="mb-6 print:hidden">
           <p className="text-sm text-muted-foreground">
-            This is a secure, time-limited export. Access expires{" "}
-            {exportLink.expiresAt.toLocaleString()}.
+            {t("accessExpires", {
+              date: formatDateTime(exportLink.expiresAt, locale),
+            })}
           </p>
         </div>
         <div dangerouslySetInnerHTML={{ __html: decryptedContent }} />

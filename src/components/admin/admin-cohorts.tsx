@@ -3,6 +3,7 @@
 import { useMemo } from "react"
 import { Loader2 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -21,6 +22,7 @@ import type { AdminCohortsResponse } from "@/types/admin"
 import { toPercent } from "@/components/admin/admin-utils"
 
 export function AdminCohorts() {
+  const t = useTranslations("AdminCohorts")
   const searchParams = useSearchParams()
   const filters = useMemo(() => parseAdminFilters(searchParams), [searchParams])
   const refreshToken = useAdminRefreshToken()
@@ -37,32 +39,32 @@ export function AdminCohorts() {
   })
 
   if (isLoading && !data) {
-    return <AdminLoadingState label="Loading cohorts..." />
+    return <AdminLoadingState label={t("loading")} />
   }
 
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold">Cohorts</h2>
+        <h2 className="text-lg font-semibold">{t("title")}</h2>
         {isRefreshing ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
       </div>
 
-      {error ? <AdminEmptyState title="Failed to load cohorts" description={error} /> : null}
+      {error ? <AdminEmptyState title={t("failed")} description={error} /> : null}
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Retention Matrix</CardTitle>
-          <CardDescription>First-session cohorts with D1 / D7 / D30 retention.</CardDescription>
+          <CardTitle className="text-base">{t("matrixTitle")}</CardTitle>
+          <CardDescription>{t("matrixDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           {!data?.cohorts.length ? (
-            <AdminEmptyState title="No cohorts" description="No first-session cohorts found in range." />
+            <AdminEmptyState title={t("noDataTitle")} description={t("noDataDescription")} />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Cohort Date</TableHead>
-                  <TableHead>Size</TableHead>
+                  <TableHead>{t("columns.cohortDate")}</TableHead>
+                  <TableHead>{t("columns.size")}</TableHead>
                   <TableHead>D1</TableHead>
                   <TableHead>D7</TableHead>
                   <TableHead>D30</TableHead>

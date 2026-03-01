@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 
 export default function ConsultationError({
@@ -10,6 +11,7 @@ export default function ConsultationError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const t = useTranslations("ConsultationError")
   useEffect(() => {
     console.error("Consultation error:", error)
   }, [error])
@@ -17,11 +19,11 @@ export default function ConsultationError({
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center space-y-4">
-        <h2 className="text-2xl font-bold">Something went wrong</h2>
+        <h2 className="text-2xl font-bold">{t("title")}</h2>
         <p className="text-muted-foreground">
-          An unexpected error occurred during consultation. Your data is safe.
+          {t("description")}
         </p>
-        <Button onClick={reset}>Try again</Button>
+        <Button onClick={reset}>{t("tryAgain")}</Button>
       </div>
     </div>
   )

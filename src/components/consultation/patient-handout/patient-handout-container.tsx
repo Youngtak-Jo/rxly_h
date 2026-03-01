@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -17,7 +18,6 @@ import { useSessionStore } from "@/stores/session-store"
 import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 import {
   PATIENT_HANDOUT_SECTION_KEYS,
-  PATIENT_HANDOUT_SECTION_LABELS,
   type PatientHandoutEntry,
 } from "@/types/patient-handout"
 import { generatePatientHandout } from "@/hooks/use-live-patient-handout"
@@ -52,6 +52,7 @@ function normalizeCode(code: string): string {
 }
 
 export function PatientHandoutContainer() {
+  const t = useTranslations("PatientHandout")
   const activeSession = useSessionStore((s) => s.activeSession)
   const diagnoses = useDdxStore((s) => s.diagnoses)
 
@@ -161,12 +162,12 @@ export function PatientHandoutContainer() {
         icdCode: condition.icdCode,
         diseaseName: condition.diseaseName,
         source: "icd11",
-        evidence: "Added from ICD-11 search.",
+        evidence: t("sourceIcd11"),
       })
     }
 
     return Array.from(byCode.values())
-  }, [diagnoses, selectedConditions])
+  }, [diagnoses, selectedConditions, t])
 
   const entryByConditionId = useMemo(() => {
     const map = new Map<string, PatientHandoutEntry>()
@@ -237,9 +238,9 @@ export function PatientHandoutContainer() {
       <div className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-medium">Patient Handout</h3>
+            <h3 className="text-sm font-medium">{t("title")}</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              Generate patient-friendly guidance for selected conditions.
+              {t("subtitle")}
             </p>
           </div>
           <Button
@@ -253,10 +254,10 @@ export function PatientHandoutContainer() {
           >
             {isGenerating ? <IconLoader2 className="size-3.5 animate-spin" /> : null}
             {isGenerating
-              ? "Generating..."
+              ? t("generating")
               : document
-                ? "Regenerate Handout"
-                : "Generate Handout"}
+                ? t("regenerate")
+                : t("generate")}
           </Button>
         </div>
 
@@ -264,16 +265,16 @@ export function PatientHandoutContainer() {
           <div className="space-y-4">
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Select Conditions (DDx)
+                {t("ddxSectionLabel")}
               </p>
               <p className="text-xs text-muted-foreground">
-                Handout language is automatically detected from the patient conversation.
+                {t("languageHint")}
               </p>
             </div>
 
             {conditionCards.length === 0 ? (
               <p className="text-xs text-muted-foreground italic">
-                No differential diagnoses yet. Add conditions via ICD-11 search below.
+                {t("emptyState")}
               </p>
             ) : (
               <div className="space-y-2">
@@ -308,7 +309,7 @@ export function PatientHandoutContainer() {
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={() => toggleCondition(card)}
-                                aria-label={`${card.diseaseName} 선택`}
+                                aria-label={t("selectCondition", { name: card.diseaseName })}
                               />
                             </span>
                             <p className="text-sm font-medium truncate">{card.diseaseName}</p>
@@ -320,7 +321,7 @@ export function PatientHandoutContainer() {
                         <div className="flex items-center gap-1.5 shrink-0">
                           {card.source === "icd11" ? (
                             <Badge variant="secondary" className="text-[10px]">
-                              ICD-11 search
+                              {t("sourceIcd11")}
                             </Badge>
                           ) : null}
                           {card.confidence ? (
@@ -328,7 +329,7 @@ export function PatientHandoutContainer() {
                               variant="secondary"
                               className={`text-[10px] ${confidenceColors[card.confidence]}`}
                             >
-                              {card.confidence}
+                              {t(`confidence.${card.confidence}`)}
                             </Badge>
                           ) : null}
                         </div>
@@ -348,16 +349,14 @@ export function PatientHandoutContainer() {
                 onClick={() => setIsIcdSearchDialogOpen(true)}
                 className="text-xs text-primary hover:underline"
               >
-                Condition not in DDx? Search ICD-11
+                {t("conditionNotInDdx")}
               </button>
 
               <Dialog open={isIcdSearchDialogOpen} onOpenChange={setIsIcdSearchDialogOpen}>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Search ICD-11 Condition</DialogTitle>
-                    <DialogDescription>
-                      Add a condition that is not currently in DDx.
-                    </DialogDescription>
+                    <DialogTitle>{t("searchIcd11Condition")}</DialogTitle>
+                    <DialogDescription>{t("searchDescription")}</DialogDescription>
                   </DialogHeader>
 
                   <div className="space-y-2">
@@ -366,7 +365,7 @@ export function PatientHandoutContainer() {
                       <Input
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search ICD-11 condition..."
+                        placeholder={t("searchPlaceholder")}
                         className="pl-8 h-8 text-sm"
                       />
                     </div>
@@ -374,7 +373,7 @@ export function PatientHandoutContainer() {
                     {isSearching && (
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <IconLoader2 className="size-3 animate-spin" />
-                        Searching ICD-11...
+                        {t("searching")}
                       </div>
                     )}
 
@@ -382,7 +381,7 @@ export function PatientHandoutContainer() {
                       <div className="max-h-64 overflow-y-auto space-y-1 rounded-md border p-1.5">
                         {searchResults.length === 0 ? (
                           <p className="px-2 py-1 text-xs text-muted-foreground">
-                            No results found.
+                            {t("searchNoResults")}
                           </p>
                         ) : (
                           searchResults.map((result) => {
@@ -397,7 +396,7 @@ export function PatientHandoutContainer() {
                                 <div className="min-w-0">
                                   <p className="text-xs font-medium truncate">{result.title}</p>
                                   <p className="text-[11px] text-muted-foreground truncate">
-                                    {code || "No code"}
+                                    {code || t("noCode")}
                                   </p>
                                 </div>
                                 <Button
@@ -409,7 +408,7 @@ export function PatientHandoutContainer() {
                                   disabled={alreadySelected || !code}
                                 >
                                   <IconPlus className="size-3" />
-                                  {alreadySelected ? "Added" : "Add"}
+                                  {alreadySelected ? t("added") : t("add")}
                                 </Button>
                               </div>
                             )
@@ -428,7 +427,7 @@ export function PatientHandoutContainer() {
       {isGenerating && !document && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
           <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          Generating patient handout...
+          {t("generatingDescription")}
         </div>
       )}
 
@@ -443,7 +442,7 @@ export function PatientHandoutContainer() {
                     {condition.diseaseName} ({condition.icdCode})
                   </h4>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Source: {condition.source === "ddx" ? "DDx" : "ICD-11 search"}
+                    {t("source")}: {condition.source === "ddx" ? t("sourceDdx") : t("sourceIcd11")}
                   </p>
                 </div>
 
@@ -451,7 +450,7 @@ export function PatientHandoutContainer() {
                   {PATIENT_HANDOUT_SECTION_KEYS.map((sectionKey) => (
                     <PatientHandoutSection
                       key={`${condition.id}:${sectionKey}`}
-                      title={PATIENT_HANDOUT_SECTION_LABELS[sectionKey]}
+                      title={t(`sections.${sectionKey}`)}
                       value={entry?.sections[sectionKey] || ""}
                       onChange={(value) => updateSection(condition.id, sectionKey, value)}
                     />

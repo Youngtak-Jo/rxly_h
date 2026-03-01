@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -32,20 +33,16 @@ import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { getActiveTabExportHtml, generatePdf } from "@/lib/export-utils"
 import { trackClientEvent } from "@/lib/telemetry/client-events"
 
-const TAB_LABELS: Record<string, string> = {
-  insights: "Live Insights",
-  ddx: "Differential Diagnosis",
-  record: "Consultation Record",
-  research: "Research",
-  patientHandout: "Patient Handout",
-}
-
 export function ExportDropdown() {
+  const t = useTranslations("ExportDropdown")
+  const tTabs = useTranslations("ConsultationTabs")
+  const tCommon = useTranslations("Common")
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
   const [email, setEmail] = useState("")
   const [isSending, setIsSending] = useState(false)
   const activeSession = useSessionStore((s) => s.activeSession)
   const activeTab = useConsultationTabStore((s) => s.activeTab)
+  const activeTabLabel = tTabs(activeTab)
 
   const handlePdfExport = async () => {
     try {
@@ -64,10 +61,10 @@ export function ExportDropdown() {
           metadata: { tab: activeTab, channel: "pdf" },
         })
       }
-      toast.success("PDF downloaded successfully")
+      toast.success(t("pdfSuccess"))
     } catch (err) {
       console.error("PDF export error:", err)
-      toast.error("Failed to generate PDF")
+      toast.error(t("pdfFailed"))
     }
   }
 
@@ -76,7 +73,7 @@ export function ExportDropdown() {
     setIsSending(true)
     try {
       const { html, tabLabel } = getActiveTabExportHtml()
-      const subject = `Rxly — ${tabLabel}: ${activeSession?.title || "Consultation"}`
+      const subject = `Rxly — ${tabLabel}: ${activeSession?.title || t("consultationFallback")}`
 
       const res = await fetch("/api/export/email", {
         method: "POST",
@@ -94,11 +91,11 @@ export function ExportDropdown() {
           metadata: { tab: activeTab, channel: "email" },
         })
       }
-      toast.success(`Email sent to ${email}`)
+      toast.success(t("emailSent", { email }))
       setEmailDialogOpen(false)
       setEmail("")
     } catch {
-      toast.error("Failed to send email")
+      toast.error(t("emailFailed"))
     } finally {
       setIsSending(false)
     }
@@ -113,23 +110,21 @@ export function ExportDropdown() {
             size="icon"
             className="size-8 text-muted-foreground hover:text-foreground"
             disabled={!activeSession}
-            title="Export"
+            title={t("export")}
           >
             <IconShare className="size-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>
-            Export: {TAB_LABELS[activeTab]}
-          </DropdownMenuLabel>
+          <DropdownMenuLabel>{t("menuLabel", { tab: activeTabLabel })}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handlePdfExport}>
             <IconFileTypePdf className="size-4" />
-            Download as PDF
+            {t("downloadPdf")}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setEmailDialogOpen(true)}>
             <IconMail className="size-4" />
-            Send via Email
+            {t("sendViaEmail")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -137,19 +132,18 @@ export function ExportDropdown() {
       <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Send via Email</DialogTitle>
+            <DialogTitle>{t("sendViaEmailTitle")}</DialogTitle>
             <DialogDescription>
-              Send the current {TAB_LABELS[activeTab]} content to an email
-              address.
+              {t("sendViaEmailDescription", { tab: activeTabLabel })}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="export-email">Recipient Email</Label>
+              <Label htmlFor="export-email">{t("recipientEmail")}</Label>
               <Input
                 id="export-email"
                 type="email"
-                placeholder="doctor@hospital.com"
+                placeholder={tCommon("emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleEmailSend()}
@@ -161,7 +155,7 @@ export function ExportDropdown() {
               {isSending && (
                 <IconLoader2 className="size-4 animate-spin" />
               )}
-              {isSending ? "Sending..." : "Send Email"}
+              {isSending ? t("sending") : t("sendEmail")}
             </Button>
           </DialogFooter>
         </DialogContent>

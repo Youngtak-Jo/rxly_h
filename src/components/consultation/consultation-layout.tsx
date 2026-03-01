@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef } from "react"
+import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import type { PanelImperativeHandle } from "react-resizable-panels"
 import {
@@ -37,6 +38,7 @@ import { v4 as uuidv4 } from "uuid"
 import { cn } from "@/lib/utils"
 
 export function ConsultationLayout() {
+  const t = useTranslations("ConsultationLayout")
   const activeSession = useSessionStore((s) => s.activeSession)
   const isLoading = useSessionStore((s) => s.isLoading)
   const isSwitching = useSessionStore((s) => s.isSwitching)
@@ -119,7 +121,7 @@ export function ConsultationLayout() {
     const now = new Date().toISOString()
     const optimisticSession = {
       id: tempId,
-      title: "New Consultation",
+      title: t("newConsultation"),
       patientName: null,
       mode: "DOCTOR" as const,
       startedAt: now,
@@ -141,7 +143,7 @@ export function ConsultationLayout() {
       const res = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "New Consultation" }),
+        body: JSON.stringify({ title: t("newConsultation") }),
       })
       if (!res.ok) throw new Error("Failed to create session")
       const realSession = await res.json()
@@ -169,7 +171,7 @@ export function ConsultationLayout() {
     return (
       <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-3">
         <IconLoader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Loading consultation...</p>
+        <p className="text-sm text-muted-foreground">{t("loading")}</p>
       </div>
     )
   }
@@ -181,13 +183,13 @@ export function ConsultationLayout() {
           <Image src="/icon1.png" alt="Rxly logo" width={64} height={64} className="rounded-2xl" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold">No Active Consultation</h2>
+          <h2 className="text-lg font-semibold">{t("noActiveTitle")}</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Create a new session to start recording and analyzing a consultation.
+            {t("noActiveDescription")}
           </p>
         </div>
         <Button onClick={createSession} size="lg">
-          Start New Consultation
+          {t("startNew")}
         </Button>
       </div>
     )
@@ -199,7 +201,7 @@ export function ConsultationLayout() {
     return (
       <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-3">
         <IconLoader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Preparing consultation...</p>
+        <p className="text-sm text-muted-foreground">{t("preparing")}</p>
       </div>
     )
   }

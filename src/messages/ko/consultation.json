@@ -1,0 +1,648 @@
+{
+  "AppSidebar": {
+    "admin": "관리자",
+    "fallbackUserName": "사용자",
+    "help": "도움말",
+    "settings": "설정"
+  },
+  "ConsultationTabs": {
+    "ddx": "감별진단",
+    "insights": "실시간 인사이트",
+    "patientHandout": "환자 안내문",
+    "record": "진료 기록",
+    "research": "리서치"
+  },
+  "ExportDropdown": {
+    "consultationFallback": "진료",
+    "downloadPdf": "PDF로 다운로드",
+    "emailFailed": "이메일 전송에 실패했습니다",
+    "emailSent": "{email}(으)로 이메일을 전송했습니다",
+    "export": "내보내기",
+    "menuLabel": "내보내기: {tab}",
+    "pdfFailed": "PDF 생성에 실패했습니다",
+    "pdfSuccess": "PDF를 다운로드했습니다",
+    "recipientEmail": "수신자 이메일",
+    "sendEmail": "이메일 보내기",
+    "sendViaEmail": "이메일로 보내기",
+    "sendViaEmailDescription": "현재 {tab} 내용을 이메일 주소로 보냅니다.",
+    "sendViaEmailTitle": "이메일로 보내기",
+    "sending": "전송 중..."
+  },
+  "NavSessions": {
+    "actions": "세션 작업",
+    "createFailed": "세션 생성에 실패했습니다",
+    "delete": "삭제",
+    "deleteFailed": "세션 삭제에 실패했습니다",
+    "newConsultation": "새 진료",
+    "newSessionTitle": "새 세션",
+    "noSessions": "아직 세션이 없습니다. + 버튼을 눌러 시작하세요.",
+    "rename": "이름 변경",
+    "renameFailed": "세션 이름 변경에 실패했습니다",
+    "sectionLabel": "세션",
+    "untitledSession": "이름 없는 세션"
+  },
+  "SettingsDialog": {
+    "accessibility": {
+      "enhancedFocusIndicatorsDescription": "키보드 탐색 시 더 크고 잘 보이는 포커스 링을 표시합니다.",
+      "enhancedFocusIndicatorsLabel": "포커스 표시 강화",
+      "highContrastDescription": "가독성을 높이기 위해 텍스트와 테두리 대비를 높입니다.",
+      "highContrastLabel": "고대비",
+      "largeClickTargetsDescription": "모든 상호작용 요소에 최소 44px 터치 영역을 적용합니다.",
+      "largeClickTargetsLabel": "큰 클릭 영역",
+      "reducedMotionDescription": "인터페이스 전반의 애니메이션과 전환 효과를 비활성화합니다.",
+      "reducedMotionLabel": "모션 줄이기",
+      "subtitle": "가독성과 상호작용을 개선하기 위한 설정입니다. 이 환경설정은 로컬에 저장되며 즉시 적용됩니다.",
+      "textSpacingDescription": "더 쉽게 읽을 수 있도록 줄 간격, 자간, 단어 간격을 늘립니다.",
+      "textSpacingLabel": "텍스트 간격"
+    },
+    "analysis": {
+      "ddxFrequencyDescription": "녹음 중 감별진단을 얼마나 자주 업데이트할지 설정합니다.",
+      "ddxFrequencyLabel": "감별진단 빈도",
+      "insightsFrequencyDescription": "녹음 중 실시간 인사이트를 얼마나 자주 생성할지 설정합니다.",
+      "insightsFrequencyLabel": "인사이트 빈도",
+      "options": {
+        "balancedDdx": "균형형 (50단어 / 20초)",
+        "balancedInsights": "균형형 (30단어 / 12초)",
+        "conservativeDdx": "보수형 (80단어 / 30초)",
+        "conservativeInsights": "보수형 (60단어 / 20초)",
+        "frequentDdx": "자주 (25단어 / 10초)",
+        "frequentInsights": "자주 (15단어 / 6초)"
+      },
+      "subtitle": "빈도를 높일수록 API 사용량과 비용이 증가합니다."
+    },
+    "appearance": {
+      "borderRadiusDescription": "UI 요소의 모서리 둥글기를 설정합니다.",
+      "borderRadiusLabel": "모서리 반경",
+      "borderRadiusOptions": {
+        "default": "기본",
+        "large": "큼",
+        "none": "없음",
+        "small": "작음"
+      },
+      "fontSizeDescription": "인터페이스 전반의 텍스트 크기를 조정합니다.",
+      "fontSizeLabel": "글자 크기",
+      "fontSizeOptions": {
+        "default": "기본",
+        "extra-large": "매우 크게",
+        "large": "크게",
+        "small": "작게"
+      },
+      "themeDescription": "인터페이스 색상 테마를 선택합니다.",
+      "themeLabel": "테마",
+      "themeOptions": {
+        "dark": "다크",
+        "light": "라이트",
+        "system": "시스템"
+      },
+      "uiDensityDescription": "인터페이스 요소의 간격과 패딩을 조절합니다.",
+      "uiDensityLabel": "UI 밀도",
+      "uiDensityOptions": {
+        "comfortable": "넉넉하게",
+        "compact": "촘촘하게",
+        "default": "기본"
+      }
+    },
+    "close": "닫기",
+    "connectors": {
+      "items": {
+        "clinical_trials": {
+          "description": "NIH 임상시험 데이터베이스 (44만+ 연구)",
+          "label": "ClinicalTrials.gov"
+        },
+        "dailymed": {
+          "description": "FDA 승인 의약품 라벨 정보",
+          "label": "DailyMed"
+        },
+        "europe_pmc": {
+          "description": "유럽 생의학 문헌 데이터베이스 (3,300만+ 출판물)",
+          "label": "Europe PMC"
+        },
+        "icd11": {
+          "description": "WHO 국제질병분류",
+          "label": "ICD-11"
+        },
+        "openfda": {
+          "description": "FDA 약물 이상반응 및 안전성 보고서",
+          "label": "OpenFDA"
+        },
+        "pubmed": {
+          "description": "NCBI 생의학 문헌 검색 (3,600만+ 논문)",
+          "label": "PubMed"
+        }
+      },
+      "subtitle": "근거 기반 진단 지원을 위해 외부 의학 데이터베이스를 활성화합니다."
+    },
+    "customInstructions": {
+      "fields": {
+        "ddx": {
+          "description": "감별진단 생성에 사용할 사용자 지정 지침입니다.",
+          "label": "감별진단",
+          "placeholder": "예: 흔한 질환이 배제되면 희귀질환을 우선 검토하세요. 항상 ICD 코드를 포함하세요. 자가면역 질환을 고려하세요."
+        },
+        "insights": {
+          "description": "실시간 임상 인사이트 생성에 사용할 사용자 지정 지침입니다.",
+          "label": "실시간 인사이트",
+          "placeholder": "예: 약물 상호작용을 항상 강조하세요. 소아 환자 관점을 우선하세요. 불릿 포인트로 요약하세요."
+        },
+        "patientHandout": {
+          "description": "환자 교육용 안내문 생성에 사용할 사용자 지정 지침입니다.",
+          "label": "환자 안내문",
+          "placeholder": "예: 중학교 2학년 수준의 쉬운 표현을 사용하세요. 자가 관리 단계와 경고 증상을 분명히 강조하세요."
+        },
+        "record": {
+          "description": "진료 기록 생성에 사용할 사용자 지정 지침입니다.",
+          "label": "진료 기록",
+          "placeholder": "예: SOAP 형식을 엄격히 사용하세요. ROS를 자세히 포함하세요. 알레르기를 항상 눈에 띄게 기록하세요."
+        },
+        "research": {
+          "description": "의학 리서치 지원에 사용할 사용자 지정 지침입니다.",
+          "label": "리서치",
+          "placeholder": "예: 최근 5년 연구에 집중하세요. 체계적 문헌고찰과 메타분석을 우선하세요. 용량 권고를 포함하세요."
+        }
+      },
+      "subtitle": "각 AI 기능에 대한 사용자 지정 지침을 추가합니다. 이 지침은 모든 요청에 포함되어 AI 동작을 조정합니다."
+    },
+    "dialogDescription": "UI 언어, 전사, 분석, AI 모델, EMR/EHR, 지식 커넥터, 접근성, 외형 설정을 구성합니다.",
+    "dialogTitle": "설정",
+    "emr": {
+      "providerDescription": "내보낸 FHIR 데이터를 수신할 EMR/EHR 시스템입니다.",
+      "providerLabel": "EMR 제공자",
+      "subtitle": "임상 데이터를 FHIR 리소스로 내보낼 때 사용할 전자의무기록(EMR/EHR) 시스템을 선택합니다."
+    },
+    "language": {
+      "description": "인터페이스 전반에 사용되는 언어를 변경합니다.",
+      "label": "UI 언어",
+      "options": {
+        "en": "English",
+        "ko": "한국어"
+      },
+      "subtitle": "앱 표시 언어를 선택합니다. 기본값은 사용자의 브라우저 언어를 따릅니다."
+    },
+    "models": {
+      "aiDoctorDescription": "AI Doctor 상담에 사용합니다.",
+      "aiDoctorLabel": "AI Doctor 모델",
+      "clinicalSupportDescription": "진단에 대한 임상 의사결정 지원에 사용합니다.",
+      "clinicalSupportLabel": "임상 지원 모델",
+      "diagnosticKeywordsDescription": "진단 키워드 추출에 사용합니다.",
+      "diagnosticKeywordsLabel": "진단 키워드 모델",
+      "ddxDescription": "감별진단 생성에 사용합니다.",
+      "ddxLabel": "감별진단 모델",
+      "fhirMappingDescription": "임상 데이터를 EMR/EHR 내보내기용 FHIR R4 리소스로 변환하는 데 사용합니다.",
+      "fhirMappingLabel": "FHIR 매핑 모델",
+      "insightsDescription": "실시간 임상 인사이트 생성에 사용합니다.",
+      "insightsLabel": "인사이트 모델",
+      "patientHandoutDescription": "환자 친화적 안내문 생성에 사용합니다.",
+      "patientHandoutLabel": "환자 안내문 모델",
+      "recommended": "(권장)",
+      "recordDescription": "진료 기록 생성에 사용합니다.",
+      "recordLabel": "기록 모델",
+      "researchDescription": "의학 리서치에 사용합니다.",
+      "researchLabel": "리서치 모델",
+      "speakerIdentificationDescription": "의사/환자 화자 식별에 사용합니다.",
+      "speakerIdentificationLabel": "화자 식별 모델",
+      "subtitle": "모델 변경은 품질과 응답 속도에 영향을 줄 수 있습니다."
+    },
+    "nav": {
+      "accessibility": "접근성",
+      "analysis": "분석",
+      "appearance": "외형",
+      "connectors": "지식 커넥터",
+      "emr": "EMR/EHR",
+      "instructions": "사용자 지정 지침",
+      "language": "언어",
+      "models": "AI 모델",
+      "speech": "전사"
+    },
+    "reset": {
+      "button": "기본값으로 재설정",
+      "cancel": "취소",
+      "confirm": "재설정",
+      "description": "모든 설정이 기본값으로 복원됩니다. 이 작업은 되돌릴 수 없습니다.",
+      "title": "기본값으로 재설정"
+    },
+    "speech": {
+      "echoCancellationDescription": "오디오 피드백 루프를 방지합니다.",
+      "echoCancellationLabel": "에코 제거",
+      "endpointingDescription": "침묵을 발화 종료로 감지하는 속도를 조절합니다.",
+      "endpointingLabel": "엔드포인팅 민감도",
+      "endpointingOptions": {
+        "balanced": "균형형 (400ms)",
+        "clinical": "임상형 (600ms)",
+        "fast": "빠름 (200ms)",
+        "relaxed": "완화형 (800ms)"
+      },
+      "noiseSuppressionDescription": "마이크의 배경 소음을 줄입니다.",
+      "noiseSuppressionLabel": "노이즈 억제",
+      "smartFormattingDescription": "날짜, 숫자, 통화를 자동으로 서식화합니다.",
+      "smartFormattingLabel": "스마트 포맷팅",
+      "speakerDiarizationDescription": "여러 화자를 식별하고 라벨링합니다.",
+      "speakerDiarizationLabel": "화자 분리",
+      "speechRecognitionLanguageDescription": "음성 인식에 사용할 발화 언어를 선택합니다.",
+      "speechRecognitionLanguageLabel": "음성 인식 언어",
+      "languageOptions": {
+        "multi": "다국어 (자동 감지)",
+        "en": "영어 (권장)",
+        "en-US": "영어 (미국) (권장)",
+        "en-GB": "영어 (영국) (권장)",
+        "en-AU": "영어 (호주) (권장)",
+        "en-IN": "영어 (인도) (권장)",
+        "en-NZ": "영어 (뉴질랜드) (권장)",
+        "ko": "한국어",
+        "ko-KR": "한국어 (대한민국)",
+        "ja": "日本語",
+        "es": "Español",
+        "es-419": "Español (Latinoamérica)",
+        "fr": "Français",
+        "fr-CA": "Français (Canada)",
+        "de": "Deutsch",
+        "de-CH": "Deutsch (Schweiz)",
+        "pt": "Português",
+        "pt-BR": "Português (Brasil)",
+        "it": "Italiano",
+        "nl": "Nederlands",
+        "nl-BE": "Vlaams",
+        "ru": "Русский",
+        "hi": "हिन्दी",
+        "ar": "العربية",
+        "tr": "Türkçe",
+        "pl": "Polski",
+        "sv": "Svenska",
+        "da": "Dansk",
+        "no": "Norsk",
+        "fi": "Suomi",
+        "id": "Bahasa Indonesia",
+        "vi": "Tiếng Việt",
+        "uk": "Українська",
+        "cs": "Čeština",
+        "ro": "Română",
+        "hu": "Magyar",
+        "el": "Ελληνικά",
+        "he": "עברית",
+        "fa": "فارسی",
+        "ta": "தமிழ்",
+        "te": "తెలుగు",
+        "bn": "বাংলা",
+        "ur": "اردو",
+        "mr": "मराठी",
+        "kn": "ಕನ್ನಡ",
+        "ms": "Bahasa Melayu",
+        "tl": "Tagalog",
+        "bg": "Български",
+        "hr": "Hrvatski",
+        "sr": "Српски",
+        "sk": "Slovenčina",
+        "sl": "Slovenščina",
+        "lt": "Lietuvių",
+        "lv": "Latviešu",
+        "et": "Eesti",
+        "ca": "Català",
+        "bs": "Bosanski",
+        "mk": "Македонски",
+        "be": "Беларуская"
+      },
+      "subtitle": "변경 사항은 다음 녹음 세션부터 적용됩니다.",
+      "utteranceEndDescription": "발화를 최종 확정하기 전에 대기할 시간을 설정합니다.",
+      "utteranceEndLabel": "발화 종료 대기 시간",
+      "utteranceEndOptions": {
+        "clinical": "임상형 (1800ms)",
+        "extended": "확장형 (2500ms)",
+        "short": "짧게 (800ms)",
+        "standard": "표준 (1200ms)"
+      }
+    },
+    "title": "설정"
+  },
+  "SiteHeader": {
+    "connectors": "커넥터",
+    "consultationFallback": "진료",
+    "defaultTitle": "Rxly 진료",
+    "emailFailed": "이메일 전송에 실패했습니다",
+    "emailSent": "{email}(으)로 이메일을 전송했습니다",
+    "exportPdf": "PDF 내보내기",
+    "hideTranscript": "전사 숨기기",
+    "mobileEmailDescription": "현재 {tab} 내용을 이메일 주소로 보냅니다.",
+    "mobileEmailTitle": "이메일로 보내기",
+    "newConsultation": "새 진료",
+    "pdfFailed": "PDF 생성에 실패했습니다",
+    "pdfSuccess": "PDF를 다운로드했습니다",
+    "preparing": "준비 중...",
+    "recipientEmail": "수신자 이메일",
+    "scenarios": {
+      "acute-appendicitis": "급성 충수염",
+      "anxiety": "범불안장애",
+      "asthma": "천식 악화",
+      "chest-pain": "흉통 평가",
+      "diabetes": "제2형 당뇨병 관리",
+      "gerd": "위식도역류질환",
+      "hypothyroidism": "갑상선기능저하증",
+      "iron-deficiency-anemia": "철결핍성 빈혈",
+      "low-back-pain": "급성 요통",
+      "migraine": "편두통 진단",
+      "otitis-media": "급성 중이염",
+      "pediatric-fever": "소아 발열 평가",
+      "pneumonia": "지역사회획득폐렴",
+      "rheumatoid-arthritis": "류마티스관절염",
+      "uti": "요로감염"
+    },
+    "reviewFhirData": "FHIR 데이터 검토",
+    "scenario": "시나리오",
+    "sendEmail": "이메일 보내기",
+    "sendViaEmail": "이메일로 보내기",
+    "sending": "전송 중...",
+    "showTranscript": "전사 보기",
+    "simulation": "시뮬레이션",
+    "simulationDescription": "마이크 없이도 전체 파이프라인을 테스트할 수 있도록 의사-환자 대화를 시뮬레이션합니다.",
+    "simulationTitle": "시뮬레이션",
+    "speed": "속도",
+    "speedOptions": {
+      "realTime": "1배속 (실시간)",
+      "x2": "2배속",
+      "x3": "3배속",
+      "x4": "4배속"
+    },
+    "startSimulation": "시뮬레이션 시작",
+    "stopSimulation": "시뮬레이션 중지",
+    "syncToEmr": "EMR로 동기화",
+    "syncing": "동기화 중..."
+  },
+  "ConsultationLayout": {
+    "loading": "진료를 불러오는 중...",
+    "newConsultation": "새 진료",
+    "noActiveDescription": "새 세션을 만들어 진료 녹음과 분석을 시작하세요.",
+    "noActiveTitle": "활성 진료가 없습니다",
+    "preparing": "진료 화면을 준비하는 중...",
+    "startNew": "새 진료 시작"
+  },
+  "ResearchInput": {
+    "askPlaceholder": "의학 리서치 질문을 입력하세요...",
+    "clearChat": "채팅 지우기",
+    "includeInsights": "실시간 인사이트",
+    "includeInsightsDescription": "현재 세션 인사이트를 리서치 컨텍스트에 포함합니다",
+    "responseError": "응답을 생성하는 중 오류가 발생했습니다. 다시 시도해 주세요.",
+    "saveFailed": "리서치 메시지를 저장하지 못했습니다",
+    "startSessionPlaceholder": "먼저 세션을 시작하세요..."
+  },
+  "ResearchMessageList": {
+    "description": "리서치에 사용할 의학 데이터베이스를 선택하세요.",
+    "searching": "의학 데이터베이스를 검색하는 중...",
+    "title": "지식 커넥터"
+  },
+  "ConnectorsDialog": {
+    "description": "근거 기반 진단 지원을 위해 외부 의학 데이터베이스를 활성화합니다.",
+    "title": "지식 커넥터"
+  },
+  "NoteInputBar": {
+    "attachmentAlt": "첨부 이미지",
+    "fileTooLarge": "파일 크기는 10MB 이하여야 합니다",
+    "imageUploadFailed": "{count}개의 이미지 업로드에 실패했습니다",
+    "onlyImages": "이미지 파일만 지원합니다",
+    "placeholderAiDoctor": "메시지를 입력하세요...",
+    "placeholderDefault": "진료에 메모를 추가하세요...",
+    "placeholderNoSession": "먼저 세션을 시작하세요...",
+    "sendMessageFailed": "메시지를 보내지 못했습니다",
+    "sendNoteFailed": "메모를 보내지 못했습니다"
+  },
+  "ModeSelector": {
+    "agree": "동의합니다",
+    "cancel": "취소",
+    "chooseMode": "진료 모드를 선택하세요",
+    "disclaimerItems": {
+      "accuracy": "AI 응답의 정확성은 보장되지 않습니다. 의학적 판단은 반드시 자격을 갖춘 의료진과 상의하세요.",
+      "emergency": "응급 상황에서는 즉시 119에 연락하거나 가장 가까운 응급실을 방문하세요.",
+      "liability": "계속 진행하면 이 기능을 본인 책임 하에 사용하며, AI 상담 사용 결과에 대해 서비스 제공자가 책임지지 않는다는 점에 동의하는 것입니다.",
+      "notLicensed": "AI Doctor는 면허를 가진 의료 전문가가 아니며 전문적인 의학적 조언, 진단 또는 치료를 대체하지 않습니다.",
+      "referenceOnly": "제공되는 모든 정보는 참고용이며 의학적 진단이나 처방으로 간주되어서는 안 됩니다."
+    },
+    "disclaimerIntro": "계속하기 전에 아래 내용을 읽고 동의해 주세요:",
+    "disclaimerTitle": "AI Doctor 고지사항",
+    "doctorDescription": "환자와의 실제 진료를 녹음합니다.",
+    "doctorLabel": "저는 의사입니다.",
+    "virtualDescription": "가상 진료를 위해 AI Doctor와 대화합니다.",
+    "virtualLabel": "AI Doctor가 필요합니다"
+  },
+  "InsightsPanel": {
+    "addComment": "코멘트를 추가하세요...",
+    "addItem": "항목 추가...",
+    "addNote": "메모 추가...",
+    "addedByAi": "AI가 추가함",
+    "addedManually": "수동으로 추가됨",
+    "analyzing": "대화를 분석하는 중...",
+    "auto": "자동",
+    "cancel": "취소",
+    "checklist": "체크리스트",
+    "checklistEmpty": "AI가 실행 항목을 식별하면 체크리스트가 여기에 표시됩니다...",
+    "commentSent": "코멘트를 전송했습니다",
+    "commentSentDescription": "인사이트가 곧 업데이트됩니다",
+    "editNote": "메모 편집",
+    "imagingUploads": "업로드된 이미지",
+    "keyFindings": "핵심 소견",
+    "keyFindingsEmpty": "대화가 진행되면 핵심 소견이 식별됩니다...",
+    "liveInsights": "실시간 인사이트",
+    "medicalImage": "의료 이미지",
+    "notePrefix": "메모: {note}",
+    "pendingComments": "대기 중인 코멘트 {count}개...",
+    "redFlags": "레드 플래그",
+    "removeItem": "항목 제거",
+    "send": "보내기",
+    "shortcut": "{modifier}+Enter로 전송",
+    "summary": "요약",
+    "summaryEmpty": "대화가 진행되면 요약이 여기에 표시됩니다..."
+  },
+  "TranscriptBubble": {
+    "keywordCategories": {
+      "diagnosis": "진단",
+      "finding": "소견",
+      "medication": "약물",
+      "symptom": "증상",
+      "vital": "활력징후"
+    },
+    "speaker": {
+      "doctor": "의사",
+      "patient": "환자",
+      "unknown": "?"
+    }
+  },
+  "Record": {
+    "consultationTitle": "진료 기록",
+    "emptyState": "\"기록 생성\"을 눌러 전사 내용으로 구조화된 진료 기록을 만드세요.",
+    "generate": "기록 생성",
+    "generating": "생성 중...",
+    "generatingRecord": "진료 기록을 생성하는 중...",
+    "regenerate": "다시 생성",
+    "unknownPatient": "알 수 없는 환자",
+    "updatingRecord": "진료 기록을 업데이트하는 중...",
+    "vitals": "활력징후",
+    "sections": {
+      "assessment": "평가",
+      "chiefComplaint": "주호소",
+      "familyHistory": "가족력",
+      "hpiText": "현병력 (HPI)",
+      "labsStudies": "검사 / 연구",
+      "medications": "현재 복용 약물",
+      "physicalExam": "신체진찰",
+      "plan": "계획",
+      "pmh": "과거병력 (PMH)",
+      "rosText": "계통문진 (ROS)",
+      "socialHistory": "사회력"
+    }
+  },
+  "PatientHandout": {
+    "added": "추가됨",
+    "conditionNotInDdx": "DDx에 없는 질환인가요? ICD-11 검색",
+    "ddxSectionLabel": "질환 선택 (DDx)",
+    "emptyState": "아직 감별진단이 없습니다. 아래 ICD-11 검색으로 질환을 추가하세요.",
+    "generate": "안내문 생성",
+    "generating": "생성 중...",
+    "generatingDescription": "환자 안내문을 생성하는 중...",
+    "icd11Search": "ICD-11 검색",
+    "languageHint": "안내문 언어는 환자 대화에서 자동 감지됩니다.",
+    "noCode": "코드 없음",
+    "regenerate": "안내문 다시 생성",
+    "searchDescription": "현재 DDx에 없는 질환을 추가합니다.",
+    "searchIcd11Condition": "ICD-11 질환 검색",
+    "searchPlaceholder": "ICD-11 질환 검색...",
+    "searching": "ICD-11 검색 중...",
+    "searchNoResults": "검색 결과가 없습니다.",
+    "selectCondition": "{name} 선택",
+    "source": "출처",
+    "sourceDdx": "DDx",
+    "sourceIcd11": "ICD-11 검색",
+    "subtitle": "선택한 질환에 대해 환자 친화적인 안내를 생성합니다.",
+    "title": "환자 안내문",
+    "notGenerated": "[생성되지 않음]",
+    "editSection": "{title} 편집",
+    "confidence": {
+      "high": "높음",
+      "low": "낮음",
+      "moderate": "중간"
+    },
+    "sections": {
+      "additionalAdviceFollowUp": "추가 안내 / 추적관찰",
+      "causesRiskFactors": "원인 / 위험 요인",
+      "complications": "합병증",
+      "conditionOverview": "질환 개요",
+      "disclaimer": "고지사항",
+      "signsSymptoms": "징후 / 증상",
+      "treatmentOptions": "치료 옵션",
+      "whenToSeekHelp": "진료가 필요한 시점"
+    }
+  },
+  "FhirBundleReview": {
+    "birthDate": "생년월일",
+    "class": "분류",
+    "clinicalImpression": "임상 인상",
+    "conditions": "질환",
+    "consultationRecord": "진료 기록",
+    "createdResources": "{count}개의 FHIR 리소스를 생성했습니다",
+    "encounter": "진료",
+    "familyName": "성",
+    "finding": "소견",
+    "findings": "소견",
+    "gender": "성별",
+    "givenName": "이름",
+    "nameMissing": "이름 없음",
+    "observations": "관찰",
+    "observation": "관찰",
+    "ongoing": "진행 중",
+    "patient": "환자",
+    "period": "기간",
+    "reason": "사유",
+    "redFlags": "레드 플래그",
+    "sections": "{count}개 섹션",
+    "summary": "요약",
+    "unknown": "알 수 없음",
+    "unknownStatus": "알 수 없음",
+    "verificationIcd": "ICD",
+    "placeholders": {
+      "firstName": "이름을 입력하세요",
+      "lastName": "성을 입력하세요"
+    }
+  },
+  "MedplumSync": {
+    "buttonTitles": {
+      "error": "동기화 실패 (클릭하여 재시도)",
+      "idle": "EMR로 동기화",
+      "preparing": "FHIR 데이터를 준비하는 중...",
+      "ready": "FHIR 데이터 검토 (클릭하여 열기)",
+      "reviewing": "FHIR 데이터 검토 중",
+      "success": "동기화 완료 (클릭하여 초기화)",
+      "syncing": "EMR로 전송 중..."
+    },
+    "cancel": "취소",
+    "close": "닫기",
+    "description": "생성된 FHIR 리소스를 EMR로 보내기 전에 검토하고 수정하세요.",
+    "send": "EMR로 보내기",
+    "sending": "전송 중...",
+    "title": "FHIR 데이터 검토"
+  },
+  "TranscriptViewer": {
+    "analyzingKeywords": "진단 키워드를 분석하는 중...",
+    "classifyingRoles": "역할을 분류하는 중...",
+    "collapse": "접기",
+    "dismiss": "닫기",
+    "dropImagesHere": "이미지를 여기에 놓으세요",
+    "headerAiConsultation": "AI 진료",
+    "headerTranscript": "전사",
+    "identifyingSpeakers": "화자를 식별하는 중...",
+    "listening": "듣는 중...",
+    "loadingHistory": "전사 기록을 불러오는 중...",
+    "pause": "녹음 일시정지",
+    "resume": "녹음 재개",
+    "scrollToLatest": "최신 항목으로 이동",
+    "singleSpeakerConfirm": "네, 제가 둘 다 연기 중입니다",
+    "singleSpeakerDetectedDescription": "의사와 환자 역할을 모두 직접 진행하고 계신가요?",
+    "singleSpeakerDetectedTitle": "한 명의 화자만 감지되었습니다",
+    "startRecording": "녹음 시작",
+    "status": {
+      "active": "진행 중",
+      "live": "실시간",
+      "paused": "일시정지"
+    },
+    "stop": "녹음 중지",
+    "typing": "입력 중..."
+  },
+  "DiagnosisSupport": {
+    "title": "감별진단",
+    "emptyState": "AI가 가능한 질환을 식별하면 진단 제안이 여기에 표시됩니다...",
+    "references": "참고 자료",
+    "moreSources": "+{count, plural, one {#개 추가 출처} other {#개 추가 출처}}",
+    "confidence": "신뢰도",
+    "evidence": "근거",
+    "retry": "다시 시도",
+    "detailsLoadFailed": "진단 상세 정보를 불러오지 못했습니다. 다시 시도해 주세요.",
+    "tabs": {
+      "clinical": "임상 의사결정 지원",
+      "references": "참고 자료"
+    },
+    "clinicalSections": {
+      "diagnosticCriteria": "진단 기준",
+      "recommendedWorkup": "권장 평가",
+      "treatmentOptions": "치료 옵션",
+      "firstLine": "1차 선택",
+      "alternatives": "대안",
+      "nonPharmacologic": "비약물적 치료",
+      "keyDifferentiatingFeatures": "주요 감별 포인트",
+      "escalationCriteria": "상향 대응 기준",
+      "clinicalPearls": "임상 팁"
+    },
+    "confidenceLevels": {
+      "high": "높음",
+      "moderate": "중간",
+      "low": "낮음"
+    },
+    "viewSource": "출처 보기",
+    "viewArticle": "논문 보기",
+    "supportUnavailable": "현재 임상 의사결정 지원을 생성할 수 없습니다.",
+    "noReferences": "외부 출처에서 가져온 참고 자료가 없습니다.",
+    "loadingReferences": "추가 참고 자료를 불러오는 중...",
+    "externalSourcesFailed": "일부 외부 출처를 불러오지 못했습니다",
+    "failures": {
+      "icdLookupFailed": "ICD-11 참고 자료 조회에 실패했습니다.",
+      "icdLookupTimedOut": "ICD-11 참고 자료 조회 시간이 초과되었습니다.",
+      "icdCredentialsMissing": "ICD-11 인증 정보가 설정되지 않았습니다.",
+      "articleIdParseFailed": "{source} 참고 자료 파싱에 실패했습니다.",
+      "articleFetchTimedOut": "{source} 참고 자료 조회 시간이 초과되었습니다.",
+      "articleFetchFailed": "{source} 참고 자료 조회에 실패했습니다."
+    }
+  }
+}

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Loader2 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -25,6 +26,11 @@ import {
   parseAdminFilters,
   toAdminApiParams,
 } from "@/lib/admin/filters"
+import {
+  getAdminModeLabel,
+  getAdminRiskBandLabel,
+  getAdminRuleLabel,
+} from "@/lib/admin/localization"
 import type { AdminSessionRow, AdminSessionsResponse } from "@/types/admin"
 
 function buildPreviousRange(
@@ -48,6 +54,8 @@ function formatDelta(value: number): string {
 }
 
 export function AdminSessions() {
+  const t = useTranslations("AdminSessions")
+  const tCommon = useTranslations("AdminCommon")
   const searchParams = useSearchParams()
   const filters = useMemo(() => parseAdminFilters(searchParams), [searchParams])
   const refreshToken = useAdminRefreshToken()
@@ -125,25 +133,28 @@ export function AdminSessions() {
     <section className="space-y-4">
       <div>
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold">Sessions</h2>
+          <h2 className="text-lg font-semibold">{t("title")}</h2>
           {isRefreshing ? (
             <Loader2 className="size-4 animate-spin text-muted-foreground" />
           ) : null}
         </div>
         <p className="text-xs text-muted-foreground">
-          Risk-focused session queue with server-side ordering.
+          {t("description")}
         </p>
         <p className="text-xs text-muted-foreground">
-          Compared to previous period: {formatDelta(countDelta)} sessions ({previousTotalCount}{" "}
-          &rarr; {totalCount})
+          {t("periodComparison", {
+            delta: formatDelta(countDelta),
+            previousTotalCount,
+            totalCount,
+          })}
         </p>
       </div>
 
       {error ? (
-        <AdminEmptyState title="Failed to load sessions" description={error} />
+        <AdminEmptyState title={t("failed")} description={error} />
       ) : null}
 
-      {isInitialLoading ? <AdminLoadingState label="Loading sessions..." /> : null}
+      {isInitialLoading ? <AdminLoadingState label={t("loading")} /> : null}
 
       {!isInitialLoading ? (
         <Card>
@@ -152,12 +163,12 @@ export function AdminSessions() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Session</TableHead>
-                    <TableHead>Mode</TableHead>
-                    <TableHead>AI Calls</TableHead>
-                    <TableHead>Record Finalization</TableHead>
-                    <TableHead>Risk</TableHead>
-                    <TableHead>Flags</TableHead>
+                    <TableHead>{t("columns.session")}</TableHead>
+                    <TableHead>{t("columns.mode")}</TableHead>
+                    <TableHead>{t("columns.aiCalls")}</TableHead>
+                    <TableHead>{t("columns.recordFinalization")}</TableHead>
+                    <TableHead>{t("columns.risk")}</TableHead>
+                    <TableHead>{t("columns.flags")}</TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
@@ -172,18 +183,18 @@ export function AdminSessions() {
                           {fmtDateTime(session.startedAt)}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Patient: {session.patientNameMasked || "-"}
+                          {t("patient")}: {session.patientNameMasked || "-"}
                         </div>
                       </TableCell>
-                      <TableCell>{session.mode}</TableCell>
+                      <TableCell>{getAdminModeLabel(tCommon, session.mode)}</TableCell>
                       <TableCell>{session.aiCallCount}</TableCell>
                       <TableCell>{toPercent(session.recordFinalizationRate)}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="mr-1">
-                          {session.riskBand}
+                          {getAdminRiskBandLabel(tCommon, session.riskBand)}
                         </Badge>
                         {session.hasRedFlag ? (
-                          <Badge variant="destructive">red-flag</Badge>
+                          <Badge variant="destructive">{t("redFlag")}</Badge>
                         ) : null}
                       </TableCell>
                       <TableCell>
@@ -193,7 +204,7 @@ export function AdminSessions() {
                           ) : (
                             session.riskFlags.map((flag) => (
                               <Badge key={flag} variant="outline" className="text-[10px]">
-                                {flag}
+                                {getAdminRuleLabel(tCommon, flag)}
                               </Badge>
                             ))
                           )}
@@ -202,7 +213,7 @@ export function AdminSessions() {
                       <TableCell>
                         <Button asChild variant="outline" size="sm">
                           <Link href={`/admin/sessions/${session.id}?${filterQuery}`}>
-                            Open
+                            {t("open")}
                           </Link>
                         </Button>
                       </TableCell>
@@ -213,8 +224,8 @@ export function AdminSessions() {
                     <TableRow>
                       <TableCell colSpan={7}>
                         <AdminEmptyState
-                          title="No sessions"
-                          description="No sessions matched the current filters."
+                          title={t("noSessionsTitle")}
+                          description={t("noSessionsDescription")}
                         />
                       </TableCell>
                     </TableRow>
@@ -227,13 +238,13 @@ export function AdminSessions() {
               {nextCursor ? (
                 <Button variant="outline" onClick={() => void loadMore()} disabled={isLoadingMore}>
                   {isLoadingMore ? <Loader2 className="size-4 animate-spin" /> : null}
-                  {isLoadingMore ? "Loading..." : "Load More Sessions"}
+                  {isLoadingMore ? t("loading") : t("loadMore")}
                 </Button>
               ) : null}
               {isLoading && rows.length > 0 ? (
                 <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                   <Loader2 className="size-3.5 animate-spin" />
-                  Loading sessions...
+                  {t("loading")}
                 </span>
               ) : null}
             </div>

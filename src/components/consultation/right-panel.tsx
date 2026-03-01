@@ -1,12 +1,14 @@
 "use client"
 
 import { useState, useCallback, useRef } from "react"
+import { useTranslations } from "next-intl"
 import { RecordingControls } from "./transcript/recording-controls"
 import { TranscriptViewer } from "./transcript/transcript-viewer"
 import { NoteInputBar, type NoteInputBarHandle } from "./note-input/note-input-bar"
 import { IconPhoto } from "@tabler/icons-react"
 
 export function RightPanel() {
+  const t = useTranslations("TranscriptViewer")
   const [isDragOver, setIsDragOver] = useState(false)
   const dragCounterRef = useRef(0)
   const noteInputRef = useRef<NoteInputBarHandle>(null)
@@ -62,7 +64,7 @@ export function RightPanel() {
       {isDragOver && (
         <div className="absolute inset-0 bg-primary/5 border-2 border-dashed border-primary/40 rounded-lg flex flex-col items-center justify-center z-20 pointer-events-none backdrop-blur-[1px]">
           <IconPhoto className="size-8 text-primary/60 mb-2" />
-          <p className="text-sm font-medium text-primary/80">Drop images here</p>
+          <p className="text-sm font-medium text-primary/80">{t("dropImagesHere")}</p>
         </div>
       )}
     </div>

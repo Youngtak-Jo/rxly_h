@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import Link from "next/link"
 import { ChevronLeft, Lock, ShieldCheck, Fingerprint, Activity } from "lucide-react"
+import { getTranslations } from "next-intl/server"
 
 export const metadata: Metadata = {
     title: "Security | Rxly",
@@ -13,7 +14,8 @@ const PROTOCOLS = [
     { id: "audit", title: "Audit-ready Logging", icon: Activity, color: "text-purple-600", bg: "bg-purple-50", desc: "Every read, write, and modification of PHI is tracked in an immutable audit ledger. This provides a complete chronological record necessary for HIPAA compliance reporting and internal security reviews." },
 ]
 
-export default function SecurityPage() {
+export default async function SecurityPage() {
+    const t = await getTranslations("FeatureSecurity")
     return (
         <div className="min-h-screen bg-[#FAFAFA] text-[#111111] font-sans selection:bg-black selection:text-white">
             {/* Navigation */}
@@ -21,7 +23,7 @@ export default function SecurityPage() {
                 <div className="flex-1">
                     <Link href="/" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-black transition-colors rounded-full pl-2 pr-4 py-1.5 hover:bg-black/5">
                         <ChevronLeft className="w-4 h-4" />
-                        <span>Back to Home</span>
+                        <span>{t("backToHome")}</span>
                     </Link>
                 </div>
             </nav>
@@ -31,13 +33,13 @@ export default function SecurityPage() {
                 <header className="mb-16 max-w-2xl">
                     <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-rose-50 border border-rose-100/50">
                         <ShieldCheck className="w-4 h-4 text-rose-600" />
-                        <span className="text-xs font-semibold uppercase tracking-wider text-rose-800">Protected & Compliant</span>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-rose-800">{t("badge")}</span>
                     </div>
                     <h1 className="text-4xl md:text-5xl font-serif text-black mb-6 tracking-tight leading-tight">
-                        Encryption-first with HIPAA-aligned safeguards
+                        {t("title")}
                     </h1>
                     <p className="text-lg text-gray-600 leading-relaxed">
-                        Security in healthcare is non-negotiable. Rxly's architecture is built around defense-in-depth principles, ensuring that patient data remains strictly isolated, encrypted, and monitored.
+                        {t("description")}
                     </p>
                 </header>
 
@@ -51,9 +53,9 @@ export default function SecurityPage() {
                                 </div>
                             </div>
                             <div>
-                                <h3 className="text-xl font-bold text-black mb-3">{protocol.title}</h3>
+                                <h3 className="text-xl font-bold text-black mb-3">{t(`protocols.${protocol.id}.title`)}</h3>
                                 <p className="text-base text-gray-600 leading-relaxed">
-                                    {protocol.desc}
+                                    {t(`protocols.${protocol.id}.description`)}
                                 </p>
                             </div>
                         </div>

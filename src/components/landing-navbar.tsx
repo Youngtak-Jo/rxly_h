@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import LiquidGlass from "liquid-glass-react"
 import { Menu } from "lucide-react"
+import { useTranslations } from "next-intl"
 import styles from "./landing-navbar.module.css"
 
 type NavItem = {
@@ -20,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 export function LandingNavbar() {
+  const t = useTranslations("LandingNavbar")
   const navMountRef = useRef<HTMLDivElement | null>(null)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
@@ -132,7 +134,7 @@ export function LandingNavbar() {
                     href={item.href}
                     className="rounded-full px-3 py-1.5 text-sm font-medium text-white/90 transition hover:bg-white/20 hover:text-white"
                   >
-                    {item.label}
+                    {t(item.label.toLowerCase() as "connectors" | "customization" | "security" | "ehr")}
                   </a>
                 </li>
               ))}
@@ -143,14 +145,17 @@ export function LandingNavbar() {
                 href="/consultation"
                 className="inline-flex h-9 items-center justify-center rounded-full bg-white px-4 text-sm font-semibold text-black transition hover:bg-white/90"
               >
-                <span>Start<span className="hidden sm:inline"> Consultation</span></span>
+                <span>
+                  {t("start")}
+                  <span className="hidden sm:inline"> {t("consultation")}</span>
+                </span>
               </Link>
 
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="inline-flex size-9 items-center justify-center rounded-full border border-white/40 bg-white/12 text-white transition hover:bg-white/20 md:hidden"
-                aria-label="Toggle navigation menu"
+                aria-label={t("toggleNavigation")}
               >
                 <Menu className="size-4" />
               </button>
@@ -187,7 +192,7 @@ export function LandingNavbar() {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="rounded-lg px-4 py-3 text-sm font-medium text-white/90 transition hover:bg-white/20 hover:text-white"
                 >
-                  {item.label}
+                  {t(item.label.toLowerCase() as "connectors" | "customization" | "security" | "ehr")}
                 </a>
               ))}
               <div className="mt-2 border-t border-white/10 pt-4">
@@ -196,7 +201,7 @@ export function LandingNavbar() {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="block w-full rounded-full bg-white px-4 py-3 text-center text-sm font-semibold text-black transition hover:bg-white/90"
                 >
-                  Start Consultation
+                  {t("start")} {t("consultation")}
                 </Link>
               </div>
             </nav>

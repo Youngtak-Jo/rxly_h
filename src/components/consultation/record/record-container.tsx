@@ -1,5 +1,6 @@
 "use client"
 
+import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { RecordSection } from "./record-section"
 import { useRecordStore } from "@/stores/record-store"
@@ -7,8 +8,12 @@ import { useSessionStore } from "@/stores/session-store"
 import { generateRecord } from "@/hooks/use-live-record"
 
 import { IconLoader2 } from "@tabler/icons-react"
+import type { UiLocale } from "@/i18n/config"
+import { formatDate } from "@/i18n/format"
 
 export function RecordContainer() {
+  const t = useTranslations("Record")
+  const locale = useLocale() as UiLocale
   const { record, isGenerating, updateField } = useRecordStore()
   const activeSession = useSessionStore((s) => s.activeSession)
 
@@ -30,28 +35,28 @@ export function RecordContainer() {
   }
 
   const sections = [
-    { key: "chiefComplaint", title: "Chief Complaint" },
-    { key: "hpiText", title: "History of Present Illness (HPI)" },
-    { key: "medications", title: "Current Medications" },
-    { key: "rosText", title: "Review of Systems (ROS)" },
-    { key: "pmh", title: "Past Medical History (PMH)" },
-    { key: "socialHistory", title: "Social History" },
-    { key: "familyHistory", title: "Family History" },
-    { key: "physicalExam", title: "Physical Exam" },
-    { key: "labsStudies", title: "Labs / Studies" },
-    { key: "assessment", title: "Assessment" },
-    { key: "plan", title: "Plan" },
+    { key: "chiefComplaint", titleKey: "chiefComplaint" },
+    { key: "hpiText", titleKey: "hpiText" },
+    { key: "medications", titleKey: "medications" },
+    { key: "rosText", titleKey: "rosText" },
+    { key: "pmh", titleKey: "pmh" },
+    { key: "socialHistory", titleKey: "socialHistory" },
+    { key: "familyHistory", titleKey: "familyHistory" },
+    { key: "physicalExam", titleKey: "physicalExam" },
+    { key: "labsStudies", titleKey: "labsStudies" },
+    { key: "assessment", titleKey: "assessment" },
+    { key: "plan", titleKey: "plan" },
   ] as const
 
   return (
     <div data-tour="record-panel" className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-medium">Consultation Record</h3>
+          <h3 className="text-sm font-medium">{t("consultationTitle")}</h3>
           {record && (
             <p className="text-xs text-muted-foreground">
-              {activeSession?.patientName || "Unknown Patient"} &middot;{" "}
-              {new Date(record.date).toLocaleDateString()}
+              {activeSession?.patientName || t("unknownPatient")} &middot;{" "}
+              {formatDate(record.date, locale)}
             </p>
           )}
         </div>
@@ -66,28 +71,27 @@ export function RecordContainer() {
           ) : (
             ''
           )}
-          {isGenerating ? "Generating..." : record ? "Regenerate" : "Generate Record"}
+          {isGenerating ? t("generating") : record ? t("regenerate") : t("generate")}
         </Button>
       </div>
 
       {isGenerating && !record && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
           <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          Generating consultation record...
+          {t("generatingRecord")}
         </div>
       )}
 
       {isGenerating && record && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
           <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          Updating consultation record...
+          {t("updatingRecord")}
         </div>
       )}
 
       {!record && !isGenerating && (
         <p className="text-sm text-muted-foreground/50 italic text-center py-8">
-          Click &ldquo;Generate Record&rdquo; to create a structured consultation
-          record from the transcript.
+          {t("emptyState")}
         </p>
       )}
 
@@ -96,7 +100,7 @@ export function RecordContainer() {
           {record?.vitals && (
             <div className="rounded-lg border p-3">
               <h4 className="text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wide">
-                Vitals
+                {t("vitals")}
               </h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-sm">
                 {Object.entries(record.vitals).map(([key, value]) => (
@@ -113,10 +117,10 @@ export function RecordContainer() {
             </div>
           )}
 
-          {sections.map(({ key, title }) => (
+          {sections.map(({ key, titleKey }) => (
             <RecordSection
               key={key}
-              title={title}
+              title={t(`sections.${titleKey}`)}
               value={toStr(record?.[key])}
               onChange={(value) => updateField(key, value)}
               isLoading={isGenerating && !record}

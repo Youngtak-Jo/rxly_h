@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef } from "react"
+import { useTranslations } from "next-intl"
 import { useDdxStore } from "@/stores/ddx-store"
 import { useConnectorStore } from "@/stores/connector-store"
 import { useSettingsStore } from "@/stores/settings-store"
@@ -52,6 +53,19 @@ interface MergedReference {
   icd11Detail?: Icd11Detail | null
   articleDetail?: DiagnosisDetailArticle | null
   isEnriched: boolean
+}
+
+function getConfidenceLabelKey(confidence: string) {
+  switch (confidence) {
+    case "high":
+      return "confidenceLevels.high"
+    case "moderate":
+      return "confidenceLevels.moderate"
+    case "low":
+      return "confidenceLevels.low"
+    default:
+      return null
+  }
 }
 
 function normalizeUrl(url: string): string {
@@ -133,6 +147,9 @@ function DiagnosisCard({
   diagnosis: DiagnosisItem
   onSelect: (dx: DiagnosisItem) => void
 }) {
+  const t = useTranslations("DiagnosisSupport")
+  const confidenceLabelKey = getConfidenceLabelKey(diagnosis.confidence)
+
   return (
     <div
       className="rounded-lg border p-3 space-y-2 cursor-pointer hover:border-foreground/30 transition-colors"
@@ -149,7 +166,7 @@ function DiagnosisCard({
           variant="secondary"
           className={`text-[10px] shrink-0 ${confidenceColors[diagnosis.confidence] || ""}`}
         >
-          {diagnosis.confidence}
+          {confidenceLabelKey ? t(confidenceLabelKey) : diagnosis.confidence}
         </Badge>
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed">
@@ -158,7 +175,7 @@ function DiagnosisCard({
       {diagnosis.citations.length > 0 && (
         <div className="pt-1 space-y-1">
           <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-            References
+            {t("references")}
           </p>
           {(() => {
             const citations = diagnosis.citations
@@ -204,7 +221,7 @@ function DiagnosisCard({
                 ))}
                 {remaining > 0 && (
                   <p className="text-[10px] text-muted-foreground">
-                    +{remaining} more source{remaining > 1 ? "s" : ""}
+                    {t("moreSources", { count: remaining })}
                   </p>
                 )}
               </>
@@ -259,7 +276,8 @@ function ClinicalSupportSection({
 }: {
   support: ClinicalSupportResponse["support"]
 }) {
-  const render = (t: string) => renderClinicalText(t)
+  const t = useTranslations("DiagnosisSupport")
+  const render = (text: string) => renderClinicalText(text)
 
   return (
     <div className="space-y-4 pr-3">
@@ -268,7 +286,7 @@ function ClinicalSupportSection({
         <div className="space-y-1.5">
           <p className="text-sm font-medium flex items-center gap-1.5">
             <IconListCheck className="size-3.5 text-blue-500" />
-            Diagnostic Criteria
+            {t("clinicalSections.diagnosticCriteria")}
           </p>
           <ul className="space-y-1 ml-5">
             {support.diagnosticCriteria.map((c, i) => (
@@ -288,7 +306,7 @@ function ClinicalSupportSection({
         <div className="space-y-1.5">
           <p className="text-sm font-medium flex items-center gap-1.5">
             <IconTestPipe className="size-3.5 text-violet-500" />
-            Recommended Workup
+            {t("clinicalSections.recommendedWorkup")}
           </p>
           <ul className="space-y-1 ml-5">
             {support.recommendedWorkup.map((w, i) => (
@@ -310,12 +328,12 @@ function ClinicalSupportSection({
           <div className="space-y-1.5">
             <p className="text-sm font-medium flex items-center gap-1.5">
               <IconPill className="size-3.5 text-emerald-500" />
-              Treatment Options
+              {t("clinicalSections.treatmentOptions")}
             </p>
             {support.treatmentOptions.firstLine.length > 0 && (
               <div className="ml-5">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                  First-line
+                  {t("clinicalSections.firstLine")}
                 </p>
                 <ul className="space-y-0.5">
                   {support.treatmentOptions.firstLine.map((t, i) => (
@@ -332,7 +350,7 @@ function ClinicalSupportSection({
             {support.treatmentOptions.alternatives.length > 0 && (
               <div className="ml-5 mt-1.5">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                  Alternatives
+                  {t("clinicalSections.alternatives")}
                 </p>
                 <ul className="space-y-0.5">
                   {support.treatmentOptions.alternatives.map((t, i) => (
@@ -349,7 +367,7 @@ function ClinicalSupportSection({
             {support.treatmentOptions.nonPharmacologic.length > 0 && (
               <div className="ml-5 mt-1.5">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                  Non-pharmacologic
+                  {t("clinicalSections.nonPharmacologic")}
                 </p>
                 <ul className="space-y-0.5">
                   {support.treatmentOptions.nonPharmacologic.map((t, i) => (
@@ -371,7 +389,7 @@ function ClinicalSupportSection({
         <div className="space-y-1.5">
           <p className="text-sm font-medium flex items-center gap-1.5">
             <IconStethoscope className="size-3.5 text-amber-500" />
-            Key Differentiating Features
+            {t("clinicalSections.keyDifferentiatingFeatures")}
           </p>
           <ul className="space-y-1 ml-5">
             {support.differentiatingFeatures.map((f, i) => (
@@ -391,7 +409,7 @@ function ClinicalSupportSection({
         <div className="space-y-1.5">
           <p className="text-sm font-medium flex items-center gap-1.5">
             <IconArrowUp className="size-3.5 text-red-500" />
-            Escalation Criteria
+            {t("clinicalSections.escalationCriteria")}
           </p>
           <ul className="space-y-1 ml-5">
             {support.escalationCriteria.map((e, i) => (
@@ -411,7 +429,7 @@ function ClinicalSupportSection({
         <div className="space-y-1.5">
           <p className="text-sm font-medium flex items-center gap-1.5">
             <IconBulb className="size-3.5 text-yellow-500" />
-            Clinical Pearls
+            {t("clinicalSections.clinicalPearls")}
           </p>
           <ul className="space-y-1 ml-5">
             {support.clinicalPearls.map((p, i) => (
@@ -431,24 +449,25 @@ function ClinicalSupportSection({
 }
 
 function FetchStatusBanner({ fetchStatus }: { fetchStatus: FetchStatus }) {
+  const t = useTranslations("DiagnosisSupport")
   const failures: string[] = []
 
   fetchStatus.icd11.forEach((entry) => {
-    if (entry.status === "failed") failures.push("ICD-11 lookup failed")
-    if (entry.status === "timeout") failures.push("ICD-11 lookup timed out")
+    if (entry.status === "failed") failures.push(t("failures.icdLookupFailed"))
+    if (entry.status === "timeout") failures.push(t("failures.icdLookupTimedOut"))
     if (entry.status === "no_credentials")
-      failures.push("ICD-11 API credentials not configured")
+      failures.push(t("failures.icdCredentialsMissing"))
   })
 
   fetchStatus.articles.forEach((a) => {
     if (a.status !== "success") {
       const sourceLabel = a.source === "europe_pmc" ? "Europe PMC" : "PubMed"
       if (a.status === "id_extraction_failed") {
-        failures.push(`Could not parse ${sourceLabel} article ID from URL`)
+        failures.push(t("failures.articleIdParseFailed", { source: sourceLabel }))
       } else if (a.status === "timeout") {
-        failures.push(`${sourceLabel} article fetch timed out`)
+        failures.push(t("failures.articleFetchTimedOut", { source: sourceLabel }))
       } else {
-        failures.push(`${sourceLabel} article fetch failed`)
+        failures.push(t("failures.articleFetchFailed", { source: sourceLabel }))
       }
     }
   })
@@ -459,7 +478,7 @@ function FetchStatusBanner({ fetchStatus }: { fetchStatus: FetchStatus }) {
     <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-2.5 space-y-1">
       <p className="text-xs font-medium text-amber-800 dark:text-amber-400 flex items-center gap-1">
         <IconAlertTriangle className="size-3.5" />
-        Some external sources could not be loaded
+        {t("externalSourcesFailed")}
       </p>
       {failures.map((f, i) => (
         <p
@@ -474,6 +493,7 @@ function FetchStatusBanner({ fetchStatus }: { fetchStatus: FetchStatus }) {
 }
 
 function RichReferenceCard({ reference }: { reference: MergedReference }) {
+  const t = useTranslations("DiagnosisSupport")
   const { citation, icd11Detail, articleDetail } = reference
 
   if (icd11Detail) {
@@ -515,7 +535,7 @@ function RichReferenceCard({ reference }: { reference: MergedReference }) {
           className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
         >
           <IconExternalLink className="size-3" />
-          View source
+          {t("viewSource")}
         </a>
       </div>
     )
@@ -551,7 +571,7 @@ function RichReferenceCard({ reference }: { reference: MergedReference }) {
           className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
         >
           <IconExternalLink className="size-3" />
-          View article
+          {t("viewArticle")}
         </a>
       </div>
     )
@@ -580,13 +600,14 @@ function RichReferenceCard({ reference }: { reference: MergedReference }) {
         className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
       >
         <IconExternalLink className="size-3" />
-        View source
+        {t("viewSource")}
       </a>
     </div>
   )
 }
 
 export function DiagnosisSection() {
+  const tSupport = useTranslations("DiagnosisSupport")
   const diagnoses = useDdxStore((s) => s.diagnoses)
   const [selectedDiagnosis, setSelectedDiagnosis] =
     useState<DiagnosisItem | null>(null)
@@ -651,11 +672,11 @@ export function DiagnosisSection() {
             detailsCache.current.set(cacheKey, data)
             setDetails(data)
           } else {
-            setError("Failed to load diagnosis details. Please try again.")
+            setError(tSupport("detailsLoadFailed"))
           }
         })
         .catch(() => {
-          setError("Failed to load diagnosis details. Please try again.")
+          setError(tSupport("detailsLoadFailed"))
         })
         .finally(() => setIsLoading(false))
     }
@@ -680,7 +701,7 @@ export function DiagnosisSection() {
         })
         .finally(() => setIsClinicalLoading(false))
     }
-  }, [])
+  }, [tSupport])
 
   const handleClose = useCallback(() => {
     setSelectedDiagnosis(null)
@@ -693,7 +714,7 @@ export function DiagnosisSection() {
     <section>
       <h3 className="flex items-center gap-2 text-sm font-medium mb-2">
         <IconStethoscope className="size-4 text-orange-500" />
-        Differential Diagnosis
+        {tSupport("title")}
         {diagnoses.length > 0 && (
           <Badge variant="secondary" className="text-[10px]">
             {diagnoses.length}
@@ -702,8 +723,7 @@ export function DiagnosisSection() {
       </h3>
       {diagnoses.length === 0 ? (
         <p className="text-sm text-muted-foreground/50 italic">
-          Diagnosis suggestions will appear as the AI identifies possible
-          conditions...
+          {tSupport("emptyState")}
         </p>
       ) : (
         <div className="space-y-2">
@@ -727,17 +747,28 @@ export function DiagnosisSection() {
           </DialogHeader>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Confidence:</span>
+            <span className="text-sm text-muted-foreground">
+              {tSupport("confidence")}:
+            </span>
             <Badge
               variant="secondary"
               className={`text-xs ${confidenceColors[selectedDiagnosis?.confidence || ""] || ""}`}
             >
-              {selectedDiagnosis?.confidence}
+              {selectedDiagnosis?.confidence
+                ? (() => {
+                    const confidenceLabelKey = getConfidenceLabelKey(
+                      selectedDiagnosis.confidence
+                    )
+                    return confidenceLabelKey
+                      ? tSupport(confidenceLabelKey)
+                      : selectedDiagnosis.confidence
+                  })()
+                : null}
             </Badge>
           </div>
 
           <div>
-            <p className="text-sm font-medium mb-1">Evidence</p>
+            <p className="text-sm font-medium mb-1">{tSupport("evidence")}</p>
             <p className="text-sm text-muted-foreground leading-relaxed">
               {selectedDiagnosis?.evidence}
             </p>
@@ -757,17 +788,17 @@ export function DiagnosisSection() {
                 }
               >
                 <IconReload className="size-3" />
-                Retry
+                {tSupport("retry")}
               </button>
             </div>
           ) : details ? (
             <Tabs defaultValue="clinical" className="flex-1 min-h-0">
               <TabsList className="w-full">
                 <TabsTrigger value="clinical" className="flex-1">
-                  Clinical Decision Support
+                  {tSupport("tabs.clinical")}
                 </TabsTrigger>
                 <TabsTrigger value="references" className="flex-1">
-                  References
+                  {tSupport("tabs.references")}
                 </TabsTrigger>
               </TabsList>
 
@@ -781,8 +812,7 @@ export function DiagnosisSection() {
                     />
                   ) : (
                     <p className="text-sm text-muted-foreground/50 italic">
-                      Clinical decision support could not be generated. The AI
-                      service may be temporarily unavailable.
+                      {tSupport("supportUnavailable")}
                     </p>
                   )}
                 </ScrollArea>
@@ -800,7 +830,7 @@ export function DiagnosisSection() {
                       if (merged.length === 0 && !isClinicalLoading) {
                         return (
                           <p className="text-sm text-muted-foreground/50 italic py-4">
-                            No references available from external sources.
+                            {tSupport("noReferences")}
                           </p>
                         )
                       }
@@ -819,7 +849,7 @@ export function DiagnosisSection() {
                           {isClinicalLoading && (
                             <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
                               <div className="size-3 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground animate-spin" />
-                              Loading additional references...
+                              {tSupport("loadingReferences")}
                             </div>
                           )}
 

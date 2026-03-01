@@ -11,6 +11,7 @@ import {
   useState,
 } from "react"
 import { RefreshCw } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import {
   SidebarInset,
@@ -37,6 +38,7 @@ export function useAdminRefreshToken(): number {
 }
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("AdminShell")
   const [refreshToken, setRefreshToken] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const refreshTimerRef = useRef<number | null>(null)
@@ -86,10 +88,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <SidebarTrigger className="-ml-1" />
             <div className="min-w-0">
               <h1 className="truncate text-sm font-semibold md:text-base">
-                Admin Intelligence Console
+                {t("title")}
               </h1>
               <p className="truncate text-xs text-muted-foreground">
-                Insight-first analytics workspace
+                {t("description")}
               </p>
             </div>
 
@@ -100,7 +102,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               onClick={triggerRefresh}
             >
               <RefreshCw className={cn("size-4", isRefreshing ? "animate-spin" : "")} />
-              Refresh
+              {t("refresh")}
             </Button>
           </header>
 

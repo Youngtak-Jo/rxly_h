@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
@@ -129,6 +130,7 @@ async function persistResearchMessagePair(
 }
 
 export function ResearchInput() {
+  const t = useTranslations("ResearchInput")
   const [text, setText] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const activeSession = useSessionStore((s) => s.activeSession)
@@ -225,7 +227,7 @@ export function ResearchInput() {
         )
         if (!saved) {
           console.error("Failed to persist research messages after retries")
-          toast.error("Failed to save research messages")
+          toast.error(t("saveFailed"))
         }
       }
     } catch (error) {
@@ -247,16 +249,13 @@ export function ResearchInput() {
             )
             if (!saved) {
               console.error("Failed to persist aborted research messages after retries")
-              toast.error("Failed to save research messages")
+              toast.error(t("saveFailed"))
             }
           }
         }
       } else {
         console.error("Research stream error:", error)
-        updateAssistantMessage(
-          assistantId,
-          "An error occurred while generating the response. Please try again."
-        )
+        updateAssistantMessage(assistantId, t("responseError"))
       }
     } finally {
       setStreaming(false)
@@ -296,9 +295,9 @@ export function ResearchInput() {
               className="flex items-center justify-between gap-3 py-2"
             >
               <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium">Live Insights</span>
+                <span className="text-sm font-medium">{t("includeInsights")}</span>
                 <span className="text-[11px] text-muted-foreground leading-tight">
-                  Include current session insights in research context
+                  {t("includeInsightsDescription")}
                 </span>
               </div>
               <Switch
@@ -328,7 +327,7 @@ export function ResearchInput() {
                   className="text-destructive focus:text-destructive"
                 >
                   <IconTrash className="size-4" />
-                  Clear Chat
+                  {t("clearChat")}
                 </DropdownMenuItem>
               </>
             )}
@@ -338,8 +337,8 @@ export function ResearchInput() {
           ref={textareaRef}
           placeholder={
             activeSession
-              ? "Ask a medical research question..."
-              : "Start a session first..."
+              ? t("askPlaceholder")
+              : t("startSessionPlaceholder")
           }
           value={text}
           onChange={(e) => setText(e.target.value)}

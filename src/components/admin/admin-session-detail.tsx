@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useCallback, useMemo, useState } from "react"
 import { Loader2 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,9 +15,15 @@ import { useAdminRefreshToken } from "@/components/admin/admin-shell"
 import { useAdminQuery } from "@/hooks/use-admin-query"
 import { filtersToSearchParams, parseAdminFilters } from "@/lib/admin/filters"
 import { fmtDateTime, toPercent } from "@/components/admin/admin-utils"
+import {
+  getAdminFeatureLabel,
+  getAdminModeLabel,
+} from "@/lib/admin/localization"
 import type { AdminSessionDetail, PhiRevealRequest } from "@/types/admin"
 
 export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
+  const t = useTranslations("AdminSessionDetail")
+  const tCommon = useTranslations("AdminCommon")
   const searchParams = useSearchParams()
   const filters = useMemo(() => parseAdminFilters(searchParams), [searchParams])
   const filterQuery = useMemo(
@@ -35,7 +42,7 @@ export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
   const isInitialLoading = isLoading && !data
 
   const revealField = useCallback(async (payload: PhiRevealRequest) => {
-    const reason = window.prompt("Reason for PHI reveal")?.trim()
+    const reason = window.prompt(t("revealReasonPrompt"))?.trim()
     if (!reason) return
 
     const res = await fetch("/api/admin/phi/reveal", {
@@ -52,7 +59,7 @@ export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
     const response = (await res.json()) as { value: unknown }
     const key = `${payload.entityType}:${payload.entityId}:${payload.fieldPath}`
     setRevealedValues((prev) => ({ ...prev, [key]: response.value }))
-  }, [])
+  }, [t])
 
   const revealedOrMasked = useCallback(
     (
@@ -106,37 +113,37 @@ export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
     <section className="space-y-4">
       <div className="flex items-center gap-2">
         <Button asChild variant="outline" size="sm">
-          <Link href={`/admin/sessions?${filterQuery}`}>Back to sessions</Link>
+          <Link href={`/admin/sessions?${filterQuery}`}>{t("backToSessions")}</Link>
         </Button>
         <Button asChild variant="outline" size="sm">
-          <Link href={`/admin/triage?${filterQuery}&q=${sessionId}`}>Open triage</Link>
+          <Link href={`/admin/triage?${filterQuery}&q=${sessionId}`}>{t("openTriage")}</Link>
         </Button>
       </div>
 
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <CardTitle className="text-base">Session Drilldown</CardTitle>
+            <CardTitle className="text-base">{t("title")}</CardTitle>
             {isRefreshing ? (
               <Loader2 className="size-4 animate-spin text-muted-foreground" />
             ) : null}
           </div>
-          <CardDescription>Selected session: {sessionId}</CardDescription>
+          <CardDescription>{t("selectedSession", { id: sessionId })}</CardDescription>
         </CardHeader>
 
         <CardContent>
           {error ? (
-            <AdminEmptyState title="Failed to load session detail" description={error} />
+            <AdminEmptyState title={t("failed")} description={error} />
           ) : null}
 
           {isInitialLoading ? (
-            <AdminLoadingState label="Loading session detail..." compact />
+            <AdminLoadingState label={t("loading")} compact />
           ) : null}
 
           {!data && !isInitialLoading && !error ? (
             <AdminEmptyState
-              title="Session detail unavailable"
-              description="This session could not be loaded. Try reopening it from the Sessions list."
+              title={t("unavailableTitle")}
+              description={t("unavailableDescription")}
             />
           ) : null}
 
@@ -145,67 +152,80 @@ export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardDescription>Session</CardDescription>
+                    <CardDescription>{t("cards.session.title")}</CardDescription>
                     <CardTitle className="text-sm font-medium">
                       {sessionMeta.title || sessionId.slice(0, 8)}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-1 text-xs text-muted-foreground">
-                    <div>Mode: {sessionMeta.mode || "-"}</div>
-                    <div>Started: {fmtDateTime(sessionMeta.startedAt)}</div>
-                    <div>Updated: {fmtDateTime(sessionMeta.updatedAt)}</div>
+                    <div>
+                      {t("cards.session.mode", {
+                        value: sessionMeta.mode
+                          ? getAdminModeLabel(
+                              tCommon,
+                              sessionMeta.mode as "DOCTOR" | "AI_DOCTOR"
+                            )
+                          : "-",
+                      })}
+                    </div>
+                    <div>{t("cards.session.started", { value: fmtDateTime(sessionMeta.startedAt) })}</div>
+                    <div>{t("cards.session.updated", { value: fmtDateTime(sessionMeta.updatedAt) })}</div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardDescription>Workflow Progress</CardDescription>
+                    <CardDescription>{t("cards.workflowProgress.title")}</CardDescription>
                     <CardTitle className="text-2xl">
                       {toPercent(workflowProgress)}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="text-xs text-muted-foreground">
-                    Transcript + insights + ddx + record + research + handout stages.
+                    {t("cards.workflowProgress.description")}
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardDescription>Signals</CardDescription>
+                    <CardDescription>{t("cards.signals.title")}</CardDescription>
                     <CardTitle className="text-2xl">{transcriptCount}</CardTitle>
                   </CardHeader>
                   <CardContent className="flex flex-wrap gap-1">
                     <Badge variant={hasInsights ? "default" : "outline"}>
-                      Insights
+                      {getAdminFeatureLabel(tCommon, "insights")}
                     </Badge>
-                    <Badge variant={hasDdx ? "default" : "outline"}>DDx</Badge>
-                    <Badge variant={hasRecord ? "default" : "outline"}>Record</Badge>
+                    <Badge variant={hasDdx ? "default" : "outline"}>
+                      {getAdminFeatureLabel(tCommon, "ddx")}
+                    </Badge>
+                    <Badge variant={hasRecord ? "default" : "outline"}>
+                      {getAdminFeatureLabel(tCommon, "record")}
+                    </Badge>
                     <Badge variant={hasResearch ? "default" : "outline"}>
-                      Research
+                      {getAdminFeatureLabel(tCommon, "research")}
                     </Badge>
                     <Badge variant={hasHandout ? "default" : "outline"}>
-                      Handout
+                      {getAdminFeatureLabel(tCommon, "handout")}
                     </Badge>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardDescription>Red Flags</CardDescription>
+                    <CardDescription>{t("cards.redFlags.title")}</CardDescription>
                     <CardTitle className="text-2xl">{String(redFlagCount)}</CardTitle>
                   </CardHeader>
                   <CardContent className="text-xs text-muted-foreground">
-                    Derived from insights payload in this session.
+                    {t("cards.redFlags.description")}
                   </CardContent>
                 </Card>
               </div>
 
               <Tabs defaultValue="transcript" className="w-full">
               <TabsList className="grid w-full grid-cols-7">
-                <TabsTrigger value="transcript">Transcript</TabsTrigger>
-                <TabsTrigger value="insights">Insights</TabsTrigger>
-                <TabsTrigger value="ddx">DDx</TabsTrigger>
-                <TabsTrigger value="record">Record</TabsTrigger>
-                <TabsTrigger value="research">Research</TabsTrigger>
-                <TabsTrigger value="handout">Handout</TabsTrigger>
-                <TabsTrigger value="audit">Audit</TabsTrigger>
+                <TabsTrigger value="transcript">{t("tabs.transcript")}</TabsTrigger>
+                <TabsTrigger value="insights">{t("tabs.insights")}</TabsTrigger>
+                <TabsTrigger value="ddx">{t("tabs.ddx")}</TabsTrigger>
+                <TabsTrigger value="record">{t("tabs.record")}</TabsTrigger>
+                <TabsTrigger value="research">{t("tabs.research")}</TabsTrigger>
+                <TabsTrigger value="handout">{t("tabs.handout")}</TabsTrigger>
+                <TabsTrigger value="audit">{t("tabs.audit")}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="transcript" className="mt-3 space-y-2">
@@ -213,7 +233,7 @@ export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
                   {(data.transcriptEntries || []).map((entry, idx) => (
                     <div key={String(entry.id || idx)} className="rounded-md border p-2">
                       <div className="mb-1 text-xs text-muted-foreground">
-                        {String(entry.speaker || "UNKNOWN")}
+                        {String(entry.speaker || t("unknownSpeaker"))}
                       </div>
                       <div className="whitespace-pre-wrap text-sm">
                         {String(
@@ -235,10 +255,10 @@ export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
                             entityId: String(entry.id),
                             fieldPath: "text",
                             reason: "",
-                          })
-                        }
-                      >
-                        Reveal Text
+                        })
+                      }
+                    >
+                        {t("revealText")}
                       </Button>
                     </div>
                   ))}
@@ -247,7 +267,7 @@ export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
 
               <TabsContent value="insights" className="mt-3 space-y-3">
                 <div className="rounded-md border p-2">
-                  <div className="text-xs text-muted-foreground">Summary</div>
+                  <div className="text-xs text-muted-foreground">{t("summary")}</div>
                   <div className="whitespace-pre-wrap text-sm">
                     {String(
                       revealedOrMasked(
@@ -272,7 +292,7 @@ export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
                         })
                       }
                     >
-                      Reveal Summary
+                      {t("revealSummary")}
                     </Button>
                   ) : null}
                 </div>
@@ -305,7 +325,7 @@ export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
                       })
                     }
                   >
-                    Reveal Plan
+                    {t("revealPlan")}
                   </Button>
                 ) : null}
               </TabsContent>

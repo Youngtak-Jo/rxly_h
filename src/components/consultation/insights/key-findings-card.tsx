@@ -1,11 +1,13 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useInsightsStore } from "@/stores/insights-store"
 import { IconSearch } from "@tabler/icons-react"
 
 export function KeyFindingsCard() {
+  const t = useTranslations("InsightsPanel")
   const keyFindings = useInsightsStore((s) => s.keyFindings)
 
   return (
@@ -13,7 +15,7 @@ export function KeyFindingsCard() {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <IconSearch className="size-4 text-emerald-500" />
-          Key Findings
+          {t("keyFindings")}
           {keyFindings.length > 0 && (
             <Badge variant="secondary" className="ml-auto text-[10px]">
               {keyFindings.length}
@@ -36,7 +38,7 @@ export function KeyFindingsCard() {
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground/50 italic">
-            Key findings will be identified as the conversation progresses...
+            {t("keyFindingsEmpty")}
           </p>
         )}
       </CardContent>

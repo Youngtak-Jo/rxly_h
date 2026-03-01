@@ -8,6 +8,7 @@ import {
   IconBuildingHospital,
   IconChartBar,
   IconChevronLeft,
+  IconLanguage,
   IconMessageChatbot,
   IconMicrophone,
   IconPalette,
@@ -15,6 +16,7 @@ import {
   IconRefresh,
   IconX,
 } from "@tabler/icons-react"
+import { useTranslations } from "next-intl"
 
 import {
   AlertDialog,
@@ -85,58 +87,41 @@ import {
   applyBorderRadius,
   applyAllAppearanceSettings,
 } from "@/lib/apply-appearance"
+import { useUiLocale } from "@/components/intl-provider"
 import { useConnectorStore } from "@/stores/connector-store"
 import type { ConnectorState } from "@/types/insights"
 
-const CONNECTORS: {
-  key: keyof ConnectorState
-  label: string
-  description: string
-}[] = [
-    {
-      key: "pubmed",
-      label: "PubMed",
-      description: "NCBI biomedical literature search (36M+ articles)",
-    },
-    {
-      key: "icd11",
-      label: "ICD-11",
-      description: "WHO International Classification of Diseases",
-    },
-    {
-      key: "europe_pmc",
-      label: "Europe PMC",
-      description: "European biomedical literature (33M+ publications)",
-    },
-    {
-      key: "openfda",
-      label: "OpenFDA",
-      description: "FDA drug adverse events & safety reports",
-    },
-    {
-      key: "clinical_trials",
-      label: "ClinicalTrials.gov",
-      description: "NIH clinical trial database (440K+ studies)",
-    },
-    {
-      key: "dailymed",
-      label: "DailyMed",
-      description: "FDA-approved drug labeling information",
-    },
-  ]
+const CONNECTORS: (keyof ConnectorState)[] = [
+  "pubmed",
+  "icd11",
+  "europe_pmc",
+  "openfda",
+  "clinical_trials",
+  "dailymed",
+]
 
 const NAV_ITEMS = [
-  { key: "speech" as const, label: "Transcription", icon: IconMicrophone },
-  { key: "analysis" as const, label: "Analysis", icon: IconChartBar },
-  { key: "models" as const, label: "AI Models", icon: IconBrain },
-  { key: "instructions" as const, label: "Custom Instructions", icon: IconMessageChatbot },
-  { key: "connectors" as const, label: "Knowledge Connectors", icon: IconPlug },
-  { key: "emr" as const, label: "EMR/EHR", icon: IconBuildingHospital },
-  { key: "accessibility" as const, label: "Accessibility", icon: IconAccessible },
-  { key: "appearance" as const, label: "Appearance", icon: IconPalette },
+  { key: "language" as const, labelKey: "language", icon: IconLanguage },
+  { key: "speech" as const, labelKey: "speech", icon: IconMicrophone },
+  { key: "analysis" as const, labelKey: "analysis", icon: IconChartBar },
+  { key: "models" as const, labelKey: "models", icon: IconBrain },
+  {
+    key: "instructions" as const,
+    labelKey: "instructions",
+    icon: IconMessageChatbot,
+  },
+  { key: "connectors" as const, labelKey: "connectors", icon: IconPlug },
+  { key: "emr" as const, labelKey: "emr", icon: IconBuildingHospital },
+  {
+    key: "accessibility" as const,
+    labelKey: "accessibility",
+    icon: IconAccessible,
+  },
+  { key: "appearance" as const, labelKey: "appearance", icon: IconPalette },
 ]
 
 export function SettingsDialog() {
+  const t = useTranslations("SettingsDialog")
   const { open, activePage, closeSettings } = useSettingsDialogStore()
   const setActivePage = (page: SettingsPage) =>
     useSettingsDialogStore.setState({ activePage: page })
@@ -158,6 +143,7 @@ export function SettingsDialog() {
 
   const settingsContent = (
     <>
+      {activePage === "language" && <LanguageSettings />}
       {activePage === "speech" && <TranscriptionSettings />}
       {activePage === "analysis" && <AnalysisSettings />}
       {activePage === "models" && <ModelSettings />}
@@ -175,10 +161,9 @@ export function SettingsDialog() {
         className="overflow-hidden p-0 max-h-[85dvh] md:max-h-[500px] md:max-w-[700px] lg:max-w-[800px]"
         showCloseButton={false}
       >
-        <DialogTitle className="sr-only">Settings</DialogTitle>
+        <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
         <DialogDescription className="sr-only">
-          Configure transcription, analysis, AI models, EMR/EHR,
-          knowledge connectors, accessibility, and appearance settings.
+          {t("dialogDescription")}
         </DialogDescription>
 
         {/* Desktop layout */}
@@ -195,7 +180,7 @@ export function SettingsDialog() {
                           onClick={() => setActivePage(item.key)}
                         >
                           <item.icon />
-                          <span>{item.label}</span>
+                          <span>{t(`nav.${item.labelKey}`)}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     ))}
@@ -213,12 +198,16 @@ export function SettingsDialog() {
                 <Breadcrumb>
                   <BreadcrumbList>
                     <BreadcrumbItem>
-                      <BreadcrumbPage>Settings</BreadcrumbPage>
+                      <BreadcrumbPage>{t("title")}</BreadcrumbPage>
                     </BreadcrumbItem>
                     <BreadcrumbSeparator />
                     <BreadcrumbItem>
                       <BreadcrumbPage>
-                        {NAV_ITEMS.find((i) => i.key === activePage)?.label}
+                        {activePage
+                          ? t(
+                              `nav.${NAV_ITEMS.find((item) => item.key === activePage)?.labelKey ?? "speech"}`
+                            )
+                          : t("nav.speech")}
                       </BreadcrumbPage>
                     </BreadcrumbItem>
                   </BreadcrumbList>
@@ -236,13 +225,13 @@ export function SettingsDialog() {
           {mobileView === "menu" ? (
             <>
               <header className="flex h-14 shrink-0 items-center justify-between px-4 border-b">
-                <h2 className="text-base font-semibold">Settings</h2>
+                <h2 className="text-base font-semibold">{t("title")}</h2>
                 <button
                   onClick={closeSettings}
                   className="rounded-sm opacity-70 hover:opacity-100 transition-opacity"
                 >
                   <IconX className="size-5" />
-                  <span className="sr-only">Close</span>
+                  <span className="sr-only">{t("close")}</span>
                 </button>
               </header>
               <nav className="flex flex-1 flex-col overflow-y-auto p-2">
@@ -253,7 +242,7 @@ export function SettingsDialog() {
                     className="flex items-center gap-3 rounded-md px-3 py-3 text-sm hover:bg-accent transition-colors text-left"
                   >
                     <item.icon className="size-5 text-muted-foreground" />
-                    <span>{item.label}</span>
+                    <span>{t(`nav.${item.labelKey}`)}</span>
                   </button>
                 ))}
               </nav>
@@ -269,17 +258,21 @@ export function SettingsDialog() {
                   className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <IconChevronLeft className="size-4" />
-                  <span>Settings</span>
+                  <span>{t("title")}</span>
                 </button>
                 <h2 className="text-base font-semibold">
-                  {NAV_ITEMS.find((i) => i.key === activePage)?.label}
+                  {activePage
+                    ? t(
+                        `nav.${NAV_ITEMS.find((item) => item.key === activePage)?.labelKey ?? "speech"}`
+                      )
+                    : t("nav.speech")}
                 </h2>
                 <button
                   onClick={closeSettings}
                   className="rounded-sm opacity-70 hover:opacity-100 transition-opacity"
                 >
                   <IconX className="size-5" />
-                  <span className="sr-only">Close</span>
+                  <span className="sr-only">{t("close")}</span>
                 </button>
               </header>
               <div className="flex-1 overflow-y-auto p-4">
@@ -318,7 +311,34 @@ function SettingRow({
   )
 }
 
+function LanguageSettings() {
+  const t = useTranslations("SettingsDialog")
+  const { locale, setLocale } = useUiLocale()
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">{t("language.subtitle")}</p>
+
+      <SettingRow
+        label={t("language.label")}
+        description={t("language.description")}
+      >
+        <Select value={locale} onValueChange={(value) => setLocale(value as "en" | "ko")}>
+          <SelectTrigger className="w-full sm:w-[200px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="en">{t("language.options.en")}</SelectItem>
+            <SelectItem value="ko">{t("language.options.ko")}</SelectItem>
+          </SelectContent>
+        </Select>
+      </SettingRow>
+    </div>
+  )
+}
+
 function TranscriptionSettings() {
+  const t = useTranslations("SettingsDialog")
   const {
     stt,
     setSttLanguage,
@@ -333,13 +353,11 @@ function TranscriptionSettings() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Changes apply to the next recording session.
-      </p>
+      <p className="text-xs text-muted-foreground">{t("speech.subtitle")}</p>
 
       <SettingRow
-        label="Language"
-        description="Select the language for speech recognition."
+        label={t("speech.speechRecognitionLanguageLabel")}
+        description={t("speech.speechRecognitionLanguageDescription")}
       >
         <Select value={stt.language} onValueChange={setSttLanguage}>
           <SelectTrigger className="w-full sm:w-[200px] text-xs">
@@ -348,7 +366,7 @@ function TranscriptionSettings() {
           <SelectContent>
             {NOVA3_LANGUAGES.map((lang) => (
               <SelectItem key={lang.value} value={lang.value}>
-                {lang.label}
+                {t(`speech.languageOptions.${lang.value}`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -356,8 +374,8 @@ function TranscriptionSettings() {
       </SettingRow>
 
       <SettingRow
-        label="Smart Formatting"
-        description="Automatically format dates, numbers, and currency."
+        label={t("speech.smartFormattingLabel")}
+        description={t("speech.smartFormattingDescription")}
       >
         <Switch
           checked={stt.smartFormat}
@@ -366,15 +384,15 @@ function TranscriptionSettings() {
       </SettingRow>
 
       <SettingRow
-        label="Speaker Diarization"
-        description="Identify and label different speakers."
+        label={t("speech.speakerDiarizationLabel")}
+        description={t("speech.speakerDiarizationDescription")}
       >
         <Switch checked={stt.diarize} onCheckedChange={setSttDiarize} />
       </SettingRow>
 
       <SettingRow
-        label="Noise Suppression"
-        description="Reduce background noise from the microphone."
+        label={t("speech.noiseSuppressionLabel")}
+        description={t("speech.noiseSuppressionDescription")}
       >
         <Switch
           checked={audio.noiseSuppression}
@@ -383,8 +401,8 @@ function TranscriptionSettings() {
       </SettingRow>
 
       <SettingRow
-        label="Echo Cancellation"
-        description="Prevent audio feedback loops."
+        label={t("speech.echoCancellationLabel")}
+        description={t("speech.echoCancellationDescription")}
       >
         <Switch
           checked={audio.echoCancellation}
@@ -393,8 +411,8 @@ function TranscriptionSettings() {
       </SettingRow>
 
       <SettingRow
-        label="Endpointing Sensitivity"
-        description="How quickly silence is detected as end of speech."
+        label={t("speech.endpointingLabel")}
+        description={t("speech.endpointingDescription")}
       >
         <Select
           value={String(audio.endpointing)}
@@ -404,17 +422,17 @@ function TranscriptionSettings() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="200">Fast (200ms)</SelectItem>
-            <SelectItem value="400">Balanced (400ms)</SelectItem>
-            <SelectItem value="600">Clinical (600ms)</SelectItem>
-            <SelectItem value="800">Relaxed (800ms)</SelectItem>
+            <SelectItem value="200">{t("speech.endpointingOptions.fast")}</SelectItem>
+            <SelectItem value="400">{t("speech.endpointingOptions.balanced")}</SelectItem>
+            <SelectItem value="600">{t("speech.endpointingOptions.clinical")}</SelectItem>
+            <SelectItem value="800">{t("speech.endpointingOptions.relaxed")}</SelectItem>
           </SelectContent>
         </Select>
       </SettingRow>
 
       <SettingRow
-        label="Utterance End Timeout"
-        description="Time to wait before finalizing an utterance."
+        label={t("speech.utteranceEndLabel")}
+        description={t("speech.utteranceEndDescription")}
       >
         <Select
           value={String(audio.utteranceEndMs)}
@@ -424,10 +442,10 @@ function TranscriptionSettings() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="800">Short (800ms)</SelectItem>
-            <SelectItem value="1200">Standard (1200ms)</SelectItem>
-            <SelectItem value="1800">Clinical (1800ms)</SelectItem>
-            <SelectItem value="2500">Extended (2500ms)</SelectItem>
+            <SelectItem value="800">{t("speech.utteranceEndOptions.short")}</SelectItem>
+            <SelectItem value="1200">{t("speech.utteranceEndOptions.standard")}</SelectItem>
+            <SelectItem value="1800">{t("speech.utteranceEndOptions.clinical")}</SelectItem>
+            <SelectItem value="2500">{t("speech.utteranceEndOptions.extended")}</SelectItem>
           </SelectContent>
         </Select>
       </SettingRow>
@@ -436,6 +454,7 @@ function TranscriptionSettings() {
 }
 
 function AnalysisSettings() {
+  const t = useTranslations("SettingsDialog")
   const {
     analysis,
     setInsightsMinWords,
@@ -502,13 +521,11 @@ function AnalysisSettings() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Higher frequency increases API usage and cost.
-      </p>
+      <p className="text-xs text-muted-foreground">{t("analysis.subtitle")}</p>
 
       <SettingRow
-        label="Insights Frequency"
-        description="How often real-time insights are generated during recording."
+        label={t("analysis.insightsFrequencyLabel")}
+        description={t("analysis.insightsFrequencyDescription")}
       >
         <Select
           value={getInsightsPreset()}
@@ -518,28 +535,36 @@ function AnalysisSettings() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="frequent">Frequent (15w / 6s)</SelectItem>
-            <SelectItem value="balanced">Balanced (30w / 12s)</SelectItem>
+            <SelectItem value="frequent">
+              {t("analysis.options.frequentInsights")}
+            </SelectItem>
+            <SelectItem value="balanced">
+              {t("analysis.options.balancedInsights")}
+            </SelectItem>
             <SelectItem value="conservative">
-              Conservative (60w / 20s)
+              {t("analysis.options.conservativeInsights")}
             </SelectItem>
           </SelectContent>
         </Select>
       </SettingRow>
 
       <SettingRow
-        label="Differential Dx Frequency"
-        description="How often differential diagnosis is updated during recording."
+        label={t("analysis.ddxFrequencyLabel")}
+        description={t("analysis.ddxFrequencyDescription")}
       >
         <Select value={getDdxPreset()} onValueChange={handleDdxSensitivity}>
           <SelectTrigger className="w-full sm:w-[180px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="frequent">Frequent (25w / 10s)</SelectItem>
-            <SelectItem value="balanced">Balanced (50w / 20s)</SelectItem>
+            <SelectItem value="frequent">
+              {t("analysis.options.frequentDdx")}
+            </SelectItem>
+            <SelectItem value="balanced">
+              {t("analysis.options.balancedDdx")}
+            </SelectItem>
             <SelectItem value="conservative">
-              Conservative (80w / 30s)
+              {t("analysis.options.conservativeDdx")}
             </SelectItem>
           </SelectContent>
         </Select>
@@ -552,10 +577,12 @@ function ModelSelector({
   value,
   onValueChange,
   recommendedModel,
+  recommendedLabel,
 }: {
   value: string
   onValueChange: (value: string) => void
   recommendedModel: string
+  recommendedLabel: string
 }) {
   return (
     <Select value={value} onValueChange={onValueChange}>
@@ -566,7 +593,7 @@ function ModelSelector({
         {AI_MODELS.map((model) => (
           <SelectItem key={model.value} value={model.value}>
             {model.label}
-            {model.value === recommendedModel ? " (Recommended)" : ""}
+            {model.value === recommendedModel ? ` ${recommendedLabel}` : ""}
           </SelectItem>
         ))}
       </SelectContent>
@@ -575,6 +602,7 @@ function ModelSelector({
 }
 
 function ModelSettings() {
+  const t = useTranslations("SettingsDialog")
   const {
     aiModel,
     setInsightsModel,
@@ -591,117 +619,125 @@ function ModelSettings() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Changing models may affect quality and response speed.
-      </p>
+      <p className="text-xs text-muted-foreground">{t("models.subtitle")}</p>
 
       <SettingRow
-        label="Insights Model"
-        description="Used for real-time clinical insights."
+        label={t("models.insightsLabel")}
+        description={t("models.insightsDescription")}
       >
         <ModelSelector
           value={aiModel.insightsModel}
           onValueChange={setInsightsModel}
           recommendedModel={DEFAULT_AI_MODEL.insightsModel}
+          recommendedLabel={t("models.recommended")}
         />
       </SettingRow>
 
       <SettingRow
-        label="Record Model"
-        description="Used for medical record generation."
+        label={t("models.recordLabel")}
+        description={t("models.recordDescription")}
       >
         <ModelSelector
           value={aiModel.recordModel}
           onValueChange={setRecordModel}
           recommendedModel={DEFAULT_AI_MODEL.recordModel}
+          recommendedLabel={t("models.recommended")}
         />
       </SettingRow>
 
       <SettingRow
-        label="Patient Handout Model"
-        description="Used for patient-friendly handout generation."
+        label={t("models.patientHandoutLabel")}
+        description={t("models.patientHandoutDescription")}
       >
         <ModelSelector
           value={aiModel.patientHandoutModel}
           onValueChange={setPatientHandoutModel}
           recommendedModel={DEFAULT_AI_MODEL.patientHandoutModel}
+          recommendedLabel={t("models.recommended")}
         />
       </SettingRow>
 
       <SettingRow
-        label="DDx Model"
-        description="Used for differential diagnosis."
+        label={t("models.ddxLabel")}
+        description={t("models.ddxDescription")}
       >
         <ModelSelector
           value={aiModel.ddxModel}
           onValueChange={setDdxModel}
           recommendedModel={DEFAULT_AI_MODEL.ddxModel}
+          recommendedLabel={t("models.recommended")}
         />
       </SettingRow>
 
       <SettingRow
-        label="Research Model"
-        description="Used for medical research."
+        label={t("models.researchLabel")}
+        description={t("models.researchDescription")}
       >
         <ModelSelector
           value={aiModel.researchModel}
           onValueChange={setResearchModel}
           recommendedModel={DEFAULT_AI_MODEL.researchModel}
+          recommendedLabel={t("models.recommended")}
         />
       </SettingRow>
 
       <SettingRow
-        label="Speaker Identification Model"
-        description="Used for identifying doctor/patient speakers."
+        label={t("models.speakerIdentificationLabel")}
+        description={t("models.speakerIdentificationDescription")}
       >
         <ModelSelector
           value={aiModel.speakerIdModel}
           onValueChange={setSpeakerIdModel}
           recommendedModel={DEFAULT_AI_MODEL.speakerIdModel}
+          recommendedLabel={t("models.recommended")}
         />
       </SettingRow>
 
       <SettingRow
-        label="Diagnostic Keywords Model"
-        description="Used for extracting diagnostic keywords."
+        label={t("models.diagnosticKeywordsLabel")}
+        description={t("models.diagnosticKeywordsDescription")}
       >
         <ModelSelector
           value={aiModel.diagnosticKeywordsModel}
           onValueChange={setDiagnosticKeywordsModel}
           recommendedModel={DEFAULT_AI_MODEL.diagnosticKeywordsModel}
+          recommendedLabel={t("models.recommended")}
         />
       </SettingRow>
 
       <SettingRow
-        label="Clinical Support Model"
-        description="Used for clinical decision support on diagnoses."
+        label={t("models.clinicalSupportLabel")}
+        description={t("models.clinicalSupportDescription")}
       >
         <ModelSelector
           value={aiModel.clinicalSupportModel}
           onValueChange={setClinicalSupportModel}
           recommendedModel={DEFAULT_AI_MODEL.clinicalSupportModel}
+          recommendedLabel={t("models.recommended")}
         />
       </SettingRow>
 
       <SettingRow
-        label="AI Doctor Model"
-        description="Used for AI doctor consultations."
+        label={t("models.aiDoctorLabel")}
+        description={t("models.aiDoctorDescription")}
       >
         <ModelSelector
           value={aiModel.aiDoctorModel}
           onValueChange={setAiDoctorModel}
           recommendedModel={DEFAULT_AI_MODEL.aiDoctorModel}
+          recommendedLabel={t("models.recommended")}
         />
       </SettingRow>
 
       <SettingRow
-        label="FHIR Mapping Model"
-        description="Used to convert clinical data into FHIR R4 resources for EMR/EHR export."
+        label={t("models.fhirMappingLabel")}
+        description={t("models.fhirMappingDescription")}
       >
         <ModelSelector
           value={aiModel.medplumModel}
           onValueChange={setMedplumModel}
           recommendedModel={DEFAULT_AI_MODEL.medplumModel}
+          recommendedLabel={t("models.recommended")}
         />
       </SettingRow>
     </div>
@@ -709,44 +745,15 @@ function ModelSettings() {
 }
 
 const INSTRUCTION_FIELDS = [
-  {
-    key: "insights" as const,
-    label: "Live Insights",
-    description: "Custom instructions for real-time clinical insight generation.",
-    placeholder:
-      "e.g., Always highlight medication interactions. Focus on pediatric considerations. Summarize in bullet points.",
-  },
-  {
-    key: "ddx" as const,
-    label: "Differential Dx",
-    description: "Custom instructions for differential diagnosis generation.",
-    placeholder:
-      "e.g., Prioritize rare diseases when common ones are ruled out. Always include ICD codes. Consider autoimmune conditions.",
-  },
-  {
-    key: "record" as const,
-    label: "Consultation Record",
-    description: "Custom instructions for medical record generation.",
-    placeholder:
-      "e.g., Use SOAP format strictly. Include detailed ROS. Always document allergies prominently.",
-  },
-  {
-    key: "patientHandout" as const,
-    label: "Patient Handout",
-    description: "Custom instructions for patient education handout generation.",
-    placeholder:
-      "e.g., Keep language at 8th-grade reading level. Emphasize self-care steps and warning signs clearly.",
-  },
-  {
-    key: "research" as const,
-    label: "Research",
-    description: "Custom instructions for medical research assistance.",
-    placeholder:
-      "e.g., Focus on recent studies (last 5 years). Prefer systematic reviews and meta-analyses. Include dosage recommendations.",
-  },
-]
+  "insights",
+  "ddx",
+  "record",
+  "patientHandout",
+  "research",
+] as const
 
 function CustomInstructionsSettings() {
+  const t = useTranslations("SettingsDialog")
   const {
     customInstructions,
     setInsightsInstructions,
@@ -767,22 +774,23 @@ function CustomInstructionsSettings() {
   return (
     <div className="space-y-5">
       <p className="text-xs text-muted-foreground">
-        Add custom instructions for each AI feature. These will be included in
-        every request to guide the AI&apos;s behavior.
+        {t("customInstructions.subtitle")}
       </p>
 
       {INSTRUCTION_FIELDS.map((field) => (
-        <div key={field.key} className="space-y-2">
+        <div key={field} className="space-y-2">
           <div className="space-y-0.5">
-            <Label className="text-sm font-medium">{field.label}</Label>
+            <Label className="text-sm font-medium">
+              {t(`customInstructions.fields.${field}.label`)}
+            </Label>
             <p className="text-xs text-muted-foreground">
-              {field.description}
+              {t(`customInstructions.fields.${field}.description`)}
             </p>
           </div>
           <Textarea
-            value={customInstructions[field.key]}
-            onChange={(e) => setters[field.key](e.target.value)}
-            placeholder={field.placeholder}
+            value={customInstructions[field]}
+            onChange={(e) => setters[field](e.target.value)}
+            placeholder={t(`customInstructions.fields.${field}.placeholder`)}
             className="min-h-[80px] resize-y text-sm"
           />
         </div>
@@ -792,24 +800,23 @@ function CustomInstructionsSettings() {
 }
 
 function ConnectorsSettings() {
+  const t = useTranslations("SettingsDialog")
   const { connectors, toggleConnector } = useConnectorStore()
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Enable external medical databases for evidence-based diagnosis support.
-      </p>
+      <p className="text-xs text-muted-foreground">{t("connectors.subtitle")}</p>
 
       {CONNECTORS.map((connector) => (
         <SettingRow
-          key={connector.key}
-          label={connector.label}
-          description={connector.description}
+          key={connector}
+          label={t(`connectors.items.${connector}.label`)}
+          description={t(`connectors.items.${connector}.description`)}
         >
           <Switch
-            id={`connector-${connector.key}`}
-            checked={connectors[connector.key]}
-            onCheckedChange={() => toggleConnector(connector.key)}
+            id={`connector-${connector}`}
+            checked={connectors[connector]}
+            onCheckedChange={() => toggleConnector(connector)}
           />
         </SettingRow>
       ))}
@@ -818,11 +825,14 @@ function ConnectorsSettings() {
 }
 
 function ResetToDefaultsButton() {
+  const t = useTranslations("SettingsDialog")
   const { setTheme: setNextTheme } = useTheme()
+  const { resetLocale } = useUiLocale()
 
   const handleReset = () => {
     useSettingsStore.getState().resetToDefaults()
     useConnectorStore.getState().reset()
+    resetLocale()
     setNextTheme("system")
     applyAllAppearanceSettings({
       fontSize: "default",
@@ -836,20 +846,21 @@ function ResetToDefaultsButton() {
       <AlertDialogTrigger asChild>
         <button className="flex items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors w-full">
           <IconRefresh className="size-3.5" />
-          <span>Reset to Defaults</span>
+          <span>{t("reset.button")}</span>
         </button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Reset to Defaults</AlertDialogTitle>
+          <AlertDialogTitle>{t("reset.title")}</AlertDialogTitle>
           <AlertDialogDescription>
-            All settings will be restored to their default values. This action
-            cannot be undone.
+            {t("reset.description")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleReset}>Reset</AlertDialogAction>
+          <AlertDialogCancel>{t("reset.cancel")}</AlertDialogCancel>
+          <AlertDialogAction onClick={handleReset}>
+            {t("reset.confirm")}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -857,18 +868,16 @@ function ResetToDefaultsButton() {
 }
 
 function EMRSettings() {
+  const t = useTranslations("SettingsDialog")
   const { emr, setEmrProvider } = useSettingsStore()
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Select which Electronic Medical Record (EMR/EHR) system to use for
-        exporting clinical data as FHIR resources.
-      </p>
+      <p className="text-xs text-muted-foreground">{t("emr.subtitle")}</p>
 
       <SettingRow
-        label="EMR Provider"
-        description="The EMR/EHR system that receives exported FHIR data."
+        label={t("emr.providerLabel")}
+        description={t("emr.providerDescription")}
       >
         <Select value={emr.provider} onValueChange={setEmrProvider}>
           <SelectTrigger className="w-full sm:w-[200px] text-xs">
@@ -888,6 +897,7 @@ function EMRSettings() {
 }
 
 function AccessibilitySettings() {
+  const t = useTranslations("SettingsDialog")
   const {
     accessibility,
     setReducedMotion,
@@ -900,13 +910,12 @@ function AccessibilitySettings() {
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        Adjust settings for improved readability and interaction. These
-        preferences are saved locally and apply immediately.
+        {t("accessibility.subtitle")}
       </p>
 
       <SettingRow
-        label="Reduced Motion"
-        description="Disable animations and transitions throughout the interface."
+        label={t("accessibility.reducedMotionLabel")}
+        description={t("accessibility.reducedMotionDescription")}
       >
         <Switch
           checked={accessibility.reducedMotion}
@@ -915,8 +924,8 @@ function AccessibilitySettings() {
       </SettingRow>
 
       <SettingRow
-        label="High Contrast"
-        description="Increase text and border contrast for better readability."
+        label={t("accessibility.highContrastLabel")}
+        description={t("accessibility.highContrastDescription")}
       >
         <Switch
           checked={accessibility.highContrast}
@@ -925,8 +934,8 @@ function AccessibilitySettings() {
       </SettingRow>
 
       <SettingRow
-        label="Enhanced Focus Indicators"
-        description="Show larger, more visible focus rings when navigating with keyboard."
+        label={t("accessibility.enhancedFocusIndicatorsLabel")}
+        description={t("accessibility.enhancedFocusIndicatorsDescription")}
       >
         <Switch
           checked={accessibility.enhancedFocusIndicators}
@@ -935,8 +944,8 @@ function AccessibilitySettings() {
       </SettingRow>
 
       <SettingRow
-        label="Text Spacing"
-        description="Increase line height, letter spacing, and word spacing for easier reading."
+        label={t("accessibility.textSpacingLabel")}
+        description={t("accessibility.textSpacingDescription")}
       >
         <Switch
           checked={accessibility.textSpacing}
@@ -945,8 +954,8 @@ function AccessibilitySettings() {
       </SettingRow>
 
       <SettingRow
-        label="Large Click Targets"
-        description="Enforce minimum 44px touch targets on all interactive elements."
+        label={t("accessibility.largeClickTargetsLabel")}
+        description={t("accessibility.largeClickTargetsDescription")}
       >
         <Switch
           checked={accessibility.largeClickTargets}
@@ -958,6 +967,7 @@ function AccessibilitySettings() {
 }
 
 function AppearanceSettings() {
+  const t = useTranslations("SettingsDialog")
   const {
     appearance,
     setTheme,
@@ -990,24 +1000,30 @@ function AppearanceSettings() {
   return (
     <div className="space-y-4">
       <SettingRow
-        label="Theme"
-        description="Select the color theme for the interface."
+        label={t("appearance.themeLabel")}
+        description={t("appearance.themeDescription")}
       >
         <Select value={appearance.theme} onValueChange={handleThemeChange}>
           <SelectTrigger className="w-full sm:w-[160px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="light">Light</SelectItem>
-            <SelectItem value="dark">Dark</SelectItem>
-            <SelectItem value="system">System</SelectItem>
+            <SelectItem value="light">
+              {t("appearance.themeOptions.light")}
+            </SelectItem>
+            <SelectItem value="dark">
+              {t("appearance.themeOptions.dark")}
+            </SelectItem>
+            <SelectItem value="system">
+              {t("appearance.themeOptions.system")}
+            </SelectItem>
           </SelectContent>
         </Select>
       </SettingRow>
 
       <SettingRow
-        label="Font Size"
-        description="Adjust the text size across the interface."
+        label={t("appearance.fontSizeLabel")}
+        description={t("appearance.fontSizeDescription")}
       >
         <Select value={appearance.fontSize} onValueChange={handleFontSizeChange}>
           <SelectTrigger className="w-full sm:w-[160px] text-xs">
@@ -1016,7 +1032,7 @@ function AppearanceSettings() {
           <SelectContent>
             {FONT_SIZE_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(`appearance.fontSizeOptions.${opt.value}`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -1024,8 +1040,8 @@ function AppearanceSettings() {
       </SettingRow>
 
       <SettingRow
-        label="UI Density"
-        description="Control the spacing and padding of interface elements."
+        label={t("appearance.uiDensityLabel")}
+        description={t("appearance.uiDensityDescription")}
       >
         <Select value={appearance.uiDensity} onValueChange={handleUiDensityChange}>
           <SelectTrigger className="w-full sm:w-[160px] text-xs">
@@ -1034,7 +1050,7 @@ function AppearanceSettings() {
           <SelectContent>
             {UI_DENSITY_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(`appearance.uiDensityOptions.${opt.value}`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -1042,8 +1058,8 @@ function AppearanceSettings() {
       </SettingRow>
 
       <SettingRow
-        label="Border Radius"
-        description="Set the corner roundness for UI elements."
+        label={t("appearance.borderRadiusLabel")}
+        description={t("appearance.borderRadiusDescription")}
       >
         <Select value={appearance.borderRadius} onValueChange={handleBorderRadiusChange}>
           <SelectTrigger className="w-full sm:w-[160px] text-xs">
@@ -1052,7 +1068,7 @@ function AppearanceSettings() {
           <SelectContent>
             {BORDER_RADIUS_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(`appearance.borderRadiusOptions.${opt.value}`)}
               </SelectItem>
             ))}
           </SelectContent>

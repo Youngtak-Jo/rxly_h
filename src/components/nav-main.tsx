@@ -1,6 +1,7 @@
 "use client"
 
 import { IconBulb, IconFileText, IconStethoscope } from "@tabler/icons-react"
+import { useTranslations } from "next-intl"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useDdxStore } from "@/stores/ddx-store"
 
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/sidebar"
 
 export function NavMain() {
+  const t = useTranslations("ConsultationTabs")
   const { activeTab, setActiveTab } = useConsultationTabStore()
   const diagnosisCount = useDdxStore((s) => s.diagnoses.length)
   const isDdxProcessing = useDdxStore((s) => s.isProcessing)
@@ -26,24 +28,24 @@ export function NavMain() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              tooltip="Live Insights"
+              tooltip={t("insights")}
               isActive={activeTab === "insights"}
               onClick={() => setActiveTab("insights")}
               className={`transition-all duration-300 ease-in-out ${activeTab === "insights" ? activeStyle : ""}`}
             >
               <IconBulb />
-              <span>Live Insights</span>
+              <span>{t("insights")}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
-              tooltip="Differential Diagnosis"
+              tooltip={t("ddx")}
               isActive={activeTab === "ddx"}
               onClick={() => setActiveTab("ddx")}
               className={`transition-all duration-300 ease-in-out ${activeTab === "ddx" ? activeStyle : ""}`}
             >
               <IconStethoscope />
-              <span>Differential Dx</span>
+              <span>{t("ddx")}</span>
             </SidebarMenuButton>
             {diagnosisCount > 0 && (
               <SidebarMenuBadge
@@ -55,13 +57,13 @@ export function NavMain() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
-              tooltip="Consultation Record"
+              tooltip={t("record")}
               isActive={activeTab === "record"}
               onClick={() => setActiveTab("record")}
               className={`transition-all duration-300 ease-in-out ${activeTab === "record" ? activeStyle : ""}`}
             >
               <IconFileText />
-              <span>Consultation Record</span>
+              <span>{t("record")}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

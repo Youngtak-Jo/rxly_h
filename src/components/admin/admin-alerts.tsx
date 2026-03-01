@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useMemo, useState } from "react"
 import { Loader2 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,9 +25,16 @@ import {
   parseAdminFilters,
   toAdminApiParams,
 } from "@/lib/admin/filters"
+import {
+  getAdminAlertCopy,
+  getAdminRuleLabel,
+  getAdminSeverityLabel,
+} from "@/lib/admin/localization"
 import type { AdminInsightsResponse } from "@/types/admin"
 
 export function AdminAlerts() {
+  const t = useTranslations("AdminAlerts")
+  const tCommon = useTranslations("AdminCommon")
   const searchParams = useSearchParams()
   const filters = useMemo(() => parseAdminFilters(searchParams), [searchParams])
   const refreshToken = useAdminRefreshToken()
@@ -87,13 +95,11 @@ export function AdminAlerts() {
     return (
       <section className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold">Alerts</h2>
-          <p className="text-xs text-muted-foreground">
-            Insight queue for risk, drop-off, and quality investigations.
-          </p>
+          <h2 className="text-lg font-semibold">{t("title")}</h2>
+          <p className="text-xs text-muted-foreground">{t("description")}</p>
         </div>
 
-        <AdminLoadingState label="Loading alerts..." />
+        <AdminLoadingState label={t("loading")} />
       </section>
     )
   }
@@ -101,26 +107,24 @@ export function AdminAlerts() {
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold">Alerts</h2>
+        <h2 className="text-lg font-semibold">{t("title")}</h2>
         {isRefreshing ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
       </div>
       <div>
-        <p className="text-xs text-muted-foreground">
-          Insight queue for risk, drop-off, and quality investigations.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("description")}</p>
       </div>
 
       {error ? (
-        <AdminEmptyState title="Failed to load alerts" description={error} />
+        <AdminEmptyState title={t("failed")} description={error} />
       ) : null}
 
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
             <div>
-              <CardTitle className="text-base">Operational Insights</CardTitle>
+              <CardTitle className="text-base">{t("queueTitle")}</CardTitle>
               <CardDescription>
-                Prioritized alerts generated from user and session behavior.
+                {t("queueDescription")}
               </CardDescription>
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -133,25 +137,35 @@ export function AdminAlerts() {
                 }
               >
                 <SelectTrigger className="w-full sm:w-44">
-                  <SelectValue placeholder="Severity" />
+                  <SelectValue placeholder={t("severityPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All severities</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="positive">Positive</SelectItem>
+                  <SelectItem value="all">
+                    {getAdminSeverityLabel(tCommon, "all")}
+                  </SelectItem>
+                  <SelectItem value="high">
+                    {getAdminSeverityLabel(tCommon, "high")}
+                  </SelectItem>
+                  <SelectItem value="medium">
+                    {getAdminSeverityLabel(tCommon, "medium")}
+                  </SelectItem>
+                  <SelectItem value="low">
+                    {getAdminSeverityLabel(tCommon, "low")}
+                  </SelectItem>
+                  <SelectItem value="positive">
+                    {getAdminSeverityLabel(tCommon, "positive")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <Select value={selectedRule} onValueChange={setSelectedRule}>
                 <SelectTrigger className="w-full sm:w-56">
-                  <SelectValue placeholder="Rule" />
+                  <SelectValue placeholder={t("rulePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All rules</SelectItem>
+                  <SelectItem value="all">{t("allRules")}</SelectItem>
                   {rules.map((rule) => (
                     <SelectItem key={rule} value={rule}>
-                      {rule}
+                      {getAdminRuleLabel(tCommon, rule)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -163,48 +177,52 @@ export function AdminAlerts() {
         <CardContent className="space-y-2">
           {isInitialLoading ? (
             <AdminEmptyState
-              title="Loading alerts"
-              description="Evaluating insight rules..."
+              title={t("loadingTitle")}
+              description={t("loadingDescription")}
             />
           ) : filteredAlerts.length === 0 ? (
             <AdminEmptyState
-              title="No alerts"
-              description="No operational alerts for the current filter set."
+              title={t("emptyTitle")}
+              description={t("emptyDescription")}
             />
           ) : (
-            filteredAlerts.map((alert) => (
-              <div key={alert.id} className="rounded-md border p-3 text-xs">
-                <div className="mb-1 flex items-center gap-2">
-                  <Badge variant={severityBadgeVariant(alert.severity)}>
-                    {alert.severity}
-                  </Badge>
-                  <span className="font-medium">{alert.rule}</span>
+            filteredAlerts.map((alert) => {
+              const copy = getAdminAlertCopy(tCommon, alert)
+
+              return (
+                <div key={alert.id} className="rounded-md border p-3 text-xs">
+                  <div className="mb-1 flex items-center gap-2">
+                    <Badge variant={severityBadgeVariant(alert.severity)}>
+                      {getAdminSeverityLabel(tCommon, alert.severity)}
+                    </Badge>
+                    <span className="font-medium">{copy.label}</span>
+                  </div>
+
+                  <div className="font-medium">{copy.title}</div>
+                  <div className="text-muted-foreground">{copy.description}</div>
+
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {alert.userId ? (
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/admin/users/${alert.userId}?${filterQuery}`}>
+                          {t("openUser")}
+                        </Link>
+                      </Button>
+                    ) : null}
+
+                    {alert.sessionId ? (
+                      <Button asChild size="sm" variant="outline">
+                        <Link
+                          href={`/admin/sessions/${alert.sessionId}?${filterQuery}`}
+                        >
+                          {t("openSession")}
+                        </Link>
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
-
-                <div className="font-medium">{alert.title}</div>
-                <div className="text-muted-foreground">{alert.description}</div>
-
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {alert.userId ? (
-                    <Button asChild size="sm" variant="outline">
-                      <Link href={`/admin/users/${alert.userId}?${filterQuery}`}>
-                        Open user
-                      </Link>
-                    </Button>
-                  ) : null}
-
-                  {alert.sessionId ? (
-                    <Button asChild size="sm" variant="outline">
-                      <Link
-                        href={`/admin/sessions/${alert.sessionId}?${filterQuery}`}
-                      >
-                        Open session
-                      </Link>
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            ))
+              )
+            })
           )}
         </CardContent>
       </Card>
