@@ -8,6 +8,7 @@ import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 const eventSchema = z.object({
   eventType: z.enum([
+    "workspace_opened",
     "tab_switched",
     "recording_started",
     "recording_stopped",

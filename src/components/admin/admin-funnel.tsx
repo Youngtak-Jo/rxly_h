@@ -45,7 +45,7 @@ export function AdminFunnel() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Stage Conversion</CardTitle>
-            <CardDescription>Completion ratio by stage.</CardDescription>
+            <CardDescription>Stage conversion ratio across the workflow.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {!data?.steps.length ? (

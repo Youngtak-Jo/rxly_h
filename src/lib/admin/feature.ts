@@ -32,7 +32,11 @@ export function matchesClientFeature(
 ): boolean {
   if (selectedFeature === "all") return true
   if (selectedFeature === "patientHandout") {
-    return rawFeature === "patient_handout" || rawFeature === "patientHandout"
+    return (
+      rawFeature === "patient_handout" ||
+      rawFeature === "patientHandout" ||
+      rawFeature === "handout"
+    )
   }
   return rawFeature === selectedFeature
 }

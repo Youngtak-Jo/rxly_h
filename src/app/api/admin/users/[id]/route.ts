@@ -321,6 +321,8 @@ export async function GET(
           typeof maskedPatientRaw === "string" || maskedPatientRaw === null
             ? maskedPatientRaw
             : JSON.stringify(maskedPatientRaw)
+        const recordFinalizationRate =
+          signal?.recordHasPlan || signal?.recordHasAssessment ? 1 : 0
 
         return {
           id: session.id,
@@ -329,7 +331,9 @@ export async function GET(
           startedAt: session.startedAt.toISOString(),
           updatedAt: session.updatedAt.toISOString(),
           patientNameMasked: maskedPatient,
-          completionRate: signal?.completionRate ?? 0,
+          completionRate: recordFinalizationRate,
+          recordFinalizationRate,
+          workflowProgress: signal?.completionRate ?? 0,
           aiCallCount: signal?.aiCallCount ?? 0,
           exportCount: exportsBySession.get(session.id) ?? 0,
           hasInsights: !!session.insights,

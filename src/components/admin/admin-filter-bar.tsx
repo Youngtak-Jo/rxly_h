@@ -537,7 +537,7 @@ export function AdminFilterBar() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="sessions">Sessions</SelectItem>
-                        <SelectItem value="completion">Completion</SelectItem>
+                        <SelectItem value="completion">Record Finalization</SelectItem>
                         <SelectItem value="ai">AI Calls</SelectItem>
                         <SelectItem value="lastActive">Last Active</SelectItem>
                         <SelectItem value="risk">Risk Score</SelectItem>
@@ -601,7 +601,7 @@ export function AdminFilterBar() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="startedAt">Started At</SelectItem>
-                        <SelectItem value="completion">Completion</SelectItem>
+                        <SelectItem value="completion">Record Finalization</SelectItem>
                         <SelectItem value="ai">AI Calls</SelectItem>
                         <SelectItem value="risk">Risk Score</SelectItem>
                       </SelectContent>

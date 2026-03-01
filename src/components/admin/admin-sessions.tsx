@@ -155,7 +155,7 @@ export function AdminSessions() {
                     <TableHead>Session</TableHead>
                     <TableHead>Mode</TableHead>
                     <TableHead>AI Calls</TableHead>
-                    <TableHead>Completion</TableHead>
+                    <TableHead>Record Finalization</TableHead>
                     <TableHead>Risk</TableHead>
                     <TableHead>Flags</TableHead>
                     <TableHead />
@@ -177,7 +177,7 @@ export function AdminSessions() {
                       </TableCell>
                       <TableCell>{session.mode}</TableCell>
                       <TableCell>{session.aiCallCount}</TableCell>
-                      <TableCell>{toPercent(session.completionRate)}</TableCell>
+                      <TableCell>{toPercent(session.recordFinalizationRate)}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="mr-1">
                           {session.riskBand}

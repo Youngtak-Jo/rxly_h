@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth"
 import { adminJson } from "@/lib/admin/http"
-import { loadOverviewData, parseOverviewRangeFromRequest } from "@/lib/admin/overview"
-import { listIncidents } from "@/lib/admin/incidents"
-import type { AdminHomeResponse } from "@/types/admin"
+import { parseOverviewRangeFromRequest } from "@/lib/admin/overview"
+import { loadAdminHomeData } from "@/lib/admin/home"
 import { logger } from "@/lib/logger"
 
 export async function GET(req: Request) {
@@ -11,27 +10,7 @@ export async function GET(req: Request) {
     await requireAdmin()
 
     const range = parseOverviewRangeFromRequest(req.url)
-    const { response } = await loadOverviewData(range)
-    const incidents = await listIncidents({
-      from: range.from,
-      to: range.to,
-      severity: "all",
-      status: "all",
-      priority: "all",
-      owner: "",
-      rule: "",
-      q: "",
-      order: "desc",
-      cursor: "0",
-      limit: "8",
-    })
-
-    const urgentIncidents = incidents.rows.filter((row) => row.status !== "RESOLVED" && row.status !== "DISMISSED")
-
-    const payload: AdminHomeResponse = {
-      ...response,
-      urgentIncidents,
-    }
+    const payload = await loadAdminHomeData(range)
 
     return adminJson(payload)
   } catch (error) {

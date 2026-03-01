@@ -30,6 +30,7 @@ import { useDiagnosticHighlights } from "@/hooks/use-diagnostic-highlights"
 import { useMobileViewport } from "@/hooks/use-mobile"
 import { useAiDoctorStt } from "@/hooks/use-ai-doctor-stt"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
+import { trackClientEvent } from "@/lib/telemetry/client-events"
 import { IconLoader2 } from "@tabler/icons-react"
 import Image from "next/image"
 import { v4 as uuidv4 } from "uuid"
@@ -48,6 +49,7 @@ export function ConsultationLayout() {
   )
   const setToggleTranscript = useConsultationTabStore((s) => s.setToggleTranscript)
   const rightPanelRef = useRef<PanelImperativeHandle | null>(null)
+  const lastWorkspaceOpenRef = useRef<string | null>(null)
   const { isMobile, isReady: isMobileReady } = useMobileViewport()
 
   useRecordAutoSave()
@@ -66,6 +68,27 @@ export function ConsultationLayout() {
 
   // AI Doctor STT hook — manages voice input WebSocket lifecycle
   useAiDoctorStt()
+
+  useEffect(() => {
+    if (!activeSession) {
+      lastWorkspaceOpenRef.current = null
+      return
+    }
+
+    const key = `${activeSession.id}:${activeTab}`
+    if (lastWorkspaceOpenRef.current === key) return
+
+    trackClientEvent({
+      eventType: "workspace_opened",
+      feature: activeTab,
+      sessionId: activeSession.id,
+      metadata: {
+        source: "consultation_layout",
+      },
+    })
+
+    lastWorkspaceOpenRef.current = key
+  }, [activeSession, activeTab])
 
   const toggleRightPanel = useCallback(() => {
     const panel = rightPanelRef.current

@@ -52,6 +52,7 @@ export interface AdminFilters {
 export interface AdminKpis {
   dau: number
   activeSessions: number
+  // Deprecated in phase 1 UI. This still represents record finalization rate.
   sessionCompletionRate: number
   aiCalls: number
   documentGenerationRate: number
@@ -80,7 +81,36 @@ export interface AdminTrendPoint {
   bucket: string
   sessions: number
   aiCalls: number
+  // Kept for backward compatibility. UI should label this as workflow progress.
   completionRate: number
+}
+
+export interface AdminMetricDelta {
+  previous: number
+  delta: number
+  deltaRatio: number | null
+}
+
+export interface AdminHomeSummary {
+  activeUsers: number
+  sessionStarts: number
+  transcriptCaptureRate: number
+  recordFinalizationRate: number
+  ddxAdoptionRate: number
+  handoutGenerationRate: number
+  aiCostPerSession: number
+  aiFailureRate: number
+}
+
+export interface AdminHomeComparisons {
+  activeUsers: AdminMetricDelta
+  sessionStarts: AdminMetricDelta
+  transcriptCaptureRate: AdminMetricDelta
+  recordFinalizationRate: AdminMetricDelta
+  ddxAdoptionRate: AdminMetricDelta
+  handoutGenerationRate: AdminMetricDelta
+  aiCostPerSession: AdminMetricDelta
+  aiFailureRate: AdminMetricDelta
 }
 
 export interface AdminInsightAlert {
@@ -152,8 +182,58 @@ export interface AdminOverviewResponse {
   alerts: AdminInsightAlert[]
 }
 
+export interface AdminAttentionRule {
+  rule: string
+  severity: Exclude<AdminSeverity, "all">
+  count: number
+}
+
+export interface AdminTelemetryCoverage {
+  sessionsWithAnyClientEvents: number
+  sessionCoverageRate: number
+  sessionsWithTranscriptNoAiCall: number
+  sessionsWithAiCallNoClientEvents: number
+}
+
+export interface AdminAiOverview {
+  totalCostUsd: number
+  costPerSession: number
+  p95LatencyMs: number
+  costConcentrationRate: number
+  topCostRow: AdminAiOpsRow | null
+  topFailingRows: AdminAiOpsRow[]
+}
+
+export interface AdminHomeAttention {
+  liveAlerts: AdminInsightAlert[]
+  incidents: AdminIncidentRow[]
+  topRules: AdminAttentionRule[]
+}
+
+export type AdminFeatureAdoptionFeature =
+  | "transcript"
+  | "insights"
+  | "ddx"
+  | "record"
+  | "research"
+  | "handout"
+  | "export"
+
+export interface AdminFeatureAdoptionRow {
+  feature: AdminFeatureAdoptionFeature
+  sessions: number
+  rate: number
+  delta: AdminMetricDelta
+}
+
 export interface AdminHomeResponse extends AdminOverviewResponse {
   urgentIncidents: AdminIncidentRow[]
+  summary: AdminHomeSummary
+  comparisons: AdminHomeComparisons
+  telemetry: AdminTelemetryCoverage
+  aiOverview: AdminAiOverview
+  attention: AdminHomeAttention
+  featureAdoption: AdminFeatureAdoptionRow[]
 }
 
 export interface AdminFunnelResponse {
@@ -287,7 +367,10 @@ export interface AdminUserSessionMapRow {
   startedAt: string
   updatedAt: string
   patientNameMasked: string | null
+  // Deprecated alias maintained for compatibility. Mirrors recordFinalizationRate.
   completionRate: number
+  recordFinalizationRate: number
+  workflowProgress: number
   aiCallCount: number
   exportCount: number
   hasInsights: boolean
@@ -351,7 +434,10 @@ export interface AdminSessionRow {
   hasHandout: boolean
   hasRedFlag: boolean
   exportCount: number
+  // Deprecated alias maintained for compatibility. Mirrors recordFinalizationRate.
   completionRate: number
+  recordFinalizationRate: number
+  workflowProgress: number
   riskFlags: string[]
   riskBand: Exclude<AdminRiskBand, "all">
   riskScore: number

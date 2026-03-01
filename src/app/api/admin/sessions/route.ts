@@ -199,6 +199,8 @@ export async function GET(req: Request) {
       const severities = alertMeta?.severities || []
       const riskBandValue = riskBandFromSeverities(severities)
       const hasRedFlag = (sessionSignal?.redFlagCount ?? 0) > 0
+      const recordFinalizationRate =
+        sessionSignal?.recordHasPlan || sessionSignal?.recordHasAssessment ? 1 : 0
 
       return {
         id: session.id,
@@ -218,12 +220,14 @@ export async function GET(req: Request) {
         hasHandout: !!session.patientHandout,
         hasRedFlag,
         exportCount: exportsBySession.get(session.id) ?? 0,
-        completionRate: sessionSignal?.completionRate ?? 0,
+        completionRate: recordFinalizationRate,
+        recordFinalizationRate,
+        workflowProgress: sessionSignal?.completionRate ?? 0,
         riskFlags: alertMeta?.flags || [],
         riskBand: riskBandValue,
         riskScore: calculateRiskScore({
           severities,
-          completionRate: sessionSignal?.completionRate ?? 0,
+          completionRate: recordFinalizationRate,
           redFlagCount: sessionSignal?.redFlagCount,
           aiCallCount: sessionSignal?.aiCallCount,
         }),

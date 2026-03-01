@@ -92,7 +92,7 @@ export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
   )
     ? ((data?.insights as { redFlags?: unknown[] }).redFlags || []).length
     : 0
-  const completionRate =
+  const workflowProgress =
     [
       transcriptCount > 0,
       hasInsights,
@@ -158,9 +158,9 @@ export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardDescription>Completion</CardDescription>
+                    <CardDescription>Workflow Progress</CardDescription>
                     <CardTitle className="text-2xl">
-                      {toPercent(completionRate)}
+                      {toPercent(workflowProgress)}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="text-xs text-muted-foreground">

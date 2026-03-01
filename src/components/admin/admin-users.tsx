@@ -130,7 +130,7 @@ export function AdminUsers() {
           ) : null}
         </div>
         <p className="text-xs text-muted-foreground">
-          Risk-prioritized user list with server-side ranking and segmentation.
+          Risk-prioritized user list with server-side ranking.
         </p>
         <p className="text-xs text-muted-foreground">
           Compared to previous period: {formatDelta(countDelta)} users ({previousTotalCount}{" "}
@@ -154,7 +154,7 @@ export function AdminUsers() {
                     <TableHead>User</TableHead>
                     <TableHead>Sessions</TableHead>
                     <TableHead>AI Calls</TableHead>
-                    <TableHead>Completion</TableHead>
+                    <TableHead>Record Finalization</TableHead>
                     <TableHead>Risk</TableHead>
                     <TableHead>Last Active</TableHead>
                     <TableHead>Flags</TableHead>

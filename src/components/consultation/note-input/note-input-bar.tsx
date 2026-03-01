@@ -143,7 +143,7 @@ export const NoteInputBar = forwardRef<NoteInputBarHandle>(function NoteInputBar
 
       const uploaded = uploadResults
         .filter(
-          (result): result is PromiseFulfilledResult<{ url: string; storagePath?: string }> =>
+          (result): result is PromiseFulfilledResult<{ url: string; storagePath: string | undefined }> =>
             result.status === "fulfilled"
         )
         .map((result) => result.value)

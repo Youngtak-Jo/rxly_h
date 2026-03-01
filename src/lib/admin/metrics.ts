@@ -1,15 +1,22 @@
 import type {
+  AdminAttentionRule,
+  AdminFeatureAdoptionFeature,
+  AdminFeatureAdoptionRow,
   AdminFunnelDropoff,
   AdminFeature,
   AdminFunnelStep,
   AdminInterval,
   AdminKpis,
+  AdminMetricDelta,
   AdminTimelineCategory,
   AdminTrendPoint,
   AdminUserBehaviorKpis,
   AdminUserTimelineEvent,
+  AdminInsightAlert,
+  AdminSeverity,
   SessionSignals,
 } from "@/types/admin"
+import { severityRank } from "@/lib/admin/risk"
 
 interface SessionForSignals {
   id: string
@@ -199,7 +206,7 @@ export function buildFunnel(signals: SessionSignals[]): AdminFunnelStep[] {
     ["Transcript Captured", count.transcriptCaptured],
     ["Insights", count.insightsDone],
     ["DDx", count.ddxDone],
-    ["Record", count.recordDone],
+    ["Record Finalized", count.recordDone],
     ["Research", count.researchUsed],
     ["Handout", count.handoutDone],
     ["Export", count.exportDone],
@@ -322,6 +329,111 @@ export function buildTrends(
     })
 }
 
+export function buildMetricDelta(
+  current: number,
+  previous: number
+): AdminMetricDelta {
+  return {
+    previous,
+    delta: current - previous,
+    deltaRatio: previous !== 0 ? (current - previous) / previous : null,
+  }
+}
+
+function signalMatchesAdoptionFeature(
+  signal: SessionSignals,
+  feature: AdminFeatureAdoptionFeature
+): boolean {
+  if (feature === "transcript") return signal.transcriptCount > 0
+  if (feature === "insights") return signal.hasInsights
+  if (feature === "ddx") return signal.hasDdx
+  if (feature === "record") return signal.recordHasPlan || signal.recordHasAssessment
+  if (feature === "research") return signal.hasResearch
+  if (feature === "handout") return signal.hasHandout
+  return signal.hasExport
+}
+
+function countSignalsByFeature(
+  signals: SessionSignals[],
+  feature: AdminFeatureAdoptionFeature
+): number {
+  return signals.filter((signal) => signalMatchesAdoptionFeature(signal, feature)).length
+}
+
+const FEATURE_ADOPTION_ORDER: AdminFeatureAdoptionFeature[] = [
+  "transcript",
+  "insights",
+  "ddx",
+  "record",
+  "research",
+  "handout",
+  "export",
+]
+
+export function buildFeatureAdoptionRows(
+  currentSignals: SessionSignals[],
+  previousSignals: SessionSignals[]
+): AdminFeatureAdoptionRow[] {
+  return FEATURE_ADOPTION_ORDER.map((feature) => {
+    const currentSessions = countSignalsByFeature(currentSignals, feature)
+    const previousSessions = countSignalsByFeature(previousSignals, feature)
+    const currentRate =
+      currentSignals.length > 0 ? currentSessions / currentSignals.length : 0
+    const previousRate =
+      previousSignals.length > 0 ? previousSessions / previousSignals.length : 0
+
+    return {
+      feature,
+      sessions: currentSessions,
+      rate: currentRate,
+      delta: buildMetricDelta(currentRate, previousRate),
+    }
+  })
+}
+
+export function buildAttentionRules(
+  alerts: AdminInsightAlert[]
+): AdminAttentionRule[] {
+  const grouped = new Map<
+    string,
+    {
+      rule: string
+      severity: Exclude<AdminSeverity, "all">
+      count: number
+      severityRank: number
+    }
+  >()
+
+  for (const alert of alerts) {
+    const current = grouped.get(alert.rule) || {
+      rule: alert.rule,
+      severity: alert.severity,
+      count: 0,
+      severityRank: severityRank(alert.severity),
+    }
+
+    current.count += 1
+    if (severityRank(alert.severity) > current.severityRank) {
+      current.severity = alert.severity
+      current.severityRank = severityRank(alert.severity)
+    }
+
+    grouped.set(alert.rule, current)
+  }
+
+  return Array.from(grouped.values())
+    .sort((a, b) => {
+      if (b.severityRank !== a.severityRank) return b.severityRank - a.severityRank
+      if (b.count !== a.count) return b.count - a.count
+      return a.rule.localeCompare(b.rule)
+    })
+    .map((rule) => ({
+      rule: rule.rule,
+      severity: rule.severity,
+      count: rule.count,
+    }))
+}
+
 export function getExportSpikeUsers(
   exportCountsByUser: Map<string, number>,
   threshold = 10
@@ -377,7 +489,7 @@ function toNumber(value: unknown): number | null {
 }
 
 function clientEventCategory(eventType: string): AdminTimelineCategory {
-  if (eventType === "tab_switched") return "navigation"
+  if (eventType === "workspace_opened" || eventType === "tab_switched") return "navigation"
   if (eventType === "recording_started" || eventType === "recording_stopped") return "recording"
   if (eventType === "note_submitted") return "note"
   if (eventType === "image_uploaded") return "image"
@@ -400,14 +512,20 @@ function clientEventStatus(eventType: string): "success" | "failed" | "info" {
 
 function clientEventLabel(
   eventType: string,
-  feature: string
+  feature: string,
+  metadata: unknown
 ): string {
+  const record = toMetadataRecord(metadata)
   if (eventType === "tab_switched") return "Switched workspace tab"
+  if (eventType === "workspace_opened") return "Opened workspace"
   if (eventType === "recording_started") return "Started recording"
   if (eventType === "recording_stopped") return "Stopped recording"
   if (eventType === "note_submitted") return "Submitted note"
   if (eventType === "image_uploaded") return "Uploaded image"
-  if (eventType === "export_clicked") return `Clicked export (${feature})`
+  if (eventType === "export_clicked") {
+    const channel = typeof record?.channel === "string" ? record.channel : feature
+    return `Clicked export (${channel})`
+  }
   if (eventType === "analysis_triggered") return `Started ${feature} analysis`
   if (eventType === "analysis_completed") return `Completed ${feature} analysis`
   if (eventType === "analysis_failed") return `Failed ${feature} analysis`
@@ -417,6 +535,11 @@ function clientEventLabel(
 function clientEventDetail(eventType: string, metadata: unknown): string | undefined {
   const record = toMetadataRecord(metadata)
   if (!record) return undefined
+
+  if (eventType === "workspace_opened") {
+    const source = typeof record.source === "string" ? record.source : undefined
+    if (source) return `source=${source}`
+  }
 
   if (eventType === "tab_switched") {
     const from = typeof record.from === "string" ? record.from : undefined
@@ -436,6 +559,15 @@ function clientEventDetail(eventType: string, metadata: unknown): string | undef
   if (eventType === "image_uploaded") {
     const count = toNumber(record.count)
     if (count !== null) return `${count} images`
+  }
+
+  if (eventType === "export_clicked") {
+    const channel = typeof record.channel === "string" ? record.channel : undefined
+    const tab = typeof record.tab === "string" ? record.tab : undefined
+    const parts: string[] = []
+    if (channel) parts.push(`channel=${channel}`)
+    if (tab) parts.push(`tab=${tab}`)
+    return parts.length ? parts.join(", ") : undefined
   }
 
   if (
@@ -528,7 +660,7 @@ export function buildUserTimelineEvents(
     timestamp: event.createdAt.toISOString(),
     source: "client",
     category: clientEventCategory(event.eventType),
-    label: clientEventLabel(event.eventType, event.feature),
+    label: clientEventLabel(event.eventType, event.feature, event.metadata),
     detail: clientEventDetail(event.eventType, event.metadata),
     feature: event.feature,
     sessionId: event.sessionId,

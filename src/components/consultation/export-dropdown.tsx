@@ -59,9 +59,9 @@ export function ExportDropdown() {
       if (activeSession) {
         trackClientEvent({
           eventType: "export_clicked",
-          feature: "pdf",
+          feature: "export",
           sessionId: activeSession.id,
-          metadata: { tab: activeTab },
+          metadata: { tab: activeTab, channel: "pdf" },
         })
       }
       toast.success("PDF downloaded successfully")
@@ -89,9 +89,9 @@ export function ExportDropdown() {
       if (activeSession) {
         trackClientEvent({
           eventType: "export_clicked",
-          feature: "email",
+          feature: "export",
           sessionId: activeSession.id,
-          metadata: { tab: activeTab },
+          metadata: { tab: activeTab, channel: "email" },
         })
       }
       toast.success(`Email sent to ${email}`)

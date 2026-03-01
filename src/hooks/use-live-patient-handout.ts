@@ -131,7 +131,7 @@ export async function generatePatientHandout(
   setGenerating(true)
   trackClientEvent({
     eventType: "analysis_triggered",
-    feature: "patient_handout",
+    feature: "patientHandout",
     sessionId,
   })
 
@@ -201,7 +201,7 @@ export async function generatePatientHandout(
     setGeneratedDocument(handout)
     trackClientEvent({
       eventType: "analysis_completed",
-      feature: "patient_handout",
+      feature: "patientHandout",
       sessionId,
     })
 
@@ -221,7 +221,7 @@ export async function generatePatientHandout(
     console.error("Failed to generate patient handout:", error)
     trackClientEvent({
       eventType: "analysis_failed",
-      feature: "patient_handout",
+      feature: "patientHandout",
       sessionId,
       metadata: { reason: "request_error" },
     })

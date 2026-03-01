@@ -1,4 +1,5 @@
 export type ClientEventType =
+  | "workspace_opened"
   | "tab_switched"
   | "recording_started"
   | "recording_stopped"

@@ -102,13 +102,13 @@ export function AdminUserDetail({ userId }: { userId: string }) {
 
               <Card>
                 <CardHeader className="pb-2">
-                  <CardDescription>Completion Rate</CardDescription>
+                  <CardDescription>Record Finalization Rate</CardDescription>
                   <CardTitle className="text-2xl">
                     {toPercent(data.behavior.completionRate)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="text-xs text-muted-foreground">
-                  Sessions closed with plan or assessment.
+                  Sessions finalized with plan or assessment.
                 </CardContent>
               </Card>
 
@@ -142,7 +142,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">User Funnel</CardTitle>
-                <CardDescription>Completion progression for this user.</CardDescription>
+                <CardDescription>Stage progression for this user.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {data.funnel.map((step) => (
@@ -246,7 +246,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
               <CardHeader>
                 <CardTitle className="text-base">User Session Map</CardTitle>
                 <CardDescription>
-                  Sessions with completion and risk flags.
+                  Sessions with record finalization and risk flags.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -256,7 +256,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
                       <TableRow>
                         <TableHead>Session</TableHead>
                         <TableHead>Mode</TableHead>
-                        <TableHead>Completion</TableHead>
+                        <TableHead>Record Finalization</TableHead>
                         <TableHead>Flags</TableHead>
                         <TableHead />
                       </TableRow>
@@ -273,7 +273,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
                             </div>
                           </TableCell>
                           <TableCell>{session.mode}</TableCell>
-                          <TableCell>{toPercent(session.completionRate)}</TableCell>
+                          <TableCell>{toPercent(session.recordFinalizationRate)}</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
                               {session.riskFlags.length === 0 ? (

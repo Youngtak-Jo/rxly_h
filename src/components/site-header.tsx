@@ -66,7 +66,7 @@ const SIMULATION_SPEED_PRESETS = [
 
 function SimulationDialog({ open, onOpenChange }: { open?: boolean; onOpenChange?: (open: boolean) => void }) {
   const [internalOpen, setInternalOpen] = useState(false)
-  const [speed, setSpeed] = useState(SIMULATION_SPEED_PRESETS[0].value)
+  const [speed, setSpeed] = useState<string>(SIMULATION_SPEED_PRESETS[0].value)
   const [scenarioId, setScenarioId] = useState(SCENARIOS[0].id)
 
   const isControlled = open !== undefined
@@ -226,9 +226,9 @@ function MobileHeaderMenu() {
       if (activeSession) {
         trackClientEvent({
           eventType: "export_clicked",
-          feature: "pdf",
+          feature: "export",
           sessionId: activeSession.id,
-          metadata: { tab: activeTab },
+          metadata: { tab: activeTab, channel: "pdf" },
         })
       }
       toast.success("PDF downloaded successfully")
@@ -256,9 +256,9 @@ function MobileHeaderMenu() {
       if (activeSession) {
         trackClientEvent({
           eventType: "export_clicked",
-          feature: "email",
+          feature: "export",
           sessionId: activeSession.id,
-          metadata: { tab: activeTab },
+          metadata: { tab: activeTab, channel: "email" },
         })
       }
       toast.success(`Email sent to ${email}`)
