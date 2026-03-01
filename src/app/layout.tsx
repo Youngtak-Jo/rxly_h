@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next"
-import { cookies, headers } from "next/headers"
+import { headers } from "next/headers"
 import { Geist, Geist_Mono } from "next/font/google"
 import { ThemeProvider } from "next-themes"
 import { Toaster } from "sonner"
@@ -7,12 +7,9 @@ import { Analytics } from "@vercel/analytics/next"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { AppearanceProvider } from "@/components/appearance-provider"
 import { IntlProvider } from "@/components/intl-provider"
-import {
-  UI_LOCALE_COOKIE,
-  detectRequestUiLocale,
-  normalizeUiLocale,
-} from "@/i18n/config"
+import { detectRequestUiLocale } from "@/i18n/config"
 import { loadMessages } from "@/i18n/load-messages"
+import { resolveServerUiLocale, resolveServerUiTimeZone } from "@/i18n/server"
 
 import "./globals.css"
 
@@ -73,13 +70,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const cookieStore = await cookies()
   const headerStore = await headers()
   const defaultLocale = detectRequestUiLocale(
     headerStore.get("accept-language")
   )
-  const locale =
-    normalizeUiLocale(cookieStore.get(UI_LOCALE_COOKIE)?.value) ?? defaultLocale
+  const [locale, { hasStoredTimeZone, timeZone }] = await Promise.all([
+    resolveServerUiLocale(),
+    resolveServerUiTimeZone(),
+  ])
   const messages = await loadMessages(locale)
 
   return (
@@ -95,8 +93,10 @@ export default async function RootLayout({
         >
           <IntlProvider
             defaultLocale={defaultLocale}
+            hasStoredTimeZone={hasStoredTimeZone}
             locale={locale}
             messages={messages}
+            timeZone={timeZone}
           >
             <AppearanceProvider />
             <TooltipProvider>

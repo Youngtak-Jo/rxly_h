@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useLocale, useTranslations } from "next-intl"
+import { useLocale, useTimeZone, useTranslations } from "next-intl"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -31,7 +31,7 @@ import {
   ToggleGroupItem,
 } from "@/components/ui/toggle-group"
 import { formatDate } from "@/i18n/format"
-import type { UiLocale } from "@/i18n/config"
+import { DEFAULT_UI_TIME_ZONE, type UiLocale } from "@/i18n/config"
 
 export const description = "An interactive area chart"
 
@@ -132,6 +132,7 @@ const chartData = [
 export function ChartAreaInteractive() {
   const t = useTranslations("Dashboard.chart")
   const locale = useLocale() as UiLocale
+  const timeZone = useTimeZone() ?? DEFAULT_UI_TIME_ZONE
   const isMobile = useIsMobile()
   const [timeRange, setTimeRange] = React.useState("90d")
 
@@ -253,7 +254,7 @@ export function ChartAreaInteractive() {
               tickMargin={8}
               minTickGap={32}
               tickFormatter={(value) => {
-                return formatDate(value, locale, {
+                return formatDate(value, locale, timeZone, {
                   month: "short",
                   day: "numeric",
                 })
@@ -264,7 +265,7 @@ export function ChartAreaInteractive() {
               content={
                 <ChartTooltipContent
                   labelFormatter={(value) => {
-                    return formatDate(value, locale, {
+                    return formatDate(value, locale, timeZone, {
                       month: "short",
                       day: "numeric",
                     })

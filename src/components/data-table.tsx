@@ -50,7 +50,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
-import { useLocale, useTranslations } from "next-intl"
+import { useLocale, useTimeZone, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { z } from "zod"
 
@@ -107,7 +107,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { formatDate } from "@/i18n/format"
-import type { UiLocale } from "@/i18n/config"
+import { DEFAULT_UI_TIME_ZONE, type UiLocale } from "@/i18n/config"
 
 export const schema = z.object({
   id: z.number(),
@@ -169,11 +169,17 @@ function getStatusLabel(t: DashboardTranslations, value: string): string {
 function getMonthLabel(
   monthName: string,
   locale: UiLocale,
+  timeZone: string,
   width: "short" | "long" = "short"
 ): string {
   const monthIndex = MONTH_INDEX_BY_NAME[monthName]
   if (monthIndex === undefined) return monthName
-  return formatDate(new Date(2024, monthIndex, 1), locale, { month: width })
+  return formatDate(
+    new Date(Date.UTC(2024, monthIndex, 15, 12)),
+    locale,
+    timeZone,
+    { month: width }
+  )
 }
 
 function showSaveToast(
@@ -209,7 +215,8 @@ function DragHandle({ id, label }: { id: number; label: string }) {
 
 function createColumns(
   t: DashboardTranslations,
-  locale: UiLocale
+  locale: UiLocale,
+  timeZone: string
 ): ColumnDef<z.infer<typeof schema>>[] {
   return [
     {
@@ -252,7 +259,14 @@ function createColumns(
       accessorKey: "header",
       header: t("columns.header"),
       cell: ({ row }) => {
-        return <TableCellViewer item={row.original} t={t} locale={locale} />
+        return (
+          <TableCellViewer
+            item={row.original}
+            t={t}
+            locale={locale}
+            timeZone={timeZone}
+          />
+        )
       },
       enableHiding: false,
     },
@@ -416,6 +430,7 @@ export function DataTable({
 }) {
   const t = useTranslations("Dashboard.table")
   const locale = useLocale() as UiLocale
+  const timeZone = useTimeZone() ?? DEFAULT_UI_TIME_ZONE
   const [data, setData] = React.useState(() => initialData)
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -439,7 +454,10 @@ export function DataTable({
     () => data?.map(({ id }) => id) || [],
     [data]
   )
-  const columns = React.useMemo(() => createColumns(t, locale), [locale, t])
+  const columns = React.useMemo(
+    () => createColumns(t, locale, timeZone),
+    [locale, t, timeZone]
+  )
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table is not fully compatible with React Compiler
   const table = useReactTable({
@@ -721,10 +739,12 @@ function TableCellViewer({
   item,
   t,
   locale,
+  timeZone,
 }: {
   item: z.infer<typeof schema>
   t: DashboardTranslations
   locale: UiLocale
+  timeZone: string
 }) {
   const isMobile = useIsMobile()
   const chartConfig = {
@@ -770,7 +790,7 @@ function TableCellViewer({
                     tickLine={false}
                     axisLine={false}
                     tickMargin={8}
-                    tickFormatter={(value) => getMonthLabel(value, locale)}
+                    tickFormatter={(value) => getMonthLabel(value, locale, timeZone)}
                     hide
                   />
                   <ChartTooltip

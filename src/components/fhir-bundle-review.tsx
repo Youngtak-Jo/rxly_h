@@ -1,6 +1,6 @@
 "use client"
 
-import { useLocale, useTranslations } from "next-intl"
+import { useLocale, useTimeZone, useTranslations } from "next-intl"
 import { useMedplumSyncStore } from "@/stores/medplum-sync-store"
 import {
   Accordion,
@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { IconCheck, IconAlertTriangle } from "@tabler/icons-react"
 import type { BundleEntry } from "@medplum/fhirtypes"
-import type { UiLocale } from "@/i18n/config"
+import { DEFAULT_UI_TIME_ZONE, type UiLocale } from "@/i18n/config"
 import { formatDateTime } from "@/i18n/format"
 
 export function FhirBundleReview() {
@@ -162,6 +162,7 @@ function PatientSection({ entries }: { entries: BundleEntry[] }) {
 function EncounterSection({ entries }: { entries: BundleEntry[] }) {
   const t = useTranslations("FhirBundleReview")
   const locale = useLocale() as UiLocale
+  const timeZone = useTimeZone() ?? DEFAULT_UI_TIME_ZONE
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const encounter = entries[0]?.resource as any
   return (
@@ -183,9 +184,9 @@ function EncounterSection({ entries }: { entries: BundleEntry[] }) {
           {encounter?.period?.start && (
             <div>
               <span className="text-muted-foreground">{t("period")}: </span>
-              {formatDateTime(encounter.period.start, locale)} -{" "}
+              {formatDateTime(encounter.period.start, locale, timeZone)} -{" "}
               {encounter.period.end
-                ? formatDateTime(encounter.period.end, locale)
+                ? formatDateTime(encounter.period.end, locale, timeZone)
                 : t("ongoing")}
             </div>
           )}

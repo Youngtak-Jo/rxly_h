@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation"
 import { NextIntlClientProvider } from "next-intl"
 
 import type { UiLocale } from "@/i18n/config"
-import { UI_LOCALE_COOKIE } from "@/i18n/config"
+import {
+  UI_LOCALE_COOKIE,
+  UI_TIMEZONE_COOKIE,
+  normalizeUiTimeZone,
+} from "@/i18n/config"
 
 type UiLocaleContextValue = {
   defaultLocale: UiLocale
@@ -19,13 +23,17 @@ const UiLocaleContext = React.createContext<UiLocaleContextValue | null>(null)
 export function IntlProvider({
   children,
   defaultLocale,
+  hasStoredTimeZone,
   locale,
   messages,
+  timeZone,
 }: {
   children: React.ReactNode
   defaultLocale: UiLocale
+  hasStoredTimeZone: boolean
   locale: UiLocale
   messages: Record<string, unknown>
+  timeZone: string
 }) {
   const router = useRouter()
   const [, startTransition] = React.useTransition()
@@ -33,6 +41,24 @@ export function IntlProvider({
   React.useEffect(() => {
     document.documentElement.lang = locale
   }, [locale])
+
+  React.useEffect(() => {
+    const browserTimeZone = normalizeUiTimeZone(
+      Intl.DateTimeFormat().resolvedOptions().timeZone
+    )
+
+    if (!browserTimeZone) return
+
+    if (hasStoredTimeZone && browserTimeZone === timeZone) return
+
+    document.cookie = `${UI_TIMEZONE_COOKIE}=${browserTimeZone}; path=/; max-age=31536000; samesite=lax`
+
+    if (browserTimeZone !== timeZone) {
+      startTransition(() => {
+        router.refresh()
+      })
+    }
+  }, [hasStoredTimeZone, router, startTransition, timeZone])
 
   const setLocale = React.useCallback((nextLocale: UiLocale) => {
     if (nextLocale === locale) return
@@ -43,7 +69,7 @@ export function IntlProvider({
     startTransition(() => {
       router.refresh()
     })
-  }, [locale, router])
+  }, [locale, router, startTransition])
 
   const resetLocale = React.useCallback(() => {
     document.documentElement.lang = defaultLocale
@@ -52,7 +78,7 @@ export function IntlProvider({
     startTransition(() => {
       router.refresh()
     })
-  }, [defaultLocale, router])
+  }, [defaultLocale, router, startTransition])
 
   const value = React.useMemo(
     () => ({
@@ -66,7 +92,11 @@ export function IntlProvider({
 
   return (
     <UiLocaleContext.Provider value={value}>
-      <NextIntlClientProvider locale={locale} messages={messages}>
+      <NextIntlClientProvider
+        locale={locale}
+        messages={messages}
+        timeZone={timeZone}
+      >
         {children}
       </NextIntlClientProvider>
     </UiLocaleContext.Provider>

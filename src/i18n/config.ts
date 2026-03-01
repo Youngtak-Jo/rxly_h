@@ -1,4 +1,6 @@
 export const UI_LOCALE_COOKIE = "rxly-ui-locale"
+export const UI_TIMEZONE_COOKIE = "rxly-ui-timezone"
+export const DEFAULT_UI_TIME_ZONE = "Asia/Seoul"
 
 export const UI_LOCALES = ["en", "ko"] as const
 
@@ -29,6 +31,22 @@ export function detectRequestUiLocale(acceptLanguage: string | null | undefined)
   }
 
   return "en"
+}
+
+export function normalizeUiTimeZone(timeZone: string | null | undefined): string | undefined {
+  if (!timeZone) return undefined
+
+  const normalized = timeZone.trim()
+
+  if (!normalized) return undefined
+
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: normalized,
+    }).resolvedOptions().timeZone
+  } catch {
+    return undefined
+  }
 }
 
 export function toIntlLocale(locale: UiLocale): "en-US" | "ko-KR" {

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 import { decryptField } from "@/lib/encryption"
 import sanitizeHtml from "sanitize-html"
 import { formatDateTime } from "@/i18n/format"
-import { resolveServerUiLocale } from "@/i18n/server"
+import { resolveServerUiLocale, resolveServerUiTimeZone } from "@/i18n/server"
 
 export default async function ExportViewerPage({
   params,
@@ -13,7 +13,10 @@ export default async function ExportViewerPage({
   params: Promise<{ id: string }>
 }) {
   const t = await getTranslations("ExportViewer")
-  const locale = await resolveServerUiLocale()
+  const [locale, { timeZone }] = await Promise.all([
+    resolveServerUiLocale(),
+    resolveServerUiTimeZone(),
+  ])
   const { id } = await params
 
   // Require authentication
@@ -90,7 +93,7 @@ export default async function ExportViewerPage({
         <div className="mb-6 print:hidden">
           <p className="text-sm text-muted-foreground">
             {t("accessExpires", {
-              date: formatDateTime(exportLink.expiresAt, locale),
+              date: formatDateTime(exportLink.expiresAt, locale, timeZone),
             })}
           </p>
         </div>

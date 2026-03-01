@@ -1,14 +1,11 @@
 "use client"
 
 import { memo } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTimeZone, useTranslations } from "next-intl"
+import { DEFAULT_UI_TIME_ZONE, type UiLocale } from "@/i18n/config"
+import { formatTime } from "@/i18n/format"
 import type { TranscriptEntry, DiagnosticKeyword, Speaker } from "@/types/session"
 import { cn } from "@/lib/utils"
-
-function formatTime(createdAt: string) {
-    const date = new Date(createdAt)
-    return `${date.getHours()}:${date.getMinutes().toString().padStart(2, "0")}`
-}
 
 const HIGHLIGHT_COLORS: Record<
     DiagnosticKeyword["category"],
@@ -111,6 +108,8 @@ export const TranscriptBubble = memo(function TranscriptBubble({
     isFirst: boolean
 }) {
     const t = useTranslations("TranscriptBubble")
+    const locale = useLocale() as UiLocale
+    const timeZone = useTimeZone() ?? DEFAULT_UI_TIME_ZONE
     const isSameSpeaker = prevSpeaker === entry.speaker
     const showMeta = !isSameSpeaker
 
@@ -199,7 +198,7 @@ export const TranscriptBubble = memo(function TranscriptBubble({
                                     : "text-muted-foreground/60"
                             )}
                         >
-                            {formatTime(entry.createdAt)}
+                            {formatTime(entry.createdAt, locale, timeZone)}
                         </span>
                     </div>
                 )}

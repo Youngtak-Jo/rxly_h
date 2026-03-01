@@ -1,6 +1,6 @@
 "use client"
 
-import { useLocale, useTranslations } from "next-intl"
+import { useLocale, useTimeZone, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { RecordSection } from "./record-section"
 import { useRecordStore } from "@/stores/record-store"
@@ -8,12 +8,13 @@ import { useSessionStore } from "@/stores/session-store"
 import { generateRecord } from "@/hooks/use-live-record"
 
 import { IconLoader2 } from "@tabler/icons-react"
-import type { UiLocale } from "@/i18n/config"
+import { DEFAULT_UI_TIME_ZONE, type UiLocale } from "@/i18n/config"
 import { formatDate } from "@/i18n/format"
 
 export function RecordContainer() {
   const t = useTranslations("Record")
   const locale = useLocale() as UiLocale
+  const timeZone = useTimeZone() ?? DEFAULT_UI_TIME_ZONE
   const { record, isGenerating, updateField } = useRecordStore()
   const activeSession = useSessionStore((s) => s.activeSession)
 
@@ -59,7 +60,11 @@ export function RecordContainer() {
                 <>
                   {" "}
                   &middot;{" "}
-                  {formatDate(record?.date || activeSession.startedAt, locale)}
+                  {formatDate(
+                    record?.date || activeSession.startedAt,
+                    locale,
+                    timeZone
+                  )}
                 </>
               )}
             </p>
