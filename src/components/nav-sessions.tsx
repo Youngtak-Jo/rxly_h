@@ -4,14 +4,10 @@ import { useState, useRef, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { usePathname, useRouter } from "next/navigation"
 import {
-  IconBulb,
   IconDots,
-  IconFileText,
   IconLoader2,
   IconPencil,
   IconPlus,
-  IconSearch,
-  IconStethoscope,
   IconTrash,
 } from "@tabler/icons-react"
 import { v4 as uuidv4 } from "uuid"
@@ -51,9 +47,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 
 
@@ -74,7 +67,6 @@ function formatShortTimeAgo(date: Date): string {
 
 export function NavSessions() {
   const t = useTranslations("NavSessions")
-  const tTabs = useTranslations("ConsultationTabs")
   const router = useRouter()
   const pathname = usePathname()
   const { sessions, activeSession, setActiveSession, addSession, setSessions } =
@@ -166,15 +158,6 @@ export function NavSessions() {
     resetConsultationStores()
     router.replace("/consultation")
   }
-
-  // Tab state for sub-items
-  const { activeTab, setActiveTab, unseenUpdates } = useConsultationTabStore()
-  const diagnosisCount = useDdxStore((s) => s.diagnoses.length)
-  const isDdxProcessing = useDdxStore((s) => s.isProcessing)
-  const isInsightsProcessing = useInsightsStore((s) => s.isProcessing)
-  const isRecordGenerating = useRecordStore((s) => s.isGenerating)
-  const isResearchStreaming = useResearchStore((s) => s.isStreaming)
-  const isPatientHandoutGenerating = usePatientHandoutStore((s) => s.isGenerating)
 
   const createSession = async () => {
     const storeBeforeCreate = useSessionStore.getState()
@@ -482,109 +465,6 @@ export function NavSessions() {
                     </div>
                   </SidebarMenuButton>
                 </div>
-              )}
-              {isActive && (
-                <SidebarMenuSub>
-                  {/* Live Insights */}
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      asChild
-                      isActive={activeTab === "insights"}
-                    >
-                      <button onClick={() => setActiveTab("insights")}>
-                        <IconBulb className="size-4" />
-                        <span className="truncate">{tTabs("insights")}</span>
-                        {isInsightsProcessing ? (
-                          <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
-                        ) : unseenUpdates.insights && activeTab !== "insights" ? (
-                          <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-green-500" />
-                        ) : null}
-                      </button>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-
-                  {/* Differential Dx */}
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      asChild
-                      isActive={activeTab === "ddx"}
-                    >
-                      <button onClick={() => setActiveTab("ddx")}>
-                        <IconStethoscope className="size-4" />
-                        <span className="truncate">{tTabs("ddx")}</span>
-                        {isDdxProcessing && diagnosisCount === 0 ? (
-                          <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
-                        ) : diagnosisCount > 0 ? (
-                          <span className="ml-auto flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                            {isDdxProcessing ? (
-                              <IconLoader2 key="ddx-icon" className="size-3 animate-spin" />
-                            ) : unseenUpdates.ddx && activeTab !== "ddx" ? (
-                              <span key="ddx-icon" className="h-2 w-2 rounded-full bg-green-500" />
-                            ) : null}
-                            {diagnosisCount}
-                          </span>
-                        ) : unseenUpdates.ddx && activeTab !== "ddx" ? (
-                          <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-green-500" />
-                        ) : null}
-                      </button>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-
-                  {/* Consultation Record */}
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      asChild
-                      isActive={activeTab === "record"}
-                    >
-                      <button onClick={() => setActiveTab("record")}>
-                        <IconFileText className="size-4" />
-                        <span className="truncate">{tTabs("record")}</span>
-                        {isRecordGenerating ? (
-                          <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
-                        ) : unseenUpdates.record && activeTab !== "record" ? (
-                          <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-green-500" />
-                        ) : null}
-                      </button>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-
-                  {/* Research */}
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      asChild
-                      isActive={activeTab === "research"}
-                    >
-                      <button onClick={() => setActiveTab("research")}>
-                        <IconSearch className="size-4" />
-                        <span className="truncate">{tTabs("research")}</span>
-                        {isResearchStreaming ? (
-                          <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
-                        ) : unseenUpdates.research && activeTab !== "research" ? (
-                          <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-green-500" />
-                        ) : null}
-                      </button>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-
-                  {/* Patient Handout */}
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      asChild
-                      isActive={activeTab === "patientHandout"}
-                    >
-                      <button onClick={() => setActiveTab("patientHandout")}>
-                        <IconFileText className="size-4" />
-                        <span className="truncate">{tTabs("patientHandout")}</span>
-                        {isPatientHandoutGenerating ? (
-                          <IconLoader2 className="ml-auto size-3 shrink-0 animate-spin" />
-                        ) : unseenUpdates.patientHandout &&
-                          activeTab !== "patientHandout" ? (
-                          <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-green-500" />
-                        ) : null}
-                      </button>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                </SidebarMenuSub>
               )}
             </SidebarMenuItem>
           )

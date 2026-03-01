@@ -237,12 +237,9 @@ export function PatientHandoutContainer() {
     <div data-tour="patient-handout-panel" className="space-y-4">
       <div className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-medium">{t("title")}</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t("subtitle")}
-            </p>
-          </div>
+          <p className="max-w-md text-xs text-muted-foreground">
+            {t("subtitle")}
+          </p>
           <Button
             onClick={() => {
               if (!activeSession) return
@@ -423,13 +420,6 @@ export function PatientHandoutContainer() {
           </div>
         ) : null}
       </div>
-
-      {isGenerating && !document && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          {t("generatingDescription")}
-        </div>
-      )}
 
       {document && (
         <div className="space-y-4">

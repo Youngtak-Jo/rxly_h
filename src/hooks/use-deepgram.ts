@@ -7,6 +7,8 @@ import { useTranscriptStore } from "@/stores/transcript-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useLiveInsights } from "@/hooks/use-live-insights"
 import { deleteCachedSession } from "@/hooks/use-session-loader"
+import { getResponseErrorMessage } from "@/lib/response-error"
+import { toast } from "sonner"
 import { v4 as uuid } from "uuid"
 import type { Speaker } from "@/types/session"
 
@@ -134,7 +136,14 @@ export function useDeepgram() {
 
       // Get temporary token
       const tokenRes = await fetch("/api/deepgram/token", { method: "POST" })
-      if (!tokenRes.ok) throw new Error("Failed to get Deepgram token")
+      if (!tokenRes.ok) {
+        throw new Error(
+          await getResponseErrorMessage(
+            tokenRes,
+            "Failed to get Deepgram token"
+          )
+        )
+      }
       const tokenPayload = (await tokenRes.json()) as {
         token: string
         tokenType?: "bearer" | "token"
@@ -348,6 +357,7 @@ export function useDeepgram() {
       const message =
         error instanceof Error ? error.message : "Failed to start recording"
       console.error("Failed to start listening:", error)
+      toast.error(message)
       setError(message)
     }
   }, [

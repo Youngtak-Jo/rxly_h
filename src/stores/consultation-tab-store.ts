@@ -2,9 +2,22 @@ import { create } from "zustand"
 import { useSessionStore } from "@/stores/session-store"
 import { trackClientEvent } from "@/lib/telemetry/client-events"
 
-type Tab = "insights" | "ddx" | "record" | "research" | "patientHandout"
+export type ConsultationTabId =
+  | "insights"
+  | "ddx"
+  | "record"
+  | "research"
+  | "patientHandout"
 
-const NO_UNSEEN: Record<Tab, boolean> = {
+export const CONSULTATION_TABS: ConsultationTabId[] = [
+  "insights",
+  "ddx",
+  "record",
+  "research",
+  "patientHandout",
+]
+
+const NO_UNSEEN: Record<ConsultationTabId, boolean> = {
   insights: false,
   ddx: false,
   record: false,
@@ -13,11 +26,11 @@ const NO_UNSEEN: Record<Tab, boolean> = {
 }
 
 interface ConsultationTabState {
-  activeTab: Tab
-  setActiveTab: (tab: Tab) => void
+  activeTab: ConsultationTabId
+  setActiveTab: (tab: ConsultationTabId) => void
 
-  unseenUpdates: Record<Tab, boolean>
-  markTabUpdated: (tab: Tab) => void
+  unseenUpdates: Record<ConsultationTabId, boolean>
+  markTabUpdated: (tab: ConsultationTabId) => void
   clearAllUnseenUpdates: () => void
 
   isTranscriptCollapsed: boolean

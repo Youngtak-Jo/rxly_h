@@ -5,6 +5,7 @@ import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import { useSettingsStore } from "@/stores/settings-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useAiDoctor } from "@/hooks/use-ai-doctor"
+import { getResponseErrorMessage } from "@/lib/response-error"
 import { toast } from "sonner"
 
 const SAMPLE_RATE = 16000
@@ -93,9 +94,12 @@ export function useAiDoctorStt() {
       // Get temporary token
       const tokenRes = await fetch("/api/deepgram/token", { method: "POST" })
       if (!tokenRes.ok) {
-        const errData = await tokenRes.json().catch(() => ({}))
-        console.error("Deepgram token error:", tokenRes.status, errData)
-        toast.error("Failed to start voice input. Please try again.")
+        const message = await getResponseErrorMessage(
+          tokenRes,
+          "Failed to start voice input"
+        )
+        console.error("Deepgram token error:", message)
+        toast.error(message)
         useConsultationModeStore.getState().setMicActive(false)
         return
       }

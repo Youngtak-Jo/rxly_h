@@ -52,14 +52,6 @@ export function InsightsContainer() {
   return (
     <div ref={containerRef} data-tour="insights-panel" className={`space-y-6 ${isProcessing && hasContent ? "animate-breathe insights-shimmer-overlay" : ""}`}>
       <h1 className="sr-only">{t("liveInsights")}</h1>
-      {isProcessing && !hasContent && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
-          <span className="h-2 w-2 rounded-full bg-blue-500" />
-          {t("analyzing")}
-        </div>
-      )}
-
-
       {/* Summary */}
       <section data-section="summary">
         <h3 className="flex items-center gap-2 text-sm font-medium mb-2">

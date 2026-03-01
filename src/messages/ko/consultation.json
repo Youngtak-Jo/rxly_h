@@ -10,7 +10,12 @@
     "insights": "실시간 인사이트",
     "patientHandout": "환자 안내문",
     "record": "진료 기록",
-    "research": "리서치"
+    "research": "리서치",
+    "status": {
+      "diagnosisCount": "진단 {count}개",
+      "newResults": "새 결과 있음",
+      "updating": "업데이트 중"
+    }
   },
   "ExportDropdown": {
     "consultationFallback": "진료",

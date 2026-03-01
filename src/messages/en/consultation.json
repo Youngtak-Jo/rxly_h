@@ -10,7 +10,12 @@
     "insights": "Live Insights",
     "patientHandout": "Patient Handout",
     "record": "Consultation Record",
-    "research": "Research"
+    "research": "Research",
+    "status": {
+      "diagnosisCount": "{count, plural, one {# diagnosis} other {# diagnoses}}",
+      "newResults": "New results available",
+      "updating": "Updating"
+    }
   },
   "ExportDropdown": {
     "consultationFallback": "Consultation",

@@ -51,12 +51,17 @@ export function RecordContainer() {
   return (
     <div data-tour="record-panel" className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-medium">{t("consultationTitle")}</h3>
-          {record && (
+        <div className="min-h-4">
+          {activeSession && (
             <p className="text-xs text-muted-foreground">
-              {activeSession?.patientName || t("unknownPatient")} &middot;{" "}
-              {formatDate(record.date, locale)}
+              {activeSession.patientName || t("unknownPatient")}
+              {(record?.date || activeSession.startedAt) && (
+                <>
+                  {" "}
+                  &middot;{" "}
+                  {formatDate(record?.date || activeSession.startedAt, locale)}
+                </>
+              )}
             </p>
           )}
         </div>
@@ -74,20 +79,6 @@ export function RecordContainer() {
           {isGenerating ? t("generating") : record ? t("regenerate") : t("generate")}
         </Button>
       </div>
-
-      {isGenerating && !record && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          {t("generatingRecord")}
-        </div>
-      )}
-
-      {isGenerating && record && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          {t("updatingRecord")}
-        </div>
-      )}
 
       {!record && !isGenerating && (
         <p className="text-sm text-muted-foreground/50 italic text-center py-8">

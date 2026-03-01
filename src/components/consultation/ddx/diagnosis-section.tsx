@@ -712,15 +712,6 @@ export function DiagnosisSection() {
 
   return (
     <section>
-      <h3 className="flex items-center gap-2 text-sm font-medium mb-2">
-        <IconStethoscope className="size-4 text-orange-500" />
-        {tSupport("title")}
-        {diagnoses.length > 0 && (
-          <Badge variant="secondary" className="text-[10px]">
-            {diagnoses.length}
-          </Badge>
-        )}
-      </h3>
       {diagnoses.length === 0 ? (
         <p className="text-sm text-muted-foreground/50 italic">
           {tSupport("emptyState")}
