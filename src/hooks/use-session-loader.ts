@@ -4,7 +4,12 @@ import { useEffect, useRef } from "react"
 import type { ChecklistItem, DiagnosisCitation } from "@/types/insights"
 import type { ConsultationRecord } from "@/types/record"
 import type { PatientHandoutDocument } from "@/types/patient-handout"
-import type { DiagnosticKeyword, Session, TranscriptEntry } from "@/types/session"
+import type {
+  DiagnosticKeyword,
+  RecordingSegment,
+  Session,
+  TranscriptEntry,
+} from "@/types/session"
 import {
   useConsultationModeStore,
   type AiDoctorMessage,
@@ -15,6 +20,7 @@ import { useInsightsStore } from "@/stores/insights-store"
 import { useNoteStore, type NoteEntry } from "@/stores/note-store"
 import { useRecordStore } from "@/stores/record-store"
 import { useRecordingStore } from "@/stores/recording-store"
+import { useRecordingSegmentStore } from "@/stores/recording-segment-store"
 import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 import {
   useResearchStore,
@@ -65,6 +71,8 @@ interface ResearchMessageData {
   role: string
   content: string
   citations: unknown
+  imageUrls: string[]
+  storagePaths: string[]
   createdAt: string
 }
 
@@ -73,6 +81,7 @@ export interface FullSessionResponse {
   transcriptEntries: TranscriptEntry[]
   notes: NoteData[]
   researchMessages: ResearchMessageData[]
+  recordingSegments: RecordingSegment[]
 }
 
 interface CachedCoreSessionData {
@@ -168,6 +177,14 @@ function mapResearchToStoreEntries(
       (typeof message.citations === "string"
         ? JSON.parse(message.citations)
         : message.citations) || [],
+    imageUrls:
+      (typeof message.imageUrls === "string"
+        ? JSON.parse(message.imageUrls)
+        : message.imageUrls) || [],
+    storagePaths:
+      (typeof message.storagePaths === "string"
+        ? JSON.parse(message.storagePaths)
+        : message.storagePaths) || [],
     createdAt: message.createdAt,
   }))
 }
@@ -215,6 +232,12 @@ function mergeResearchWithLocal(
       ...incoming,
       ...local,
       citations: local.citations.length > 0 ? local.citations : incoming.citations,
+      imageUrls:
+        local.imageUrls.length > 0 ? local.imageUrls : incoming.imageUrls,
+      storagePaths:
+        local.storagePaths.length > 0
+          ? local.storagePaths
+          : incoming.storagePaths,
     }
   })
 
@@ -262,6 +285,7 @@ export function getCachedSession(sessionId: string): FullSessionResponse | null 
     transcriptEntries: cached.transcriptEntries,
     notes: cached.notes,
     researchMessages: cached.researchMessages,
+    recordingSegments: cached.recordingSegments,
   }
 }
 
@@ -299,6 +323,7 @@ function restoreCoreStores(session: CoreSessionResponse) {
   const researchStore = useResearchStore.getState()
   const patientHandoutStore = usePatientHandoutStore.getState()
   const recordingStore = useRecordingStore.getState()
+  const recordingSegmentStore = useRecordingSegmentStore.getState()
   const consultationModeStore = useConsultationModeStore.getState()
 
   useConsultationTabStore.getState().clearAllUnseenUpdates()
@@ -307,6 +332,7 @@ function restoreCoreStores(session: CoreSessionResponse) {
     consultationModeStore.setMode("ai-doctor")
   }
   recordingStore.reset()
+  recordingSegmentStore.reset()
 
   useSessionStore.getState().setActiveSession(session)
 
@@ -353,10 +379,12 @@ function restoreCoreStores(session: CoreSessionResponse) {
 }
 
 function hydrateHeavyStores(fullSession: FullSessionResponse) {
-  const { session, transcriptEntries, notes, researchMessages } = fullSession
+  const { session, transcriptEntries, notes, researchMessages, recordingSegments } =
+    fullSession
   const transcriptStore = useTranscriptStore.getState()
   const noteStore = useNoteStore.getState()
   const researchStore = useResearchStore.getState()
+  const recordingSegmentStore = useRecordingSegmentStore.getState()
   const consultationModeStore = useConsultationModeStore.getState()
 
   transcriptStore.reset()
@@ -388,6 +416,7 @@ function hydrateHeavyStores(fullSession: FullSessionResponse) {
     mapResearchToStoreEntries(researchMessages)
   )
   researchStore.loadFromDB(mergedResearch)
+  recordingSegmentStore.hydrateSegments(recordingSegments)
 }
 
 async function fetchCoreSessionById(sessionId: string): Promise<CoreSessionResponse> {

@@ -5,6 +5,10 @@ import { useRecordStore } from "@/stores/record-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useNoteStore } from "@/stores/note-store"
+import {
+  type RecordingSegmentEntry,
+  useRecordingSegmentStore,
+} from "@/stores/recording-segment-store"
 import { useResearchStore } from "@/stores/research-store"
 import type { ChecklistItem, DiagnosisItem } from "@/types/insights"
 import type { TranscriptEntry } from "@/types/session"
@@ -35,6 +39,7 @@ export interface TourSnapshot {
   record: { record: ConsultationRecord | null }
   research: { messages: ResearchMessage[] }
   notes: NoteEntry[]
+  recordingSegments: RecordingSegmentEntry[]
 }
 
 // ---------------------------------------------------------------------------
@@ -49,6 +54,7 @@ export function captureSnapshot(): TourSnapshot {
   const tab = useConsultationTabStore.getState()
   const ses = useSessionStore.getState()
   const notes = useNoteStore.getState()
+  const recordingSegments = useRecordingSegmentStore.getState()
 
   return {
     activeTab: tab.activeTab,
@@ -70,6 +76,7 @@ export function captureSnapshot(): TourSnapshot {
     record: { record: rec.record ? { ...rec.record } : null },
     research: { messages: res.messages.map((m) => ({ ...m, citations: [...m.citations] })) },
     notes: notes.notes.map((n) => ({ ...n, imageUrls: [...n.imageUrls], storagePaths: [...n.storagePaths] })),
+    recordingSegments: recordingSegments.segments.map((segment) => ({ ...segment })),
   }
 }
 
@@ -113,6 +120,13 @@ export function restoreSnapshot(snap: TourSnapshot) {
   useNoteStore.getState().reset()
   if (snap.notes.length > 0) {
     useNoteStore.getState().loadNotes(snap.notes)
+  }
+
+  useRecordingSegmentStore.getState().reset()
+  if (snap.recordingSegments.length > 0) {
+    useRecordingSegmentStore.setState({
+      segments: snap.recordingSegments.map((segment) => ({ ...segment })),
+    })
   }
 
   // Restore tab
@@ -383,6 +397,8 @@ export function injectResearchData() {
       role: "user",
       content: "What are the recommended first-line treatments for migraine without aura?",
       citations: [],
+      imageUrls: [],
+      storagePaths: [],
       createdAt: now,
     },
     {
@@ -418,6 +434,8 @@ export function injectResearchData() {
           snippet: "Recurrent headache disorder manifesting in attacks lasting 4-72 hours.",
         },
       ],
+      imageUrls: [],
+      storagePaths: [],
       createdAt: now,
     },
   ])

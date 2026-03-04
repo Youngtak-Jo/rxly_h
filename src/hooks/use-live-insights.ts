@@ -370,7 +370,7 @@ export function useLiveInsights() {
     }
   }, [runAnalysis])
 
-  // Register triggerFromNote globally so NoteInputBar can call it
+  // Register note trigger globally so the shared composer can retrigger insights.
   useEffect(() => {
     useInsightsStore.getState().setNoteTrigger(triggerFromNote)
     return () => {

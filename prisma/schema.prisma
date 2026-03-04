@@ -27,6 +27,7 @@ model Session {
   diagnoses         Diagnosis[]
   notes             Note[]
   researchMessages  ResearchMessage[]
+  recordingSegments RecordingSegment[]
   aiUsageEvents     AiUsageEvent[]
   clientEvents      ClientEvent[]
 
@@ -47,21 +48,24 @@ enum Speaker {
 }
 
 model TranscriptEntry {
-  id         String   @id @default(uuid())
-  sessionId  String   @map("session_id")
-  speaker    Speaker
-  rawSpeakerId Int?   @map("raw_speaker_id")
-  text       String
-  startTime  Float    @map("start_time")
-  endTime    Float    @map("end_time")
-  confidence Float    @default(0)
-  isFinal    Boolean  @default(false) @map("is_final")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id               String   @id @default(uuid())
+  sessionId        String   @map("session_id")
+  recordingSegmentId String? @map("recording_segment_id")
+  speaker          Speaker
+  rawSpeakerId     Int?     @map("raw_speaker_id")
+  text             String
+  startTime        Float    @map("start_time")
+  endTime          Float    @map("end_time")
+  confidence       Float    @default(0)
+  isFinal          Boolean  @default(false) @map("is_final")
+  createdAt        DateTime @default(now()) @map("created_at")
 
-  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session          Session          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  recordingSegment RecordingSegment? @relation(fields: [recordingSegmentId], references: [id], onDelete: SetNull)
 
   @@index([sessionId, startTime])
   @@index([sessionId, isFinal, startTime])
+  @@index([recordingSegmentId])
   @@map("transcript_entries")
 }
 
@@ -171,12 +175,32 @@ model ResearchMessage {
   role      String   // "user" or "assistant"
   content   String
   citations Json     @default("[]")
+  imageUrls Json     @default("[]") @map("image_urls")
+  storagePaths Json  @default("[]") @map("storage_paths")
   createdAt DateTime @default(now()) @map("created_at")
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, createdAt])
   @@map("research_messages")
+}
+
+model RecordingSegment {
+  id            String   @id @default(uuid())
+  sessionId     String   @map("session_id")
+  storagePath   String   @unique @map("storage_path")
+  mimeType      String   @map("mime_type")
+  fileSizeBytes Int      @map("file_size_bytes")
+  durationMs    Int      @map("duration_ms")
+  startedAt     DateTime @map("started_at")
+  endedAt       DateTime @map("ended_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  session           Session           @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  transcriptEntries TranscriptEntry[]
+
+  @@index([sessionId, startedAt])
+  @@map("recording_segments")
 }
 
 model AuditLog {

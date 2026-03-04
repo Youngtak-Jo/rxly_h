@@ -80,6 +80,13 @@
   --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
   --sidebar-border: oklch(0.923 0.003 48.717);
   --sidebar-ring: oklch(0.52 0.14 40);
+  --consultation-shell-ambient-core: oklch(0.62 0.14 36 / 0.82);
+  --consultation-shell-ambient-highlight: oklch(0.75 0.08 58 / 0.72);
+  --consultation-shell-ambient-sand: oklch(0.84 0.05 76 / 0.58);
+  --consultation-shell-ambient-haze: oklch(0.76 0.08 42 / 0.18);
+  --consultation-shell-ambient-veil: oklch(0.88 0.03 70 / 0.08);
+  --consultation-shell-ambient-inset-top: oklch(0.8 0.08 50);
+  --consultation-shell-ambient-inset-side: oklch(0.77 0.04 42);
 }
 
 .dark {
@@ -114,6 +121,13 @@
   --sidebar-accent-foreground: oklch(0.985 0.002 75.405);
   --sidebar-border: oklch(1 0.002 75 / 10%);
   --sidebar-ring: oklch(0.72 0.14 40);
+  --consultation-shell-ambient-core: oklch(0.8 0.12 36 / 0.72);
+  --consultation-shell-ambient-highlight: oklch(0.88 0.07 60 / 0.62);
+  --consultation-shell-ambient-sand: oklch(0.9 0.04 78 / 0.44);
+  --consultation-shell-ambient-haze: oklch(0.76 0.09 42 / 0.14);
+  --consultation-shell-ambient-veil: oklch(0.84 0.04 66 / 0.06);
+  --consultation-shell-ambient-inset-top: oklch(0.84 0.08 52);
+  --consultation-shell-ambient-inset-side: oklch(0.8 0.05 44);
 }
 
 @layer base {
@@ -129,6 +143,402 @@
 .sidebar-fade-mask {
   -webkit-mask-image: linear-gradient(to bottom, transparent, rgba(0,0,0,0.3) 0.5rem, rgba(0,0,0,0.7) 1.5rem, black 2.5rem, black calc(100% - 2.5rem), transparent);
   mask-image: linear-gradient(to bottom, transparent, rgba(0,0,0,0.3) 0.5rem, rgba(0,0,0,0.7) 1.5rem, black 2.5rem, black calc(100% - 2.5rem), transparent);
+}
+
+.consultation-center-scroll {
+  --consultation-center-fade-lead: 72px;
+  --consultation-center-scrollbar-gutter: 16px;
+  padding-bottom: calc(
+    var(--consultation-center-composer-height, 0px) +
+    var(--consultation-center-fade-lead) +
+    env(safe-area-inset-bottom) +
+    1rem
+  );
+  scroll-padding-bottom: calc(
+    var(--consultation-center-composer-height, 0px) +
+    var(--consultation-center-fade-lead) +
+    env(safe-area-inset-bottom) +
+    1rem
+  );
+  -webkit-mask-image:
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 1) 0,
+      rgba(0, 0, 0, 1) calc(100% - calc(var(--consultation-center-composer-height, 0px) + var(--consultation-center-fade-lead))),
+      rgba(0, 0, 0, 0.72) calc(100% - calc(var(--consultation-center-composer-height, 0px) + 44px)),
+      rgba(0, 0, 0, 0.22) calc(100% - calc(var(--consultation-center-composer-height, 0px) + 8px)),
+      rgba(0, 0, 0, 0.04) calc(100% - 24px),
+      transparent 100%
+    ),
+    linear-gradient(rgba(0, 0, 0, 1), rgba(0, 0, 0, 1));
+  -webkit-mask-size:
+    calc(100% - var(--consultation-center-scrollbar-gutter)) 100%,
+    var(--consultation-center-scrollbar-gutter) 100%;
+  -webkit-mask-position: left top, right top;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  mask-image:
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 1) 0,
+      rgba(0, 0, 0, 1) calc(100% - calc(var(--consultation-center-composer-height, 0px) + var(--consultation-center-fade-lead))),
+      rgba(0, 0, 0, 0.72) calc(100% - calc(var(--consultation-center-composer-height, 0px) + 44px)),
+      rgba(0, 0, 0, 0.22) calc(100% - calc(var(--consultation-center-composer-height, 0px) + 8px)),
+      rgba(0, 0, 0, 0.04) calc(100% - 24px),
+      transparent 100%
+    ),
+    linear-gradient(rgba(0, 0, 0, 1), rgba(0, 0, 0, 1));
+  mask-size:
+    calc(100% - var(--consultation-center-scrollbar-gutter)) 100%,
+    var(--consultation-center-scrollbar-gutter) 100%;
+  mask-position: left top, right top;
+  mask-repeat: no-repeat, no-repeat;
+}
+
+@media (max-width: 767px) {
+  .consultation-center-scroll {
+    --consultation-center-fade-lead: 96px;
+    --consultation-center-scrollbar-gutter: 12px;
+  }
+}
+
+/* Consultation shell ambient border */
+@keyframes consultation-shell-ambient-pulse {
+  0%, 100% {
+    filter: blur(0px) saturate(1) brightness(1);
+    transform: scale(1);
+  }
+  34% {
+    filter: blur(0.45px) saturate(1.05) brightness(1.03);
+    transform: scale(1.0008);
+  }
+  58% {
+    filter: blur(1.15px) saturate(1.14) brightness(1.09);
+    transform: scale(1.0022);
+  }
+  76% {
+    filter: blur(0.55px) saturate(1.06) brightness(1.035);
+    transform: scale(1.0011);
+  }
+}
+
+@keyframes consultation-shell-ambient-drift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes consultation-shell-inset-breathe {
+  0%, 100% {
+    filter: blur(4.8px) saturate(1.01) brightness(1);
+    transform: scale(1);
+  }
+  32% {
+    filter: blur(5.8px) saturate(1.05) brightness(1.03);
+    transform: scale(1.0008);
+  }
+  56% {
+    filter: blur(7.2px) saturate(1.1) brightness(1.065);
+    transform: scale(1.0024);
+  }
+  74% {
+    filter: blur(5.6px) saturate(1.045) brightness(1.02);
+    transform: scale(1.0009);
+  }
+}
+
+.consultation-ambient-shell {
+  overflow: visible;
+  padding: 1.5px;
+}
+
+.consultation-ambient-shell,
+.consultation-ambient-shell__inner,
+.consultation-ambient-shell__inset-glow,
+.consultation-ambient-shell::before,
+.consultation-ambient-shell::after {
+  border-radius: inherit;
+}
+
+.consultation-ambient-shell__inner {
+  overflow: hidden;
+}
+
+.consultation-ambient-shell__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.consultation-ambient-shell__inset-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 44%, transparent) 0%, transparent 100%) top / 100% 26px no-repeat,
+    linear-gradient(0deg, color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 34%, transparent) 0%, transparent 100%) bottom / 100% 24px no-repeat,
+    linear-gradient(90deg, color-mix(in oklab, var(--consultation-shell-ambient-inset-side) 36%, transparent) 0%, transparent 100%) left / 16px 100% no-repeat,
+    linear-gradient(270deg, color-mix(in oklab, var(--consultation-shell-ambient-inset-side) 36%, transparent) 0%, transparent 100%) right / 16px 100% no-repeat,
+    radial-gradient(104% 72% at 0% 0%, color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 36%, transparent) 0%, transparent 54%) top left / 54px 34px no-repeat,
+    radial-gradient(104% 72% at 100% 0%, color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 36%, transparent) 0%, transparent 54%) top right / 54px 34px no-repeat,
+    radial-gradient(104% 72% at 0% 100%, color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 22%, transparent) 0%, transparent 54%) bottom left / 54px 34px no-repeat,
+    radial-gradient(104% 72% at 100% 100%, color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 22%, transparent) 0%, transparent 54%) bottom right / 54px 34px no-repeat;
+  box-shadow:
+    inset 0 8px 10px -10px color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 48%, transparent),
+    inset 0 -7px 9px -10px color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 30%, transparent),
+    inset 6px 0 8px -7px color-mix(in oklab, var(--consultation-shell-ambient-inset-side) 34%, transparent),
+    inset -6px 0 8px -7px color-mix(in oklab, var(--consultation-shell-ambient-inset-side) 34%, transparent);
+  filter: blur(3.8px) saturate(1.03);
+  transform: scale(1.001);
+  transition:
+    opacity 200ms ease,
+    filter 200ms ease,
+    transform 200ms ease,
+    box-shadow 200ms ease;
+  will-change: opacity, filter, transform;
+}
+
+.consultation-ambient-shell::before,
+.consultation-ambient-shell::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  transition:
+    opacity 200ms ease,
+    filter 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease,
+    inset 200ms ease;
+}
+
+.consultation-ambient-shell::before {
+  z-index: 0;
+  inset: 0;
+  padding: 1.5px;
+  background:
+    linear-gradient(
+      130deg,
+      var(--consultation-shell-ambient-core) 0%,
+      var(--consultation-shell-ambient-highlight) 24%,
+      var(--consultation-shell-ambient-sand) 52%,
+      var(--consultation-shell-ambient-highlight) 76%,
+      var(--consultation-shell-ambient-core) 100%
+    );
+  background-size: 200% 200%;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  filter: drop-shadow(0 0 0 transparent);
+}
+
+.consultation-ambient-shell::after {
+  z-index: 0;
+  inset: -10px;
+  background:
+    radial-gradient(120% 36% at 50% 0%, var(--consultation-shell-ambient-haze) 0%, transparent 72%),
+    radial-gradient(120% 36% at 50% 100%, var(--consultation-shell-ambient-haze) 0%, transparent 72%),
+    radial-gradient(36% 120% at 0% 50%, var(--consultation-shell-ambient-veil) 0%, transparent 72%),
+    radial-gradient(36% 120% at 100% 50%, var(--consultation-shell-ambient-veil) 0%, transparent 72%);
+  background-size: 180% 180%, 180% 180%, 180% 180%, 180% 180%;
+  background-position: 0% 50%, 100% 50%, 0% 50%, 100% 50%;
+  opacity: 0;
+  filter: blur(18px);
+  transform: scale(1.01);
+}
+
+.consultation-ambient-shell[data-recording-state="live"]::before {
+  opacity: 0.82;
+  filter: drop-shadow(0 0 10px var(--consultation-shell-ambient-haze));
+  animation:
+    consultation-shell-ambient-drift 8.5s linear infinite,
+    consultation-shell-ambient-pulse 2.8s cubic-bezier(0.38, 0, 0.18, 1) infinite;
+}
+
+.consultation-ambient-shell[data-recording-state="live"]::after {
+  opacity: 0.44;
+  animation:
+    consultation-shell-ambient-drift 8.5s linear infinite,
+    consultation-shell-ambient-pulse 2.8s cubic-bezier(0.38, 0, 0.18, 1) infinite;
+}
+
+.consultation-ambient-shell[data-recording-state="live"] .consultation-ambient-shell__inset-glow {
+  opacity: 0.34;
+  animation: consultation-shell-inset-breathe 2.8s cubic-bezier(0.38, 0, 0.18, 1) infinite;
+}
+
+.consultation-ambient-shell[data-recording-state="transcribing"]::before {
+  opacity: 0.98;
+  filter: drop-shadow(0 0 12px var(--consultation-shell-ambient-haze));
+  animation:
+    consultation-shell-ambient-drift 5.8s linear infinite,
+    consultation-shell-ambient-pulse 2.1s cubic-bezier(0.34, 0, 0.18, 1) infinite;
+}
+
+.consultation-ambient-shell[data-recording-state="transcribing"]::after {
+  opacity: 0.58;
+  animation:
+    consultation-shell-ambient-drift 5.8s linear infinite,
+    consultation-shell-ambient-pulse 2.1s cubic-bezier(0.34, 0, 0.18, 1) infinite;
+}
+
+.consultation-ambient-shell[data-recording-state="transcribing"] .consultation-ambient-shell__inset-glow {
+  opacity: 0.48;
+  animation: consultation-shell-inset-breathe 2.1s cubic-bezier(0.34, 0, 0.18, 1) infinite;
+}
+
+.consultation-ambient-shell[data-recording-state="paused"]::before {
+  opacity: 0.38;
+  filter: drop-shadow(0 0 6px var(--consultation-shell-ambient-veil));
+}
+
+.consultation-ambient-shell[data-recording-state="paused"]::after {
+  opacity: 0;
+  inset: -6px;
+  filter: blur(12px);
+  transform: scale(1.005);
+}
+
+.consultation-ambient-shell[data-recording-state="paused"] .consultation-ambient-shell__inset-glow {
+  opacity: 0.09;
+  filter: blur(4.8px) saturate(1.01);
+  transform: scale(1.002);
+}
+
+@media (max-width: 767px) {
+  .consultation-ambient-shell {
+    padding: 1px;
+  }
+
+  .consultation-ambient-shell::after {
+    inset: -6px;
+    filter: blur(12px);
+    transform: scale(1.006);
+  }
+
+  .consultation-ambient-shell[data-recording-state="live"]::before {
+    opacity: 0.68;
+  }
+
+  .consultation-ambient-shell[data-recording-state="live"]::after {
+    opacity: 0.32;
+  }
+
+  .consultation-ambient-shell__inset-glow {
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 38%, transparent) 0%, transparent 100%) top / 100% 22px no-repeat,
+      linear-gradient(0deg, color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 28%, transparent) 0%, transparent 100%) bottom / 100% 20px no-repeat,
+      linear-gradient(90deg, color-mix(in oklab, var(--consultation-shell-ambient-inset-side) 30%, transparent) 0%, transparent 100%) left / 12px 100% no-repeat,
+      linear-gradient(270deg, color-mix(in oklab, var(--consultation-shell-ambient-inset-side) 30%, transparent) 0%, transparent 100%) right / 12px 100% no-repeat,
+      radial-gradient(100% 68% at 0% 0%, color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 30%, transparent) 0%, transparent 52%) top left / 40px 24px no-repeat,
+      radial-gradient(100% 68% at 100% 0%, color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 30%, transparent) 0%, transparent 52%) top right / 40px 24px no-repeat,
+      radial-gradient(100% 68% at 0% 100%, color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 18%, transparent) 0%, transparent 52%) bottom left / 40px 24px no-repeat,
+      radial-gradient(100% 68% at 100% 100%, color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 18%, transparent) 0%, transparent 52%) bottom right / 40px 24px no-repeat;
+    box-shadow:
+      inset 6px 0 8px -7px color-mix(in oklab, var(--consultation-shell-ambient-inset-side) 30%, transparent),
+      inset -6px 0 8px -7px color-mix(in oklab, var(--consultation-shell-ambient-inset-side) 30%, transparent),
+      inset 0 7px 9px -9px color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 40%, transparent),
+      inset 0 -6px 8px -9px color-mix(in oklab, var(--consultation-shell-ambient-inset-top) 24%, transparent);
+    filter: blur(3.2px) saturate(1.02);
+  }
+
+  .consultation-ambient-shell[data-recording-state="live"] .consultation-ambient-shell__inset-glow {
+    opacity: 0.24;
+  }
+
+  .consultation-ambient-shell[data-recording-state="transcribing"]::before {
+    opacity: 0.82;
+  }
+
+  .consultation-ambient-shell[data-recording-state="transcribing"]::after {
+    opacity: 0.44;
+  }
+
+  .consultation-ambient-shell[data-recording-state="transcribing"] .consultation-ambient-shell__inset-glow {
+    opacity: 0.34;
+  }
+
+  .consultation-ambient-shell[data-recording-state="paused"] .consultation-ambient-shell__inset-glow {
+    opacity: 0.07;
+    filter: blur(2.9px) saturate(1.01);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .consultation-ambient-shell::before,
+  .consultation-ambient-shell::after {
+    animation: none !important;
+    transform: none;
+  }
+
+  .consultation-ambient-shell[data-recording-state="live"]::before {
+    opacity: 0.62;
+    filter: none;
+  }
+
+  .consultation-ambient-shell[data-recording-state="live"]::after {
+    opacity: 0.12;
+    inset: -6px;
+    filter: blur(10px);
+  }
+
+  .consultation-ambient-shell[data-recording-state="live"] .consultation-ambient-shell__inset-glow {
+    opacity: 0.24;
+    animation: none !important;
+    filter: blur(3.2px) saturate(1.02);
+    transform: none;
+  }
+
+  .consultation-ambient-shell[data-recording-state="transcribing"]::before {
+    opacity: 0.76;
+    filter: none;
+  }
+
+  .consultation-ambient-shell[data-recording-state="transcribing"]::after {
+    opacity: 0.16;
+    inset: -6px;
+    filter: blur(10px);
+  }
+
+  .consultation-ambient-shell[data-recording-state="transcribing"] .consultation-ambient-shell__inset-glow {
+    opacity: 0.34;
+    animation: none !important;
+    filter: blur(3.2px) saturate(1.02);
+    transform: none;
+  }
+
+  .consultation-ambient-shell[data-recording-state="paused"]::before {
+    opacity: 0.24;
+    filter: none;
+  }
+
+  .consultation-ambient-shell[data-recording-state="paused"]::after {
+    opacity: 0;
+    inset: -4px;
+    filter: blur(8px);
+  }
+
+  .consultation-ambient-shell[data-recording-state="paused"] .consultation-ambient-shell__inset-glow {
+    opacity: 0.07;
+    animation: none !important;
+    filter: blur(2.8px) saturate(1.01);
+    transform: none;
+  }
 }
 
 /* ── Rxly Glass Utilities ────────────────────────────────────────── */

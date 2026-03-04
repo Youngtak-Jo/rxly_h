@@ -18,9 +18,23 @@ export interface Session {
   updatedAt: string
 }
 
+export interface RecordingSegment {
+  id: string
+  sessionId: string
+  storagePath: string
+  audioUrl: string | null
+  mimeType: string
+  fileSizeBytes: number
+  durationMs: number
+  startedAt: string
+  endedAt: string
+  createdAt: string
+}
+
 export interface TranscriptEntry {
   id: string
   sessionId: string
+  recordingSegmentId?: string | null
   speaker: Speaker
   rawSpeakerId?: number
   text: string

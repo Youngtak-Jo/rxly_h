@@ -23,6 +23,7 @@ const PHI_STRING_FIELDS: Record<string, string[]> = {
   ChecklistItem: ["doctorNote"],
   Note: ["content"],
   ResearchMessage: ["content"],
+  RecordingSegment: ["storagePath"],
   Diagnosis: ["diseaseName", "evidence"],
 }
 
@@ -33,7 +34,7 @@ const PHI_JSON_FIELDS: Record<string, string[]> = {
   PatientHandout: ["conditions", "entries"],
   Note: ["imageUrls", "storagePaths"],
   Diagnosis: ["citations"],
-  ResearchMessage: ["citations"],
+  ResearchMessage: ["citations", "imageUrls", "storagePaths"],
 }
 
 // Relation fields that may be included via Prisma `include` and need recursive decryption
@@ -47,6 +48,7 @@ const RELATION_MODEL_MAP: Record<string, Record<string, { model: string; isArray
     transcriptEntries: { model: "TranscriptEntry",     isArray: true },
     notes:             { model: "Note",                isArray: true },
     researchMessages:  { model: "ResearchMessage",     isArray: true },
+    recordingSegments: { model: "RecordingSegment",    isArray: true },
   },
 }
 

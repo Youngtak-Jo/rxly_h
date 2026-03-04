@@ -1,39 +1,30 @@
 "use client"
 
-import { useCallback, useEffect, useRef } from "react"
+import { useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import {
+  ConsultationTopRail,
+  ConsultationTopRailAction,
+} from "@/components/consultation/consultation-top-chrome"
+import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
-import { useDeepgram } from "@/hooks/use-deepgram"
-import { useAiDoctor } from "@/hooks/use-ai-doctor"
 import { trackClientEvent } from "@/lib/telemetry/client-events"
-import {
-  IconPlayerPause,
-  IconPlayerPlay,
-  IconPlayerStop,
-} from "@tabler/icons-react"
 
 export function RecordingControls() {
   const t = useTranslations("TranscriptViewer")
-  const { isRecording, isPaused, duration, setDuration, isSimulating, simulationControls } =
+  const tHeader = useTranslations("SiteHeader")
+  const { isRecording, isPaused, duration, setDuration, isSimulating } =
     useRecordingStore()
   const activeSession = useSessionStore((s) => s.activeSession)
-  const isSwitching = useSessionStore((s) => s.isSwitching)
-  const hydratingSessionId = useSessionStore((s) => s.hydratingSessionId)
-  const { startListening, stopListening, pauseListening, resumeListening } =
-    useDeepgram()
-  const { endConsultation } = useAiDoctor()
   const mode = useConsultationModeStore((s) => s.mode)
+  const toggleTranscript = useConsultationTabStore((s) => s._toggleTranscript)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const prevRecordingRef = useRef(isRecording)
 
   const isAiDoctorMode = mode === "ai-doctor"
-  const isTranscriptHydrating =
-    !!activeSession && hydratingSessionId === activeSession.id
-  const isStartDisabled = !activeSession || isSwitching || isTranscriptHydrating
 
   // Duration timer — only for live recording mode.
   // Simulation manages its own duration timer in the hook.
@@ -75,52 +66,20 @@ export function RecordingControls() {
     prevRecordingRef.current = isRecording
   }, [activeSession, isAiDoctorMode, isRecording])
 
-  const handleStart = useCallback(async () => {
-    if (!activeSession || isSwitching || isTranscriptHydrating) return
-    await startListening()
-  }, [
-    activeSession,
-    isSwitching,
-    isTranscriptHydrating,
-    startListening,
-  ])
-
-  const handleStop = useCallback(() => {
-    if (isAiDoctorMode) {
-      void endConsultation()
-    } else if (isSimulating && simulationControls) {
-      simulationControls.stop()
-    } else {
-      stopListening()
-    }
-  }, [isAiDoctorMode, endConsultation, isSimulating, simulationControls, stopListening])
-
-  const handlePauseResume = useCallback(() => {
-    if (isSimulating && simulationControls) {
-      if (isPaused) {
-        simulationControls.resume()
-      } else {
-        simulationControls.pause()
-      }
-    } else {
-      if (isPaused) {
-        resumeListening()
-      } else {
-        pauseListening()
-      }
-    }
-  }, [isPaused, isSimulating, simulationControls, pauseListening, resumeListening])
-
   const headerLabel = isAiDoctorMode
     ? t("headerAiConsultation")
     : t("headerTranscript")
+  const showTimer = !isAiDoctorMode && isRecording
 
   return (
-    <div className="flex items-center gap-2 border-b px-4 py-3">
-      <div className="flex items-center gap-2 flex-1">
-        <h3 className="text-sm font-medium">{headerLabel}</h3>
+    <ConsultationTopRail className="justify-between">
+      <div className="flex min-w-0 flex-1 items-center gap-2 px-3.5">
+        <h3 className="truncate text-sm font-medium">{headerLabel}</h3>
         {isRecording && (
-          <Badge variant="secondary" className="text-[10px] font-mono gap-1">
+          <Badge
+            variant="secondary"
+            className="shrink-0 gap-1 rounded-sm border border-border/60 bg-background/80 text-[10px] font-mono text-foreground shadow-none"
+          >
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
@@ -133,50 +92,29 @@ export function RecordingControls() {
           </Badge>
         )}
       </div>
-      <div className="flex items-center gap-1">
-        {!isRecording ? (
-          !isAiDoctorMode ? (
-            <Button
-              onClick={handleStart}
-              size="sm"
-              className="gap-1.5 h-8"
-              disabled={isStartDisabled}
+      {(showTimer || toggleTranscript) && (
+        <div className="flex items-stretch">
+          {showTimer && (
+            <span className="flex h-full items-center border-l border-border/70 px-3.5 font-mono text-xs text-muted-foreground">
+              {Math.floor(duration / 60)
+                .toString()
+                .padStart(2, "0")}
+              :
+              {(duration % 60).toString().padStart(2, "0")}
+            </span>
+          )}
+          {toggleTranscript && (
+            <ConsultationTopRailAction
+              aria-label={tHeader("hideTranscript")}
+              title={tHeader("hideTranscript")}
+              className="px-3 text-xs"
+              onClick={toggleTranscript}
             >
-              {t("startRecording")}
-            </Button>
-          ) : null
-        ) : (
-          <>
-            {/* Hide pause/resume in AI doctor mode */}
-            {!isAiDoctorMode && (
-              <Button
-                onClick={handlePauseResume}
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                title={isPaused ? t("resume") : t("pause")}
-                aria-label={isPaused ? t("resume") : t("pause")}
-              >
-                {isPaused ? (
-                  <IconPlayerPlay className="size-3.5" />
-                ) : (
-                  <IconPlayerPause className="size-3.5" />
-                )}
-              </Button>
-            )}
-            <Button
-              onClick={handleStop}
-              variant="destructive"
-              size="icon"
-              className="h-8 w-8"
-              title={t("stop")}
-              aria-label={t("stop")}
-            >
-              <IconPlayerStop className="size-3.5" />
-            </Button>
-          </>
-        )}
-      </div>
-    </div>
+              {t("hideShort")}
+            </ConsultationTopRailAction>
+          )}
+        </div>
+      )}
+    </ConsultationTopRail>
   )
 }

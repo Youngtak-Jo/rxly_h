@@ -10,6 +10,7 @@ interface TranscriptEntryCreateBody {
   id?: string
   speaker?: Speaker
   rawSpeakerId?: number
+  recordingSegmentId?: string
   text: string
   startTime: number
   endTime: number
@@ -81,7 +82,7 @@ export async function GET(
 
     const entries = await prisma.transcriptEntry.findMany({
       where: { sessionId: id, isFinal: true },
-      orderBy: { startTime: "asc" },
+      orderBy: [{ createdAt: "asc" }, { startTime: "asc" }],
     })
     logAudit({ userId: user.id, action: "READ", resource: "transcript", sessionId: id })
     return NextResponse.json(entries)
@@ -113,6 +114,9 @@ export async function POST(
         speaker: body.speaker || "UNKNOWN",
         ...(typeof body.rawSpeakerId === "number"
           ? { rawSpeakerId: body.rawSpeakerId }
+          : {}),
+        ...(body.recordingSegmentId
+          ? { recordingSegmentId: body.recordingSegmentId }
           : {}),
         text: body.text,
         startTime: body.startTime,

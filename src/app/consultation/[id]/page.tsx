@@ -2,6 +2,7 @@
 
 import { use } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
+import { ConsultationAmbientShell } from "@/components/consultation/consultation-ambient-shell"
 import { SiteHeader } from "@/components/site-header"
 import { ConsultationLayout } from "@/components/consultation/consultation-layout"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
@@ -31,9 +32,11 @@ export default function ConsultationSessionPage({
             }
         >
             <AppSidebar variant="inset" />
-            <SidebarInset className="overflow-hidden">
-                <SiteHeader />
-                <ConsultationLayout />
+            <SidebarInset className="overflow-visible">
+                <ConsultationAmbientShell>
+                    <SiteHeader />
+                    <ConsultationLayout />
+                </ConsultationAmbientShell>
             </SidebarInset>
             <TourProvider />
         </SidebarProvider>

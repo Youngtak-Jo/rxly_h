@@ -1,9 +1,19 @@
 "use client"
 
-import { IconLoader2 } from "@tabler/icons-react"
+import {
+  IconLayoutSidebarRightExpand,
+  IconLoader2,
+} from "@tabler/icons-react"
 import { useTranslations } from "next-intl"
 
 import { TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
+import {
+  ConsultationTopRail,
+  ConsultationTopRailAction,
+  TOP_RAIL_SCROLL_CLASS,
+  consultationSegmentClassName,
+} from "./consultation-top-chrome"
 import {
   CONSULTATION_TABS,
   type ConsultationTabId,
@@ -42,10 +52,24 @@ function getTabAriaLabel(
   return parts.join(", ")
 }
 
+type TabViewModel = {
+  value: ConsultationTabId
+  label: string
+  ariaLabel: string
+  isActive: boolean
+  isProcessing: boolean
+  hasUnseenUpdate: boolean
+  diagnosisCount: number | null
+}
+
 export function ConsultationWorkspaceTabs() {
   const t = useTranslations("ConsultationTabs")
+  const tTranscript = useTranslations("TranscriptViewer")
+  const tHeader = useTranslations("SiteHeader")
   const activeTab = useConsultationTabStore((s) => s.activeTab)
   const unseenUpdates = useConsultationTabStore((s) => s.unseenUpdates)
+  const isTranscriptCollapsed = useConsultationTabStore((s) => s.isTranscriptCollapsed)
+  const toggleTranscript = useConsultationTabStore((s) => s._toggleTranscript)
 
   const diagnosisCount = useDdxStore((s) => s.diagnoses.length)
   const isDdxProcessing = useDdxStore((s) => s.isProcessing)
@@ -62,51 +86,105 @@ export function ConsultationWorkspaceTabs() {
     patientHandout: isPatientHandoutGenerating,
   }
 
-  return (
-    <TabsList
-      variant="line"
-      className="h-11 w-full justify-start gap-0 overflow-x-auto rounded-none border-b bg-transparent p-0"
-    >
-      {CONSULTATION_TABS.map((tab) => {
-        const label = t(tab)
-        const isProcessing = processingByTab[tab]
-        const hasUnseenUpdate = unseenUpdates[tab] && activeTab !== tab
-        const showDiagnosisCount = tab === "ddx" && diagnosisCount > 0
+  const showTranscriptToggle = !!toggleTranscript && isTranscriptCollapsed
+  const tabViewModels: TabViewModel[] = CONSULTATION_TABS.map((tab) => {
+    const label = t(tab)
+    const isProcessing = processingByTab[tab]
+    const hasUnseenUpdate = unseenUpdates[tab] && activeTab !== tab
+    const showDiagnosisCount = tab === "ddx" && diagnosisCount > 0
 
-        return (
-          <TabsTrigger
-            key={tab}
-            value={tab}
-            aria-label={getTabAriaLabel(
-              tab,
-              label,
-              {
-                isProcessing,
-                hasUnseenUpdate,
-                diagnosisCount,
-              },
-              t
-            )}
-            className="group h-11 flex-none shrink-0 rounded-none border-x border-t border-transparent border-b border-b-border bg-muted/80 px-3.5 text-sm font-medium text-muted-foreground shadow-none after:hidden hover:bg-muted hover:text-foreground data-[state=active]:-mb-px data-[state=active]:border-border data-[state=active]:border-b-background data-[state=active]:bg-background data-[state=active]:text-foreground"
-          >
-            <span className="truncate">{label}</span>
-            {(isProcessing || hasUnseenUpdate || showDiagnosisCount) && (
-              <span className="ml-1.5 flex items-center gap-1.5">
-                {isProcessing ? (
-                  <IconLoader2 className="size-3 animate-spin text-muted-foreground" />
-                ) : hasUnseenUpdate ? (
-                  <span className="size-1.5 rounded-full bg-emerald-500" />
-                ) : null}
-                {showDiagnosisCount ? (
-                  <span className="inline-flex min-w-5 items-center justify-center rounded-none bg-muted px-1.5 py-0.5 text-[11px] tabular-nums text-muted-foreground group-data-[state=active]:bg-muted/80 group-data-[state=active]:text-foreground">
-                    {diagnosisCount}
+    return {
+      value: tab,
+      label,
+      ariaLabel: getTabAriaLabel(
+        tab,
+        label,
+        {
+          isProcessing,
+          hasUnseenUpdate,
+          diagnosisCount,
+        },
+        t
+      ),
+      isActive: activeTab === tab,
+      isProcessing,
+      hasUnseenUpdate,
+      diagnosisCount: showDiagnosisCount ? diagnosisCount : null,
+    }
+  })
+
+  return (
+    <ConsultationTopRail>
+      <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <TabsList
+          variant="line"
+          className={TOP_RAIL_SCROLL_CLASS}
+        >
+          {tabViewModels.map((tab) => {
+            return (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                aria-label={tab.ariaLabel}
+                className={consultationSegmentClassName({
+                  active: tab.isActive,
+                })}
+              >
+                <span className="truncate">{tab.label}</span>
+                {(tab.isProcessing || tab.hasUnseenUpdate || tab.diagnosisCount !== null) && (
+                  <span className="ml-1.5 flex items-center gap-1.5">
+                    {tab.isProcessing ? (
+                      <IconLoader2
+                        className={cn(
+                          "size-3 animate-spin",
+                          tab.isActive ? "text-foreground/70" : "text-muted-foreground"
+                        )}
+                      />
+                    ) : tab.hasUnseenUpdate ? (
+                      <span className="size-1.5 rounded-full bg-emerald-500" />
+                    ) : null}
+                    {tab.diagnosisCount !== null ? (
+                      <span
+                        className={cn(
+                          "inline-flex min-w-5 items-center justify-center rounded-sm px-1.5 py-0.5 text-[11px] tabular-nums",
+                          tab.isActive
+                            ? "bg-muted text-foreground"
+                            : "bg-background/65 text-muted-foreground"
+                        )}
+                      >
+                        {tab.diagnosisCount}
+                      </span>
+                    ) : null}
                   </span>
-                ) : null}
-              </span>
-            )}
-          </TabsTrigger>
-        )
-      })}
-    </TabsList>
+                )}
+              </TabsTrigger>
+            )
+          })}
+
+          {showTranscriptToggle && (
+            <ConsultationTopRailAction
+              onClick={toggleTranscript ?? undefined}
+              aria-label={tHeader("showTranscript")}
+              title={tHeader("showTranscript")}
+              className="2xl:hidden"
+            >
+              <span className="truncate">{tTranscript("headerTranscript")}</span>
+            </ConsultationTopRailAction>
+          )}
+        </TabsList>
+      </div>
+
+      {showTranscriptToggle && (
+        <ConsultationTopRailAction
+          onClick={toggleTranscript ?? undefined}
+          aria-label={tHeader("showTranscript")}
+          title={tHeader("showTranscript")}
+          className="hidden 2xl:inline-flex"
+        >
+          <IconLayoutSidebarRightExpand className="size-4" />
+          <span className="truncate">{tTranscript("headerTranscript")}</span>
+        </ConsultationTopRailAction>
+      )}
+    </ConsultationTopRail>
   )
 }

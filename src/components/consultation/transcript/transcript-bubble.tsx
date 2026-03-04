@@ -100,14 +100,19 @@ export const TranscriptBubble = memo(function TranscriptBubble({
     isIdentified,
     diagnosticKeywords,
     isFirst,
+    isSeekable = false,
+    onSeek,
 }: {
     entry: TranscriptEntry
     prevSpeaker: Speaker | null
     isIdentified: boolean
     diagnosticKeywords: DiagnosticKeyword[]
     isFirst: boolean
+    isSeekable?: boolean
+    onSeek?: () => void
 }) {
     const t = useTranslations("TranscriptBubble")
+    const tViewer = useTranslations("TranscriptViewer")
     const locale = useLocale() as UiLocale
     const timeZone = useTimeZone() ?? DEFAULT_UI_TIME_ZONE
     const isSameSpeaker = prevSpeaker === entry.speaker
@@ -129,6 +134,64 @@ export const TranscriptBubble = memo(function TranscriptBubble({
                 ? "right"
                 : "center"
 
+    const bubbleClassName = cn(
+        "max-w-[90%] px-3 py-2 text-left transition-colors",
+        isSeekable &&
+            "cursor-pointer hover:brightness-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+        align === "left" && "rounded-2xl rounded-tl-sm bg-muted",
+        align === "right" &&
+            "rounded-2xl rounded-tr-sm bg-primary/10 text-foreground backdrop-blur-sm border border-primary/15",
+        align === "center" && "rounded-2xl bg-muted/50"
+    )
+
+    const content = (
+        <>
+            <p className="text-sm leading-relaxed">
+                {diagnosticKeywords.length > 0
+                    ? highlightText(entry.text, diagnosticKeywords).map(
+                        (seg, j) =>
+                            seg.keyword ? (
+                                <mark
+                                    key={j}
+                                    className={cn(
+                                        "rounded px-0.5 -mx-0.5",
+                                        HIGHLIGHT_COLORS[seg.keyword.category].light
+                                    )}
+                                    title={t(`keywordCategories.${seg.keyword.category}`)}
+                                >
+                                    {seg.text}
+                                </mark>
+                            ) : (
+                                <span key={j}>{seg.text}</span>
+                            )
+                    )
+                    : entry.text}
+            </p>
+            {showMeta && (
+                <div
+                    className={cn(
+                        "flex items-center gap-1.5 mt-1",
+                        align === "right" ? "justify-end" : "justify-start"
+                    )}
+                >
+                    <span
+                        className={cn(
+                            "text-[10px] font-medium",
+                            align === "right"
+                                ? "text-primary/70"
+                                : "text-muted-foreground"
+                        )}
+                    >
+                        {speakerLabel(entry.speaker)}
+                    </span>
+                    <span className="text-[10px] font-mono text-muted-foreground/60">
+                        {formatTime(entry.createdAt, locale, timeZone)}
+                    </span>
+                </div>
+            )}
+        </>
+    )
+
     return (
         <div
             className={cn(
@@ -139,70 +202,19 @@ export const TranscriptBubble = memo(function TranscriptBubble({
                 isSameSpeaker ? "mt-1" : isFirst ? "mt-0" : "mt-3"
             )}
         >
-            <div
-                className={cn(
-                    "max-w-[90%] px-3 py-2",
-                    // bubble shapes
-                    align === "left" && "rounded-2xl rounded-tl-sm",
-                    align === "right" && "rounded-2xl rounded-tr-sm",
-                    align === "center" && "rounded-2xl",
-                    // colors
-                    align === "left" && "bg-muted",
-                    align === "right" && "bg-primary/10 text-foreground backdrop-blur-sm border border-primary/15",
-                    align === "center" && "bg-muted/50"
-                )}
-            >
-                <p className="text-sm leading-relaxed">
-                    {diagnosticKeywords.length > 0
-                        ? highlightText(entry.text, diagnosticKeywords).map(
-                            (seg, j) =>
-                                seg.keyword ? (
-                                    <mark
-                                        key={j}
-                                        className={cn(
-                                            "rounded px-0.5 -mx-0.5",
-                                            HIGHLIGHT_COLORS[seg.keyword.category].light
-                                        )}
-                                        title={t(`keywordCategories.${seg.keyword.category}`)}
-                                    >
-                                        {seg.text}
-                                    </mark>
-                                ) : (
-                                    <span key={j}>{seg.text}</span>
-                                )
-                        )
-                        : entry.text}
-                </p>
-                {showMeta && (
-                    <div
-                        className={cn(
-                            "flex items-center gap-1.5 mt-1",
-                            align === "right" ? "justify-end" : "justify-start"
-                        )}
-                    >
-                        <span
-                            className={cn(
-                                "text-[10px] font-medium",
-                                align === "right"
-                                    ? "text-primary/70"
-                                    : "text-muted-foreground"
-                            )}
-                        >
-                            {speakerLabel(entry.speaker)}
-                        </span>
-                        <span
-                            className={cn(
-                                "text-[10px] font-mono",
-                                align === "right"
-                                    ? "text-muted-foreground/60"
-                                    : "text-muted-foreground/60"
-                            )}
-                        >
-                            {formatTime(entry.createdAt, locale, timeZone)}
-                        </span>
-                    </div>
-                )}
-            </div>
+            {isSeekable ? (
+                <button
+                    type="button"
+                    onClick={onSeek}
+                    className={bubbleClassName}
+                    aria-label={tViewer("recordingsSeekToAudio")}
+                    title={tViewer("recordingsSeekToAudio")}
+                >
+                    {content}
+                </button>
+            ) : (
+                <div className={bubbleClassName}>{content}</div>
+            )}
         </div>
     )
 })

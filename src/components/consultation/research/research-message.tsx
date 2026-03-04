@@ -2,6 +2,7 @@
 
 import { useMemo } from "react"
 import { useTranslations } from "next-intl"
+import Image from "next/image"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import type { ResearchMessage } from "@/stores/research-store"
@@ -44,7 +45,24 @@ export function ResearchMessageBubble({
     return (
       <div className="flex justify-end">
         <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
-          <p className="whitespace-pre-wrap">{message.content}</p>
+          {message.content && (
+            <p className="whitespace-pre-wrap">{message.content}</p>
+          )}
+          {message.imageUrls.length > 0 && (
+            <div className="mt-2 flex flex-wrap justify-end gap-2">
+              {message.imageUrls.map((url, index) => (
+                <Image
+                  key={`${message.id}-${index}`}
+                  src={url}
+                  alt={`Research attachment ${index + 1}`}
+                  width={88}
+                  height={88}
+                  className="h-20 w-20 rounded-xl border border-white/20 object-cover"
+                  unoptimized
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     )

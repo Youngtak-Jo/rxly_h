@@ -27,6 +27,7 @@ const NO_UNSEEN: Record<ConsultationTabId, boolean> = {
 
 interface ConsultationTabState {
   activeTab: ConsultationTabId
+  lastNonResearchTab: ConsultationTabId
   setActiveTab: (tab: ConsultationTabId) => void
 
   unseenUpdates: Record<ConsultationTabId, boolean>
@@ -42,6 +43,7 @@ interface ConsultationTabState {
 export const useConsultationTabStore = create<ConsultationTabState>(
   (set) => ({
     activeTab: "insights",
+    lastNonResearchTab: "insights",
     setActiveTab: (tab) =>
       set((state) => {
         if (state.activeTab !== tab) {
@@ -57,6 +59,8 @@ export const useConsultationTabStore = create<ConsultationTabState>(
         }
         return {
           activeTab: tab,
+          lastNonResearchTab:
+            tab === "research" ? state.lastNonResearchTab : tab,
           unseenUpdates: { ...state.unseenUpdates, [tab]: false },
         }
       }),

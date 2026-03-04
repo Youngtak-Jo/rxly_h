@@ -2,22 +2,23 @@
 
 import type { ReactNode } from "react"
 import dynamic from "next/dynamic"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
+import {
+  type ConsultationTabId,
+  useConsultationTabStore,
+} from "@/stores/consultation-tab-store"
+import { ConsultationWorkspaceTabs } from "./consultation-workspace-tabs"
 
 const InsightsContainer = dynamic(() => import("./insights/insights-container").then(mod => mod.InsightsContainer))
 const DdxContainer = dynamic(() => import("./ddx/ddx-container").then(mod => mod.DdxContainer))
 const RecordContainer = dynamic(() => import("./record/record-container").then(mod => mod.RecordContainer))
 const ResearchContainer = dynamic(() => import("./research/research-container").then(mod => mod.ResearchContainer))
 const PatientHandoutContainer = dynamic(() => import("./patient-handout/patient-handout-container").then(mod => mod.PatientHandoutContainer))
-import {
-  type ConsultationTabId,
-  useConsultationTabStore,
-} from "@/stores/consultation-tab-store"
-import { Tabs, TabsContent } from "@/components/ui/tabs"
-import { ConsultationWorkspaceTabs } from "./consultation-workspace-tabs"
+const TAB_CONTENT_CLASS_NAME = "mt-0 min-h-0 overflow-hidden"
 
 function DocumentTabContent({ children }: { children: ReactNode }) {
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="consultation-center-scroll h-full overflow-y-auto">
       <div className="min-w-0 p-4">{children}</div>
     </div>
   )
@@ -31,35 +32,37 @@ export function CenterPanel() {
     <Tabs
       value={activeTab}
       onValueChange={(value) => setActiveTab(value as ConsultationTabId)}
-      className="h-full gap-0"
+      className="flex h-full min-h-0 flex-col gap-0 overflow-hidden"
     >
-      <ConsultationWorkspaceTabs />
+      <div className="shrink-0">
+        <ConsultationWorkspaceTabs />
+      </div>
 
-      <TabsContent value="insights" className="mt-0 min-h-0">
+      <TabsContent value="insights" className={TAB_CONTENT_CLASS_NAME}>
         <DocumentTabContent>
           <InsightsContainer />
         </DocumentTabContent>
       </TabsContent>
 
-      <TabsContent value="ddx" className="mt-0 min-h-0">
+      <TabsContent value="ddx" className={TAB_CONTENT_CLASS_NAME}>
         <DocumentTabContent>
           <DdxContainer />
         </DocumentTabContent>
       </TabsContent>
 
-      <TabsContent value="record" className="mt-0 min-h-0">
+      <TabsContent value="record" className={TAB_CONTENT_CLASS_NAME}>
         <DocumentTabContent>
           <RecordContainer />
         </DocumentTabContent>
       </TabsContent>
 
-      <TabsContent value="research" className="mt-0 min-h-0">
+      <TabsContent value="research" className={TAB_CONTENT_CLASS_NAME}>
         <div className="h-full min-h-0">
           <ResearchContainer />
         </div>
       </TabsContent>
 
-      <TabsContent value="patientHandout" className="mt-0 min-h-0">
+      <TabsContent value="patientHandout" className={TAB_CONTENT_CLASS_NAME}>
         <DocumentTabContent>
           <PatientHandoutContainer />
         </DocumentTabContent>

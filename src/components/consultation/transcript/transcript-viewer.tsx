@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useNoteStore, type NoteEntry } from "@/stores/note-store"
+import { useRecordingSegmentStore } from "@/stores/recording-segment-store"
 import { cn } from "@/lib/utils"
 import { ChevronDown, AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -11,9 +12,14 @@ import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useSettingsStore } from "@/stores/settings-store"
 import { classifyAllEntries } from "@/hooks/use-single-speaker-classification"
+import {
+  buildRecordingSegmentSummaries,
+  resolveEntryPlaybackTarget,
+} from "@/lib/transcript-playback"
 import { ModeSelector } from "./mode-selector"
 import type { TranscriptEntry } from "@/types/session"
 import { NoteBubble } from "./note-bubble"
+import { RecordingSegmentsDock } from "./recording-segments-dock"
 import { TranscriptBubble } from "./transcript-bubble"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 
@@ -24,6 +30,7 @@ type TimelineItem =
 export function TranscriptViewer() {
   const t = useTranslations("TranscriptViewer")
   const { entries, interimText, interimSpeaker } = useTranscriptStore()
+  const recordingSegments = useRecordingSegmentStore((s) => s.segments)
   const identificationStatus = useTranscriptStore(
     (s) => s.identificationStatus
   )
@@ -41,11 +48,23 @@ export function TranscriptViewer() {
 
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const isAtBottom = useRef(true)
+  const seekRevisionRef = useRef(0)
   const [showScrollButton, setShowScrollButton] = useState(false)
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null)
+  const [followLatest, setFollowLatest] = useState(true)
+  const [pendingSeekTarget, setPendingSeekTarget] = useState<{
+    segmentId: string
+    timeSeconds: number
+    revision: number
+  } | null>(null)
 
   const isIdentified = identificationStatus === "identified"
   const isTranscriptHydrating =
     !!activeSession && hydratingSessionId === activeSession.id
+
+  const segmentSummaries = useMemo(() => {
+    return buildRecordingSegmentSummaries(entries, recordingSegments)
+  }, [entries, recordingSegments])
 
   // Merge transcript entries and notes into a unified timeline
   const timeline = useMemo<TimelineItem[]>(() => {
@@ -89,12 +108,32 @@ export function TranscriptViewer() {
     }
   }, [timeline.length, interimText, singleSpeakerDetected, classifyingEntries, identificationStatus, highlightStatus])
 
+  const handleSelectSegment = useCallback((segmentId: string) => {
+    setSelectedSegmentId(segmentId)
+    setFollowLatest(recordingSegments[0]?.id === segmentId)
+  }, [recordingSegments])
+
+  const handleSeekEntry = useCallback((entry: TranscriptEntry) => {
+    const target = resolveEntryPlaybackTarget(entry, recordingSegments)
+    if (!target) return
+
+    seekRevisionRef.current += 1
+    setSelectedSegmentId(target.segmentId)
+    setFollowLatest(false)
+    setPendingSeekTarget({
+      segmentId: target.segmentId,
+      timeSeconds: target.timeSeconds,
+      revision: seekRevisionRef.current,
+    })
+  }, [recordingSegments])
+
   const renderItem = useCallback((index: number, item: TimelineItem) => {
     if (item.type === "note") {
       return <NoteBubble note={item.data as NoteEntry} />
     }
 
     const entry = item.data as TranscriptEntry
+    const playbackTarget = resolveEntryPlaybackTarget(entry, recordingSegments)
     // Find previous transcript for continuous speech grouping
     let prevSpeaker = null
     for (let i = index - 1; i >= 0; i--) {
@@ -111,9 +150,11 @@ export function TranscriptViewer() {
         isIdentified={isIdentified}
         diagnosticKeywords={diagnosticKeywords}
         isFirst={index === 0}
+        isSeekable={!!playbackTarget}
+        onSeek={playbackTarget ? () => handleSeekEntry(entry) : undefined}
       />
     )
-  }, [timeline, isIdentified, diagnosticKeywords])
+  }, [diagnosticKeywords, handleSeekEntry, isIdentified, recordingSegments, timeline])
 
   return (
     <div data-tour="transcript-viewer" className="relative h-full flex flex-col p-4">
@@ -277,6 +318,14 @@ export function TranscriptViewer() {
           </button>
         )}
       </div>
+
+      <RecordingSegmentsDock
+        selectedSegmentId={selectedSegmentId}
+        followLatest={followLatest}
+        onSelectSegment={handleSelectSegment}
+        seekTarget={pendingSeekTarget}
+        segmentSummaries={segmentSummaries}
+      />
     </div>
   )
 }

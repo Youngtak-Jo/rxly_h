@@ -15,6 +15,7 @@ import type { Speaker } from "@/types/session"
 
 export function MobileTranscriptSection() {
   const tViewer = useTranslations("TranscriptViewer")
+  const tBubble = useTranslations("TranscriptBubble")
   const [expanded, setExpanded] = useState(false)
   const entries = useTranscriptStore((s) => s.entries)
   const interimText = useTranscriptStore((s) => s.interimText)
@@ -27,8 +28,16 @@ export function MobileTranscriptSection() {
   const isTranscriptHydrating =
     !!activeSession && hydratingSessionId === activeSession.id
 
+  function speakerLabel(speaker: Speaker) {
+    return speaker === "DOCTOR"
+      ? tBubble("speaker.doctor")
+      : speaker === "PATIENT"
+        ? tBubble("speaker.patient")
+        : tBubble("speaker.unknown")
+  }
+
   return (
-    <div className="border-b bg-background">
+    <div className="overflow-hidden border-b bg-background">
       <RecordingControls />
 
       {/* Mode selector: show before consultation starts on mobile */}
@@ -99,10 +108,3 @@ export function MobileTranscriptSection() {
     </div>
   )
 }
-  function speakerLabel(speaker: Speaker) {
-    return speaker === "DOCTOR"
-      ? t("speaker.doctor")
-      : speaker === "PATIENT"
-        ? t("speaker.patient")
-        : t("speaker.unknown")
-  }

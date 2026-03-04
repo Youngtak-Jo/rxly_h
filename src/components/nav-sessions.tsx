@@ -20,6 +20,7 @@ import { useTranscriptStore } from "@/stores/transcript-store"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useRecordStore } from "@/stores/record-store"
 import { useRecordingStore } from "@/stores/recording-store"
+import { useRecordingSegmentStore } from "@/stores/recording-segment-store"
 import { useNoteStore } from "@/stores/note-store"
 import { useDdxStore } from "@/stores/ddx-store"
 import { useResearchStore } from "@/stores/research-store"
@@ -75,6 +76,7 @@ export function NavSessions() {
   const insightsStore = useInsightsStore()
   const recordStore = useRecordStore()
   const recordingStore = useRecordingStore()
+  const recordingSegmentStore = useRecordingSegmentStore()
   const noteStore = useNoteStore()
   const ddxStore = useDdxStore()
   const researchStore = useResearchStore()
@@ -100,6 +102,7 @@ export function NavSessions() {
     ddxStore.reset()
     recordStore.reset()
     recordingStore.reset()
+    recordingSegmentStore.reset()
     noteStore.reset()
     researchStore.reset()
     patientHandoutStore.reset()
@@ -196,7 +199,8 @@ export function NavSessions() {
       session: dummyCoreSession,
       transcriptEntries: [],
       notes: [],
-      researchMessages: []
+      researchMessages: [],
+      recordingSegments: [],
     })
 
     addSession(optimisticSession)
@@ -237,6 +241,7 @@ export function NavSessions() {
         transcriptEntries: [],
         notes: [],
         researchMessages: [],
+        recordingSegments: [],
       })
       if (realSession.id !== tempId) {
         deleteCachedSession(tempId)

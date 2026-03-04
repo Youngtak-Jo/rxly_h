@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { requireAuth, requireSessionOwnership } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { logger } from "@/lib/logger"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
+
+function toJsonStringArray(value: unknown): Prisma.InputJsonValue {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : []
+}
 
 export async function POST(
   req: Request,
@@ -28,11 +35,19 @@ export async function POST(
 
     const created = await prisma.researchMessage.createMany({
       data: messages.map(
-        (m: { role: string; content: string; citations?: unknown[] }) => ({
+        (m: {
+          role: string
+          content: string
+          citations?: unknown[]
+          imageUrls?: unknown[]
+          storagePaths?: unknown[]
+        }) => ({
           sessionId: id,
           role: m.role,
           content: m.content,
           citations: JSON.stringify(m.citations || []),
+          imageUrls: toJsonStringArray(m.imageUrls),
+          storagePaths: toJsonStringArray(m.storagePaths),
         })
       ),
     })

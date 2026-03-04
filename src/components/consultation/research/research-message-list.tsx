@@ -81,7 +81,7 @@ export function ResearchMessageList() {
 
   if (messages.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center p-6 overflow-y-auto">
+      <div className="consultation-center-scroll flex flex-1 items-center justify-center overflow-y-auto p-6">
         <div className="flex flex-col items-center gap-4 w-full max-w-sm">
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
@@ -129,7 +129,7 @@ export function ResearchMessageList() {
     <div
       ref={scrollRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto px-4 py-4"
+      className="consultation-center-scroll flex-1 overflow-y-auto px-4 py-4"
     >
       <div className="flex flex-col gap-6 max-w-3xl mx-auto">
         {messages.map((msg, index) => (

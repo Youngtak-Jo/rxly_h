@@ -390,9 +390,19 @@ export async function generatePdf(): Promise<{ blob: Blob; filename: string }> {
   const dateStr = new Date().toISOString().slice(0, 10)
   const filename = `${tabLabel.replace(/\s+/g, "-").toLowerCase()}-${sessionTitle.replace(/\s+/g, "-").toLowerCase()}-${dateStr}.pdf`
 
+  interface Html2PdfWorker {
+    from: (element: HTMLElement) => Html2PdfWorker
+    set: (options: Record<string, unknown>) => Html2PdfWorker
+    output: (type: "blob") => Promise<Blob>
+  }
+
+  type Html2PdfFactory = () => Html2PdfWorker
+
   // Dynamically import html2pdf
-  const html2pdfModule = (await import("html2pdf.js")) as any
-  const html2pdf = html2pdfModule.default || html2pdfModule
+  const html2pdfModule = await import("html2pdf.js")
+  const html2pdf = (
+    "default" in html2pdfModule ? html2pdfModule.default : html2pdfModule
+  ) as Html2PdfFactory
 
   // Create a temporary container for rendering to ensure styles are applied correctly
   const container = document.createElement("div")

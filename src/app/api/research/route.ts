@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { generateText, streamText } from "ai"
+import { generateText, streamText, type ModelMessage, type UserContent } from "ai"
 import { logger } from "@/lib/logger"
 import { CLAUDE_MODEL } from "@/lib/anthropic"
 import { getModel, isSupportedModel } from "@/lib/ai-provider"
@@ -79,10 +79,20 @@ export async function POST(req: Request) {
     const { allowed } = checkRateLimit(user.id, "ai")
     if (!allowed) return rateLimitResponse()
 
-    const { question, conversationHistory, enabledConnectors, insightsContext, model: modelOverride, customInstructions, sessionId } =
+    const { question, conversationHistory, enabledConnectors, insightsContext, imageUrls, model: modelOverride, customInstructions, sessionId } =
       await req.json()
 
-    if (!question?.trim()) {
+    const requestedImageUrls = Array.isArray(imageUrls)
+      ? imageUrls.filter((url): url is string => typeof url === "string" && url.trim().length > 0)
+      : []
+    const effectiveQuestion =
+      typeof question === "string" && question.trim()
+        ? question.trim()
+        : requestedImageUrls.length > 0
+          ? "Analyze the attached medical image(s) in a research context."
+          : ""
+
+    if (!effectiveQuestion) {
       return errorResponse("No question provided", 400)
     }
 
@@ -101,7 +111,7 @@ export async function POST(req: Request) {
     let ragContextText = ""
     if (hasConnectorsEnabled) {
       try {
-        const searchTerms = await extractSearchTerms(question, modelId)
+        const searchTerms = await extractSearchTerms(effectiveQuestion, modelId)
         const ragContext = await fetchRAGContext(
           searchTerms,
           enabledConnectors
@@ -119,7 +129,7 @@ export async function POST(req: Request) {
     }
 
     // Build the enriched user prompt
-    let userPrompt = `--- RESEARCH QUESTION ---\n${question}\n--- END QUESTION ---`
+    let userPrompt = `--- RESEARCH QUESTION ---\n${effectiveQuestion}\n--- END QUESTION ---`
 
     if (insightsContext) {
       userPrompt += `\n\n--- CURRENT CONSULTATION CONTEXT ---
@@ -133,8 +143,16 @@ Red Flags: ${JSON.stringify(insightsContext.redFlags || [])}
       userPrompt += `\n\n--- EXTERNAL MEDICAL KNOWLEDGE ---${ragContextText}\n--- END EXTERNAL KNOWLEDGE ---`
     }
 
+    if (requestedImageUrls.length > 0) {
+      userPrompt += `\n\n--- ATTACHED MEDICAL IMAGES ---
+The user attached ${requestedImageUrls.length} medical image(s).
+Analyze the image findings in the context of the research question${insightsContext ? " and the consultation context" : ""}.
+Do not ignore the images, and do not describe them in isolation from the clinical question.
+--- END ATTACHED MEDICAL IMAGES ---`
+    }
+
     // Build messages array for multi-turn conversation
-    const messages: { role: "user" | "assistant"; content: string }[] = []
+    const messages: ModelMessage[] = []
 
     if (conversationHistory && Array.isArray(conversationHistory)) {
       for (const msg of conversationHistory) {
@@ -145,10 +163,20 @@ Red Flags: ${JSON.stringify(insightsContext.redFlags || [])}
       }
     }
 
-    // Add the current enriched question as the final user message
-    messages.push({ role: "user", content: userPrompt })
+    const finalUserContent: string | UserContent =
+      requestedImageUrls.length > 0
+        ? [
+            { type: "text", text: userPrompt },
+            ...requestedImageUrls.map((url) => ({
+              type: "image" as const,
+              image: new URL(url),
+            })),
+          ]
+        : userPrompt
 
-    const questionLanguage = detectQuestionLanguage(question)
+    messages.push({ role: "user", content: finalUserContent })
+
+    const questionLanguage = detectQuestionLanguage(effectiveQuestion)
     const systemPrompt = `${buildSystemPrompt(
       RESEARCH_SYSTEM_PROMPT,
       customInstructions

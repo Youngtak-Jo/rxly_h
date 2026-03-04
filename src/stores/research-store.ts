@@ -19,6 +19,8 @@ export interface ResearchMessage {
   role: "user" | "assistant"
   content: string
   citations: ResearchCitation[]
+  imageUrls: string[]
+  storagePaths: string[]
   createdAt: string
 }
 
@@ -28,7 +30,11 @@ interface ResearchState {
   includeInsights: boolean
   abortController: AbortController | null
 
-  addUserMessage: (content: string) => string
+  addUserMessage: (
+    content: string,
+    imageUrls?: string[],
+    storagePaths?: string[]
+  ) => string
   addAssistantMessage: () => string
   updateAssistantMessage: (id: string, content: string) => void
   finalizeAssistantMessage: (
@@ -50,7 +56,7 @@ export const useResearchStore = create<ResearchState>((set, get) => ({
   includeInsights: true,
   abortController: null,
 
-  addUserMessage: (content) => {
+  addUserMessage: (content, imageUrls = [], storagePaths = []) => {
     const id = uuid()
     set((state) => ({
       messages: [
@@ -60,6 +66,8 @@ export const useResearchStore = create<ResearchState>((set, get) => ({
           role: "user",
           content,
           citations: [],
+          imageUrls,
+          storagePaths,
           createdAt: new Date().toISOString(),
         },
       ],
@@ -77,6 +85,8 @@ export const useResearchStore = create<ResearchState>((set, get) => ({
           role: "assistant",
           content: "",
           citations: [],
+          imageUrls: [],
+          storagePaths: [],
           createdAt: new Date().toISOString(),
         },
       ],

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import type { PanelImperativeHandle } from "react-resizable-panels"
@@ -12,7 +12,10 @@ import {
 import { Button } from "@/components/ui/button"
 import { CenterPanel } from "./center-panel"
 import { RightPanel } from "./right-panel"
-import { NoteInputBar } from "./note-input/note-input-bar"
+import {
+  SmartConsultationComposer,
+  type SmartConsultationComposerHandle,
+} from "./smart-consultation-composer"
 import { MobileTranscriptSection } from "./transcript/mobile-transcript-section"
 import { useSessionStore } from "@/stores/session-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
@@ -51,7 +54,10 @@ export function ConsultationLayout() {
   )
   const setToggleTranscript = useConsultationTabStore((s) => s.setToggleTranscript)
   const rightPanelRef = useRef<PanelImperativeHandle | null>(null)
+  const composerRef = useRef<SmartConsultationComposerHandle | null>(null)
+  const composerMeasureRef = useRef<HTMLDivElement | null>(null)
   const lastWorkspaceOpenRef = useRef<string | null>(null)
+  const [composerHeight, setComposerHeight] = useState(0)
   const { isMobile, isReady: isMobileReady } = useMobileViewport()
 
   useRecordAutoSave()
@@ -101,6 +107,37 @@ export function ConsultationLayout() {
       panel.collapse()
     }
   }, [])
+
+  const handleAddFilesFromTranscript = useCallback((files: FileList) => {
+    composerRef.current?.addFiles(files)
+  }, [])
+
+  useLayoutEffect(() => {
+    const node = composerMeasureRef.current
+    if (!node) return
+
+    const updateHeight = (nextHeight: number) => {
+      const roundedHeight = Math.ceil(nextHeight)
+      setComposerHeight((currentHeight) =>
+        currentHeight === roundedHeight ? currentHeight : roundedHeight
+      )
+    }
+
+    updateHeight(node.getBoundingClientRect().height)
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) return
+
+      updateHeight(entry.contentRect.height)
+    })
+
+    resizeObserver.observe(node)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [activeSession, isMobile])
 
   // Register toggle function in store so SiteHeader can call it (desktop only)
   useEffect(() => {
@@ -206,6 +243,28 @@ export function ConsultationLayout() {
     )
   }
 
+  const centerPanelStageStyle = {
+    "--consultation-center-composer-height": `${composerHeight}px`,
+  } as CSSProperties
+
+  const centerPanelStage = (
+    <div
+      className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+      style={centerPanelStageStyle}
+    >
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <CenterPanel />
+      </div>
+      <div className="absolute inset-x-0 bottom-0 z-20 pointer-events-none">
+        <div className="pb-[env(safe-area-inset-bottom)]">
+          <div ref={composerMeasureRef}>
+            <SmartConsultationComposer ref={composerRef} />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
   // Mobile layout: vertical stack
   if (isMobile) {
     return (
@@ -220,14 +279,7 @@ export function ConsultationLayout() {
           isSwitching ? "opacity-40 pointer-events-none" : "opacity-100"
         )}>
           {activeTab !== "research" && <MobileTranscriptSection />}
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <CenterPanel />
-          </div>
-          {activeTab !== "research" && (
-            <div className="shrink-0 pb-[env(safe-area-inset-bottom)]">
-              <NoteInputBar />
-            </div>
-          )}
+          {centerPanelStage}
         </div>
       </div>
     )
@@ -247,9 +299,14 @@ export function ConsultationLayout() {
       )}>
         <ResizablePanelGroup orientation="horizontal">
           <ResizablePanel defaultSize="55" minSize="30">
-            <CenterPanel />
+            <div className="flex h-full min-h-0 flex-col">
+              {centerPanelStage}
+            </div>
           </ResizablePanel>
-          <ResizableHandle withHandle />
+          <ResizableHandle
+            withHandle
+            className="bg-border/70 [&>div]:border-border/70 [&>div]:bg-background/90 [&>div]:shadow-sm"
+          />
           <ResizablePanel
             panelRef={rightPanelRef}
             defaultSize="45"
@@ -261,7 +318,7 @@ export function ConsultationLayout() {
               setTranscriptCollapsed(size.asPercentage === 0)
             }}
           >
-            <RightPanel />
+            <RightPanel onAddFiles={handleAddFilesFromTranscript} />
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
