@@ -126,6 +126,7 @@ interface AiModelSettings {
   insightsModel: string
   recordModel: string
   patientHandoutModel: string
+  documentModel: string
   ddxModel: string
   researchModel: string
   speakerIdModel: string
@@ -139,6 +140,7 @@ const AI_MODEL_KEYS: (keyof AiModelSettings)[] = [
   "insightsModel",
   "recordModel",
   "patientHandoutModel",
+  "documentModel",
   "ddxModel",
   "researchModel",
   "speakerIdModel",
@@ -237,6 +239,7 @@ interface SettingsState {
   setInsightsModel: (model: string) => void
   setRecordModel: (model: string) => void
   setPatientHandoutModel: (model: string) => void
+  setDocumentModel: (model: string) => void
   setDdxModel: (model: string) => void
   setResearchModel: (model: string) => void
   setSpeakerIdModel: (model: string) => void
@@ -286,6 +289,7 @@ const DEFAULT_AI_MODEL: AiModelSettings = {
   insightsModel: "grok-4-1-fast-non-reasoning",
   recordModel: "grok-4-1-fast-non-reasoning",
   patientHandoutModel: "grok-4-1-fast-non-reasoning",
+  documentModel: "grok-4-1-fast-non-reasoning",
   ddxModel: "grok-4-1-fast-non-reasoning",
   researchModel: "grok-4-1-fast-non-reasoning",
   speakerIdModel: "grok-4-1-fast-non-reasoning",
@@ -367,6 +371,8 @@ export const useSettingsStore = create<SettingsState>()(
         set((state) => ({ aiModel: { ...state.aiModel, recordModel } })),
       setPatientHandoutModel: (patientHandoutModel) =>
         set((state) => ({ aiModel: { ...state.aiModel, patientHandoutModel } })),
+      setDocumentModel: (documentModel) =>
+        set((state) => ({ aiModel: { ...state.aiModel, documentModel } })),
       setDdxModel: (ddxModel) =>
         set((state) => ({ aiModel: { ...state.aiModel, ddxModel } })),
       setResearchModel: (researchModel) =>

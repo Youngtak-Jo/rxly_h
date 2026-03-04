@@ -39,6 +39,7 @@ import { IconLoader2 } from "@tabler/icons-react"
 import Image from "next/image"
 import { v4 as uuidv4 } from "uuid"
 import { cn } from "@/lib/utils"
+import { useWorkspaceTabReconciliation } from "@/hooks/use-document-workspace"
 
 export function ConsultationLayout() {
   const t = useTranslations("ConsultationLayout")
@@ -68,6 +69,7 @@ export function ConsultationLayout() {
   useLiveRecord()
   useLivePatientHandout()
   useUnseenUpdateTracker()
+  useWorkspaceTabReconciliation()
 
   // These hooks were in RightPanel but need to run on mobile too
   useSpeakerIdentification()

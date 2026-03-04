@@ -21,6 +21,7 @@ const PHI_FIELD_NAMES = new Set([
   "plan",
   "conditions",
   "entries",
+  "contentjson",
   "content",
   "imageurls",
   "storagepaths",

@@ -1,0 +1,348 @@
+"use client"
+
+import { useEffect, useMemo, useState } from "react"
+import { IconLoader2 } from "@tabler/icons-react"
+import { useTranslations } from "next-intl"
+import { toast } from "sonner"
+
+import { GenericDocumentPreview } from "@/components/documents/generic-document-preview"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { buildGenericDocumentSections } from "@/lib/documents/preview"
+import type { DocumentCatalogItem, DocumentPreviewResponse } from "@/types/document"
+
+async function readErrorMessage(
+  response: Response,
+  fallback: string
+): Promise<string> {
+  try {
+    const payload = (await response.json()) as { error?: string }
+    if (typeof payload?.error === "string" && payload.error.trim()) {
+      return payload.error
+    }
+  } catch {
+    // Ignore malformed payloads and fall back.
+  }
+
+  return `${fallback} (${response.status})`
+}
+
+function BuiltInRecordPreview({
+  content,
+}: {
+  content: Record<string, unknown>
+}) {
+  const sections = [
+    ["Chief complaint", content.chiefComplaint],
+    ["HPI", content.hpi],
+    ["Assessment", content.assessment],
+  ] as const
+  const plan = Array.isArray(content.plan)
+    ? content.plan.filter((item): item is string => typeof item === "string")
+    : []
+
+  return (
+    <div className="space-y-5">
+      {typeof content.patientName === "string" ? (
+        <div className="border-b border-border/60 pb-3">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Patient
+          </p>
+          <p className="mt-1 text-sm text-foreground">{content.patientName}</p>
+        </div>
+      ) : null}
+      {sections.map(([label, value]) =>
+        typeof value === "string" && value ? (
+          <section key={label} className="space-y-1.5">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              {label}
+            </p>
+            <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/90">
+              {value}
+            </p>
+          </section>
+        ) : null
+      )}
+      {plan.length > 0 ? (
+        <section className="space-y-1.5">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Plan
+          </p>
+          <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-foreground/90">
+            {plan.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </div>
+  )
+}
+
+function BuiltInHandoutPreview({
+  content,
+}: {
+  content: Record<string, unknown>
+}) {
+  const selfCare = Array.isArray(content.selfCare)
+    ? content.selfCare.filter((item): item is string => typeof item === "string")
+    : []
+  const redFlags = Array.isArray(content.redFlags)
+    ? content.redFlags.filter((item): item is string => typeof item === "string")
+    : []
+
+  return (
+    <div className="space-y-5">
+      {typeof content.title === "string" ? (
+        <div className="border-b border-border/60 pb-3">
+          <h3 className="text-base font-semibold text-foreground">{content.title}</h3>
+        </div>
+      ) : null}
+      {typeof content.overview === "string" ? (
+        <section className="space-y-1.5">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Overview
+          </p>
+          <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/90">
+            {content.overview}
+          </p>
+        </section>
+      ) : null}
+      {selfCare.length > 0 ? (
+        <section className="space-y-1.5">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Self-care
+          </p>
+          <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-foreground/90">
+            {selfCare.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {redFlags.length > 0 ? (
+        <section className="space-y-1.5">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Seek care urgently if
+          </p>
+          <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-foreground/90">
+            {redFlags.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {typeof content.followUp === "string" ? (
+        <section className="space-y-1.5">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Follow-up
+          </p>
+          <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/90">
+            {content.followUp}
+          </p>
+        </section>
+      ) : null}
+    </div>
+  )
+}
+
+export function DocumentCatalogPreviewDialog({
+  item,
+  open,
+  actionKey,
+  onOpenChange,
+  onInstall,
+  onUninstall,
+  onUpdate,
+  onEdit,
+  onPublish,
+  onFork,
+}: {
+  item: DocumentCatalogItem | null
+  open: boolean
+  actionKey: string | null
+  onOpenChange: (open: boolean) => void
+  onInstall: (item: DocumentCatalogItem) => void
+  onUninstall: (item: DocumentCatalogItem) => void
+  onUpdate: (item: DocumentCatalogItem) => void
+  onEdit: (item: DocumentCatalogItem) => void
+  onPublish: (item: DocumentCatalogItem) => void
+  onFork: (item: DocumentCatalogItem) => void
+}) {
+  const t = useTranslations("DocumentStore")
+  const [loading, setLoading] = useState(false)
+  const [preview, setPreview] = useState<DocumentPreviewResponse | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open || !item) return
+
+    let cancelled = false
+
+    const loadPreview = async () => {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const response = await fetch(`/api/documents/${item.templateId}/preview`)
+        if (!response.ok) {
+          throw new Error(
+            await readErrorMessage(response, t("preview.loadFailed"))
+          )
+        }
+        const payload = (await response.json()) as DocumentPreviewResponse
+        if (cancelled) return
+        setPreview(payload)
+      } catch (fetchError) {
+        if (cancelled) return
+        const message =
+          fetchError instanceof Error
+            ? fetchError.message
+            : t("preview.loadFailed")
+        setError(message)
+        toast.error(message)
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void loadPreview()
+
+    return () => {
+      cancelled = true
+    }
+  }, [item, open, t])
+
+  const genericSections = useMemo(() => {
+    if (!preview?.previewContent || preview.previewKind !== "AI_GENERATED") {
+      return []
+    }
+
+    return buildGenericDocumentSections(preview.previewContent)
+  }, [preview])
+
+  const isBusy = item ? actionKey === item.templateId : false
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90dvh] max-w-4xl overflow-hidden p-0">
+        <DialogHeader className="border-b px-5 py-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <DialogTitle className="text-left">
+                  {preview?.title || item?.title || t("preview.dialogTitle")}
+                </DialogTitle>
+                <Badge variant="outline">
+                  {preview?.previewKind === "BUILT_IN_STATIC"
+                    ? t("preview.staticBadge")
+                    : t("preview.syntheticBadge")}
+                </Badge>
+                {preview?.versionNumber ? (
+                  <Badge variant="secondary">
+                    {t("badges.publishedVersion", {
+                      version: preview.versionNumber,
+                    })}
+                  </Badge>
+                ) : null}
+              </div>
+              <DialogDescription className="text-left">
+                {preview?.description || item?.description || ""}
+              </DialogDescription>
+              {preview?.previewCaseSummary ? (
+                <p className="max-w-3xl text-sm text-muted-foreground">
+                  {preview.previewCaseSummary}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="min-h-0 overflow-y-auto px-5 py-5">
+          {loading ? (
+            <div className="flex min-h-56 items-center justify-center gap-2 text-sm text-muted-foreground">
+              <IconLoader2 className="size-4 animate-spin" />
+              {t("preview.loading")}
+            </div>
+          ) : error ? (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-8 text-sm text-destructive">
+              {error}
+            </div>
+          ) : preview?.previewKind === "BUILT_IN_STATIC" &&
+            preview.previewContent ? (
+            preview.builtInPreviewKey === "record" ? (
+              <BuiltInRecordPreview content={preview.previewContent} />
+            ) : (
+              <BuiltInHandoutPreview content={preview.previewContent} />
+            )
+          ) : (
+            <GenericDocumentPreview sections={genericSections} variant="catalog" />
+          )}
+        </div>
+
+        {item ? (
+          <div className="border-t px-5 py-4">
+            <div className="flex flex-wrap gap-2">
+              {item.canInstall && !item.isInstalled ? (
+                <Button disabled={isBusy} onClick={() => onInstall(item)}>
+                  {isBusy ? <IconLoader2 className="size-3.5 animate-spin" /> : null}
+                  {t("actions.install")}
+                </Button>
+              ) : null}
+              {item.canUninstall ? (
+                <Button
+                  variant="outline"
+                  disabled={isBusy}
+                  onClick={() => onUninstall(item)}
+                >
+                  {t("actions.uninstall")}
+                </Button>
+              ) : null}
+              {item.hasUpdate ? (
+                <Button
+                  variant="outline"
+                  disabled={isBusy}
+                  onClick={() => onUpdate(item)}
+                >
+                  {t("actions.update")}
+                </Button>
+              ) : null}
+              {item.isEditable ? (
+                <Button variant="secondary" onClick={() => onEdit(item)}>
+                  {t("actions.edit")}
+                </Button>
+              ) : null}
+              {item.canPublish ? (
+                <Button
+                  variant="outline"
+                  disabled={isBusy}
+                  onClick={() => onPublish(item)}
+                >
+                  {t("actions.publish")}
+                </Button>
+              ) : null}
+              {item.canFork ? (
+                <Button
+                  variant="outline"
+                  disabled={isBusy}
+                  onClick={() => onFork(item)}
+                >
+                  {t("actions.fork")}
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  )
+}

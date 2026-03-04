@@ -1,6 +1,10 @@
 import type { DriveStep, Driver } from "driver.js"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import {
+  BUILT_IN_RECORD_TEMPLATE_ID,
+  buildDocumentTabId,
+} from "@/lib/documents/constants"
+import {
   injectDdxData,
   injectRecordData,
   injectResearchData,
@@ -82,7 +86,9 @@ export function createTourSteps(
         side: "right" as const,
         align: "center" as const,
         onNextClick: () => {
-          useConsultationTabStore.getState().setActiveTab("record")
+          useConsultationTabStore
+            .getState()
+            .setActiveTab(buildDocumentTabId(BUILT_IN_RECORD_TEMPLATE_ID))
           injectRecordData()
           waitForElement('[data-tour="record-panel"]').then(() => {
             driverRef.current?.moveNext()
@@ -137,7 +143,9 @@ export function createTourSteps(
           })
         },
         onPrevClick: () => {
-          useConsultationTabStore.getState().setActiveTab("record")
+          useConsultationTabStore
+            .getState()
+            .setActiveTab(buildDocumentTabId(BUILT_IN_RECORD_TEMPLATE_ID))
           waitForElement('[data-tour="record-panel"]').then(() => {
             driverRef.current?.movePrevious()
           })

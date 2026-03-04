@@ -15,12 +15,13 @@ import type { TranscriptEntry } from "@/types/session"
 import type { ConsultationRecord } from "@/types/record"
 import type { NoteEntry } from "@/stores/note-store"
 import type { ResearchMessage } from "@/stores/research-store"
+import type { WorkspaceTabId } from "@/types/document"
 
 // ---------------------------------------------------------------------------
 // Snapshot types
 // ---------------------------------------------------------------------------
 export interface TourSnapshot {
-  activeTab: "insights" | "ddx" | "record" | "research" | "patientHandout"
+  activeTab: WorkspaceTabId
   activeSession: ReturnType<typeof useSessionStore.getState>["activeSession"]
   hadSession: boolean
   insights: {

@@ -5,6 +5,8 @@ import { useResearchStore } from "@/stores/research-store"
 import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
+import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
+import { useSessionDocumentStore } from "@/stores/session-document-store"
 import type { ChecklistItem, DiagnosisItem } from "@/types/insights"
 import type { ConsultationRecord } from "@/types/record"
 import type { ResearchMessage } from "@/stores/research-store"
@@ -13,15 +15,17 @@ import {
   type PatientHandoutDocument,
   type PatientHandoutSectionKey,
 } from "@/types/patient-handout"
+import {
+  getTemplateIdFromTabId,
+  isDocumentTabId,
+} from "@/lib/documents/constants"
+import { buildGenericDocumentSections } from "@/lib/documents/preview"
+import type { GenericDocumentSection } from "@/types/document"
 
-type Tab = "insights" | "ddx" | "record" | "research" | "patientHandout"
-
-const TAB_LABELS: Record<Tab, string> = {
+const SYSTEM_TAB_LABELS = {
   insights: "Live Insights",
   ddx: "Differential Diagnosis",
-  record: "Consultation Record",
   research: "Research",
-  patientHandout: "Patient Handout",
 }
 
 function escapeHtml(str: string): string {
@@ -329,13 +333,68 @@ function formatPatientHandoutBody(document: PatientHandoutDocument | null): stri
   return parts.join("\n")
 }
 
+function formatGenericSections(sections: GenericDocumentSection[]): string {
+  if (sections.length === 0) {
+    return `<p style="font-size: 14px; color: #9ca3af; font-style: italic;">No document data available.</p>`
+  }
+
+  return sections
+    .map((section) => {
+      if (section.kind === "field") {
+        if (Array.isArray(section.value)) {
+          return [
+            sectionTitle(section.label),
+            `<ul style="margin: 0; padding-left: 20px;">`,
+            ...section.value.map(
+              (item) =>
+                `<li style="font-size: 14px; color: #374151; margin-bottom: 4px;">${escapeHtml(item)}</li>`
+            ),
+            `</ul>`,
+          ].join("\n")
+        }
+
+        return [
+          sectionTitle(section.label),
+          `<p style="font-size: 14px; color: #374151; margin: 0; white-space: pre-wrap;">${escapeHtml(section.value)}</p>`,
+        ].join("\n")
+      }
+
+      if (section.kind === "group") {
+        return [sectionTitle(section.label), formatGenericSections(section.children)].join(
+          "\n"
+        )
+      }
+
+      return [
+        sectionTitle(section.label),
+        ...section.items.map(
+          (itemSections, index) => `<div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+          <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 8px;">Item ${index + 1}</div>
+          ${formatGenericSections(itemSections)}
+        </div>`
+        ),
+      ].join("\n")
+    })
+    .join("\n")
+}
+
 // ── HTML export (used for email) ──
 
 export function getActiveTabExportHtml(): { html: string; tabLabel: string } {
   const activeTab = useConsultationTabStore.getState().activeTab
   const session = useSessionStore.getState().activeSession
   const sessionTitle = session?.title || "Consultation"
-  const tabLabel = TAB_LABELS[activeTab]
+  const installedDocuments = useDocumentWorkspaceStore.getState().installedDocuments
+  const sessionDocuments = useSessionDocumentStore.getState()
+  const templateId = isDocumentTabId(activeTab) ? getTemplateIdFromTabId(activeTab) : null
+  const installedDocument = templateId
+    ? installedDocuments.find((document) => document.templateId === templateId) ?? null
+    : null
+  const tabLabel =
+    installedDocument?.title ||
+    (activeTab in SYSTEM_TAB_LABELS
+      ? SYSTEM_TAB_LABELS[activeTab as keyof typeof SYSTEM_TAB_LABELS]
+      : "Document")
 
   const record = useRecordStore.getState().record
   const patientName = record?.patientName || null
@@ -359,19 +418,43 @@ export function getActiveTabExportHtml(): { html: string; tabLabel: string } {
       bodyHtml = formatDdxBody(diagnoses)
       break
     }
-    case "record": {
-      bodyHtml = formatRecordBody(record)
-      break
-    }
     case "research": {
       const { messages } = useResearchStore.getState()
       bodyHtml = formatResearchBody(messages)
       break
     }
-    case "patientHandout": {
-      const { document } = usePatientHandoutStore.getState()
-      bodyHtml = formatPatientHandoutBody(document)
-      break
+    default: {
+      if (
+        installedDocument?.renderer === "BUILT_IN_RECORD"
+      ) {
+        bodyHtml = formatRecordBody(record)
+        break
+      }
+
+      if (
+        installedDocument?.renderer === "BUILT_IN_PATIENT_HANDOUT"
+      ) {
+        const { document } = usePatientHandoutStore.getState()
+        bodyHtml = formatPatientHandoutBody(document)
+        break
+      }
+
+      if (
+        installedDocument?.renderer === "GENERIC_STRUCTURED" &&
+        session &&
+        templateId
+      ) {
+        const sessionDocument = sessionDocuments.getSessionDocument(
+          session.id,
+          templateId
+        )
+        bodyHtml = formatGenericSections(
+          buildGenericDocumentSections(sessionDocument?.contentJson ?? {})
+        )
+        break
+      }
+
+      bodyHtml = `<p style="font-size: 14px; color: #9ca3af; font-style: italic;">No document data available.</p>`
     }
   }
 

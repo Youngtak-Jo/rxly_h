@@ -1,3 +1,5 @@
+import type { SessionDocumentRecord } from "@/types/document"
+
 export type AdminInterval = "hour" | "day"
 export type AdminMode = "ALL" | "DOCTOR" | "AI_DOCTOR"
 export type AdminPreset = "24h" | "7d" | "30d" | "custom"
@@ -468,6 +470,7 @@ export interface AdminSessionDetail {
   notes: Record<string, unknown>[]
   researchMessages: Record<string, unknown>[]
   patientHandout: Record<string, unknown> | null
+  sessionDocuments: SessionDocumentRecord[]
   checklistItems: Record<string, unknown>[]
   auditTimeline: Record<string, unknown>[]
 }

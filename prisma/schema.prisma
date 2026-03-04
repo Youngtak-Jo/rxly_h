@@ -28,6 +28,7 @@ model Session {
   notes             Note[]
   researchMessages  ResearchMessage[]
   recordingSegments RecordingSegment[]
+  sessionDocuments  SessionDocument[]
   aiUsageEvents     AiUsageEvent[]
   clientEvents      ClientEvent[]
 
@@ -374,4 +375,126 @@ model Diagnosis {
 
   @@index([sessionId, sortOrder])
   @@map("diagnoses")
+}
+
+enum DocumentTemplateSourceKind {
+  BUILT_IN
+  USER
+}
+
+enum DocumentTemplateRenderer {
+  BUILT_IN_RECORD
+  BUILT_IN_PATIENT_HANDOUT
+  GENERIC_STRUCTURED
+}
+
+enum DocumentTemplateVisibility {
+  PRIVATE
+  PUBLIC
+}
+
+enum DocumentTemplateVersionStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model DocumentTemplate {
+  id                       String                     @id @default(uuid())
+  slug                     String                     @unique
+  ownerUserId              String?                    @map("owner_user_id")
+  sourceKind               DocumentTemplateSourceKind @default(USER) @map("source_kind")
+  renderer                 DocumentTemplateRenderer
+  visibility               DocumentTemplateVisibility @default(PRIVATE)
+  title                    String
+  description              String                     @default("")
+  iconKey                  String                     @default("file-text") @map("icon_key")
+  category                 String                     @default("general")
+  latestDraftVersionId     String?                    @unique @map("latest_draft_version_id")
+  latestPublishedVersionId String?                    @unique @map("latest_published_version_id")
+  createdAt                DateTime                   @default(now()) @map("created_at")
+  updatedAt                DateTime                   @updatedAt @map("updated_at")
+
+  versions              DocumentTemplateVersion[] @relation("TemplateVersions")
+  latestDraftVersion    DocumentTemplateVersion?  @relation("LatestDraftVersion", fields: [latestDraftVersionId], references: [id], onDelete: SetNull)
+  latestPublishedVersion DocumentTemplateVersion? @relation("LatestPublishedVersion", fields: [latestPublishedVersionId], references: [id], onDelete: SetNull)
+  installedBy           UserInstalledDocument[]
+  sessionDocuments      SessionDocument[]
+
+  @@index([ownerUserId, updatedAt])
+  @@index([visibility, updatedAt])
+  @@index([sourceKind, renderer])
+  @@map("document_templates")
+}
+
+model DocumentTemplateVersion {
+  id                   String                        @id @default(uuid())
+  templateId           String                        @map("template_id")
+  versionNumber        Int                           @map("version_number")
+  status               DocumentTemplateVersionStatus
+  schemaJson           Json                          @map("schema_json")
+  generationConfigJson Json                          @map("generation_config_json")
+  previewContentJson   Json?                         @map("preview_content_json")
+  previewCaseSummary   String?                       @map("preview_case_summary")
+  previewLocale        String?                       @map("preview_locale")
+  previewModelId       String?                       @map("preview_model_id")
+  previewGeneratedAt   DateTime?                     @map("preview_generated_at")
+  previewInputChecksum String?                       @map("preview_input_checksum")
+  changelog            String?                       @default("")
+  createdByUserId      String?                       @map("created_by_user_id")
+  createdAt            DateTime                      @default(now()) @map("created_at")
+
+  template                  DocumentTemplate         @relation("TemplateVersions", fields: [templateId], references: [id], onDelete: Cascade)
+  latestDraftForTemplate    DocumentTemplate?        @relation("LatestDraftVersion")
+  latestPublishedForTemplate DocumentTemplate?       @relation("LatestPublishedVersion")
+  installedBy               UserInstalledDocument[]  @relation("InstalledDocumentVersion")
+  sessionDocuments          SessionDocument[]
+
+  @@unique([templateId, versionNumber])
+  @@index([templateId, status, createdAt])
+  @@map("document_template_versions")
+}
+
+model UserInstalledDocument {
+  id                 String                  @id @default(uuid())
+  userId             String                  @map("user_id")
+  templateId         String                  @map("template_id")
+  installedVersionId String                  @map("installed_version_id")
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
+
+  template         DocumentTemplate        @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  installedVersion DocumentTemplateVersion @relation("InstalledDocumentVersion", fields: [installedVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, templateId])
+  @@index([userId, updatedAt])
+  @@map("user_installed_documents")
+}
+
+model UserWorkspaceLayout {
+  userId      String   @id @map("user_id")
+  tabOrderJson Json    @map("tab_order_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("user_workspace_layouts")
+}
+
+model SessionDocument {
+  id                String   @id @default(uuid())
+  sessionId         String   @map("session_id")
+  templateId        String   @map("template_id")
+  templateVersionId String   @map("template_version_id")
+  contentJson       Json     @default("{}") @map("content_json")
+  generatedAt       DateTime? @map("generated_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  session         Session                 @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  template        DocumentTemplate        @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateVersion DocumentTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
+
+  @@unique([sessionId, templateId])
+  @@index([sessionId, updatedAt])
+  @@index([templateId, updatedAt])
+  @@map("session_documents")
 }

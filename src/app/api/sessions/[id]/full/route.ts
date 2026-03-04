@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit"
 import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { logger } from "@/lib/logger"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { mapSessionDocumentRecord } from "@/lib/documents/server"
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -91,6 +92,9 @@ export async function GET(
             insights: true,
             record: true,
             patientHandout: true,
+            sessionDocuments: {
+              orderBy: { updatedAt: "desc" },
+            },
             checklistItems: { orderBy: { sortOrder: "asc" } },
             diagnoses: { orderBy: { sortOrder: "asc" } },
           },
@@ -167,7 +171,10 @@ export async function GET(
 
     logAudit({ userId: user.id, action: "READ", resource: "session_full", sessionId: id })
     return NextResponse.json({
-      session,
+      session: {
+        ...session,
+        sessionDocuments: session.sessionDocuments.map(mapSessionDocumentRecord),
+      },
       transcriptEntries,
       notes: notesWithUrls,
       researchMessages: researchMessagesWithUrls,

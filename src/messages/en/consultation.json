@@ -1,6 +1,7 @@
 {
   "AppSidebar": {
     "admin": "Admin",
+    "documents": "Documents",
     "fallbackUserName": "User",
     "help": "Help",
     "settings": "Settings"
@@ -690,6 +691,247 @@
       "articleIdParseFailed": "{source} reference parsing failed.",
       "articleFetchTimedOut": "{source} reference retrieval timed out.",
       "articleFetchFailed": "{source} reference retrieval failed."
+    }
+  },
+  "DocumentStore": {
+    "title": "Documents",
+    "subtitle": "Install built-in and shared document templates, or create your own.",
+    "newDocument": "New Document",
+    "searchPlaceholder": "Search documents",
+    "filters": {
+      "all": "All",
+      "installed": "Installed",
+      "builtIn": "Built-in",
+      "mine": "My drafts",
+      "public": "Public"
+    },
+    "actions": {
+      "refresh": "Refresh",
+      "preview": "Preview",
+      "install": "Install",
+      "uninstall": "Uninstall",
+      "update": "Update",
+      "edit": "Edit",
+      "publish": "Publish",
+      "fork": "Fork"
+    },
+    "preview": {
+      "dialogTitle": "Document preview",
+      "loading": "Loading preview",
+      "loadFailed": "Failed to load document preview",
+      "syntheticBadge": "Synthetic preview",
+      "staticBadge": "Static preview"
+    },
+    "status": {
+      "loadingCatalog": "Loading catalog",
+      "updatingCatalog": "Updating catalog",
+      "empty": "No documents matched this filter."
+    },
+    "badges": {
+      "builtIn": "Built-in",
+      "public": "Public",
+      "draft": "Draft",
+      "installed": "Installed",
+      "updateAvailable": "Update available",
+      "publishedVersion": "Published v{version}",
+      "installedVersion": "Installed v{version}"
+    },
+    "toasts": {
+      "installed": "{title} installed",
+      "removed": "{title} removed",
+      "updated": "{title} updated",
+      "published": "{title} published",
+      "copied": "{title} copied to your drafts",
+      "actionFailed": "Document action failed",
+      "loadFailed": "Failed to load document catalog",
+      "publishFailed": "Failed to publish document",
+      "forkFailed": "Failed to fork document"
+    }
+  },
+  "DocumentBuilder": {
+    "titleNew": "New Document",
+    "titleEdit": "Edit Document",
+    "subtitle": "AI-first template builder for installable medical documents.",
+    "loadingTemplate": "Loading template",
+    "model": {
+      "currentLabel": "Using model: {model}",
+      "changeInSettings": "Change in Settings"
+    },
+    "steps": {
+      "start": "Start",
+      "structure": "Structure",
+      "review": "Review"
+    },
+    "navigation": {
+      "back": "Back",
+      "review": "Review",
+      "close": "Close",
+      "closeTitle": "Close this draft?",
+      "closeDescription": "You have unsaved local changes. Keep them for later, discard them, or stay in the builder.",
+      "keepForLater": "Keep for later",
+      "discardDraft": "Discard local draft",
+      "cancel": "Cancel"
+    },
+    "headerActions": {
+      "saveDraft": "Save Draft",
+      "publish": "Publish",
+      "install": "Install"
+    },
+    "aiDraft": {
+      "title": "AI draft",
+      "description": "Describe the document you want, including local regulations or workflow constraints.",
+      "placeholder": "Example: Create a Korean HIRA EDI claim review document with repeatable service line items, denial reasoning, and insurer-facing notes.",
+      "generate": "Generate Draft",
+      "startBlank": "Start Blank",
+      "revise": "Revise Draft",
+      "revisePanelTitle": "Revise with AI",
+      "revisePanelDescription": "Describe the changes you want, and AI will update the current draft structure.",
+      "revisePlaceholder": "Example: Split the insurer note section into required and optional fields, and add a repeatable denial-code group."
+    },
+    "templateSettings": {
+      "title": "Template settings",
+      "titleLabel": "Title",
+      "categoryLabel": "Category",
+      "iconKeyLabel": "Icon key",
+      "visibilityLabel": "Visibility",
+      "descriptionLabel": "Description",
+      "visibility": {
+        "private": "Private draft",
+        "public": "Public"
+      }
+    },
+    "schemaEditor": {
+      "title": "Schema editor",
+      "description": "Add fields and groups that define the document structure.",
+      "canvasDescription": "Edit the schema and sample values together in one workspace.",
+      "empty": "No fields yet. Start from AI or add fields manually.",
+      "addField": "Add field",
+      "addGroup": "Add group"
+    },
+    "generationSettings": {
+      "title": "Generation settings",
+      "advancedTitle": "Advanced generation settings",
+      "advancedDescription": "Tune how AI should produce this document when users generate it from session context.",
+      "audienceLabel": "Audience",
+      "outputToneLabel": "Output tone",
+      "systemInstructionsLabel": "System instructions",
+      "contextSourcesLabel": "Context sources"
+    },
+    "preview": {
+      "title": "Preview",
+      "description": "This mirrors the structured form that clinicians will use after installation.",
+      "empty": "Add schema nodes to preview the document.",
+      "noSampleItems": "No items yet.",
+      "inputPlaceholder": "Preview input",
+      "noChildFields": "No child fields",
+      "sampleTitle": "Sample input values",
+      "sampleDescription": "Preview the kind of values that will be filled into this document.",
+      "renderedTitle": "Rendered document preview",
+      "renderedDescription": "This is the final document preview produced from the sample values.",
+      "resetSample": "Reset sample data",
+      "regenerate": "Regenerate preview",
+      "syntheticBadge": "Synthetic preview",
+      "generatedAt": "Generated at {value}",
+      "status": {
+        "idle": "Preview pending",
+        "generating": "Generating preview",
+        "ready": "Preview updated",
+        "failed": "Preview failed",
+        "stale": "Preview out of date"
+      },
+      "emptyRendered": "No rendered document preview available yet.",
+      "sampleItem": "Item",
+      "addSampleItem": "Add sample item",
+      "removeItem": "Remove"
+    },
+    "schemaNode": {
+      "typeLabel": "Type",
+      "keyLabel": "Key",
+      "fieldLabel": "Label",
+      "placeholderLabel": "Placeholder",
+      "helpTextLabel": "Help text",
+      "required": "Required",
+      "children": "Children",
+      "childCount": "{count} children",
+      "itemCount": "{count} items",
+      "noChildren": "No child nodes yet.",
+      "selectType": "Select type",
+      "keyPlaceholder": "snake_case_key",
+      "labelPlaceholder": "Display label",
+      "inputPlaceholder": "Optional input hint",
+      "helpTextPlaceholder": "Optional field guidance",
+      "actions": {
+        "expand": "Expand details",
+        "collapse": "Collapse details",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "delete": "Delete node",
+        "activateItem": "Activate item {index}"
+      },
+      "types": {
+        "shortText": "Short text",
+        "longText": "Long text",
+        "stringList": "String list",
+        "group": "Group",
+        "repeatableGroup": "Repeatable group"
+      }
+    },
+    "workspace": {
+      "editTab": "Edit",
+      "previewTab": "Preview"
+    },
+    "contextSources": {
+      "sessionMeta": "Session metadata",
+      "transcript": "Transcript",
+      "doctorNotes": "Doctor notes",
+      "insights": "Insights",
+      "ddx": "Differential diagnosis",
+      "research": "Research",
+      "record": "Consultation record",
+      "patientHandout": "Patient handout"
+    },
+    "badges": {
+      "publishedVersion": "Published v{version}",
+      "installedVersion": "Installed v{version}"
+    },
+    "localDraft": {
+      "restoredTitle": "Unsaved local changes restored",
+      "restoredDescription": "This draft was restored from your last unfinished editing session.",
+      "resetToServer": "Reset to server version",
+      "restoredToast": "Unsaved local changes restored",
+      "resetToast": "Reset to the server version"
+    },
+    "validation": {
+      "titleRequired": "Title is required",
+      "schemaInvalid": "The document schema is invalid"
+    },
+    "review": {
+      "title": "Review and publish",
+      "description": "Confirm the draft details before saving, publishing, or installing it.",
+      "summary": {
+        "title": "Title",
+        "visibility": "Visibility",
+        "schemaNodes": "Schema fields",
+        "schemaNodesValue": "{count} fields",
+        "contextSources": "Context sources",
+        "none": "None"
+      }
+    },
+    "toasts": {
+      "promptTooShort": "Prompt is too short",
+      "draftRevised": "Draft revised",
+      "draftGenerated": "Draft generated",
+      "draftSaved": "Draft saved",
+      "draftCreated": "Draft created",
+      "documentPublished": "Document published",
+      "documentInstalled": "Document installed",
+      "saveAndPublishFirst": "Save and publish the document first",
+      "loadTemplateFailed": "Failed to load document template",
+      "generateFailed": "Failed to generate document draft",
+      "previewFailed": "Failed to generate document preview",
+      "saveFailed": "Failed to save document draft",
+      "publishFailed": "Failed to publish document",
+      "installFailed": "Failed to install document"
     }
   }
 }

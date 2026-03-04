@@ -30,8 +30,10 @@ import {
 import { toast } from "sonner"
 import { useSessionStore } from "@/stores/session-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
+import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
 import { getActiveTabExportHtml, generatePdf } from "@/lib/export-utils"
 import { trackClientEvent } from "@/lib/telemetry/client-events"
+import { resolveWorkspaceTabDefinition } from "@/lib/documents/workspace"
 
 export function ExportDropdown() {
   const t = useTranslations("ExportDropdown")
@@ -42,7 +44,13 @@ export function ExportDropdown() {
   const [isSending, setIsSending] = useState(false)
   const activeSession = useSessionStore((s) => s.activeSession)
   const activeTab = useConsultationTabStore((s) => s.activeTab)
-  const activeTabLabel = tTabs(activeTab)
+  const installedDocuments = useDocumentWorkspaceStore((s) => s.installedDocuments)
+  const activeTabLabel =
+    resolveWorkspaceTabDefinition(activeTab, installedDocuments, {
+      insights: tTabs("insights"),
+      ddx: tTabs("ddx"),
+      research: tTabs("research"),
+    })?.title ?? "Document"
 
   const handlePdfExport = async () => {
     try {

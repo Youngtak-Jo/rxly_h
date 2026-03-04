@@ -13,11 +13,7 @@ import type {
 } from "@/types/admin"
 
 type TranslationValues = Record<string, string | number>
-
-type AdminTranslator = {
-  (...args: any[]): string
-  has?: (...args: any[]) => boolean
-}
+type AdminTranslator = (...args: never[]) => string
 
 type AdminAlertLike = Pick<AdminInsightAlert, "rule" | "title" | "description" | "metadata"> |
   Pick<AdminIncidentRow, "rule" | "title" | "description" | "metadata">
@@ -41,8 +37,13 @@ function translateOrFallback(
   fallback: string,
   values?: TranslationValues
 ): string {
-  if (typeof t.has === "function" && t.has(key)) {
-    return t(key, values)
+  const translate = t as unknown as (key: string, values?: TranslationValues) => string
+  const hasTranslation = (t as unknown as {
+    has?: (key: string) => boolean
+  }).has
+
+  if (typeof hasTranslation === "function" && hasTranslation(key)) {
+    return translate(key, values)
   }
   return fallback
 }
@@ -92,11 +93,17 @@ export function getAdminRiskBandLabel(t: AdminTranslator, riskBand: AdminRiskBan
   return translateOrFallback(t, `riskBand.${riskBand}`, riskBand)
 }
 
-export function getAdminTimezoneLabel(t: AdminTranslator, timezone: "local" | "UTC"): string {
+export function getAdminTimezoneLabel(
+  t: AdminTranslator,
+  timezone: "local" | "UTC"
+): string {
   return translateOrFallback(t, `timezone.${timezone}`, timezone)
 }
 
-export function getAdminFunnelStepLabel(t: AdminTranslator, step: AdminFunnelStepKey): string {
+export function getAdminFunnelStepLabel(
+  t: AdminTranslator,
+  step: AdminFunnelStepKey
+): string {
   return translateOrFallback(t, `funnelStep.${step}`, step)
 }
 
@@ -227,7 +234,13 @@ export function getAdminAlertCopy(
       break
     }
     default:
-      if (typeof t.has === "function" && t.has(`rules.${alert.rule}.title`)) {
+      const hasTranslation = (t as unknown as {
+        has?: (key: string) => boolean
+      }).has
+      if (
+        typeof hasTranslation === "function" &&
+        hasTranslation(`rules.${alert.rule}.title`)
+      ) {
         return {
           label,
           title: t(`rules.${alert.rule}.title`),

@@ -4,6 +4,10 @@ import { IconBulb, IconFileText, IconStethoscope } from "@tabler/icons-react"
 import { useTranslations } from "next-intl"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useDdxStore } from "@/stores/ddx-store"
+import {
+  BUILT_IN_RECORD_TEMPLATE_ID,
+  buildDocumentTabId,
+} from "@/lib/documents/constants"
 
 import {
   SidebarGroup,
@@ -21,6 +25,7 @@ export function NavMain() {
   const isDdxProcessing = useDdxStore((s) => s.isProcessing)
 
   const activeStyle = "!bg-primary !text-primary-foreground !font-normal hover:!bg-primary/90 hover:!text-primary-foreground"
+  const recordTabId = buildDocumentTabId(BUILT_IN_RECORD_TEMPLATE_ID)
 
   return (
     <SidebarGroup>
@@ -58,9 +63,9 @@ export function NavMain() {
           <SidebarMenuItem>
             <SidebarMenuButton
               tooltip={t("record")}
-              isActive={activeTab === "record"}
-              onClick={() => setActiveTab("record")}
-              className={`transition-all duration-300 ease-in-out ${activeTab === "record" ? activeStyle : ""}`}
+              isActive={activeTab === recordTabId}
+              onClick={() => setActiveTab(recordTabId)}
+              className={`transition-all duration-300 ease-in-out ${activeTab === recordTabId ? activeStyle : ""}`}
             >
               <IconFileText />
               <span>{t("record")}</span>

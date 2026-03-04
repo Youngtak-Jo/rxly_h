@@ -26,6 +26,7 @@ import { useDdxStore } from "@/stores/ddx-store"
 import { useResearchStore } from "@/stores/research-store"
 import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
+import { useSessionDocumentStore } from "@/stores/session-document-store"
 import {
   getCachedSession,
   getCoreCachedSession,
@@ -106,6 +107,7 @@ export function NavSessions() {
     noteStore.reset()
     researchStore.reset()
     patientHandoutStore.reset()
+    useSessionDocumentStore.getState().reset()
     useConsultationModeStore.getState().reset()
     useConsultationTabStore.getState().clearAllUnseenUpdates()
   }
@@ -192,6 +194,7 @@ export function NavSessions() {
       diagnoses: [],
       record: null,
       patientHandout: null,
+      sessionDocuments: [],
       checklistItems: []
     }
     setCoreCachedSession(tempId, dummyCoreSession)
@@ -225,6 +228,7 @@ export function NavSessions() {
         diagnoses: [],
         record: realSession.record ?? null,
         patientHandout: null,
+        sessionDocuments: [],
         checklistItems: [],
       }
 

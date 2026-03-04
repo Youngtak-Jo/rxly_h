@@ -606,6 +606,7 @@ function ModelSettings() {
     setInsightsModel,
     setRecordModel,
     setPatientHandoutModel,
+    setDocumentModel,
     setDdxModel,
     setResearchModel,
     setSpeakerIdModel,
@@ -651,6 +652,18 @@ function ModelSettings() {
           value={aiModel.patientHandoutModel}
           onValueChange={setPatientHandoutModel}
           recommendedModel={DEFAULT_AI_MODEL.patientHandoutModel}
+          recommendedLabel={t("models.recommended")}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Documents"
+        description="Model used for AI-powered document drafting and structured document generation."
+      >
+        <ModelSelector
+          value={aiModel.documentModel}
+          onValueChange={setDocumentModel}
+          recommendedModel={DEFAULT_AI_MODEL.documentModel}
           recommendedLabel={t("models.recommended")}
         />
       </SettingRow>

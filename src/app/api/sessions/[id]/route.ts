@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit"
 import { logger } from "@/lib/logger"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { sessionPatchSchema } from "@/lib/validations"
+import { mapSessionDocumentRecord } from "@/lib/documents/server"
 
 export async function GET(
   req: Request,
@@ -23,6 +24,9 @@ export async function GET(
         insights: true,
         record: true,
         patientHandout: true,
+        sessionDocuments: {
+          orderBy: { updatedAt: "desc" },
+        },
         checklistItems: { orderBy: { sortOrder: "asc" } },
         diagnoses: { orderBy: { sortOrder: "asc" } },
       },
@@ -31,12 +35,19 @@ export async function GET(
       return NextResponse.json({ error: "Session not found" }, { status: 404 })
     }
     logAudit({ userId: user.id, action: "READ", resource: "session", resourceId: id })
-    return NextResponse.json(session)
+    return NextResponse.json({
+      ...session,
+      sessionDocuments: session.sessionDocuments.map(mapSessionDocumentRecord),
+    })
   } catch (error) {
     if (error instanceof NextResponse) return error
     logger.error("Failed to fetch session:", error)
+    const message =
+      process.env.NODE_ENV !== "production" && error instanceof Error
+        ? error.message
+        : "Failed to fetch session"
     return NextResponse.json(
-      { error: "Failed to fetch session" },
+      { error: message },
       { status: 500 }
     )
   }

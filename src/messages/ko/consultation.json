@@ -1,6 +1,7 @@
 {
   "AppSidebar": {
     "admin": "관리자",
+    "documents": "문서",
     "fallbackUserName": "사용자",
     "help": "도움말",
     "settings": "설정"
@@ -690,6 +691,247 @@
       "articleIdParseFailed": "{source} 참고 자료 파싱에 실패했습니다.",
       "articleFetchTimedOut": "{source} 참고 자료 조회 시간이 초과되었습니다.",
       "articleFetchFailed": "{source} 참고 자료 조회에 실패했습니다."
+    }
+  },
+  "DocumentStore": {
+    "title": "문서",
+    "subtitle": "기본 제공 문서와 공유된 문서 템플릿을 설치하거나 직접 만들 수 있습니다.",
+    "newDocument": "새 문서",
+    "searchPlaceholder": "문서 검색",
+    "filters": {
+      "all": "전체",
+      "installed": "설치됨",
+      "builtIn": "기본 제공",
+      "mine": "내 초안",
+      "public": "공개"
+    },
+    "actions": {
+      "refresh": "새로고침",
+      "preview": "미리보기",
+      "install": "설치",
+      "uninstall": "제거",
+      "update": "업데이트",
+      "edit": "편집",
+      "publish": "게시",
+      "fork": "복제"
+    },
+    "preview": {
+      "dialogTitle": "문서 미리보기",
+      "loading": "문서 미리보기를 불러오는 중",
+      "loadFailed": "문서 미리보기를 불러오지 못했습니다",
+      "syntheticBadge": "합성 프리뷰",
+      "staticBadge": "정적 프리뷰"
+    },
+    "status": {
+      "loadingCatalog": "카탈로그를 불러오는 중",
+      "updatingCatalog": "카탈로그를 업데이트하는 중",
+      "empty": "이 필터에 맞는 문서가 없습니다."
+    },
+    "badges": {
+      "builtIn": "기본 제공",
+      "public": "공개",
+      "draft": "초안",
+      "installed": "설치됨",
+      "updateAvailable": "업데이트 가능",
+      "publishedVersion": "게시 v{version}",
+      "installedVersion": "설치 v{version}"
+    },
+    "toasts": {
+      "installed": "{title} 문서를 설치했습니다",
+      "removed": "{title} 문서를 제거했습니다",
+      "updated": "{title} 문서를 업데이트했습니다",
+      "published": "{title} 문서를 게시했습니다",
+      "copied": "{title} 문서를 내 초안으로 복제했습니다",
+      "actionFailed": "문서 작업에 실패했습니다",
+      "loadFailed": "문서 카탈로그를 불러오지 못했습니다",
+      "publishFailed": "문서를 게시하지 못했습니다",
+      "forkFailed": "문서를 복제하지 못했습니다"
+    }
+  },
+  "DocumentBuilder": {
+    "titleNew": "새 문서",
+    "titleEdit": "문서 편집",
+    "subtitle": "설치형 의료 문서를 위한 AI 중심 템플릿 빌더입니다.",
+    "loadingTemplate": "템플릿을 불러오는 중",
+    "model": {
+      "currentLabel": "사용 중인 모델: {model}",
+      "changeInSettings": "설정에서 변경"
+    },
+    "steps": {
+      "start": "시작",
+      "structure": "구조 편집",
+      "review": "검토 및 배포"
+    },
+    "navigation": {
+      "back": "이전",
+      "review": "검토로 이동",
+      "close": "닫기",
+      "closeTitle": "이 초안을 닫을까요?",
+      "closeDescription": "저장되지 않은 로컬 변경사항이 있습니다. 나중에 이어서 작업하거나, 로컬 초안을 버리거나, 그대로 계속 편집할 수 있습니다.",
+      "keepForLater": "나중에 이어서 하기",
+      "discardDraft": "로컬 초안 폐기",
+      "cancel": "취소"
+    },
+    "headerActions": {
+      "saveDraft": "초안 저장",
+      "publish": "게시",
+      "install": "설치"
+    },
+    "aiDraft": {
+      "title": "AI 초안",
+      "description": "원하는 문서와 지역 규정 또는 업무 제약을 자연어로 설명하세요.",
+      "placeholder": "예시: 반복 가능한 진료 항목, 삭감 사유, 보험자 전달 메모를 포함한 한국 HIRA EDI 청구 검토 문서를 만들어줘.",
+      "generate": "초안 생성",
+      "startBlank": "빈 문서로 시작",
+      "revise": "초안 수정",
+      "revisePanelTitle": "AI로 구조 수정",
+      "revisePanelDescription": "원하는 변경 사항을 설명하면 현재 초안 구조를 기준으로 AI가 다시 정리합니다.",
+      "revisePlaceholder": "예시: 보험자 메모 섹션을 필수/선택 필드로 나누고, 반복 가능한 삭감 코드 그룹을 추가해줘."
+    },
+    "templateSettings": {
+      "title": "템플릿 설정",
+      "titleLabel": "제목",
+      "categoryLabel": "카테고리",
+      "iconKeyLabel": "아이콘 키",
+      "visibilityLabel": "공개 범위",
+      "descriptionLabel": "설명",
+      "visibility": {
+        "private": "비공개 초안",
+        "public": "공개"
+      }
+    },
+    "schemaEditor": {
+      "title": "스키마 편집기",
+      "description": "문서 구조를 정의하는 필드와 그룹을 추가하세요.",
+      "canvasDescription": "스키마와 예시 입력값을 한 화면에서 함께 편집하세요.",
+      "empty": "아직 필드가 없습니다. AI로 시작하거나 직접 추가하세요.",
+      "addField": "필드 추가",
+      "addGroup": "그룹 추가"
+    },
+    "generationSettings": {
+      "title": "생성 설정",
+      "advancedTitle": "고급 생성 설정",
+      "advancedDescription": "세션 컨텍스트에서 문서를 생성할 때 AI가 어떤 방식으로 작성할지 조정합니다.",
+      "audienceLabel": "대상 독자",
+      "outputToneLabel": "출력 톤",
+      "systemInstructionsLabel": "시스템 지침",
+      "contextSourcesLabel": "컨텍스트 소스"
+    },
+    "preview": {
+      "title": "미리보기",
+      "description": "설치 후 의료진이 실제로 보게 될 구조화 양식을 미리 보여줍니다.",
+      "empty": "문서를 미리보려면 스키마 노드를 추가하세요.",
+      "noSampleItems": "아직 항목이 없습니다.",
+      "inputPlaceholder": "입력 미리보기",
+      "noChildFields": "하위 필드가 없습니다",
+      "sampleTitle": "예시 입력값",
+      "sampleDescription": "이 문서에 실제로 어떤 값이 들어가는지 미리 볼 수 있습니다.",
+      "renderedTitle": "완성 문서 미리보기",
+      "renderedDescription": "예시 입력값이 들어간 최종 문서 결과입니다.",
+      "resetSample": "예시값 다시 채우기",
+      "regenerate": "프리뷰 다시 생성",
+      "syntheticBadge": "합성 프리뷰",
+      "generatedAt": "생성 시각 {value}",
+      "status": {
+        "idle": "프리뷰 대기 중",
+        "generating": "프리뷰 생성 중",
+        "ready": "프리뷰 업데이트됨",
+        "failed": "프리뷰 생성 실패",
+        "stale": "프리뷰가 오래되었습니다"
+      },
+      "emptyRendered": "표시할 문서 미리보기가 아직 없습니다.",
+      "sampleItem": "항목",
+      "addSampleItem": "예시 항목 추가",
+      "removeItem": "제거"
+    },
+    "schemaNode": {
+      "typeLabel": "유형",
+      "keyLabel": "키",
+      "fieldLabel": "라벨",
+      "placeholderLabel": "플레이스홀더",
+      "helpTextLabel": "도움말",
+      "required": "필수",
+      "children": "하위 항목",
+      "childCount": "{count}개 하위 항목",
+      "itemCount": "{count}개 항목",
+      "noChildren": "아직 하위 노드가 없습니다.",
+      "selectType": "유형 선택",
+      "keyPlaceholder": "snake_case_key",
+      "labelPlaceholder": "표시 라벨",
+      "inputPlaceholder": "선택 입력 힌트",
+      "helpTextPlaceholder": "선택 필드 안내",
+      "actions": {
+        "expand": "세부 편집 열기",
+        "collapse": "세부 편집 닫기",
+        "moveUp": "위로 이동",
+        "moveDown": "아래로 이동",
+        "delete": "삭제",
+        "activateItem": "{index}번 항목 보기"
+      },
+      "types": {
+        "shortText": "짧은 텍스트",
+        "longText": "긴 텍스트",
+        "stringList": "문자열 목록",
+        "group": "그룹",
+        "repeatableGroup": "반복 그룹"
+      }
+    },
+    "workspace": {
+      "editTab": "편집",
+      "previewTab": "미리보기"
+    },
+    "contextSources": {
+      "sessionMeta": "세션 메타데이터",
+      "transcript": "대화 기록",
+      "doctorNotes": "의사 메모",
+      "insights": "인사이트",
+      "ddx": "감별진단",
+      "research": "리서치",
+      "record": "진료 기록",
+      "patientHandout": "환자 안내문"
+    },
+    "badges": {
+      "publishedVersion": "게시 v{version}",
+      "installedVersion": "설치 v{version}"
+    },
+    "localDraft": {
+      "restoredTitle": "저장되지 않은 로컬 변경사항을 복구했습니다",
+      "restoredDescription": "이 초안은 이전에 마치지 못한 편집 세션의 로컬 상태에서 복구되었습니다.",
+      "resetToServer": "서버 버전으로 되돌리기",
+      "restoredToast": "저장되지 않은 로컬 변경사항을 복구했습니다",
+      "resetToast": "서버 버전으로 되돌렸습니다"
+    },
+    "validation": {
+      "titleRequired": "제목은 필수입니다",
+      "schemaInvalid": "문서 스키마가 올바르지 않습니다"
+    },
+    "review": {
+      "title": "검토 및 배포",
+      "description": "저장, 게시, 설치 전에 초안 구성을 다시 확인하세요.",
+      "summary": {
+        "title": "제목",
+        "visibility": "공개 범위",
+        "schemaNodes": "스키마 필드 수",
+        "schemaNodesValue": "{count}개 필드",
+        "contextSources": "컨텍스트 소스",
+        "none": "없음"
+      }
+    },
+    "toasts": {
+      "promptTooShort": "프롬프트가 너무 짧습니다",
+      "draftRevised": "초안을 수정했습니다",
+      "draftGenerated": "초안을 생성했습니다",
+      "draftSaved": "초안을 저장했습니다",
+      "draftCreated": "초안을 만들었습니다",
+      "documentPublished": "문서를 게시했습니다",
+      "documentInstalled": "문서를 설치했습니다",
+      "saveAndPublishFirst": "먼저 문서를 저장하고 게시하세요",
+      "loadTemplateFailed": "문서 템플릿을 불러오지 못했습니다",
+      "generateFailed": "문서 초안을 생성하지 못했습니다",
+      "previewFailed": "문서 프리뷰를 생성하지 못했습니다",
+      "saveFailed": "문서 초안을 저장하지 못했습니다",
+      "publishFailed": "문서를 게시하지 못했습니다",
+      "installFailed": "문서를 설치하지 못했습니다"
     }
   }
 }

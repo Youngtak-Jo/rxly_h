@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import type { ChecklistItem, DiagnosisCitation } from "@/types/insights"
 import type { ConsultationRecord } from "@/types/record"
 import type { PatientHandoutDocument } from "@/types/patient-handout"
+import type { SessionDocumentRecord } from "@/types/document"
 import type {
   DiagnosticKeyword,
   RecordingSegment,
@@ -27,6 +28,7 @@ import {
   type ResearchMessage,
 } from "@/stores/research-store"
 import { useSessionStore } from "@/stores/session-store"
+import { useSessionDocumentStore } from "@/stores/session-document-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 
 interface SessionInsights {
@@ -54,6 +56,7 @@ export interface CoreSessionResponse extends Session {
   diagnoses?: SessionDiagnosis[]
   record?: ConsultationRecord | null
   patientHandout?: PatientHandoutDocument | null
+  sessionDocuments?: SessionDocumentRecord[]
   checklistItems?: ChecklistItem[]
 }
 
@@ -110,6 +113,22 @@ const inFlightFullRequests = new Map<
 let activeHydrationSessionId: string | null = null
 
 export let targetSessionLoadId: string | null = null
+
+async function readErrorMessage(
+  response: Response,
+  fallback: string
+): Promise<string> {
+  try {
+    const payload = (await response.json()) as { error?: string }
+    if (typeof payload?.error === "string" && payload.error.trim()) {
+      return payload.error
+    }
+  } catch {
+    // Ignore malformed error bodies and fall back to the provided message.
+  }
+
+  return `${fallback} (${response.status})`
+}
 
 export function cancelSessionLoad() {
   targetSessionLoadId = null
@@ -325,6 +344,7 @@ function restoreCoreStores(session: CoreSessionResponse) {
   const recordingStore = useRecordingStore.getState()
   const recordingSegmentStore = useRecordingSegmentStore.getState()
   const consultationModeStore = useConsultationModeStore.getState()
+  const sessionDocumentStore = useSessionDocumentStore.getState()
 
   useConsultationTabStore.getState().clearAllUnseenUpdates()
   consultationModeStore.reset()
@@ -376,6 +396,11 @@ function restoreCoreStores(session: CoreSessionResponse) {
   if (session.patientHandout) {
     patientHandoutStore.loadFromDB(session.patientHandout)
   }
+
+  sessionDocumentStore.hydrateSessionDocuments(
+    session.id,
+    session.sessionDocuments ?? []
+  )
 }
 
 function hydrateHeavyStores(fullSession: FullSessionResponse) {
@@ -428,7 +453,9 @@ async function fetchCoreSessionById(sessionId: string): Promise<CoreSessionRespo
 
   const request = (async () => {
     const res = await fetch(`/api/sessions/${sessionId}`)
-    if (!res.ok) throw new Error("Failed to load core session")
+    if (!res.ok) {
+      throw new Error(await readErrorMessage(res, "Failed to load core session"))
+    }
     const coreSession = (await res.json()) as CoreSessionResponse
     setCoreCachedSession(sessionId, coreSession)
     return coreSession
@@ -460,7 +487,9 @@ async function fetchFullSessionById(
     const res = await fetch(`/api/sessions/${sessionId}/full`, {
       signal: controller.signal,
     })
-    if (!res.ok) throw new Error("Failed to load full session")
+    if (!res.ok) {
+      throw new Error(await readErrorMessage(res, "Failed to load full session"))
+    }
 
     const fullSession = (await res.json()) as FullSessionResponse
     setCachedSession(sessionId, fullSession)
@@ -604,9 +633,10 @@ export async function loadSessionById(sessionId: string): Promise<boolean> {
 
     return true
   } catch (error) {
-    console.error("Failed to load session:", error)
+    const message = error instanceof Error ? error.message : "Failed to load session"
+    console.error("Failed to load session:", message, error)
     const { toast } = await import("sonner")
-    toast.error("Failed to load session")
+    toast.error(message)
     useSessionStore.getState().setHydratingSessionId(null)
     return false
   } finally {

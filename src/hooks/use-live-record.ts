@@ -14,6 +14,8 @@ import { useSettingsStore } from "@/stores/settings-store"
 import type { ConsultationRecord } from "@/types/record"
 import { trackClientEvent } from "@/lib/telemetry/client-events"
 import { deleteCachedSession } from "@/hooks/use-session-loader"
+import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
+import { BUILT_IN_RECORD_TEMPLATE_ID } from "@/lib/documents/constants"
 
 const WAIT_TIMEOUT_MS = 60000
 
@@ -41,6 +43,14 @@ export async function generateRecord(
   existingRecordId?: string,
   signal?: AbortSignal
 ) {
+  const workspaceState = useDocumentWorkspaceStore.getState()
+  if (
+    workspaceState.hasLoaded &&
+    !workspaceState.isDocumentInstalled(BUILT_IN_RECORD_TEMPLATE_ID)
+  ) {
+    return
+  }
+
   const { setGenerating, setRecord, setLastPersistedFingerprint } =
     useRecordStore.getState()
 
@@ -221,6 +231,14 @@ export function useLiveRecord() {
 
       const session = useSessionStore.getState().activeSession
       if (!session) return
+
+      const workspaceState = useDocumentWorkspaceStore.getState()
+      if (
+        workspaceState.hasLoaded &&
+        !workspaceState.isDocumentInstalled(BUILT_IN_RECORD_TEMPLATE_ID)
+      ) {
+        return
+      }
 
       // Skip if record already exists (user can manually regenerate)
       if (useRecordStore.getState().record) return

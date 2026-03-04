@@ -1,38 +1,19 @@
 import { create } from "zustand"
 import { useSessionStore } from "@/stores/session-store"
 import { trackClientEvent } from "@/lib/telemetry/client-events"
+import type { WorkspaceTabId } from "@/types/document"
 
-export type ConsultationTabId =
-  | "insights"
-  | "ddx"
-  | "record"
-  | "research"
-  | "patientHandout"
-
-export const CONSULTATION_TABS: ConsultationTabId[] = [
-  "insights",
-  "ddx",
-  "record",
-  "research",
-  "patientHandout",
-]
-
-const NO_UNSEEN: Record<ConsultationTabId, boolean> = {
-  insights: false,
-  ddx: false,
-  record: false,
-  research: false,
-  patientHandout: false,
-}
+export type ConsultationTabId = WorkspaceTabId
 
 interface ConsultationTabState {
-  activeTab: ConsultationTabId
-  lastNonResearchTab: ConsultationTabId
+  activeTab: WorkspaceTabId
+  lastNonResearchTab: WorkspaceTabId
   setActiveTab: (tab: ConsultationTabId) => void
 
-  unseenUpdates: Record<ConsultationTabId, boolean>
+  unseenUpdates: Record<string, boolean>
   markTabUpdated: (tab: ConsultationTabId) => void
   clearAllUnseenUpdates: () => void
+  syncWithTabOrder: (tabOrder: WorkspaceTabId[]) => void
 
   isTranscriptCollapsed: boolean
   setTranscriptCollapsed: (collapsed: boolean) => void
@@ -42,11 +23,11 @@ interface ConsultationTabState {
 
 export const useConsultationTabStore = create<ConsultationTabState>(
   (set) => ({
-    activeTab: "insights",
-    lastNonResearchTab: "insights",
-    setActiveTab: (tab) =>
-      set((state) => {
-        if (state.activeTab !== tab) {
+      activeTab: "insights",
+      lastNonResearchTab: "insights",
+      setActiveTab: (tab) =>
+        set((state) => {
+          if (state.activeTab !== tab) {
           trackClientEvent({
             eventType: "tab_switched",
             feature: tab,
@@ -63,15 +44,38 @@ export const useConsultationTabStore = create<ConsultationTabState>(
             tab === "research" ? state.lastNonResearchTab : tab,
           unseenUpdates: { ...state.unseenUpdates, [tab]: false },
         }
-      }),
+        }),
 
-    unseenUpdates: { ...NO_UNSEEN },
+    unseenUpdates: {},
     markTabUpdated: (tab) =>
       set((state) => {
         if (state.activeTab === tab) return state
         return { unseenUpdates: { ...state.unseenUpdates, [tab]: true } }
       }),
-    clearAllUnseenUpdates: () => set({ unseenUpdates: { ...NO_UNSEEN } }),
+    clearAllUnseenUpdates: () => set({ unseenUpdates: {} }),
+    syncWithTabOrder: (tabOrder) =>
+      set((state) => {
+        const nextActiveTab = tabOrder.includes(state.activeTab)
+          ? state.activeTab
+          : (tabOrder[0] ?? "insights")
+        const nextLastNonResearchTab =
+          state.lastNonResearchTab !== "research" &&
+          tabOrder.includes(state.lastNonResearchTab)
+            ? state.lastNonResearchTab
+            : nextActiveTab === "research"
+              ? (tabOrder.find((tab) => tab !== "research") ?? "insights")
+              : nextActiveTab
+
+        const nextUnseenUpdates = Object.fromEntries(
+          tabOrder.map((tab) => [tab, state.unseenUpdates[tab] ?? false])
+        )
+
+        return {
+          activeTab: nextActiveTab,
+          lastNonResearchTab: nextLastNonResearchTab,
+          unseenUpdates: nextUnseenUpdates,
+        }
+      }),
 
     isTranscriptCollapsed: false,
     setTranscriptCollapsed: (collapsed) =>

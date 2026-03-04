@@ -5,6 +5,7 @@ import { maskSessionDetailPayload } from "@/lib/admin/phi"
 import { prisma } from "@/lib/prisma"
 import type { AdminSessionDetail } from "@/types/admin"
 import { logger } from "@/lib/logger"
+import { mapSessionDocumentRecord } from "@/lib/documents/server"
 
 export async function GET(
   req: Request,
@@ -21,6 +22,9 @@ export async function GET(
         insights: true,
         record: true,
         patientHandout: true,
+        sessionDocuments: {
+          orderBy: { updatedAt: "desc" },
+        },
         checklistItems: { orderBy: { sortOrder: "asc" } },
         diagnoses: { orderBy: { sortOrder: "asc" } },
       },
@@ -73,6 +77,7 @@ export async function GET(
       notes,
       researchMessages,
       patientHandout: session.patientHandout,
+      sessionDocuments: session.sessionDocuments.map(mapSessionDocumentRecord),
       checklistItems: session.checklistItems,
       auditTimeline,
     }

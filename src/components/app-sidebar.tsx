@@ -2,12 +2,14 @@
 
 import * as React from "react"
 import {
+  IconFileDescription,
   IconHelp,
   IconSettings,
   IconShield,
   type Icon,
 } from "@tabler/icons-react"
 import { useTranslations } from "next-intl"
+import { usePathname } from "next/navigation"
 
 
 import { NavSessions } from "@/components/nav-sessions"
@@ -20,8 +22,11 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useUser } from "@/hooks/use-user"
@@ -32,6 +37,7 @@ import logoSymbol from "@/app/icon1.png"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const t = useTranslations("AppSidebar")
+  const pathname = usePathname()
   const { user, loading } = useUser()
   const openSettings = useSettingsDialogStore((s) => s.openSettings)
 
@@ -106,6 +112,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent className="!overflow-hidden">
+        <SidebarGroup className="pb-0">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/documents")}
+                  tooltip={t("documents")}
+                >
+                  <Link href="/documents">
+                    <IconFileDescription />
+                    <span>{t("documents")}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
         <div
           className="flex-1 min-h-0 overflow-y-auto sidebar-fade-mask"
         >

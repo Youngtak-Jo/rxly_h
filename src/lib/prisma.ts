@@ -35,6 +35,7 @@ const PHI_JSON_FIELDS: Record<string, string[]> = {
   Note: ["imageUrls", "storagePaths"],
   Diagnosis: ["citations"],
   ResearchMessage: ["citations", "imageUrls", "storagePaths"],
+  SessionDocument: ["contentJson"],
 }
 
 // Relation fields that may be included via Prisma `include` and need recursive decryption
@@ -49,6 +50,7 @@ const RELATION_MODEL_MAP: Record<string, Record<string, { model: string; isArray
     notes:             { model: "Note",                isArray: true },
     researchMessages:  { model: "ResearchMessage",     isArray: true },
     recordingSegments: { model: "RecordingSegment",    isArray: true },
+    sessionDocuments:  { model: "SessionDocument",     isArray: true },
   },
 }
 
@@ -131,7 +133,11 @@ function decryptWithRelations(
 
 const globalForPrisma = globalThis as unknown as {
   __prisma?: PrismaClient
+  __prismaDatasourceUrl?: string
+  __prismaRevision?: number
 }
+
+const PRISMA_CLIENT_REVISION = 2
 
 function getDatasourceUrl(): string | undefined {
   const raw = process.env.DATABASE_URL
@@ -144,11 +150,13 @@ function getDatasourceUrl(): string | undefined {
       url.searchParams.get("pgbouncer") === "true"
 
     // In dev with Turbopack, multiple workers can cause pool starvation quickly.
-    // Clamp Prisma-side connection fan-out when using a pooled Supabase URL.
+    // Keep Prisma-side fan-out low, but allow a few concurrent requests so
+    // consultation bootstrap does not deadlock on session/workspace loads.
     if (usesSupabasePooler && process.env.NODE_ENV !== "production") {
+      const devConnectionLimit = 3
       const configuredLimit = Number(url.searchParams.get("connection_limit") ?? "")
-      if (!Number.isFinite(configuredLimit) || configuredLimit > 1) {
-        url.searchParams.set("connection_limit", "1")
+      if (!Number.isFinite(configuredLimit) || configuredLimit > devConnectionLimit) {
+        url.searchParams.set("connection_limit", String(devConnectionLimit))
       }
 
       if (!url.searchParams.has("pool_timeout")) {
@@ -247,6 +255,26 @@ function createPrismaClient() {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-export const prisma = globalForPrisma.__prisma ?? createPrismaClient()
+const currentDatasourceUrl = getDatasourceUrl()
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.__prisma = prisma
+const shouldReuseGlobalClient =
+  !!globalForPrisma.__prisma &&
+  globalForPrisma.__prismaDatasourceUrl === currentDatasourceUrl &&
+  globalForPrisma.__prismaRevision === PRISMA_CLIENT_REVISION
+
+export const prisma =
+  shouldReuseGlobalClient && globalForPrisma.__prisma
+    ? globalForPrisma.__prisma
+    : createPrismaClient()
+
+if (process.env.NODE_ENV !== "production") {
+  if (!shouldReuseGlobalClient && globalForPrisma.__prisma) {
+    void globalForPrisma.__prisma.$disconnect().catch(() => {
+      // Ignore stale client shutdown failures during dev reloads.
+    })
+  }
+
+  globalForPrisma.__prisma = prisma
+  globalForPrisma.__prismaDatasourceUrl = currentDatasourceUrl
+  globalForPrisma.__prismaRevision = PRISMA_CLIENT_REVISION
+}

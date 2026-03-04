@@ -39,10 +39,12 @@ import { useMedplumSyncStore } from "@/stores/medplum-sync-store"
 import { usePreparePayload } from "@/hooks/use-prepare-payload"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useConnectorStore } from "@/stores/connector-store"
+import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
 import { useSettingsDialogStore } from "@/stores/settings-store"
 import { toast } from "sonner"
 import { generatePdf, getActiveTabExportHtml } from "@/lib/export-utils"
 import { trackClientEvent } from "@/lib/telemetry/client-events"
+import { resolveWorkspaceTabDefinition } from "@/lib/documents/workspace"
 
 function MobileHeaderMenu() {
   const t = useTranslations("SiteHeader")
@@ -53,7 +55,13 @@ function MobileHeaderMenu() {
   const openSettings = useSettingsDialogStore((s) => s.openSettings)
   const enabledCount = Object.values(connectors).filter(Boolean).length
   const activeTab = useConsultationTabStore((s) => s.activeTab)
-  const activeTabLabel = tTabs(activeTab)
+  const installedDocuments = useDocumentWorkspaceStore((s) => s.installedDocuments)
+  const activeTabLabel =
+    resolveWorkspaceTabDefinition(activeTab, installedDocuments, {
+      insights: tTabs("insights"),
+      ddx: tTabs("ddx"),
+      research: tTabs("research"),
+    })?.title ?? "Document"
 
   const syncStatus = useMedplumSyncStore((s) => s.status)
   const startPrepare = useMedplumSyncStore((s) => s.startPrepare)

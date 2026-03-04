@@ -4,6 +4,8 @@ import { useEffect, useRef } from "react"
 import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 import { useSessionStore } from "@/stores/session-store"
 import { deleteCachedSession } from "@/hooks/use-session-loader"
+import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
+import { BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID } from "@/lib/documents/constants"
 
 const AUTO_SAVE_DEBOUNCE_MS = 2000
 
@@ -21,6 +23,14 @@ export function usePatientHandoutAutoSave() {
 
       const session = useSessionStore.getState().activeSession
       if (!session || !state.lastUpdated || !state.document) return
+
+      const workspaceState = useDocumentWorkspaceStore.getState()
+      if (
+        workspaceState.hasLoaded &&
+        !workspaceState.isDocumentInstalled(BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID)
+      ) {
+        return
+      }
 
       const scheduledSessionId = session.id
 

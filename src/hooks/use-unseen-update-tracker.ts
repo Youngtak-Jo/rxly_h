@@ -7,6 +7,11 @@ import { useDdxStore } from "@/stores/ddx-store"
 import { useRecordStore } from "@/stores/record-store"
 import { useResearchStore } from "@/stores/research-store"
 import { usePatientHandoutStore } from "@/stores/patient-handout-store"
+import {
+  BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID,
+  BUILT_IN_RECORD_TEMPLATE_ID,
+  buildDocumentTabId,
+} from "@/lib/documents/constants"
 
 export function useUnseenUpdateTracker() {
   useEffect(() => {
@@ -26,7 +31,7 @@ export function useUnseenUpdateTracker() {
 
     const unsubRecord = useRecordStore.subscribe((state, prev) => {
       if (prev.isGenerating && !state.isGenerating) {
-        markTabUpdated("record")
+        markTabUpdated(buildDocumentTabId(BUILT_IN_RECORD_TEMPLATE_ID))
       }
     })
 
@@ -38,7 +43,9 @@ export function useUnseenUpdateTracker() {
 
     const unsubPatientHandout = usePatientHandoutStore.subscribe((state, prev) => {
       if (prev.isGenerating && !state.isGenerating) {
-        markTabUpdated("patientHandout")
+        markTabUpdated(
+          buildDocumentTabId(BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID)
+        )
       }
     })
 

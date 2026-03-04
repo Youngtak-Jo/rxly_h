@@ -218,13 +218,14 @@ export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
               </div>
 
               <Tabs defaultValue="transcript" className="w-full">
-              <TabsList className="grid w-full grid-cols-7">
+              <TabsList className="grid w-full grid-cols-8">
                 <TabsTrigger value="transcript">{t("tabs.transcript")}</TabsTrigger>
                 <TabsTrigger value="insights">{t("tabs.insights")}</TabsTrigger>
                 <TabsTrigger value="ddx">{t("tabs.ddx")}</TabsTrigger>
                 <TabsTrigger value="record">{t("tabs.record")}</TabsTrigger>
                 <TabsTrigger value="research">{t("tabs.research")}</TabsTrigger>
                 <TabsTrigger value="handout">{t("tabs.handout")}</TabsTrigger>
+                <TabsTrigger value="documents">Documents</TabsTrigger>
                 <TabsTrigger value="audit">{t("tabs.audit")}</TabsTrigger>
               </TabsList>
 
@@ -339,6 +340,12 @@ export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
               <TabsContent value="handout" className="mt-3">
                 <pre className="max-h-96 overflow-auto rounded-md border p-2 text-xs">
                   {JSON.stringify(data.patientHandout, null, 2)}
+                </pre>
+              </TabsContent>
+
+              <TabsContent value="documents" className="mt-3">
+                <pre className="max-h-96 overflow-auto rounded-md border p-2 text-xs">
+                  {JSON.stringify(data.sessionDocuments, null, 2)}
                 </pre>
               </TabsContent>
 

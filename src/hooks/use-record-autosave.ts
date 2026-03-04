@@ -7,6 +7,8 @@ import {
 } from "@/stores/record-store"
 import { useSessionStore } from "@/stores/session-store"
 import { deleteCachedSession } from "@/hooks/use-session-loader"
+import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
+import { BUILT_IN_RECORD_TEMPLATE_ID } from "@/lib/documents/constants"
 
 const AUTO_SAVE_DEBOUNCE_MS = 2000
 
@@ -26,6 +28,14 @@ export function useRecordAutoSave() {
 
       const session = useSessionStore.getState().activeSession
       if (!session || !state.lastUpdated || !state.record) return
+
+      const workspaceState = useDocumentWorkspaceStore.getState()
+      if (
+        workspaceState.hasLoaded &&
+        !workspaceState.isDocumentInstalled(BUILT_IN_RECORD_TEMPLATE_ID)
+      ) {
+        return
+      }
 
       const scheduledSessionId = session.id
 

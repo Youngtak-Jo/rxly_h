@@ -11,6 +11,8 @@ import { useTranscriptStore } from "@/stores/transcript-store"
 import type { TranscriptEntry } from "@/types/session"
 import { trackClientEvent } from "@/lib/telemetry/client-events"
 import { deleteCachedSession } from "@/hooks/use-session-loader"
+import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
+import { BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID } from "@/lib/documents/constants"
 
 const WAIT_TIMEOUT_MS = 60000
 
@@ -95,6 +97,14 @@ export async function generatePatientHandout(
   sessionId: string,
   externalSignal?: AbortSignal
 ) {
+  const workspaceState = useDocumentWorkspaceStore.getState()
+  if (
+    workspaceState.hasLoaded &&
+    !workspaceState.isDocumentInstalled(BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID)
+  ) {
+    return
+  }
+
   const {
     selectedConditions,
     setGenerating,
@@ -244,6 +254,14 @@ export function useLivePatientHandout() {
 
       const session = useSessionStore.getState().activeSession
       if (!session) return
+
+      const workspaceState = useDocumentWorkspaceStore.getState()
+      if (
+        workspaceState.hasLoaded &&
+        !workspaceState.isDocumentInstalled(BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID)
+      ) {
+        return
+      }
 
       if (usePatientHandoutStore.getState().selectedConditions.length === 0) {
         return
