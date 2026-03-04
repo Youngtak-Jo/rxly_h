@@ -15,8 +15,8 @@ import type {
 type TranslationValues = Record<string, string | number>
 
 type AdminTranslator = {
-  (key: string, values?: TranslationValues): string
-  has?: (key: string) => boolean
+  (...args: any[]): string
+  has?: (...args: any[]) => boolean
 }
 
 type AdminAlertLike = Pick<AdminInsightAlert, "rule" | "title" | "description" | "metadata"> |

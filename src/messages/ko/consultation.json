@@ -516,6 +516,7 @@
     }
   },
   "PatientHandout": {
+    "add": "추가",
     "added": "추가됨",
     "conditionNotInDdx": "DDx에 없는 질환인가요? ICD-11 검색",
     "ddxSectionLabel": "질환 선택 (DDx)",

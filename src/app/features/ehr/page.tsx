@@ -9,10 +9,10 @@ export const metadata: Metadata = {
 }
 
 const RESOURCES = [
-    { id: "encounter", title: "Encounter Mapping", desc: "Consultation sessions are automatically mapped to FHIR Encounter resources, preserving timestamps, participant details, and clinical context." },
-    { id: "condition", title: "Condition Syncing", desc: "Identified diagnoses and chronic issues are structured into FHIR Condition resources, ready to populate the patient's problem list." },
-    { id: "observation", title: "Observation Extraction", desc: "Vital signs, lab results, and clinical findings mentioned during the consultation are codified as FHIR Observation resources." },
-]
+    { id: "encounter" },
+    { id: "condition" },
+    { id: "observation" },
+] as const
 
 export default async function EhrPage() {
     const t = await getTranslations("FeatureEhr")

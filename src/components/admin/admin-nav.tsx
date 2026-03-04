@@ -30,16 +30,28 @@ import { parseAdminFilters, filtersToSearchParams } from "@/lib/admin/filters"
 
 type NavItem = {
   href: string
-  key: string
+  key: NavItemKey
   icon: ComponentType<{ className?: string }>
 }
 
 type NavGroup = {
-  key: string
-  items: NavItem[]
+  key: NavGroupKey
+  items: readonly NavItem[]
 }
 
-const NAV_GROUPS: NavGroup[] = [
+type NavGroupKey = "operations" | "analytics" | "governance"
+type NavItemKey =
+  | "home"
+  | "triage"
+  | "users"
+  | "sessions"
+  | "funnel"
+  | "cohorts"
+  | "aiOps"
+  | "compliance"
+  | "dataQuality"
+
+const NAV_GROUPS = [
   {
     key: "operations",
     items: [
@@ -100,7 +112,7 @@ const NAV_GROUPS: NavGroup[] = [
       },
     ],
   },
-]
+] as const satisfies readonly NavGroup[]
 
 function isActive(pathname: string, href: string): boolean {
   if (pathname === href) return true

@@ -9,10 +9,10 @@ export const metadata: Metadata = {
 }
 
 const PROTOCOLS = [
-    { id: "encryption", title: "AES-256-GCM Encryption", icon: Lock, color: "text-emerald-600", bg: "bg-emerald-50", desc: "All Protected Health Information (PHI) is encrypted at rest using AES-256-GCM. We utilize a unique, per-record salt strategy to ensure maximum cryptographic security against dictionary or rainbow table attacks." },
-    { id: "transit", title: "Strict HTTPS (TLS 1.3)", icon: Fingerprint, color: "text-blue-600", bg: "bg-blue-50", desc: "Data in transit is secured using forced TLS 1.3, ensuring that sensitive information moving between our servers, clinical endpoints, and your browser is completely illegible to interception." },
-    { id: "audit", title: "Audit-ready Logging", icon: Activity, color: "text-purple-600", bg: "bg-purple-50", desc: "Every read, write, and modification of PHI is tracked in an immutable audit ledger. This provides a complete chronological record necessary for HIPAA compliance reporting and internal security reviews." },
-]
+    { id: "encryption", icon: Lock, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { id: "transit", icon: Fingerprint, color: "text-blue-600", bg: "bg-blue-50" },
+    { id: "audit", icon: Activity, color: "text-purple-600", bg: "bg-purple-50" },
+] as const
 
 export default async function SecurityPage() {
     const t = await getTranslations("FeatureSecurity")

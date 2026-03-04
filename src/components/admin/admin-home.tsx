@@ -35,6 +35,7 @@ import { formatNumber } from "@/i18n/format"
 import { toIntlLocale, type UiLocale } from "@/i18n/config"
 import type {
   AdminHomeResponse,
+  AdminFunnelStepKey,
   AdminMetricDelta,
 } from "@/types/admin"
 import { toPercent, fmtDateTime, severityBadgeVariant } from "@/components/admin/admin-utils"
@@ -85,11 +86,16 @@ function formatMetricDelta(
 }
 
 function largestDropoff(
-  steps: Array<{ step: string; count: number }>
-): { from: string; to: string; dropCount: number; dropRate: number } | null {
+  steps: Array<{ step: AdminFunnelStepKey; count: number }>
+): { from: AdminFunnelStepKey; to: AdminFunnelStepKey; dropCount: number; dropRate: number } | null {
   if (steps.length < 2) return null
 
-  let selected: { from: string; to: string; dropCount: number; dropRate: number } | null = null
+  let selected: {
+    from: AdminFunnelStepKey
+    to: AdminFunnelStepKey
+    dropCount: number
+    dropRate: number
+  } | null = null
 
   for (let index = 0; index < steps.length - 1; index += 1) {
     const current = steps[index]

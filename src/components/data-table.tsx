@@ -119,10 +119,7 @@ export const schema = z.object({
   reviewer: z.string(),
 })
 
-type DashboardTranslations = (
-  key: string,
-  values?: Record<string, string | number>
-) => string
+type DashboardTranslations = (...args: any[]) => string
 
 const TYPE_KEY_BY_VALUE: Record<string, string> = {
   "Cover page": "coverPage",

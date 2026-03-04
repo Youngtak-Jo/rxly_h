@@ -101,24 +101,22 @@ const CONNECTORS: (keyof ConnectorState)[] = [
 ]
 
 const NAV_ITEMS = [
-  { key: "language" as const, labelKey: "language", icon: IconLanguage },
-  { key: "speech" as const, labelKey: "speech", icon: IconMicrophone },
-  { key: "analysis" as const, labelKey: "analysis", icon: IconChartBar },
-  { key: "models" as const, labelKey: "models", icon: IconBrain },
+  { key: "language" as const, icon: IconLanguage },
+  { key: "speech" as const, icon: IconMicrophone },
+  { key: "analysis" as const, icon: IconChartBar },
+  { key: "models" as const, icon: IconBrain },
   {
     key: "instructions" as const,
-    labelKey: "instructions",
     icon: IconMessageChatbot,
   },
-  { key: "connectors" as const, labelKey: "connectors", icon: IconPlug },
-  { key: "emr" as const, labelKey: "emr", icon: IconBuildingHospital },
+  { key: "connectors" as const, icon: IconPlug },
+  { key: "emr" as const, icon: IconBuildingHospital },
   {
     key: "accessibility" as const,
-    labelKey: "accessibility",
     icon: IconAccessible,
   },
-  { key: "appearance" as const, labelKey: "appearance", icon: IconPalette },
-]
+  { key: "appearance" as const, icon: IconPalette },
+] as const
 
 export function SettingsDialog() {
   const t = useTranslations("SettingsDialog")
@@ -180,7 +178,7 @@ export function SettingsDialog() {
                           onClick={() => setActivePage(item.key)}
                         >
                           <item.icon />
-                          <span>{t(`nav.${item.labelKey}`)}</span>
+                          <span>{t(`nav.${item.key}`)}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     ))}
@@ -205,7 +203,7 @@ export function SettingsDialog() {
                       <BreadcrumbPage>
                         {activePage
                           ? t(
-                              `nav.${NAV_ITEMS.find((item) => item.key === activePage)?.labelKey ?? "speech"}`
+                              `nav.${NAV_ITEMS.find((item) => item.key === activePage)?.key ?? "speech"}`
                             )
                           : t("nav.speech")}
                       </BreadcrumbPage>
@@ -242,7 +240,7 @@ export function SettingsDialog() {
                     className="flex items-center gap-3 rounded-md px-3 py-3 text-sm hover:bg-accent transition-colors text-left"
                   >
                     <item.icon className="size-5 text-muted-foreground" />
-                    <span>{t(`nav.${item.labelKey}`)}</span>
+                    <span>{t(`nav.${item.key}`)}</span>
                   </button>
                 ))}
               </nav>
@@ -263,7 +261,7 @@ export function SettingsDialog() {
                 <h2 className="text-base font-semibold">
                   {activePage
                     ? t(
-                        `nav.${NAV_ITEMS.find((item) => item.key === activePage)?.labelKey ?? "speech"}`
+                        `nav.${NAV_ITEMS.find((item) => item.key === activePage)?.key ?? "speech"}`
                       )
                     : t("nav.speech")}
                 </h2>

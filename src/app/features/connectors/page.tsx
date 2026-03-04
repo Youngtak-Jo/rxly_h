@@ -9,13 +9,13 @@ export const metadata: Metadata = {
 }
 
 const CONNECTORS = [
-    { id: "pubmed", name: "PubMed", description: "Access more than 35 million citations for biomedical literature from MEDLINE, life science journals, and online books.", status: "Live" },
-    { id: "icd11", name: "ICD-11", description: "The global standard for diagnostic health information by the World Health Organization.", status: "Live" },
-    { id: "europe-pmc", name: "Europe PMC", description: "Worldwide, free-access collection of life science publications and preprints.", status: "Live" },
-    { id: "openfda", name: "OpenFDA", description: "Public FDA data on adverse events, drug recalls, and labeling.", status: "Live" },
-    { id: "clinicaltrials", name: "ClinicalTrials.gov", description: "Database of privately and publicly funded clinical studies conducted around the world.", status: "Live" },
-    { id: "dailymed", name: "DailyMed", description: "Official provider of FDA label information (package inserts).", status: "Live" },
-]
+    { id: "pubmed", name: "PubMed" },
+    { id: "icd11", name: "ICD-11" },
+    { id: "europe-pmc", name: "Europe PMC" },
+    { id: "openfda", name: "OpenFDA" },
+    { id: "clinicaltrials", name: "ClinicalTrials.gov" },
+    { id: "dailymed", name: "DailyMed" },
+] as const
 
 export default async function ConnectorsPage() {
     const t = await getTranslations("FeatureConnectors")

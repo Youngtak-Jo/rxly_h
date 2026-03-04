@@ -32,6 +32,23 @@ const SIMULATION_SPEED_PRESETS = [
   { value: "0.25", labelKey: "x4" },
 ] as const
 
+type ScenarioMessageKey =
+  | "acute-appendicitis"
+  | "anxiety"
+  | "asthma"
+  | "chest-pain"
+  | "diabetes"
+  | "gerd"
+  | "hypothyroidism"
+  | "iron-deficiency-anemia"
+  | "low-back-pain"
+  | "migraine"
+  | "otitis-media"
+  | "pediatric-fever"
+  | "pneumonia"
+  | "rheumatoid-arthritis"
+  | "uti"
+
 interface SimulationDialogProps {
   trigger?: ReactNode
 }
@@ -107,7 +124,7 @@ export function SimulationDialog({ trigger }: SimulationDialogProps) {
               <SelectContent>
                 {SCENARIOS.map((scenario) => (
                   <SelectItem key={scenario.id} value={scenario.id}>
-                    {t(`scenarios.${scenario.id}`)}
+                    {t(`scenarios.${scenario.id as ScenarioMessageKey}`)}
                   </SelectItem>
                 ))}
               </SelectContent>

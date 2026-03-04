@@ -33,7 +33,7 @@ function getTabAriaLabel(
     hasUnseenUpdate: boolean
     diagnosisCount: number
   },
-  t: (key: string, values?: Record<string, unknown>) => string
+  t: (...args: any[]) => string
 ) {
   const parts = [label]
 

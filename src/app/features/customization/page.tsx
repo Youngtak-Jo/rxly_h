@@ -9,11 +9,11 @@ export const metadata: Metadata = {
 }
 
 const SETTINGS = [
-    { id: "model", title: "AI Model Selection", icon: Bot, color: "text-orange-600", bg: "bg-orange-50", desc: "Choose your primary reasoning engine. Toggle between ultra-fast models for basic triage or advanced frontier models (like Claude 3.5 Sonnet) for complex differential diagnosis." },
-    { id: "tone", title: "Tone & Style", icon: SlidersHorizontal, color: "text-pink-600", bg: "bg-pink-50", desc: "Format responses to match your clinic's style. Switch between 'Concise' bullet points for rapid review, or 'Professional' narrative style for patient hand-offs." },
-    { id: "translation", title: "Auto-translate", icon: Languages, color: "text-blue-600", bg: "bg-blue-50", desc: "Output clinical summaries and patient instructions directly in the patient's native language, bridging communication gaps instantly." },
-    { id: "evidence", title: "Evidence Threshold", icon: Settings, color: "text-emerald-600", bg: "bg-emerald-50", desc: "Calibrate the confidence level required before Rxly surfaces an insight. Set to 'High' to only show universally accepted guidelines." },
-]
+    { id: "model", icon: Bot, color: "text-orange-600", bg: "bg-orange-50" },
+    { id: "tone", icon: SlidersHorizontal, color: "text-pink-600", bg: "bg-pink-50" },
+    { id: "translation", icon: Languages, color: "text-blue-600", bg: "bg-blue-50" },
+    { id: "evidence", icon: Settings, color: "text-emerald-600", bg: "bg-emerald-50" },
+] as const
 
 export default async function CustomizationPage() {
     const t = await getTranslations("FeatureCustomization")

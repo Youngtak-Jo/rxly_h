@@ -516,6 +516,7 @@
     }
   },
   "PatientHandout": {
+    "add": "Add",
     "added": "Added",
     "conditionNotInDdx": "Condition not in DDx? Search ICD-11",
     "ddxSectionLabel": "Select Conditions (DDx)",
