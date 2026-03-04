@@ -31,6 +31,42 @@ function buildSampleText(
   const korean = isKorean(locale)
 
   if (
+    /payer|reviewer|insurer|보험자|심사기관/.test(normalized)
+  ) {
+    return korean ? "건강보험심사평가원(HIRA)" : "National payer review desk"
+  }
+
+  if (
+    /claim_type|billing_type|청구 유형|청구유형/.test(normalized)
+  ) {
+    return korean ? "외래 EDI 청구 사전 검토" : "Outpatient EDI pre-submission review"
+  }
+
+  if (
+    /review_summary|검토 요약/.test(normalized)
+  ) {
+    return korean
+      ? "두통 외래 진료 청구 건으로, 상병 코드와 수가 코드의 정합성 및 첨부 서류 충족 여부를 검토한 결과입니다."
+      : "Outpatient headache visit claim reviewed for code alignment and supporting-document completeness."
+  }
+
+  if (
+    /edi_notes|edi 작성 메모|submission_note|transmission_note/.test(normalized)
+  ) {
+    return korean
+      ? "주상병 코드와 청구 수가 코드의 연결 근거를 명시하고, 초진 기록 사본을 함께 첨부한 뒤 전송합니다."
+      : "Document the rationale for diagnosis-to-billing-code alignment and attach the initial visit note before submission."
+  }
+
+  if (
+    /final_recommendation|최종 권고/.test(normalized)
+  ) {
+    return korean
+      ? "보완 서류를 추가한 뒤 재심사 요청 없이 제출 가능하며, 동일 패턴 반복 시 코드 선택 기준을 팀 내에서 재정리하는 것을 권고합니다."
+      : "Proceed after attaching the missing supporting documents, and standardize code-selection guidance if this pattern recurs."
+  }
+
+  if (
     normalized.includes("service_date") ||
     normalized.includes("visit_date") ||
     normalized.includes("date")
@@ -120,8 +156,8 @@ function buildSampleList(
     normalized.includes("items")
   ) {
     return korean
-      ? ["진료기록 사본 첨부", "상병 코드 일치 여부 확인"]
-      : ["Attach visit note", "Verify diagnosis-code alignment"]
+      ? ["초진 진료기록 사본 첨부", "상병 코드와 수가 코드 정합성 확인", "필요 시 검사 결과지 첨부"]
+      : ["Attach the initial visit note", "Verify diagnosis-to-billing-code alignment", "Include supporting test results if needed"]
   }
 
   return korean

@@ -77,7 +77,7 @@ export function DocumentBuilderDialog() {
       >
         <DialogContent
           showCloseButton={false}
-          className="h-[100dvh] w-screen max-w-none gap-0 overflow-hidden rounded-none p-0 sm:h-[min(90dvh,840px)] sm:w-[min(92vw,1200px)] sm:max-w-5xl sm:rounded-3xl"
+          className="h-[100dvh] w-screen max-w-none gap-0 overflow-hidden rounded-none p-0 sm:h-[min(90dvh,880px)] sm:w-[min(96vw,1280px)] sm:max-w-[1280px] sm:rounded-3xl"
           onEscapeKeyDown={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >

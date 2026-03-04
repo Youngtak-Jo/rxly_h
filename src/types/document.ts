@@ -264,6 +264,7 @@ export interface DocumentBuilderLocalSnapshot {
   resolvedTemplateId: string | null
   publishedVersionNumber: number | null
   installedVersionNumber: number | null
+  sampleContent?: Record<string, unknown>
   previewContent?: Record<string, unknown>
   previewCaseSummary?: string | null
   previewLocale?: string | null

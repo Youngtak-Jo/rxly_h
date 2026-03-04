@@ -26,6 +26,9 @@ function buildPreviewSystemPrompt(args: {
     "You generate synthetic but realistic medical document previews.",
     "Imagine a plausible post-consultation scenario and fill the document as if it had just been generated for clinician review.",
     "Return only valid structured output matching the supplied schema plus a short case summary.",
+    "Populate every field with specific, non-placeholder values whenever a realistic synthetic value can be inferred.",
+    "For long-text fields, write complete concise content rather than fragments.",
+    "For repeatable groups, vary the items meaningfully instead of duplicating the same phrasing.",
     "Do not use real PHI, real phone numbers, or real addresses.",
     "Keep the case clinically coherent.",
     "If the document is regulatory, billing, or administrative, produce values that look ready for that workflow.",
@@ -55,8 +58,10 @@ function buildPreviewPrompt(args: {
     JSON.stringify(args.draft.schema, null, 2),
     "",
     "Generate:",
-    "- previewCaseSummary: 1-2 sentences summarizing the synthetic case",
+    "- previewCaseSummary: 2-3 sentences summarizing the synthetic case and why this document exists",
     "- previewContent: a complete structured document matching the schema",
+    "- Avoid placeholders like 'sample value', 'TBD', or repeated billing codes in note fields unless the field itself is specifically a code field",
+    "- If the template looks like a HIRA/EDI review workflow, use payer-review language, Korean claim-review terminology, and actionable submission guidance",
   ].join("\n")
 }
 

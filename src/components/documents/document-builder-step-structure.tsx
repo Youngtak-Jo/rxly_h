@@ -13,13 +13,18 @@ import {
   IconChevronRight,
   IconLoader2,
   IconPlus,
-  IconRefresh,
   IconSparkles,
   IconTrash,
 } from "@tabler/icons-react"
 import { useTranslations } from "next-intl"
 
-import { GenericDocumentPreview } from "@/components/documents/generic-document-preview"
+import {
+  appendChildAtPath,
+  createNode,
+  moveNodeAtPath,
+  removeNodeAtPath,
+  updateNodeAtPath,
+} from "@/components/documents/document-builder-utils"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -32,13 +37,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  appendChildAtPath,
-  createNode,
-  moveNodeAtPath,
-  removeNodeAtPath,
-  updateNodeAtPath,
-} from "@/components/documents/document-builder-utils"
 import { createEmptyDocumentContent } from "@/lib/documents/schema"
 import { cn } from "@/lib/utils"
 import {
@@ -46,7 +44,6 @@ import {
   type DocumentBuilderDraft,
   type DocumentSchemaNode,
   type DocumentSchemaNodeType,
-  type GenericDocumentSection,
 } from "@/types/document"
 
 type PathSegment = string | number
@@ -226,7 +223,7 @@ function ExampleFieldInput({
         value={typeof value === "string" ? value : ""}
         placeholder={node.placeholder || node.label || humanizeKey(node.key)}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-20 resize-y"
+        className="min-h-[120px] resize-y"
       />
     )
   }
@@ -243,7 +240,7 @@ function ExampleFieldInput({
             .filter(Boolean)
         )
       }
-      className="min-h-20 resize-y"
+      className="min-h-[120px] resize-y"
     />
   )
 }
@@ -269,7 +266,10 @@ function CompactActionButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className={cn("size-8", destructive && "text-destructive")}
+      className={cn(
+        "size-8 rounded-full border border-transparent text-muted-foreground hover:border-border/70 hover:text-foreground",
+        destructive && "text-destructive hover:text-destructive"
+      )}
     >
       {children}
     </Button>
@@ -291,8 +291,8 @@ function NodeDetailsPanel({
   const t = useTranslations("DocumentBuilder")
 
   return (
-    <div className="rounded-xl border border-border/60 bg-muted/15 px-4 py-4">
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <div className="rounded-2xl border border-border/70 bg-muted/15 p-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>{t("schemaNode.typeLabel")}</Label>
           <Select
@@ -346,7 +346,7 @@ function NodeDetailsPanel({
           />
         </div>
 
-        <div className="space-y-2 md:col-span-2 xl:col-span-1">
+        <div className="space-y-2">
           <Label>{t("schemaNode.placeholderLabel")}</Label>
           <Input
             value={node.placeholder}
@@ -360,7 +360,7 @@ function NodeDetailsPanel({
           />
         </div>
 
-        <div className="space-y-2 md:col-span-2 xl:col-span-2">
+        <div className="space-y-2 md:col-span-2">
           <Label>{t("schemaNode.helpTextLabel")}</Label>
           <Textarea
             value={node.helpText}
@@ -370,7 +370,7 @@ function NodeDetailsPanel({
                 helpText: event.target.value,
               }))
             }
-            className="min-h-20 resize-y"
+            className="min-h-24 resize-y"
             placeholder={t("schemaNode.helpTextPlaceholder")}
           />
         </div>
@@ -388,6 +388,32 @@ function NodeDetailsPanel({
         />
         {t("schemaNode.required")}
       </label>
+    </div>
+  )
+}
+
+function SampleValuePanel({
+  node,
+  value,
+  onChange,
+}: {
+  node: DocumentSchemaNode
+  value: unknown
+  onChange: (value: unknown) => void
+}) {
+  const t = useTranslations("DocumentBuilder")
+
+  return (
+    <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+      <div className="space-y-1">
+        <h4 className="text-sm font-semibold">{t("preview.sampleTitle")}</h4>
+        <p className="text-sm text-muted-foreground">
+          {t("preview.sampleDescription")}
+        </p>
+      </div>
+      <div className="mt-4">
+        <ExampleFieldInput node={node} value={value} onChange={onChange} />
+      </div>
     </div>
   )
 }
@@ -491,254 +517,281 @@ function UnifiedSchemaNodeEditor({
   return (
     <div
       className={cn(
-        "py-4",
+        "space-y-4",
         depth > 0 && "ml-4 border-l border-border/50 pl-4"
       )}
     >
-      <div
-        className={cn(
-          "flex flex-col gap-3",
-          !isGroup && "lg:flex-row lg:items-start",
-          isGroup && "lg:flex-row lg:items-center"
-        )}
-      >
-        <div className="min-w-0 lg:w-56">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-              {typeLabel}
-            </span>
-            <span className="truncate text-sm font-medium text-foreground">
-              {nodeTitle}
-            </span>
-          </div>
-          <p className="mt-1 truncate text-xs text-muted-foreground">
-            {node.key}
-          </p>
-        </div>
-
-        <div className="min-w-0 flex-1">
-          {isGroup ? (
-            node.type === "repeatableGroup" ? (
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  {repeatableItems.length === 0 ? (
-                    <span className="text-xs text-muted-foreground">
-                      {t("preview.noSampleItems")}
-                    </span>
-                  ) : (
-                    repeatableItems.map((_, index) => (
-                      <button
-                        key={`${pathId}-item-${index}`}
-                        type="button"
-                        aria-label={t("schemaNode.actions.activateItem", {
-                          index: index + 1,
-                        })}
-                        className={cn(
-                          "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                          index === activeRepeatableItemIndex
-                            ? "border-foreground bg-foreground text-background"
-                            : "border-border/70 text-muted-foreground hover:border-foreground/40 hover:text-foreground"
-                        )}
-                        onClick={() =>
-                          onSetRepeatableGroupActiveItem(pathId, index)
-                        }
-                      >
-                        {t("preview.sampleItem")} {index + 1}
-                      </button>
-                    ))
-                  )}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    {t("schemaNode.itemCount", {
-                      count: repeatableItems.length,
-                    })}
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 gap-1 px-2 text-xs"
-                    onClick={addRepeatableItem}
-                  >
-                    <IconPlus className="size-3.5" />
-                    {t("preview.addSampleItem")}
-                  </Button>
-                  {repeatableItems.length > 0 ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 px-2 text-xs text-muted-foreground"
-                      onClick={removeActiveRepeatableItem}
-                    >
-                      {t("preview.removeItem")}
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            ) : (
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
+        <div className="flex flex-col gap-4 p-4 sm:p-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  {t("schemaNode.childCount", {
-                    count: node.children.length,
-                  })}
+                <span className="rounded-full border border-border/70 bg-muted/20 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                  {typeLabel}
                 </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 gap-1 px-2 text-xs"
-                  onClick={() => {
-                    onAddChild(path, "shortText")
-                    onExpand(pathId)
-                  }}
-                >
-                  <IconPlus className="size-3.5" />
-                  {t("schemaEditor.addField")}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 gap-1 px-2 text-xs"
-                  onClick={() => {
-                    onAddChild(path, "group")
-                    onExpand(pathId)
-                  }}
-                >
-                  <IconPlus className="size-3.5" />
-                  {t("schemaEditor.addGroup")}
-                </Button>
+                <h3 className="text-sm font-semibold text-foreground">
+                  {nodeTitle}
+                </h3>
+                {isGroup ? (
+                  <span className="rounded-full border border-border/70 px-2.5 py-1 text-[11px] text-muted-foreground">
+                    {node.type === "repeatableGroup"
+                      ? t("schemaNode.itemCount", {
+                          count: repeatableItems.length,
+                        })
+                      : t("schemaNode.childCount", {
+                          count: node.children.length,
+                        })}
+                  </span>
+                ) : null}
+                {!isGroup && node.required ? (
+                  <span className="rounded-full border border-border/70 px-2.5 py-1 text-[11px] text-muted-foreground">
+                    {t("schemaNode.required")}
+                  </span>
+                ) : null}
               </div>
-            )
-          ) : (
-            <ExampleFieldInput
-              node={node}
-              value={currentValue}
-              onChange={(value) =>
-                onPreviewContentChange(
-                  updateValueAtPath(rootContent, contentPath, value)
-                )
-              }
-            />
-          )}
-        </div>
+              <code className="block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-muted-foreground">
+                {node.key}
+              </code>
+            </div>
 
-        <div className="flex shrink-0 items-center gap-1 self-start lg:self-auto">
-          <CompactActionButton
-            label={
-              isExpanded
-                ? t("schemaNode.actions.collapse")
-                : t("schemaNode.actions.expand")
-            }
-            onClick={() => onToggleExpanded(pathId)}
-          >
-            {isExpanded ? (
-              <IconChevronDown className="size-4" />
-            ) : (
-              <IconChevronRight className="size-4" />
-            )}
-          </CompactActionButton>
-          <CompactActionButton
-            label={t("schemaNode.actions.moveUp")}
-            disabled={path[path.length - 1] === 0}
-            onClick={() => onMoveNode(path, "up")}
-          >
-            <IconArrowUp className="size-4" />
-          </CompactActionButton>
-          <CompactActionButton
-            label={t("schemaNode.actions.moveDown")}
-            disabled={path[path.length - 1] >= siblingCount - 1}
-            onClick={() => onMoveNode(path, "down")}
-          >
-            <IconArrowDown className="size-4" />
-          </CompactActionButton>
-          <CompactActionButton
-            label={t("schemaNode.actions.delete")}
-            destructive
-            onClick={() => onRemoveNode(path)}
-          >
-            <IconTrash className="size-4" />
-          </CompactActionButton>
-        </div>
-      </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-1">
+              <CompactActionButton
+                label={
+                  isExpanded
+                    ? t("schemaNode.actions.collapse")
+                    : t("schemaNode.actions.expand")
+                }
+                onClick={() => onToggleExpanded(pathId)}
+              >
+                {isExpanded ? (
+                  <IconChevronDown className="size-4" />
+                ) : (
+                  <IconChevronRight className="size-4" />
+                )}
+              </CompactActionButton>
+              <CompactActionButton
+                label={t("schemaNode.actions.moveUp")}
+                disabled={path[path.length - 1] === 0}
+                onClick={() => onMoveNode(path, "up")}
+              >
+                <IconArrowUp className="size-4" />
+              </CompactActionButton>
+              <CompactActionButton
+                label={t("schemaNode.actions.moveDown")}
+                disabled={path[path.length - 1] >= siblingCount - 1}
+                onClick={() => onMoveNode(path, "down")}
+              >
+                <IconArrowDown className="size-4" />
+              </CompactActionButton>
+              <CompactActionButton
+                label={t("schemaNode.actions.delete")}
+                destructive
+                onClick={() => onRemoveNode(path)}
+              >
+                <IconTrash className="size-4" />
+              </CompactActionButton>
+            </div>
+          </div>
 
-      {isExpanded ? (
-        <div className="mt-3 space-y-3">
-          <NodeDetailsPanel node={node} path={path} onUpdate={onUpdateNode} />
+          {isExpanded ? (
+            <div className="space-y-4 border-t border-border/60 pt-4">
+              <NodeDetailsPanel node={node} path={path} onUpdate={onUpdateNode} />
 
-          {isGroup ? (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  {t("schemaNode.children")}
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-8 gap-1 px-3 text-xs"
-                    onClick={() => onAddChild(path, "shortText")}
-                  >
-                    <IconPlus className="size-3.5" />
-                    {t("schemaEditor.addField")}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-8 gap-1 px-3 text-xs"
-                    onClick={() => onAddChild(path, "group")}
-                  >
-                    <IconPlus className="size-3.5" />
-                    {t("schemaEditor.addGroup")}
-                  </Button>
-                </div>
-              </div>
+              {isGroup ? (
+                <>
+                  {node.type === "repeatableGroup" ? (
+                    <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="space-y-1">
+                            <h4 className="text-sm font-semibold">
+                              {t("preview.sampleTitle")}
+                            </h4>
+                            <p className="text-sm text-muted-foreground">
+                              {t("preview.repeatableDescription")}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5"
+                              onClick={addRepeatableItem}
+                            >
+                              <IconPlus className="size-3.5" />
+                              {t("preview.addSampleItem")}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={repeatableItems.length === 0}
+                              onClick={removeActiveRepeatableItem}
+                            >
+                              {t("preview.removeItem")}
+                            </Button>
+                          </div>
+                        </div>
 
-              {node.type === "repeatableGroup" && repeatableItems.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border/70 px-4 py-5 text-sm text-muted-foreground">
-                  {t("preview.noSampleItems")}
-                </div>
-              ) : node.children.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border/70 px-4 py-5 text-sm text-muted-foreground">
-                  {t("schemaNode.noChildren")}
-                </div>
+                        <div className="flex flex-wrap gap-2">
+                          {repeatableItems.length === 0 ? (
+                            <span className="text-sm text-muted-foreground">
+                              {t("preview.noSampleItems")}
+                            </span>
+                          ) : (
+                            repeatableItems.map((_, index) => (
+                              <button
+                                key={`${pathId}-item-${index}`}
+                                type="button"
+                                aria-label={t("schemaNode.actions.activateItem", {
+                                  index: index + 1,
+                                })}
+                                className={cn(
+                                  "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                                  index === activeRepeatableItemIndex
+                                    ? "border-foreground bg-foreground text-background"
+                                    : "border-border/70 text-muted-foreground hover:border-foreground/40 hover:text-foreground"
+                                )}
+                                onClick={() =>
+                                  onSetRepeatableGroupActiveItem(pathId, index)
+                                }
+                              >
+                                {t("preview.sampleItem")} {index + 1}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="rounded-2xl border border-border/70 bg-muted/15 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-semibold">
+                          {t("schemaNode.children")}
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          {t("schemaEditor.description")}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          onClick={() => {
+                            onAddChild(path, "shortText")
+                            onExpand(pathId)
+                          }}
+                        >
+                          <IconPlus className="size-3.5" />
+                          {t("schemaEditor.addField")}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          onClick={() => {
+                            onAddChild(path, "group")
+                            onExpand(pathId)
+                          }}
+                        >
+                          <IconPlus className="size-3.5" />
+                          {t("schemaEditor.addGroup")}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {node.type === "repeatableGroup" && repeatableItems.length === 0 ? (
+                      <div className="mt-4 rounded-2xl border border-dashed border-border/70 px-4 py-6 text-sm text-muted-foreground">
+                        {t("preview.noSampleItems")}
+                      </div>
+                    ) : node.children.length === 0 ? (
+                      <div className="mt-4 rounded-2xl border border-dashed border-border/70 px-4 py-6 text-sm text-muted-foreground">
+                        {t("schemaNode.noChildren")}
+                      </div>
+                    ) : (
+                      <div className="mt-4 space-y-4">
+                        {node.children.map((child, index) => (
+                          <UnifiedSchemaNodeEditor
+                            key={`${pathId}-${child.key}-${index}`}
+                            node={child}
+                            path={[...path, index]}
+                            depth={depth + 1}
+                            siblingCount={node.children.length}
+                            contentPath={[...childContentBasePath, child.key]}
+                            rootContent={rootContent}
+                            expandedNodeIds={expandedNodeIds}
+                            repeatableGroupActiveItem={repeatableGroupActiveItem}
+                            onToggleExpanded={onToggleExpanded}
+                            onExpand={onExpand}
+                            onSetRepeatableGroupActiveItem={
+                              onSetRepeatableGroupActiveItem
+                            }
+                            onPreviewContentChange={onPreviewContentChange}
+                            onUpdateNode={onUpdateNode}
+                            onRemoveNode={onRemoveNode}
+                            onMoveNode={onMoveNode}
+                            onAddChild={onAddChild}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
               ) : (
-                <div className="divide-y divide-border/50 rounded-xl border border-border/50 bg-background/50 px-4">
-                  {node.children.map((child, index) => (
-                    <UnifiedSchemaNodeEditor
-                      key={`${pathId}-${child.key}-${index}`}
-                      node={child}
-                      path={[...path, index]}
-                      depth={depth + 1}
-                      siblingCount={node.children.length}
-                      contentPath={[...childContentBasePath, child.key]}
-                      rootContent={rootContent}
-                      expandedNodeIds={expandedNodeIds}
-                      repeatableGroupActiveItem={repeatableGroupActiveItem}
-                      onToggleExpanded={onToggleExpanded}
-                      onExpand={onExpand}
-                      onSetRepeatableGroupActiveItem={
-                        onSetRepeatableGroupActiveItem
-                      }
-                      onPreviewContentChange={onPreviewContentChange}
-                      onUpdateNode={onUpdateNode}
-                      onRemoveNode={onRemoveNode}
-                      onMoveNode={onMoveNode}
-                      onAddChild={onAddChild}
-                    />
-                  ))}
-                </div>
+                <SampleValuePanel
+                  node={node}
+                  value={currentValue}
+                  onChange={(value) =>
+                    onPreviewContentChange(
+                      updateValueAtPath(rootContent, contentPath, value)
+                    )
+                  }
+                />
               )}
             </div>
           ) : null}
         </div>
-      ) : null}
+      </div>
     </div>
+  )
+}
+
+function SectionToggle({
+  title,
+  description,
+  open,
+  onToggle,
+}: {
+  title: string
+  description: string
+  open: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="flex w-full items-start justify-between gap-4 text-left"
+    >
+      <div className="space-y-1">
+        <h3 className="text-base font-semibold text-foreground">{title}</h3>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      <span
+        className={cn(
+          "mt-1 rounded-full border border-border/70 p-1 text-muted-foreground transition-transform",
+          open && "rotate-180"
+        )}
+      >
+        <IconChevronDown className="size-4" />
+      </span>
+    </button>
   )
 }
 
@@ -746,7 +799,6 @@ export function DocumentBuilderStepStructure({
   draft,
   setDraft,
   previewContent,
-  previewSections,
   aiLoading,
   aiPrompt,
   showAiRevisePanel,
@@ -755,21 +807,13 @@ export function DocumentBuilderStepStructure({
   onAiRevise,
   onOpenModelSettings,
   onPreviewContentChange,
-  onResetSampleData,
-  onRegeneratePreview,
   onResetToServerVersion,
   restoredLocalChanges,
   validationError,
-  previewCaseSummary,
-  previewLocale,
-  previewGeneratedAt,
-  previewStatus,
-  previewError,
 }: {
   draft: DocumentBuilderDraft
   setDraft: Dispatch<SetStateAction<DocumentBuilderDraft>>
   previewContent: Record<string, unknown>
-  previewSections: GenericDocumentSection[]
   aiLoading: boolean
   aiPrompt: string
   showAiRevisePanel: boolean
@@ -778,20 +822,12 @@ export function DocumentBuilderStepStructure({
   onAiRevise: () => Promise<void>
   onOpenModelSettings: () => void
   onPreviewContentChange: (nextContent: Record<string, unknown>) => void
-  onResetSampleData: () => void
-  onRegeneratePreview: () => void
   onResetToServerVersion: (() => void) | null
   restoredLocalChanges: boolean
   validationError: string | null
-  previewCaseSummary: string | null
-  previewLocale: string | null
-  previewGeneratedAt: string | null
-  previewStatus: "idle" | "generating" | "ready" | "failed" | "stale"
-  previewError: string | null
 }) {
   const t = useTranslations("DocumentBuilder")
   const [expandedNodeIds, setExpandedNodeIds] = useState<string[]>([])
-  const [mobilePanel, setMobilePanel] = useState<"edit" | "preview">("edit")
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
   const [advancedPanelOpen, setAdvancedPanelOpen] = useState(false)
   const [repeatableGroupActiveItem, setRepeatableGroupActiveItem] = useState<
@@ -824,10 +860,19 @@ export function DocumentBuilderStepStructure({
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-      <div className="space-y-4">
-        <div className="rounded-2xl border border-border/70 bg-muted/15 px-4 py-4">
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_200px_150px_140px]">
+    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+        <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
+          <div className="space-y-1.5">
+            <h2 className="text-lg font-semibold">
+              {t("templateSettings.basicTitle")}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t("templateSettings.basicDescription")}
+            </p>
+          </div>
+
+          <div className="mt-5 grid gap-4">
             <div className="space-y-2">
               <Label>{t("templateSettings.titleLabel")}</Label>
               <Input
@@ -842,59 +887,6 @@ export function DocumentBuilderStepStructure({
             </div>
 
             <div className="space-y-2">
-              <Label>{t("templateSettings.categoryLabel")}</Label>
-              <Input
-                value={draft.category}
-                onChange={(event) =>
-                  setDraft((currentDraft) => ({
-                    ...currentDraft,
-                    category: event.target.value,
-                  }))
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("templateSettings.visibilityLabel")}</Label>
-              <Select
-                value={draft.visibility}
-                onValueChange={(value: "PRIVATE" | "PUBLIC") =>
-                  setDraft((currentDraft) => ({
-                    ...currentDraft,
-                    visibility: value,
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PRIVATE">
-                    {t("templateSettings.visibility.private")}
-                  </SelectItem>
-                  <SelectItem value="PUBLIC">
-                    {t("templateSettings.visibility.public")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("templateSettings.iconKeyLabel")}</Label>
-              <Input
-                value={draft.iconKey}
-                onChange={(event) =>
-                  setDraft((currentDraft) => ({
-                    ...currentDraft,
-                    iconKey: event.target.value,
-                  }))
-                }
-              />
-            </div>
-          </div>
-
-          <div className="mt-3 flex flex-col gap-3 xl:flex-row xl:items-end">
-            <div className="min-w-0 flex-1 space-y-2">
               <Label>{t("templateSettings.descriptionLabel")}</Label>
               <Textarea
                 value={draft.description}
@@ -904,61 +896,59 @@ export function DocumentBuilderStepStructure({
                     description: event.target.value,
                   }))
                 }
-                className="min-h-16 resize-none"
+                className="min-h-24 resize-y"
               />
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 xl:max-w-[520px] xl:justify-end">
-              <div className="flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-xs text-muted-foreground">
-                <span>{t("model.currentLabel", { model: documentModelLabel })}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto px-1.5 py-0 text-xs"
-                  onClick={onOpenModelSettings}
-                >
-                  {t("model.changeInSettings")}
-                </Button>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t("templateSettings.categoryLabel")}</Label>
+                <Input
+                  value={draft.category}
+                  onChange={(event) =>
+                    setDraft((currentDraft) => ({
+                      ...currentDraft,
+                      category: event.target.value,
+                    }))
+                  }
+                />
               </div>
 
-              {showAiRevisePanel ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={aiPanelOpen ? "secondary" : "outline"}
-                  onClick={() => setAiPanelOpen((current) => !current)}
+              <div className="space-y-2">
+                <Label>{t("templateSettings.visibilityLabel")}</Label>
+                <Select
+                  value={draft.visibility}
+                  onValueChange={(value: "PRIVATE" | "PUBLIC") =>
+                    setDraft((currentDraft) => ({
+                      ...currentDraft,
+                      visibility: value,
+                    }))
+                  }
                 >
-                  {t("aiDraft.revisePanelTitle")}
-                </Button>
-              ) : null}
-
-              <Button
-                type="button"
-                size="sm"
-                variant={advancedPanelOpen ? "secondary" : "outline"}
-                onClick={() => setAdvancedPanelOpen((current) => !current)}
-              >
-                {t("generationSettings.advancedTitle")}
-              </Button>
-
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={onResetSampleData}
-              >
-                {t("preview.resetSample")}
-              </Button>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PRIVATE">
+                      {t("templateSettings.visibility.private")}
+                    </SelectItem>
+                    <SelectItem value="PUBLIC">
+                      {t("templateSettings.visibility.public")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </div>
 
         {restoredLocalChanges ? (
-          <div className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-medium">{t("localDraft.restoredTitle")}</p>
-              <p className="text-xs opacity-80">{t("localDraft.restoredDescription")}</p>
+              <p className="text-xs opacity-80">
+                {t("localDraft.restoredDescription")}
+              </p>
             </div>
             {onResetToServerVersion ? (
               <Button
@@ -974,58 +964,100 @@ export function DocumentBuilderStepStructure({
         ) : null}
 
         {validationError ? (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             {validationError}
           </div>
         ) : null}
 
-        {showAiRevisePanel && aiPanelOpen ? (
-          <div className="rounded-xl border border-border/70 bg-background/80 px-4 py-4">
-            <div className="flex flex-col gap-3">
-              <div>
-                <h3 className="text-sm font-semibold">{t("aiDraft.revisePanelTitle")}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {t("aiDraft.revisePanelDescription")}
-                </p>
+        {showAiRevisePanel ? (
+          <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
+            <SectionToggle
+              title={t("aiDraft.revisePanelTitle")}
+              description={t("aiDraft.revisePanelDescription")}
+              open={aiPanelOpen}
+              onToggle={() => setAiPanelOpen((current) => !current)}
+            />
+
+            {aiPanelOpen ? (
+              <div className="mt-5 border-t border-border/60 pt-5">
+                <Textarea
+                  value={aiPrompt}
+                  onChange={(event) => onAiPromptChange(event.target.value)}
+                  className="min-h-[140px] resize-y"
+                  placeholder={t("aiDraft.revisePlaceholder")}
+                />
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-muted/20 px-4 py-3">
+                    <p className="text-sm text-muted-foreground">
+                      {t("model.currentLabel", { model: documentModelLabel })}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={onOpenModelSettings}
+                    >
+                      {t("model.changeInSettings")}
+                    </Button>
+                  </div>
+
+                  <Button
+                    type="button"
+                    className="gap-2 self-end"
+                    disabled={aiLoading}
+                    onClick={() => void onAiRevise()}
+                  >
+                    {aiLoading ? (
+                      <IconLoader2 className="size-4 animate-spin" />
+                    ) : (
+                      <IconSparkles className="size-4" />
+                    )}
+                    {t("aiDraft.revise")}
+                  </Button>
+                </div>
               </div>
-              <Textarea
-                value={aiPrompt}
-                onChange={(event) => onAiPromptChange(event.target.value)}
-                className="min-h-24 resize-y"
-                placeholder={t("aiDraft.revisePlaceholder")}
-              />
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  className="gap-2"
-                  disabled={aiLoading}
-                  onClick={() => void onAiRevise()}
-                >
-                  {aiLoading ? (
-                    <IconLoader2 className="size-4 animate-spin" />
-                  ) : (
-                    <IconSparkles className="size-4" />
-                  )}
-                  {t("aiDraft.revise")}
-                </Button>
-              </div>
-            </div>
+            ) : null}
           </div>
         ) : null}
 
-        {advancedPanelOpen ? (
-          <div className="rounded-xl border border-border/70 bg-background/80 px-4 py-4">
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold">
-                  {t("generationSettings.advancedTitle")}
-                </h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {t("generationSettings.advancedDescription")}
+        <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
+          <SectionToggle
+            title={t("generationSettings.advancedTitle")}
+            description={t("generationSettings.advancedDescription")}
+            open={advancedPanelOpen}
+            onToggle={() => setAdvancedPanelOpen((current) => !current)}
+          />
+
+          {advancedPanelOpen ? (
+            <div className="mt-5 space-y-5 border-t border-border/60 pt-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 bg-muted/20 px-4 py-3">
+                <p className="text-sm text-muted-foreground">
+                  {t("model.currentLabel", { model: documentModelLabel })}
                 </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={onOpenModelSettings}
+                >
+                  {t("model.changeInSettings")}
+                </Button>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>{t("templateSettings.iconKeyLabel")}</Label>
+                  <Input
+                    value={draft.iconKey}
+                    onChange={(event) =>
+                      setDraft((currentDraft) => ({
+                        ...currentDraft,
+                        iconKey: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <Label>{t("generationSettings.audienceLabel")}</Label>
                   <Input
@@ -1041,6 +1073,7 @@ export function DocumentBuilderStepStructure({
                     }
                   />
                 </div>
+
                 <div className="space-y-2">
                   <Label>{t("generationSettings.outputToneLabel")}</Label>
                   <Input
@@ -1071,7 +1104,7 @@ export function DocumentBuilderStepStructure({
                       },
                     }))
                   }
-                  className="min-h-24 resize-y"
+                  className="min-h-32 resize-y"
                 />
               </div>
 
@@ -1094,7 +1127,8 @@ export function DocumentBuilderStepStructure({
                                   nextChecked === true
                                     ? Array.from(
                                         new Set([
-                                          ...currentDraft.generationConfig.contextSources,
+                                          ...currentDraft.generationConfig
+                                            .contextSources,
                                           source,
                                         ])
                                       )
@@ -1105,211 +1139,93 @@ export function DocumentBuilderStepStructure({
                             }))
                           }
                         />
-                        {t(`contextSources.${source}`)}
+                        {t(`contextSources.${source}` as never)}
                       </label>
                     )
                   })}
                 </div>
               </div>
             </div>
-          </div>
-        ) : null}
-
-        <div className="xl:hidden">
-          <div className="grid grid-cols-2 gap-2 rounded-full border border-border/70 bg-muted/20 p-1">
-            <button
-              type="button"
-              aria-pressed={mobilePanel === "edit"}
-              className={cn(
-                "rounded-full px-3 py-2 text-sm font-medium transition-colors",
-                mobilePanel === "edit"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground"
-              )}
-              onClick={() => setMobilePanel("edit")}
-            >
-              {t("workspace.editTab")}
-            </button>
-            <button
-              type="button"
-              aria-pressed={mobilePanel === "preview"}
-              className={cn(
-                "rounded-full px-3 py-2 text-sm font-medium transition-colors",
-                mobilePanel === "preview"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground"
-              )}
-              onClick={() => setMobilePanel("preview")}
-            >
-              {t("workspace.previewTab")}
-            </button>
-          </div>
+          ) : null}
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.95fr)] xl:items-start">
-          <section
-            className={cn(
-              "min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background/95",
-              mobilePanel === "preview" && "hidden xl:block"
-            )}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
-              <div>
-                <h2 className="text-sm font-semibold">{t("schemaEditor.title")}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {t("schemaEditor.canvasDescription")}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8 gap-1 px-3 text-xs"
-                  onClick={() =>
-                    updateNodes((nodes) => [...nodes, createNode("shortText")])
+        <section className="rounded-3xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1.5">
+              <h2 className="text-lg font-semibold">{t("schemaEditor.title")}</h2>
+              <p className="text-sm text-muted-foreground">
+                {t("schemaEditor.canvasDescription")}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() =>
+                  updateNodes((nodes) => [...nodes, createNode("shortText")])
+                }
+              >
+                <IconPlus className="size-4" />
+                {t("schemaEditor.addField")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => updateNodes((nodes) => [...nodes, createNode("group")])}
+              >
+                <IconPlus className="size-4" />
+                {t("schemaEditor.addGroup")}
+              </Button>
+            </div>
+          </div>
+
+          {draft.schema.nodes.length === 0 ? (
+            <div className="mt-5 rounded-2xl border border-dashed border-border/70 px-4 py-12 text-center text-sm text-muted-foreground">
+              {t("schemaEditor.empty")}
+            </div>
+          ) : (
+            <div className="mt-5 space-y-4">
+              {draft.schema.nodes.map((node, index) => (
+                <UnifiedSchemaNodeEditor
+                  key={`${node.key}-${index}`}
+                  node={node}
+                  path={[index]}
+                  depth={0}
+                  siblingCount={draft.schema.nodes.length}
+                  contentPath={[node.key]}
+                  rootContent={previewContent}
+                  expandedNodeIds={expandedNodeIds}
+                  repeatableGroupActiveItem={repeatableGroupActiveItem}
+                  onToggleExpanded={toggleExpanded}
+                  onExpand={expandNode}
+                  onSetRepeatableGroupActiveItem={(pathId, index) =>
+                    setRepeatableGroupActiveItem((current) => ({
+                      ...current,
+                      [pathId]: index,
+                    }))
                   }
-                >
-                  <IconPlus className="size-3.5" />
-                  {t("schemaEditor.addField")}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8 gap-1 px-3 text-xs"
-                  onClick={() => updateNodes((nodes) => [...nodes, createNode("group")])}
-                >
-                  <IconPlus className="size-3.5" />
-                  {t("schemaEditor.addGroup")}
-                </Button>
-              </div>
+                  onPreviewContentChange={onPreviewContentChange}
+                  onUpdateNode={(nodePath, updater) =>
+                    updateNodes((nodes) => updateNodeAtPath(nodes, nodePath, updater))
+                  }
+                  onRemoveNode={(nodePath) =>
+                    updateNodes((nodes) => removeNodeAtPath(nodes, nodePath))
+                  }
+                  onMoveNode={(nodePath, direction) =>
+                    updateNodes((nodes) => moveNodeAtPath(nodes, nodePath, direction))
+                  }
+                  onAddChild={(nodePath, type) =>
+                    updateNodes((nodes) =>
+                      appendChildAtPath(nodes, nodePath, createNode(type))
+                    )
+                  }
+                />
+              ))}
             </div>
-
-            {draft.schema.nodes.length === 0 ? (
-              <div className="px-4 py-12 text-center text-sm text-muted-foreground">
-                {t("schemaEditor.empty")}
-              </div>
-            ) : (
-              <div className="divide-y divide-border/60 px-4">
-                {draft.schema.nodes.map((node, index) => (
-                  <UnifiedSchemaNodeEditor
-                    key={`${node.key}-${index}`}
-                    node={node}
-                    path={[index]}
-                    depth={0}
-                    siblingCount={draft.schema.nodes.length}
-                    contentPath={[node.key]}
-                    rootContent={previewContent}
-                    expandedNodeIds={expandedNodeIds}
-                    repeatableGroupActiveItem={repeatableGroupActiveItem}
-                    onToggleExpanded={toggleExpanded}
-                    onExpand={expandNode}
-                    onSetRepeatableGroupActiveItem={(pathId, index) =>
-                      setRepeatableGroupActiveItem((current) => ({
-                        ...current,
-                        [pathId]: index,
-                      }))
-                    }
-                    onPreviewContentChange={onPreviewContentChange}
-                    onUpdateNode={(nodePath, updater) =>
-                      updateNodes((nodes) => updateNodeAtPath(nodes, nodePath, updater))
-                    }
-                    onRemoveNode={(nodePath) =>
-                      updateNodes((nodes) => removeNodeAtPath(nodes, nodePath))
-                    }
-                    onMoveNode={(nodePath, direction) =>
-                      updateNodes((nodes) =>
-                        moveNodeAtPath(nodes, nodePath, direction)
-                      )
-                    }
-                    onAddChild={(nodePath, type) =>
-                      updateNodes((nodes) =>
-                        appendChildAtPath(nodes, nodePath, createNode(type))
-                      )
-                    }
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
-          <aside
-            aria-label={t("preview.renderedTitle")}
-            className={cn(
-              "min-w-0",
-              mobilePanel === "edit" && "hidden xl:block"
-            )}
-          >
-            <div className="xl:sticky xl:top-0">
-              <div className="overflow-hidden rounded-2xl border border-border/70 bg-background/95">
-                <div className="border-b border-border/60 px-4 py-3">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-sm font-semibold">
-                          {t("preview.renderedTitle")}
-                        </h2>
-                        <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                          {t("preview.syntheticBadge")}
-                        </span>
-                        <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] text-muted-foreground">
-                          {previewStatus === "generating"
-                            ? t("preview.status.generating")
-                            : previewStatus === "failed"
-                              ? t("preview.status.failed")
-                              : previewStatus === "stale"
-                                ? t("preview.status.stale")
-                                : previewStatus === "ready"
-                                  ? t("preview.status.ready")
-                                  : t("preview.status.idle")}
-                        </span>
-                        {previewLocale ? (
-                          <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] text-muted-foreground">
-                            {previewLocale.toUpperCase()}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {previewCaseSummary || t("preview.renderedDescription")}
-                      </p>
-                      {previewGeneratedAt ? (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {t("preview.generatedAt", {
-                            value: new Date(previewGeneratedAt).toLocaleString(),
-                          })}
-                        </p>
-                      ) : null}
-                      {previewError ? (
-                        <p className="mt-2 text-xs text-destructive">
-                          {previewError}
-                        </p>
-                      ) : null}
-                    </div>
-
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5"
-                      onClick={onRegeneratePreview}
-                    >
-                      {previewStatus === "generating" ? (
-                        <IconLoader2 className="size-4 animate-spin" />
-                      ) : (
-                        <IconRefresh className="size-4" />
-                      )}
-                      {t("preview.regenerate")}
-                    </Button>
-                  </div>
-                </div>
-                <div className="px-4 py-4 xl:max-h-[calc(90dvh-19rem)] xl:overflow-y-auto">
-                  <GenericDocumentPreview sections={previewSections} />
-                </div>
-              </div>
-            </div>
-          </aside>
-        </div>
+          )}
+        </section>
       </div>
     </div>
   )

@@ -102,6 +102,7 @@ interface ComparableBuilderState {
   resolvedTemplateId: string | null
   publishedVersionNumber: number | null
   installedVersionNumber: number | null
+  sampleContent: Record<string, unknown>
   previewContent: Record<string, unknown>
   previewCaseSummary: string | null
   previewLocale: string | null
@@ -141,7 +142,11 @@ function createEmptyComparableState(locale: UiLocale): ComparableBuilderState {
     resolvedTemplateId: null,
     publishedVersionNumber: null,
     installedVersionNumber: null,
-    previewContent: buildSampleDocumentContent(createEmptyDraft(locale).schema, locale),
+    sampleContent: buildSampleDocumentContent(
+      createEmptyDraft(locale).schema,
+      locale
+    ),
+    previewContent: {},
     previewCaseSummary: null,
     previewLocale: locale,
     previewInputChecksum: null,
@@ -158,6 +163,7 @@ function buildLocalSnapshot(input: {
   resolvedTemplateId: string | null
   publishedVersionNumber: number | null
   installedVersionNumber: number | null
+  sampleContent: Record<string, unknown>
   previewContent: Record<string, unknown>
   previewCaseSummary: string | null
   previewLocale: string | null
@@ -167,6 +173,48 @@ function buildLocalSnapshot(input: {
   return {
     ...input,
     savedAt: new Date().toISOString(),
+  }
+}
+
+function hasStoredContent(value: Record<string, unknown> | null | undefined) {
+  return !!value && Object.keys(value).length > 0
+}
+
+function resolveSampleAndPreviewContent(args: {
+  draft: DocumentBuilderDraft
+  locale: UiLocale
+  sampleContent?: Record<string, unknown> | null
+  previewContent?: Record<string, unknown> | null
+  previewInputChecksum?: string | null
+}) {
+  const sampleSource: Record<string, unknown> | null = hasStoredContent(
+    args.sampleContent
+  )
+    ? args.sampleContent!
+    : hasStoredContent(args.previewContent)
+      ? args.previewContent!
+      : null
+  const previewSource: Record<string, unknown> | null = hasStoredContent(
+    args.previewContent
+  )
+    ? args.previewContent!
+    : null
+  const normalizedSampleContent = reconcileSampleDocumentContent(
+    args.draft.schema,
+    sampleSource,
+    args.locale
+  )
+
+  if (!args.previewInputChecksum || !previewSource) {
+    return {
+      sampleContent: sampleSource ?? buildSampleDocumentContent(args.draft.schema, args.locale),
+      previewContent: {},
+    }
+  }
+
+  return {
+    sampleContent: normalizedSampleContent,
+    previewContent: previewSource,
   }
 }
 
@@ -238,9 +286,10 @@ export const DocumentBuilderFlow = forwardRef<
   const [restoredLocalChanges, setRestoredLocalChanges] = useState(false)
   const [serverComparableState, setServerComparableState] =
     useState<ComparableBuilderState | null>(null)
-  const [previewContent, setPreviewContent] = useState<Record<string, unknown>>(
+  const [sampleContent, setSampleContent] = useState<Record<string, unknown>>(
     () => buildSampleDocumentContent(createEmptyDraft(locale).schema, locale)
   )
+  const [previewContent, setPreviewContent] = useState<Record<string, unknown>>({})
   const [previewCaseSummary, setPreviewCaseSummary] = useState<string | null>(null)
   const [previewLocale, setPreviewLocale] = useState<string | null>(locale)
   const [previewGeneratedAt, setPreviewGeneratedAt] = useState<string | null>(null)
@@ -253,7 +302,6 @@ export const DocumentBuilderFlow = forwardRef<
   const [previewError, setPreviewError] = useState<string | null>(null)
   const previewRequestIdRef = useRef(0)
   const previewAbortControllerRef = useRef<AbortController | null>(null)
-  const previewDebounceRef = useRef<number | null>(null)
 
   const {
     discardSnapshot,
@@ -280,6 +328,7 @@ export const DocumentBuilderFlow = forwardRef<
         resolvedTemplateId,
         publishedVersionNumber,
         installedVersionNumber,
+        sampleContent,
         previewContent,
         previewCaseSummary,
         previewLocale,
@@ -291,6 +340,7 @@ export const DocumentBuilderFlow = forwardRef<
       draft,
       installedVersionNumber,
       previewCaseSummary,
+      sampleContent,
       previewContent,
       previewGeneratedAt,
       previewInputChecksum,
@@ -305,15 +355,11 @@ export const DocumentBuilderFlow = forwardRef<
     () => buildGenericDocumentSections(previewContent, draft.schema.nodes),
     [draft.schema.nodes, previewContent]
   )
-  const handlePreviewContentChange = useCallback(
+  const handleSampleContentChange = useCallback(
     (nextContent: Record<string, unknown>) => {
-      setPreviewContent(nextContent)
-      if (previewStatus !== "generating") {
-        setPreviewStatus("ready")
-        setPreviewError(null)
-      }
+      setSampleContent(nextContent)
     },
-    [previewStatus]
+    []
   )
 
   useEffect(() => {
@@ -326,6 +372,7 @@ export const DocumentBuilderFlow = forwardRef<
       resolvedTemplateId,
       publishedVersionNumber,
       installedVersionNumber,
+      sampleContent,
       previewContent,
       previewCaseSummary,
       previewLocale,
@@ -340,6 +387,7 @@ export const DocumentBuilderFlow = forwardRef<
     initialTemplateId,
     installedVersionNumber,
     previewCaseSummary,
+    sampleContent,
     previewContent,
     previewGeneratedAt,
     previewInputChecksum,
@@ -370,8 +418,8 @@ export const DocumentBuilderFlow = forwardRef<
   )
   const previewHasContent = Object.keys(previewContent).length > 0
   const isPreviewStale =
-    step === "structure" &&
     previewHasContent &&
+    previewInputChecksum !== null &&
     previewInputChecksum !== currentPreviewChecksum
   const effectivePreviewStatus =
     previewStatus === "generating"
@@ -389,7 +437,7 @@ export const DocumentBuilderFlow = forwardRef<
   }, [isDirty, onDirtyChange])
 
   useEffect(() => {
-    setPreviewContent((currentContent) =>
+    setSampleContent((currentContent) =>
       reconcileSampleDocumentContent(draft.schema, currentContent, locale)
     )
   }, [draft.schema, locale])
@@ -403,9 +451,10 @@ export const DocumentBuilderFlow = forwardRef<
       setBaselineComparableState(
         toComparableState(createEmptyComparableState(locale))
       )
-      setPreviewContent(
+      setSampleContent(
         buildSampleDocumentContent(createEmptyDraft(locale).schema, locale)
       )
+      setPreviewContent({})
       setPreviewCaseSummary(null)
       setPreviewLocale(locale)
       setPreviewGeneratedAt(null)
@@ -422,15 +471,22 @@ export const DocumentBuilderFlow = forwardRef<
     setPublishedVersionNumber(restoredSnapshot.publishedVersionNumber)
     setInstalledVersionNumber(restoredSnapshot.installedVersionNumber)
     setRestoredLocalChanges(true)
-    setPreviewContent(
-      restoredSnapshot.previewContent ??
-        buildSampleDocumentContent(restoredSnapshot.draft.schema, locale)
-    )
+    const restoredContent = resolveSampleAndPreviewContent({
+      draft: restoredSnapshot.draft,
+      locale,
+      sampleContent: restoredSnapshot.sampleContent,
+      previewContent: restoredSnapshot.previewContent,
+      previewInputChecksum: restoredSnapshot.previewInputChecksum,
+    })
+    setSampleContent(restoredContent.sampleContent)
+    setPreviewContent(restoredContent.previewContent)
     setPreviewCaseSummary(restoredSnapshot.previewCaseSummary ?? null)
     setPreviewLocale(restoredSnapshot.previewLocale ?? locale)
     setPreviewGeneratedAt(restoredSnapshot.previewGeneratedAt ?? null)
     setPreviewInputChecksum(restoredSnapshot.previewInputChecksum ?? null)
-    setPreviewStatus("ready")
+    setPreviewStatus(
+      Object.keys(restoredContent.previewContent).length > 0 ? "ready" : "idle"
+    )
     setPreviewError(null)
     toast.message(t("localDraft.restoredToast"))
   }, [initialMode, locale, readInitialSnapshot, resolvedTemplateId, t])
@@ -456,6 +512,27 @@ export const DocumentBuilderFlow = forwardRef<
           throw new Error(t("toasts.loadTemplateFailed"))
         }
 
+        const resolvedContent = resolveSampleAndPreviewContent({
+          draft: {
+            title: payload.template.title,
+            description: payload.template.description,
+            iconKey: payload.template.iconKey,
+            category: payload.template.category,
+            visibility: payload.template.visibility,
+            schema: editableVersion.schemaJson,
+            generationConfig: editableVersion.generationConfigJson,
+          },
+          locale,
+          previewContent:
+            payload.latestDraftPreview?.contentJson ??
+            payload.latestPublishedPreview?.contentJson ??
+            null,
+          previewInputChecksum:
+            payload.latestDraftPreview?.inputChecksum ??
+            payload.latestPublishedPreview?.inputChecksum ??
+            null,
+        })
+
         const comparable = {
           aiPrompt: "",
           draft: {
@@ -470,10 +547,8 @@ export const DocumentBuilderFlow = forwardRef<
           resolvedTemplateId: payload.template.id,
           publishedVersionNumber: payload.latestPublishedVersion?.versionNumber ?? null,
           installedVersionNumber: payload.installed?.installedVersionNumber ?? null,
-          previewContent:
-            payload.latestDraftPreview?.contentJson ??
-            payload.latestPublishedPreview?.contentJson ??
-            buildSampleDocumentContent(editableVersion.schemaJson, locale),
+          sampleContent: resolvedContent.sampleContent,
+          previewContent: resolvedContent.previewContent,
           previewCaseSummary:
             payload.latestDraftPreview?.caseSummary ??
             payload.latestPublishedPreview?.caseSummary ??
@@ -501,6 +576,7 @@ export const DocumentBuilderFlow = forwardRef<
         setInstalledVersionNumber(comparable.installedVersionNumber)
         setStep("structure")
         setLoadedTemplateId(payload.template.id)
+        setSampleContent(comparable.sampleContent)
         setPreviewContent(comparable.previewContent)
         setPreviewCaseSummary(comparable.previewCaseSummary)
         setPreviewLocale(comparable.previewLocale)
@@ -521,15 +597,22 @@ export const DocumentBuilderFlow = forwardRef<
         setPublishedVersionNumber(restoredSnapshot.publishedVersionNumber)
         setInstalledVersionNumber(restoredSnapshot.installedVersionNumber)
         setRestoredLocalChanges(true)
-        setPreviewContent(
-          restoredSnapshot.previewContent ??
-            buildSampleDocumentContent(restoredSnapshot.draft.schema, locale)
-        )
+        const restoredContent = resolveSampleAndPreviewContent({
+          draft: restoredSnapshot.draft,
+          locale,
+          sampleContent: restoredSnapshot.sampleContent,
+          previewContent: restoredSnapshot.previewContent,
+          previewInputChecksum: restoredSnapshot.previewInputChecksum,
+        })
+        setSampleContent(restoredContent.sampleContent)
+        setPreviewContent(restoredContent.previewContent)
         setPreviewCaseSummary(restoredSnapshot.previewCaseSummary ?? null)
         setPreviewLocale(restoredSnapshot.previewLocale ?? locale)
         setPreviewGeneratedAt(restoredSnapshot.previewGeneratedAt ?? null)
         setPreviewInputChecksum(restoredSnapshot.previewInputChecksum ?? null)
-        setPreviewStatus("ready")
+        setPreviewStatus(
+          Object.keys(restoredContent.previewContent).length > 0 ? "ready" : "idle"
+        )
         setPreviewError(null)
         toast.message(t("localDraft.restoredToast"))
       })
@@ -592,7 +675,8 @@ export const DocumentBuilderFlow = forwardRef<
   const goToStructureStep = useCallback(() => {
     const nextDraft = createEmptyDraft(locale)
     setDraft(nextDraft)
-    setPreviewContent(buildSampleDocumentContent(nextDraft.schema, locale))
+    setSampleContent(buildSampleDocumentContent(nextDraft.schema, locale))
+    setPreviewContent({})
     setPreviewCaseSummary(null)
     setPreviewLocale(locale)
     setPreviewGeneratedAt(null)
@@ -613,7 +697,7 @@ export const DocumentBuilderFlow = forwardRef<
         setPreviewCaseSummary(null)
         setPreviewInputChecksum(null)
         setPreviewGeneratedAt(null)
-        setPreviewContent(buildSampleDocumentContent(draft.schema, locale))
+        setPreviewContent({})
         return
       }
 
@@ -692,31 +776,16 @@ export const DocumentBuilderFlow = forwardRef<
   )
 
   useEffect(() => {
-    if (step !== "structure") return
+    if (step !== "review") return
     if (!draft.title.trim() || draft.schema.nodes.length === 0) return
-    if (previewInputChecksum === currentPreviewChecksum) return
+    if (previewHasContent) return
 
-    if (previewDebounceRef.current) {
-      window.clearTimeout(previewDebounceRef.current)
-    }
-
-    setPreviewStatus((current) => (current === "failed" ? current : "idle"))
-    previewDebounceRef.current = window.setTimeout(() => {
-      void generatePreview()
-    }, 1500)
-
-    return () => {
-      if (previewDebounceRef.current) {
-        window.clearTimeout(previewDebounceRef.current)
-        previewDebounceRef.current = null
-      }
-    }
+    void generatePreview()
   }, [
-    currentPreviewChecksum,
     draft.schema.nodes.length,
     draft.title,
     generatePreview,
-    previewInputChecksum,
+    previewHasContent,
     step,
   ])
 
@@ -749,7 +818,8 @@ export const DocumentBuilderFlow = forwardRef<
 
       const payload = (await response.json()) as DocumentBuilderDraft
       setDraft(payload)
-      setPreviewContent(buildSampleDocumentContent(payload.schema, locale))
+      setSampleContent(buildSampleDocumentContent(payload.schema, locale))
+      setPreviewContent({})
       setPreviewCaseSummary(null)
       setPreviewLocale(locale)
       setPreviewGeneratedAt(null)
@@ -809,6 +879,7 @@ export const DocumentBuilderFlow = forwardRef<
           resolvedTemplateId,
           publishedVersionNumber,
           installedVersionNumber,
+          sampleContent,
           previewContent,
           previewCaseSummary,
           previewLocale,
@@ -854,6 +925,7 @@ export const DocumentBuilderFlow = forwardRef<
           resolvedTemplateId: payload.id,
           publishedVersionNumber,
           installedVersionNumber,
+          sampleContent,
           previewContent,
           previewCaseSummary,
           previewLocale,
@@ -889,6 +961,7 @@ export const DocumentBuilderFlow = forwardRef<
     invalidateCatalog,
     openEditDialog,
     previewCaseSummary,
+    sampleContent,
     previewContent,
     previewGeneratedAt,
     previewInputChecksum,
@@ -939,6 +1012,7 @@ export const DocumentBuilderFlow = forwardRef<
           resolvedTemplateId: currentTemplateId,
           publishedVersionNumber: nextPublishedVersionNumber,
           installedVersionNumber,
+          sampleContent,
           previewContent,
           previewCaseSummary,
           previewLocale,
@@ -965,6 +1039,7 @@ export const DocumentBuilderFlow = forwardRef<
     invalidateCatalog,
     locale,
     previewCaseSummary,
+    sampleContent,
     previewContent,
     previewGeneratedAt,
     previewInputChecksum,
@@ -1030,6 +1105,7 @@ export const DocumentBuilderFlow = forwardRef<
     setBaselineComparableState(toComparableState(serverComparableState))
     setRestoredLocalChanges(false)
     resetToServerVersion(resolvedTemplateId)
+    setSampleContent(serverComparableState.sampleContent)
     setPreviewContent(serverComparableState.previewContent)
     setPreviewCaseSummary(serverComparableState.previewCaseSummary)
     setPreviewLocale(serverComparableState.previewLocale)
@@ -1116,8 +1192,7 @@ export const DocumentBuilderFlow = forwardRef<
         <DocumentBuilderStepStructure
           draft={draft}
           setDraft={setDraft}
-          previewContent={previewContent}
-          previewSections={previewSections}
+          previewContent={sampleContent}
           aiLoading={aiLoading}
           aiPrompt={aiPrompt}
           showAiRevisePanel={effectiveMode === "edit"}
@@ -1125,11 +1200,7 @@ export const DocumentBuilderFlow = forwardRef<
           onAiPromptChange={setAiPrompt}
           onAiRevise={handleAiDraft}
           onOpenModelSettings={() => openSettings("models")}
-          onPreviewContentChange={handlePreviewContentChange}
-          onResetSampleData={() => void generatePreview({ force: true })}
-          onRegeneratePreview={() =>
-            void generatePreview({ force: true, showToastOnFailure: true })
-          }
+          onPreviewContentChange={handleSampleContentChange}
           onResetToServerVersion={
             restoredLocalChanges && serverComparableState
               ? handleResetToServerVersion
@@ -1137,63 +1208,99 @@ export const DocumentBuilderFlow = forwardRef<
           }
           restoredLocalChanges={restoredLocalChanges}
           validationError={schemaValidationMessage}
-          previewCaseSummary={previewCaseSummary}
-          previewLocale={previewLocale}
-          previewGeneratedAt={previewGeneratedAt}
-          previewStatus={effectivePreviewStatus}
-          previewError={previewError}
         />
       ) : (
         <DocumentBuilderStepReview
           title={draft.title}
+          description={draft.description}
+          category={draft.category}
           visibility={draft.visibility}
           schemaNodeCount={schemaNodeCount}
           contextSources={draft.generationConfig.contextSources}
           publishedVersionNumber={publishedVersionNumber}
           installedVersionNumber={installedVersionNumber}
-          saving={saving}
-          publishing={publishing}
-          installing={installing}
-          canInstall={publishedVersionNumber !== null}
-          onSaveDraft={async () => {
-            await saveDraft()
-          }}
-          onPublish={publishDraft}
-          onInstall={installPublished}
+          previewSections={previewSections}
+          previewCaseSummary={previewCaseSummary}
+          previewLocale={previewLocale}
+          previewGeneratedAt={previewGeneratedAt}
+          previewStatus={effectivePreviewStatus}
+          previewError={previewError}
+          onRegeneratePreview={() =>
+            void generatePreview({ force: true, showToastOnFailure: true })
+          }
         />
       )}
 
-      <div className="border-t px-4 py-4 sm:px-6">
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={step === "start"}
-            onClick={() => {
-              if (step === "review") {
-                setStep("structure")
-                return
-              }
-
-              setStep("start")
-            }}
-          >
-            <IconChevronLeft className="size-4" />
-            {t("navigation.back")}
-          </Button>
-
+      {step === "start" ? null : (
+        <div className="border-t px-4 py-4 sm:px-6">
           {step === "structure" ? (
-            <Button
-              type="button"
-              disabled={!canGoNext}
-              onClick={() => setStep("review")}
-            >
-              {t("navigation.review")}
-              <IconChevronRight className="size-4" />
-            </Button>
-          ) : null}
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep("start")}
+              >
+                <IconChevronLeft className="size-4" />
+                {t("navigation.back")}
+              </Button>
+
+              <Button
+                type="button"
+                disabled={!canGoNext}
+                onClick={() => setStep("review")}
+              >
+                {t("navigation.review")}
+                <IconChevronRight className="size-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                className="self-start"
+                onClick={() => setStep("structure")}
+              >
+                <IconChevronLeft className="size-4" />
+                {t("navigation.back")}
+              </Button>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={saving}
+                  onClick={() => void saveDraft()}
+                >
+                  {saving ? <IconLoader2 className="size-4 animate-spin" /> : null}
+                  {t("headerActions.saveDraft")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={publishing}
+                  onClick={() => void publishDraft()}
+                >
+                  {publishing ? (
+                    <IconLoader2 className="size-4 animate-spin" />
+                  ) : null}
+                  {t("headerActions.publish")}
+                </Button>
+                <Button
+                  type="button"
+                  disabled={installing || publishedVersionNumber === null}
+                  onClick={() => void installPublished()}
+                >
+                  {installing ? (
+                    <IconLoader2 className="size-4 animate-spin" />
+                  ) : null}
+                  {t("headerActions.install")}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   )
 })

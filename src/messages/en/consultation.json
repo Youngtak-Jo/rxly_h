@@ -790,6 +790,8 @@
     },
     "templateSettings": {
       "title": "Template settings",
+      "basicTitle": "Document basics",
+      "basicDescription": "Set the document name, description, category, and visibility before editing the structure.",
       "titleLabel": "Title",
       "categoryLabel": "Category",
       "iconKeyLabel": "Icon key",
@@ -803,7 +805,7 @@
     "schemaEditor": {
       "title": "Schema editor",
       "description": "Add fields and groups that define the document structure.",
-      "canvasDescription": "Edit the schema and sample values together in one workspace.",
+      "canvasDescription": "Define the schema and example input values without leaving this step.",
       "empty": "No fields yet. Start from AI or add fields manually.",
       "addField": "Add field",
       "addGroup": "Add group"
@@ -825,11 +827,13 @@
       "inputPlaceholder": "Preview input",
       "noChildFields": "No child fields",
       "sampleTitle": "Sample input values",
-      "sampleDescription": "Preview the kind of values that will be filled into this document.",
+      "sampleDescription": "Edit realistic example values for this field before reviewing the full document.",
       "renderedTitle": "Rendered document preview",
       "renderedDescription": "This is the final document preview produced from the sample values.",
       "resetSample": "Reset sample data",
       "regenerate": "Regenerate preview",
+      "repeatableDescription": "Choose which example item to edit for this repeatable group.",
+      "staleDescription": "The template changed after this preview was generated. Regenerate it if you want the latest structure reflected here.",
       "syntheticBadge": "Synthetic preview",
       "generatedAt": "Generated at {value}",
       "status": {
@@ -907,9 +911,11 @@
     },
     "review": {
       "title": "Review and publish",
-      "description": "Confirm the draft details before saving, publishing, or installing it.",
+      "description": "Confirm the template details and final document preview before saving, publishing, or installing it.",
       "summary": {
         "title": "Title",
+        "description": "Description",
+        "category": "Category",
         "visibility": "Visibility",
         "schemaNodes": "Schema fields",
         "schemaNodesValue": "{count} fields",

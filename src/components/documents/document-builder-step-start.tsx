@@ -25,8 +25,8 @@ export function DocumentBuilderStepStart({
   const t = useTranslations("DocumentBuilder")
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6">
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center">
         <div className="rounded-3xl border border-border/70 bg-card p-6 shadow-sm sm:p-8">
           <div className="space-y-2">
             <h2 className="text-xl font-semibold">{t("aiDraft.title")}</h2>
