@@ -53,26 +53,34 @@ export async function PATCH(
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
-    const existing = await prisma.session.findUnique({
-      where: { id, userId: user.id },
-    })
-    if (!existing) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 })
-    }
-
     const raw = await req.json()
     const parsed = sessionPatchSchema.safeParse(raw)
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 })
     }
-    const session = await prisma.session.update({
-      where: { id },
-      data: {
-        title: parsed.data.title,
-        patientName: parsed.data.patientName,
-        mode: parsed.data.mode,
-      },
-    })
+
+    let session
+    try {
+      session = await prisma.session.update({
+        where: { id, userId: user.id },
+        data: {
+          title: parsed.data.title,
+          patientName: parsed.data.patientName,
+          mode: parsed.data.mode,
+        },
+      })
+    } catch (e) {
+      if (
+        typeof e === "object" &&
+        e !== null &&
+        "code" in e &&
+        (e as { code: string }).code === "P2025"
+      ) {
+        return NextResponse.json({ error: "Session not found" }, { status: 404 })
+      }
+      throw e
+    }
+
     logAudit({ userId: user.id, action: "UPDATE", resource: "session", resourceId: id })
     return NextResponse.json(session)
   } catch (error) {

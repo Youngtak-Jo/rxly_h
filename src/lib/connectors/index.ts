@@ -55,7 +55,7 @@ export function getRAGSourceMeta(context: RAGContext): RAGSourceMeta {
   }
 }
 
-const CONNECTOR_TIMEOUT_MS = 12000
+const CONNECTOR_TIMEOUT_MS = 15000
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([

@@ -36,30 +36,38 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+const BATCH_SIZE = 20
+
 async function drainAuditQueue(): Promise<void> {
   if (auditDrainActive) return
   auditDrainActive = true
 
   try {
     while (auditQueue.length > 0) {
-      const current = auditQueue[0]
+      const batchSize = Math.min(BATCH_SIZE, auditQueue.length)
+      const batch = auditQueue.splice(0, batchSize)
 
       try {
-        await prisma.auditLog.create({ data: current.data })
-        auditQueue.shift()
+        await prisma.auditLog.createMany({
+          data: batch.map((item) => item.data),
+        })
       } catch (error) {
-        current.retries += 1
+        // Put failed items back for retry (prepend to preserve order)
+        for (let i = batch.length - 1; i >= 0; i--) {
+          const item = batch[i]
+          item.retries += 1
 
-        if (current.retries > AUDIT_MAX_RETRIES) {
-          auditQueue.shift()
-          logger.error("[AUDIT FAILURE] Failed to write audit log:", {
-            entry: current.context,
-            error: error instanceof Error ? error.message : String(error),
-          })
-          continue
+          if (item.retries > AUDIT_MAX_RETRIES) {
+            logger.error("[AUDIT FAILURE] Failed to write audit log:", {
+              entry: item.context,
+              error: error instanceof Error ? error.message : String(error),
+            })
+          } else {
+            auditQueue.unshift(item)
+          }
         }
 
-        const backoffMs = Math.min(1000, AUDIT_RETRY_BASE_MS * 2 ** (current.retries - 1))
+        const backoffMs = Math.min(1000, AUDIT_RETRY_BASE_MS * 2 ** ((batch[0]?.retries ?? 1) - 1))
         await sleep(backoffMs)
       }
     }

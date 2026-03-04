@@ -121,34 +121,54 @@ export async function PUT(
         },
       })
 
-      await Promise.all(
-        dedupedDiagnoses.map((dx, index) => {
-          const baseData = {
+      // Split into updates (existing) and creates (new)
+      const toUpdate: typeof dedupedDiagnoses = []
+      const toCreate: typeof dedupedDiagnoses = []
+      for (const dx of dedupedDiagnoses) {
+        if (dx.id && existingIdSet.has(dx.id)) {
+          toUpdate.push(dx)
+        } else {
+          toCreate.push(dx)
+        }
+      }
+
+      // Batch updates (must be individual due to differing where clauses)
+      if (toUpdate.length > 0) {
+        await Promise.all(
+          toUpdate.map((dx) => {
+            const sortOrder = dx.sortOrder ?? dedupedDiagnoses.indexOf(dx)
+            return tx.diagnosis.update({
+              where: { id: dx.id!, sessionId: id },
+              data: {
+                icdCode: dx.icdCode,
+                icdUri: dx.icdUri || null,
+                diseaseName: dx.diseaseName,
+                confidence: toPrismaConfidence(dx.confidence),
+                evidence: dx.evidence,
+                citations: (dx.citations || []) as Prisma.InputJsonValue,
+                sortOrder,
+              } as const,
+            })
+          })
+        )
+      }
+
+      // Batch creates in single DB call
+      if (toCreate.length > 0) {
+        await tx.diagnosis.createMany({
+          data: toCreate.map((dx) => ({
+            ...(dx.id ? { id: dx.id } : {}),
+            sessionId: id,
             icdCode: dx.icdCode,
             icdUri: dx.icdUri || null,
             diseaseName: dx.diseaseName,
             confidence: toPrismaConfidence(dx.confidence),
             evidence: dx.evidence,
             citations: (dx.citations || []) as Prisma.InputJsonValue,
-            sortOrder: dx.sortOrder ?? index,
-          } as const
-
-          if (dx.id && existingIdSet.has(dx.id)) {
-            return tx.diagnosis.update({
-              where: { id: dx.id, sessionId: id },
-              data: baseData,
-            })
-          }
-
-          return tx.diagnosis.create({
-            data: {
-              ...(dx.id ? { id: dx.id } : {}),
-              sessionId: id,
-              ...baseData,
-            },
-          })
+            sortOrder: dx.sortOrder ?? dedupedDiagnoses.indexOf(dx),
+          })),
         })
-      )
+      }
     },
       { maxWait: 15000, timeout: 30000 })
 

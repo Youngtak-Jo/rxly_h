@@ -141,34 +141,52 @@ export async function PUT(
           },
         })
 
-        await Promise.all(
-          dedupedItems.map((item, index) => {
-            const sortOrder = item.sortOrder ?? index
-            const baseData = {
+        // Split into updates (existing) and creates (new)
+        const toUpdate: typeof dedupedItems = []
+        const toCreate: typeof dedupedItems = []
+        for (const item of dedupedItems) {
+          if (item.id && existingIdSet.has(item.id)) {
+            toUpdate.push(item)
+          } else {
+            toCreate.push(item)
+          }
+        }
+
+        // Batch updates (must be individual due to differing where clauses)
+        if (toUpdate.length > 0) {
+          await Promise.all(
+            toUpdate.map((item) => {
+              const sortOrder = item.sortOrder ?? dedupedItems.indexOf(item)
+              return tx.checklistItem.update({
+                where: { id: item.id!, sessionId: id },
+                data: {
+                  label: item.label,
+                  isChecked: item.isChecked ?? false,
+                  isAutoChecked: item.isAutoChecked ?? false,
+                  doctorNote: item.doctorNote ?? null,
+                  sortOrder,
+                  source: item.source === "MANUAL" ? "MANUAL" : "AI",
+                } as const,
+              })
+            })
+          )
+        }
+
+        // Batch creates in single DB call
+        if (toCreate.length > 0) {
+          await tx.checklistItem.createMany({
+            data: toCreate.map((item) => ({
+              ...(item.id ? { id: item.id } : {}),
+              sessionId: id,
               label: item.label,
               isChecked: item.isChecked ?? false,
               isAutoChecked: item.isAutoChecked ?? false,
               doctorNote: item.doctorNote ?? null,
-              sortOrder,
+              sortOrder: item.sortOrder ?? dedupedItems.indexOf(item),
               source: item.source === "MANUAL" ? "MANUAL" : "AI",
-            } as const
-
-            if (item.id && existingIdSet.has(item.id)) {
-              return tx.checklistItem.update({
-                where: { id: item.id, sessionId: id },
-                data: baseData,
-              })
-            }
-
-            return tx.checklistItem.create({
-              data: {
-                ...(item.id ? { id: item.id } : {}),
-                sessionId: id,
-                ...baseData,
-              },
-            })
+            } as const)),
           })
-        )
+        }
       }
 
       return result

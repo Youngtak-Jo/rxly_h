@@ -83,41 +83,40 @@ export async function GET(
     if (!allowed) return rateLimitResponse()
 
     const queryStartedAt = performance.now()
-    const session = await prisma.session.findUnique({
-      where: { id, userId: user.id },
-      include: {
-        insights: true,
-        record: true,
-        patientHandout: true,
-        checklistItems: { orderBy: { sortOrder: "asc" } },
-        diagnoses: { orderBy: { sortOrder: "asc" } },
-      },
-    })
+    const [session, transcriptEntries, notes, researchMessages, recordingSegments] =
+      await Promise.all([
+        prisma.session.findUnique({
+          where: { id, userId: user.id },
+          include: {
+            insights: true,
+            record: true,
+            patientHandout: true,
+            checklistItems: { orderBy: { sortOrder: "asc" } },
+            diagnoses: { orderBy: { sortOrder: "asc" } },
+          },
+        }),
+        prisma.transcriptEntry.findMany({
+          where: { sessionId: id, isFinal: true },
+          orderBy: [{ createdAt: "asc" }, { startTime: "asc" }],
+        }),
+        prisma.note.findMany({
+          where: { sessionId: id },
+          orderBy: { createdAt: "asc" },
+        }),
+        prisma.researchMessage.findMany({
+          where: { sessionId: id },
+          orderBy: { createdAt: "asc" },
+        }),
+        prisma.recordingSegment.findMany({
+          where: { sessionId: id },
+          orderBy: { startedAt: "desc" },
+        }),
+      ])
+    const queryMs = performance.now() - queryStartedAt
 
     if (!session) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 })
     }
-
-    const [transcriptEntries, notes, researchMessages, recordingSegments] =
-      await Promise.all([
-      prisma.transcriptEntry.findMany({
-        where: { sessionId: id, isFinal: true },
-        orderBy: [{ createdAt: "asc" }, { startTime: "asc" }],
-      }),
-      prisma.note.findMany({
-        where: { sessionId: id },
-        orderBy: { createdAt: "asc" },
-      }),
-      prisma.researchMessage.findMany({
-        where: { sessionId: id },
-        orderBy: { createdAt: "asc" },
-      }),
-      prisma.recordingSegment.findMany({
-        where: { sessionId: id },
-        orderBy: { startedAt: "desc" },
-      }),
-    ])
-    const queryMs = performance.now() - queryStartedAt
 
     const { allPaths: notePaths, ranges: notePathRanges } =
       collectSignedPathRanges(notes)
@@ -127,23 +126,15 @@ export async function GET(
     const allPaths = [...notePaths, ...researchPaths]
 
     const signedUrlStartedAt = performance.now()
-    let signedUrlResults: { signedUrl: string }[] = []
-    if (allPaths.length > 0) {
-      const { data } = await supabaseAdmin.storage
-        .from("medical-images")
-        .createSignedUrls(allPaths, 3600)
-      signedUrlResults = data || []
-    }
+    const [signedUrlResults, recordingSignedUrlResults] = await Promise.all([
+      allPaths.length > 0
+        ? supabaseAdmin.storage.from("medical-images").createSignedUrls(allPaths, 3600).then((r) => r.data || [])
+        : Promise.resolve([] as { signedUrl: string }[]),
+      recordingPaths.length > 0
+        ? supabaseAdmin.storage.from("medical-recordings").createSignedUrls(recordingPaths, 3600).then((r) => r.data || [])
+        : Promise.resolve([] as { signedUrl?: string }[]),
+    ])
     const signedUrlMs = performance.now() - signedUrlStartedAt
-    const recordingSignedUrlStartedAt = performance.now()
-    let recordingSignedUrlResults: { signedUrl?: string }[] = []
-    if (recordingPaths.length > 0) {
-      const { data } = await supabaseAdmin.storage
-        .from("medical-recordings")
-        .createSignedUrls(recordingPaths, 3600)
-      recordingSignedUrlResults = data || []
-    }
-    const recordingSignedUrlMs = performance.now() - recordingSignedUrlStartedAt
 
     const notesWithUrls = applySignedUrls(notes, notePathRanges, signedUrlResults)
     const researchMessagesWithUrls = applySignedUrls(
@@ -164,7 +155,6 @@ export async function GET(
       sessionId: id,
       queryMs: Number(queryMs.toFixed(1)),
       signedUrlMs: Number(signedUrlMs.toFixed(1)),
-      recordingSignedUrlMs: Number(recordingSignedUrlMs.toFixed(1)),
       totalMs: Number(totalMs.toFixed(1)),
       transcriptCount: transcriptEntries.length,
       noteCount: notes.length,

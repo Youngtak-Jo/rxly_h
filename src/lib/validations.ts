@@ -58,6 +58,22 @@ export const insightsUpdateSchema = z.object({
   checklistItems: z.array(insightsChecklistItemSchema).max(500).optional(),
 })
 
+export const recordUpdateSchema = z.object({
+  patientName: z.string().max(200).nullable().optional(),
+  chiefComplaint: z.string().max(10000).nullable().optional(),
+  hpiText: z.string().max(50000).nullable().optional(),
+  medications: z.string().max(10000).nullable().optional(),
+  rosText: z.string().max(50000).nullable().optional(),
+  pmh: z.string().max(10000).nullable().optional(),
+  socialHistory: z.string().max(10000).nullable().optional(),
+  familyHistory: z.string().max(10000).nullable().optional(),
+  vitals: z.record(z.string(), z.unknown()).nullable().optional(),
+  physicalExam: z.string().max(50000).nullable().optional(),
+  labsStudies: z.string().max(50000).nullable().optional(),
+  assessment: z.string().max(50000).nullable().optional(),
+  plan: z.string().max(50000).nullable().optional(),
+})
+
 export const diagnosesUpdateSchema = z.object({
   diagnoses: z.array(z.object({
     id: z.string().min(1).optional(),

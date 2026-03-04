@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
 import { requireAuth, requireSessionOwnership } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { recordUpdateSchema } from "@/lib/validations"
 
 export async function GET(
   req: Request,
@@ -42,41 +44,35 @@ export async function PUT(
     if (!allowed) return rateLimitResponse()
 
     const body = await req.json()
+    const parsed = recordUpdateSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
+
+    const recordData = {
+      patientName: parsed.data.patientName,
+      chiefComplaint: parsed.data.chiefComplaint,
+      hpiText: parsed.data.hpiText,
+      medications: parsed.data.medications,
+      rosText: parsed.data.rosText,
+      pmh: parsed.data.pmh,
+      socialHistory: parsed.data.socialHistory,
+      familyHistory: parsed.data.familyHistory,
+      vitals: parsed.data.vitals === null
+        ? Prisma.JsonNull
+        : parsed.data.vitals !== undefined
+          ? (parsed.data.vitals as Prisma.InputJsonValue)
+          : undefined,
+      physicalExam: parsed.data.physicalExam,
+      labsStudies: parsed.data.labsStudies,
+      assessment: parsed.data.assessment,
+      plan: parsed.data.plan,
+    }
 
     const record = await prisma.consultationRecord.upsert({
       where: { sessionId: id },
-      update: {
-        patientName: body.patientName,
-        chiefComplaint: body.chiefComplaint,
-        hpiText: body.hpiText,
-        medications: body.medications,
-        rosText: body.rosText,
-        pmh: body.pmh,
-        socialHistory: body.socialHistory,
-        familyHistory: body.familyHistory,
-        vitals: body.vitals,
-        physicalExam: body.physicalExam,
-        labsStudies: body.labsStudies,
-        assessment: body.assessment,
-        plan: body.plan,
-      },
-      create: {
-        sessionId: id,
-        date: new Date(),
-        patientName: body.patientName,
-        chiefComplaint: body.chiefComplaint,
-        hpiText: body.hpiText,
-        medications: body.medications,
-        rosText: body.rosText,
-        pmh: body.pmh,
-        socialHistory: body.socialHistory,
-        familyHistory: body.familyHistory,
-        vitals: body.vitals,
-        physicalExam: body.physicalExam,
-        labsStudies: body.labsStudies,
-        assessment: body.assessment,
-        plan: body.plan,
-      },
+      update: recordData,
+      create: { sessionId: id, date: new Date(), ...recordData },
     })
 
     logAudit({ userId: user.id, action: "UPDATE", resource: "record", sessionId: id })
@@ -90,3 +86,4 @@ export async function PUT(
     )
   }
 }
+
