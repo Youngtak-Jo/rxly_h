@@ -221,6 +221,28 @@ function summarizePrompt(prompt: string, maxLength = 80) {
     : compact
 }
 
+function buildFallbackPurposeDescription(args: {
+  korean: boolean
+  claimReview: boolean
+  patientFacing: boolean
+}) {
+  if (args.claimReview) {
+    return args.korean
+      ? "건강보험 청구 제출 전 상병/수가 코드 정합성과 삭감 리스크를 점검하기 위한 심사 검토 문서입니다."
+      : "Purpose-built review template for validating claim-code alignment and denial risk before insurance submission."
+  }
+
+  if (args.patientFacing) {
+    return args.korean
+      ? "환자에게 진단, 자가관리, 추적 관찰 계획을 이해하기 쉽게 안내하기 위한 문서입니다."
+      : "Purpose-built patient document for explaining diagnosis, self-care guidance, and follow-up plans."
+  }
+
+  return args.korean
+    ? "진료 이후 핵심 정보를 구조화해 팀 공유와 후속 조치를 일관되게 수행하기 위한 문서입니다."
+    : "Purpose-built clinical template to structure post-consultation information for team handoff and follow-up actions."
+}
+
 export function buildFallbackDocumentDraft(prompt: string): DocumentBuilderDraft {
   const preset = detectDraftPreset(prompt)
   const korean = preset.korean
@@ -240,29 +262,21 @@ export function buildFallbackDocumentDraft(prompt: string): DocumentBuilderDraft
         ? "맞춤 의료 문서"
         : "Custom Clinical Document"
 
-  const description = preset.claimReview
-    ? korean
-      ? `프롬프트를 바탕으로 생성한 건강보험 청구 및 심사 검토용 문서 초안입니다. ${summarizePrompt(prompt)}`
-      : `Fallback draft for insurance claim and review workflows based on the prompt. ${summarizePrompt(prompt)}`
-    : korean
-      ? `프롬프트를 바탕으로 생성한 문서 초안입니다. ${summarizePrompt(prompt)}`
-      : `Fallback draft generated from the prompt. ${summarizePrompt(prompt)}`
+  const description = buildFallbackPurposeDescription({
+    korean,
+    claimReview: preset.claimReview,
+    patientFacing: preset.patientFacing,
+  })
 
   return documentTemplateCreateSchema.parse({
     title,
     description,
     iconKey: preset.claimReview ? "receipt" : "file-text",
     category: preset.claimReview
-      ? korean
-        ? "청구"
-        : "claims"
+      ? "claims-review"
       : preset.patientFacing
-        ? korean
-          ? "환자 안내"
-          : "patient"
-        : korean
-          ? "문서"
-          : "documentation",
+        ? "patient-education"
+        : "clinical-documentation",
     visibility: "PRIVATE",
     renderer: "GENERIC_STRUCTURED",
     schema: normalizeDocumentTemplateSchema(schema),

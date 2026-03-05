@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { IconLoader2, IconPlus, IconRefresh } from "@tabler/icons-react"
+import { useTranslations } from "next-intl"
 
+import { GenericDocumentPreview } from "@/components/documents/generic-document-preview"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { buildGenericDocumentSections } from "@/lib/documents/preview"
 import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
 import { useSessionDocumentStore } from "@/stores/session-document-store"
 import { useSessionStore } from "@/stores/session-store"
@@ -339,6 +342,7 @@ export function StructuredDocumentContainer({
 }: {
   templateId: string
 }) {
+  const tBuilder = useTranslations("DocumentBuilder")
   const activeSession = useSessionStore((state) => state.activeSession)
   const installedDocument = useDocumentWorkspaceStore((state) =>
     state.installedDocuments.find((document) => document.templateId === templateId)
@@ -360,6 +364,7 @@ export function StructuredDocumentContainer({
   const [isSaving, setIsSaving] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<"preview" | "edit">("preview")
   const hydratedSessionKeyRef = useRef<string | null>(null)
   const lastSavedFingerprintRef = useRef<string | null>(null)
 
@@ -458,6 +463,13 @@ export function StructuredDocumentContainer({
     !!installedDocument &&
     !!cachedSessionDocument &&
     cachedSessionDocument.templateVersionId !== installedDocument.installedVersionId
+  const renderedSections = useMemo(
+    () =>
+      draftContent
+        ? buildGenericDocumentSections(draftContent, schema.nodes)
+        : [],
+    [draftContent, schema.nodes]
+  )
 
   const versionLabel = useMemo(() => {
     if (installedDocument?.installedVersionNumber) {
@@ -500,48 +512,71 @@ export function StructuredDocumentContainer({
           </p>
         </div>
 
-        <Button
-          type="button"
-          size="sm"
-          className="gap-1.5"
-          disabled={isGenerating}
-          onClick={async () => {
-            try {
-              setIsGenerating(true)
-              const response = await fetch(
-                `/api/sessions/${activeSession.id}/documents/${templateId}/generate`,
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    model: documentModel,
-                  }),
-                }
-              )
-              if (!response.ok) {
-                throw new Error("Failed to generate document")
-              }
+        <div className="flex items-center gap-2">
+          <div className="rounded-lg border border-border/70 bg-muted/20 p-1">
+            <button
+              type="button"
+              className={`rounded-md px-2.5 py-1 text-xs ${viewMode === "preview" ? "bg-background font-medium text-foreground shadow-sm" : "text-muted-foreground"}`}
+              onClick={() => setViewMode("preview")}
+            >
+              {tBuilder("workspace.previewTab")}
+            </button>
+            <button
+              type="button"
+              className={`rounded-md px-2.5 py-1 text-xs ${viewMode === "edit" ? "bg-background font-medium text-foreground shadow-sm" : "text-muted-foreground"}`}
+              onClick={() => setViewMode("edit")}
+            >
+              {tBuilder("workspace.editTab")}
+            </button>
+          </div>
 
-              const payload = (await response.json()) as {
-                sessionDocument: SessionDocumentRecord
-                templateVersionId: string
+          <Button
+            type="button"
+            size="sm"
+            className="gap-1.5"
+            disabled={isGenerating}
+            onClick={async () => {
+              try {
+                setIsGenerating(true)
+                const response = await fetch(
+                  `/api/sessions/${activeSession.id}/documents/${templateId}/generate`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      model: documentModel,
+                    }),
+                  }
+                )
+                if (!response.ok) {
+                  throw new Error("Failed to generate document")
+                }
+
+                const payload = (await response.json()) as {
+                  sessionDocument: SessionDocumentRecord
+                  templateVersionId: string
+                }
+                upsertSessionDocument(payload.sessionDocument)
+                lastSavedFingerprintRef.current = JSON.stringify(
+                  payload.sessionDocument.contentJson
+                )
+                setDraftContent(payload.sessionDocument.contentJson)
+              } catch (generateError) {
+                console.error("Failed to generate structured document", generateError)
+                setError("Failed to generate document")
+              } finally {
+                setIsGenerating(false)
               }
-              upsertSessionDocument(payload.sessionDocument)
-              lastSavedFingerprintRef.current = JSON.stringify(
-                payload.sessionDocument.contentJson
-              )
-              setDraftContent(payload.sessionDocument.contentJson)
-            } catch (generateError) {
-              console.error("Failed to generate structured document", generateError)
-              setError("Failed to generate document")
-            } finally {
-              setIsGenerating(false)
-            }
-          }}
-        >
-          {isGenerating ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconRefresh className="size-3.5" />}
-          {cachedSessionDocument?.generatedAt ? "Regenerate" : "Generate"}
-        </Button>
+            }}
+          >
+            {isGenerating ? (
+              <IconLoader2 className="size-3.5 animate-spin" />
+            ) : (
+              <IconRefresh className="size-3.5" />
+            )}
+            {cachedSessionDocument?.generatedAt ? "Regenerate" : "Generate"}
+          </Button>
+        </div>
       </div>
 
       {hasUpdateAvailable ? (
@@ -560,6 +595,10 @@ export function StructuredDocumentContainer({
         {schema.nodes.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border/70 px-4 py-10 text-center text-sm text-muted-foreground">
             This document has no fields yet.
+          </div>
+        ) : viewMode === "preview" ? (
+          <div className="rounded-xl border border-border/70 bg-card px-4 py-4">
+            <GenericDocumentPreview sections={renderedSections} variant="session" />
           </div>
         ) : (
           schema.nodes.map((node) => (

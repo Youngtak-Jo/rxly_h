@@ -4,6 +4,7 @@ import type {
   InstalledDocumentSummary,
   WorkspaceTabId,
 } from "@/types/document"
+import { buildDocumentTabId } from "@/lib/documents/constants"
 
 let inFlightWorkspaceRequest: Promise<DocumentWorkspaceSnapshot | null> | null = null
 
@@ -43,9 +44,21 @@ interface DocumentWorkspaceState {
   persistTabOrder: (
     tabOrder: WorkspaceTabId[]
   ) => Promise<DocumentWorkspaceSnapshot>
+  setDocumentTabEnabled: (
+    templateId: string,
+    enabled: boolean
+  ) => Promise<DocumentWorkspaceSnapshot>
   getInstalledDocument: (templateId: string) => InstalledDocumentSummary | null
   isDocumentInstalled: (templateId: string) => boolean
   reset: () => void
+}
+
+function getCurrentSnapshot(state: DocumentWorkspaceState): DocumentWorkspaceSnapshot {
+  return {
+    tabOrder: state.tabOrder,
+    installedDocuments: state.installedDocuments,
+    defaultTemplateIds: state.defaultTemplateIds,
+  }
 }
 
 function applySnapshot(set: (partial: Partial<DocumentWorkspaceState>) => void, snapshot: DocumentWorkspaceSnapshot) {
@@ -167,6 +180,21 @@ export const useDocumentWorkspaceStore = create<DocumentWorkspaceState>(
       const snapshot = (await response.json()) as DocumentWorkspaceSnapshot
       applySnapshot(set, snapshot)
       return snapshot
+    },
+
+    setDocumentTabEnabled: async (templateId, enabled) => {
+      const current = getCurrentSnapshot(get())
+      const targetTabId = buildDocumentTabId(templateId)
+      const hasTab = current.tabOrder.includes(targetTabId)
+
+      if (enabled && hasTab) return current
+      if (!enabled && !hasTab) return current
+
+      const nextTabOrder = enabled
+        ? [...current.tabOrder, targetTabId]
+        : current.tabOrder.filter((tabId) => tabId !== targetTabId)
+
+      return get().persistTabOrder(nextTabOrder)
     },
 
     getInstalledDocument: (templateId) =>

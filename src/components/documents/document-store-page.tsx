@@ -1,26 +1,55 @@
 "use client"
 
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  useCallback,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
-import { IconLoader2, IconPlus, IconRefresh } from "@tabler/icons-react"
+  IconLoader2,
+  IconPlus,
+  IconRefresh,
+  IconRosetteDiscountCheckFilled,
+} from "@tabler/icons-react"
+import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 
+import { DocumentCatalogPreviewDialog } from "@/components/documents/document-catalog-preview-dialog"
+import { DocumentsHeader } from "@/components/documents/documents-header"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { DocumentCatalogPreviewDialog } from "@/components/documents/document-catalog-preview-dialog"
-import { DocumentsHeader } from "@/components/documents/documents-header"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  getDocumentCategoryLabelKey,
+  getDocumentCategoryOptions,
+  normalizeDocumentCategory,
+  type DocumentCategory,
+} from "@/lib/documents/categories"
+import { buildDocumentTabId } from "@/lib/documents/constants"
 import { useDocumentBuilderDialogStore } from "@/stores/document-builder-dialog-store"
 import { useDocumentCatalogStore } from "@/stores/document-catalog-store"
 import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
-import type { DocumentBuilderDialogMode, DocumentCatalogItem } from "@/types/document"
+import type {
+  DocumentBuilderDialogMode,
+  DocumentCatalogItem,
+  InstalledDocumentSummary,
+} from "@/types/document"
 
 async function readErrorMessage(
   response: Response,
@@ -38,134 +67,146 @@ async function readErrorMessage(
   return `${fallback} (${response.status})`
 }
 
-type CatalogFilter = "all" | "installed" | "built-in" | "mine" | "public"
+type CategoryFilter = "all" | DocumentCategory
 
-const FILTERS: CatalogFilter[] = [
-  "all",
-  "installed",
-  "built-in",
-  "mine",
-  "public",
-]
-
+const DOCUMENT_CATEGORY_OPTIONS = getDocumentCategoryOptions()
+const CATALOG_CACHE_KEY = "all"
 const catalogCache = new Map<string, DocumentCatalogItem[]>()
 const inFlightCatalogRequests = new Map<string, Promise<DocumentCatalogItem[]>>()
 
-function matchesFilter(item: DocumentCatalogItem, filter: CatalogFilter) {
-  switch (filter) {
-    case "installed":
-      return item.isInstalled
-    case "built-in":
-      return item.isBuiltIn
-    case "mine":
-      return item.isEditable || item.visibility === "PRIVATE"
-    case "public":
-      return item.visibility === "PUBLIC" && !item.isBuiltIn
-    default:
-      return true
-  }
-}
-
-function filterLabel(
-  filter: CatalogFilter,
-  t: ReturnType<typeof useTranslations>
-) {
-  switch (filter) {
-    case "installed":
-      return t("filters.installed")
-    case "built-in":
-      return t("filters.builtIn")
-    case "mine":
-      return t("filters.mine")
-    case "public":
-      return t("filters.public")
-    default:
-      return t("filters.all")
+function buildFallbackCatalogItem(
+  installed: InstalledDocumentSummary
+): DocumentCatalogItem {
+  return {
+    templateId: installed.templateId,
+    slug: installed.slug,
+    title: installed.title,
+    description: installed.description,
+    renderer: installed.renderer,
+    visibility: installed.visibility,
+    sourceKind: installed.sourceKind,
+    iconKey: installed.iconKey,
+    category: normalizeDocumentCategory(installed.category),
+    authorName: installed.sourceKind === "BUILT_IN" ? "Rxly" : "You",
+    publishedVersionNumber: installed.latestPublishedVersionNumber,
+    installedVersionNumber: installed.installedVersionNumber,
+    isInstalled: true,
+    hasUpdate: installed.hasUpdate,
+    isEditable: false,
+    isBuiltIn: installed.sourceKind === "BUILT_IN",
+    canFork: false,
+    canPublish: false,
+    canInstall: !!installed.latestPublishedVersionId,
+    canUninstall: false,
+    preview: {
+      hasPreview: false,
+      caseSummary: null,
+      locale: null,
+      generatedAt: null,
+    },
   }
 }
 
 export function DocumentStorePage({
   initialDialogIntent,
+  viewMode = "catalog",
 }: {
   initialDialogIntent?: {
     mode: DocumentBuilderDialogMode
     templateId?: string | null
     routeBacked: boolean
   }
+  viewMode?: "catalog" | "mine"
 }) {
   const t = useTranslations("DocumentStore")
+  const tBuilder = useTranslations("DocumentBuilder")
   const locale = useLocale()
+  const router = useRouter()
+
+  const isMineView = viewMode === "mine"
+
   const openCreate = useDocumentBuilderDialogStore((state) => state.openCreate)
   const openEdit = useDocumentBuilderDialogStore((state) => state.openEdit)
   const refreshKey = useDocumentCatalogStore((state) => state.refreshKey)
-  const installDocument = useDocumentWorkspaceStore((state) => state.installDocument)
-  const uninstallDocument = useDocumentWorkspaceStore(
-    (state) => state.uninstallDocument
+
+  const loadWorkspaceSnapshot = useDocumentWorkspaceStore(
+    (state) => state.loadWorkspaceSnapshot
   )
+  const installDocument = useDocumentWorkspaceStore((state) => state.installDocument)
+  const setDocumentTabEnabled = useDocumentWorkspaceStore(
+    (state) => state.setDocumentTabEnabled
+  )
+  const installedDocuments = useDocumentWorkspaceStore(
+    (state) => state.installedDocuments
+  )
+  const tabOrder = useDocumentWorkspaceStore((state) => state.tabOrder)
+  const workspaceLoading = useDocumentWorkspaceStore((state) => state.isLoading)
+  const workspaceLoaded = useDocumentWorkspaceStore((state) => state.hasLoaded)
 
   const [query, setQuery] = useState("")
-  const [filter, setFilter] = useState<CatalogFilter>("all")
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
   const [items, setItems] = useState<DocumentCatalogItem[]>([])
   const [loading, setLoading] = useState(false)
   const [hasLoadedCatalog, setHasLoadedCatalog] = useState(false)
   const [actionKey, setActionKey] = useState<string | null>(null)
   const [previewItem, setPreviewItem] = useState<DocumentCatalogItem | null>(null)
+  const [unpublishTarget, setUnpublishTarget] =
+    useState<DocumentCatalogItem | null>(null)
   const initialIntentAppliedRef = useRef(false)
 
-  const deferredQuery = useDeferredValue(query)
+  const loadCatalog = useCallback(
+    async (options?: { force?: boolean }) => {
+      const force = options?.force ?? false
+      const cacheKey = CATALOG_CACHE_KEY
 
-  const loadCatalog = useCallback(async (options?: { force?: boolean }) => {
-    const force = options?.force ?? false
-    const cacheKey = deferredQuery.trim().toLowerCase()
+      if (!force) {
+        const cachedItems = catalogCache.get(cacheKey)
+        if (cachedItems) {
+          setItems(cachedItems)
+          setHasLoadedCatalog(true)
+        }
+      }
 
-    if (!force) {
-      const cachedItems = catalogCache.get(cacheKey)
-      if (cachedItems) {
-        setItems(cachedItems)
+      setLoading(true)
+      try {
+        let request = inFlightCatalogRequests.get(cacheKey) ?? null
+
+        if (!request || force) {
+          request = (async () => {
+            const response = await fetch("/api/documents/catalog")
+            if (!response.ok) {
+              throw new Error(
+                await readErrorMessage(response, "Failed to load document catalog")
+              )
+            }
+
+            const payload = (await response.json()) as { items: DocumentCatalogItem[] }
+            catalogCache.set(cacheKey, payload.items)
+            return payload.items
+          })().finally(() => {
+            const currentRequest = inFlightCatalogRequests.get(cacheKey)
+            if (currentRequest === request) {
+              inFlightCatalogRequests.delete(cacheKey)
+            }
+          })
+
+          inFlightCatalogRequests.set(cacheKey, request)
+        }
+
+        setItems(await request)
         setHasLoadedCatalog(true)
+      } catch (error) {
+        setHasLoadedCatalog(true)
+        const message =
+          error instanceof Error ? error.message : t("toasts.loadFailed")
+        console.error("Failed to load document catalog", message, error)
+        toast.error(message)
+      } finally {
+        setLoading(false)
       }
-    }
-
-    setLoading(true)
-    try {
-      let request = inFlightCatalogRequests.get(cacheKey) ?? null
-
-      if (!request || force) {
-        request = (async () => {
-          const response = await fetch(
-            `/api/documents/catalog${deferredQuery ? `?q=${encodeURIComponent(deferredQuery)}` : ""}`
-          )
-          if (!response.ok) {
-            throw new Error(
-              await readErrorMessage(response, "Failed to load document catalog")
-            )
-          }
-
-          const payload = (await response.json()) as { items: DocumentCatalogItem[] }
-          catalogCache.set(cacheKey, payload.items)
-          return payload.items
-        })().finally(() => {
-          const currentRequest = inFlightCatalogRequests.get(cacheKey)
-          if (currentRequest === request) {
-            inFlightCatalogRequests.delete(cacheKey)
-          }
-        })
-
-        inFlightCatalogRequests.set(cacheKey, request)
-      }
-
-      setItems(await request)
-      setHasLoadedCatalog(true)
-    } catch (error) {
-      setHasLoadedCatalog(true)
-      const message =
-        error instanceof Error ? error.message : t("toasts.loadFailed")
-      console.error("Failed to load document catalog", message, error)
-      toast.error(message)
-    } finally {
-      setLoading(false)
-    }
-  }, [deferredQuery, t])
+    },
+    [t]
+  )
 
   useEffect(() => {
     void loadCatalog()
@@ -177,13 +218,20 @@ export function DocumentStorePage({
   }, [loadCatalog, refreshKey])
 
   useEffect(() => {
+    void loadWorkspaceSnapshot().catch((error) => {
+      const message =
+        error instanceof Error
+          ? error.message
+          : t("toasts.workspaceLoadFailed")
+      toast.error(message)
+    })
+  }, [loadWorkspaceSnapshot, t])
+
+  useEffect(() => {
     if (!initialDialogIntent || initialIntentAppliedRef.current) return
     initialIntentAppliedRef.current = true
 
-    if (
-      initialDialogIntent.mode === "edit" &&
-      initialDialogIntent.templateId
-    ) {
+    if (initialDialogIntent.mode === "edit" && initialDialogIntent.templateId) {
       openEdit(initialDialogIntent.templateId, {
         routeBacked: initialDialogIntent.routeBacked,
       })
@@ -193,10 +241,66 @@ export function DocumentStorePage({
     openCreate({ routeBacked: initialDialogIntent.routeBacked })
   }, [initialDialogIntent, openCreate, openEdit])
 
-  const filteredItems = useMemo(
-    () => items.filter((item) => matchesFilter(item, filter)),
-    [filter, items]
+  const matchesSearchAndCategory = useCallback(
+    (item: DocumentCatalogItem) => {
+      if (
+        categoryFilter !== "all" &&
+        normalizeDocumentCategory(item.category) !== categoryFilter
+      ) {
+        return false
+      }
+
+      const normalizedQuery = query.trim().toLowerCase()
+      if (!normalizedQuery) return true
+
+      const haystack = [
+        item.title,
+        item.description,
+        item.authorName,
+        normalizeDocumentCategory(item.category),
+      ]
+        .join(" ")
+        .toLowerCase()
+
+      return haystack.includes(normalizedQuery)
+    },
+    [categoryFilter, query]
   )
+
+  const catalogByTemplateId = useMemo(
+    () => new Map(items.map((item) => [item.templateId, item])),
+    [items]
+  )
+
+  const installedItems = useMemo(
+    () =>
+      installedDocuments.map(
+        (installed) =>
+          catalogByTemplateId.get(installed.templateId) ??
+          buildFallbackCatalogItem(installed)
+      ),
+    [catalogByTemplateId, installedDocuments]
+  )
+
+  const installableCatalogItems = useMemo(
+    () =>
+      items
+        .filter(
+          (item) =>
+            item.canInstall &&
+            !item.isInstalled &&
+            (item.visibility === "PUBLIC" || item.isBuiltIn)
+        )
+        .filter(matchesSearchAndCategory),
+    [items, matchesSearchAndCategory]
+  )
+
+  const mineItems = useMemo(
+    () => items.filter((item) => item.isEditable).filter(matchesSearchAndCategory),
+    [items, matchesSearchAndCategory]
+  )
+
+  const visibleTabs = useMemo(() => new Set(tabOrder), [tabOrder])
 
   const runAction = async (key: string, action: () => Promise<void>) => {
     try {
@@ -219,12 +323,6 @@ export function DocumentStorePage({
       toast.success(t("toasts.installed", { title: item.title }))
     })
 
-  const handleUninstall = (item: DocumentCatalogItem) =>
-    void runAction(item.templateId, async () => {
-      await uninstallDocument(item.templateId)
-      toast.success(t("toasts.removed", { title: item.title }))
-    })
-
   const handleUpdate = (item: DocumentCatalogItem) =>
     void runAction(item.templateId, async () => {
       await installDocument(item.templateId)
@@ -244,6 +342,21 @@ export function DocumentStorePage({
       toast.success(t("toasts.published", { title: item.title }))
     })
 
+  const handleUnpublish = (item: DocumentCatalogItem) =>
+    void runAction(item.templateId, async () => {
+      const response = await fetch(`/api/documents/${item.templateId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visibility: "PRIVATE" }),
+      })
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(response, t("toasts.unpublishFailed"))
+        )
+      }
+      toast.success(t("toasts.unpublished", { title: item.title }))
+    })
+
   const handleFork = (item: DocumentCatalogItem) =>
     void runAction(item.templateId, async () => {
       const response = await fetch(`/api/documents/${item.templateId}/fork`, {
@@ -258,251 +371,351 @@ export function DocumentStorePage({
       setPreviewItem(null)
     })
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <DocumentsHeader
-        title={t("title")}
-        subtitle={t("subtitle")}
-        actions={
-          <Button
-            size="sm"
-            className="gap-1.5"
-            onClick={() => openCreate()}
-          >
-            <IconPlus className="size-4" />
-            {t("newDocument")}
-          </Button>
-        }
-      />
+  const handleSetTabEnabled = (item: DocumentCatalogItem, enabled: boolean) =>
+    void runAction(`tab:${item.templateId}`, async () => {
+      await setDocumentTabEnabled(item.templateId, enabled)
+      toast.success(
+        enabled
+          ? t("toasts.tabEnabled", { title: item.title })
+          : t("toasts.tabDisabled", { title: item.title })
+      )
+    })
 
+  const visibleItemList = isMineView ? mineItems : installableCatalogItems
+
+  const handleRefresh = () => {
+    void loadCatalog({ force: true })
+    void loadWorkspaceSnapshot({ force: true }).catch((error) => {
+      const message =
+        error instanceof Error
+          ? error.message
+          : t("toasts.workspaceLoadFailed")
+      toast.error(message)
+    })
+  }
+
+  const confirmUnpublish = () => {
+    if (!unpublishTarget) return
+    const target = unpublishTarget
+    setUnpublishTarget(null)
+    handleUnpublish(target)
+  }
+
+  const handleViewChange = (nextMode: string) => {
+    if (nextMode !== "catalog" && nextMode !== "mine") return
+    if (nextMode === viewMode) return
+    router.push(nextMode === "catalog" ? "/documents" : "/documents/mine")
+  }
+
+  return (
+    <>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="border-b px-4 py-4 lg:px-6">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={t("searchPlaceholder")}
-              className="max-w-xl"
-            />
-            <div className="flex flex-wrap items-center gap-2">
-              {FILTERS.map((nextFilter) => (
-                <Button
-                  key={nextFilter}
-                  type="button"
-                  size="sm"
-                  variant={filter === nextFilter ? "default" : "outline"}
-                  onClick={() => setFilter(nextFilter)}
-                >
-                  {filterLabel(nextFilter, t)}
-                </Button>
-              ))}
+        <DocumentsHeader
+          title={isMineView ? t("titles.mine") : t("titles.catalog")}
+          subtitle={isMineView ? t("subtitles.mine") : t("subtitles.catalog")}
+          actions={
+            <div className="flex items-center gap-2">
+              <Tabs value={viewMode} onValueChange={handleViewChange} className="gap-0">
+                <TabsList>
+                  <TabsTrigger value="catalog">{t("views.catalog")}</TabsTrigger>
+                  <TabsTrigger value="mine">{t("views.mine")}</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <Button size="sm" className="gap-1.5" onClick={() => openCreate()}>
+                <IconPlus className="size-4" />
+                {t("newDocument")}
+              </Button>
+            </div>
+          }
+        />
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="border-b px-4 py-4 lg:px-6">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={t("searchPlaceholder")}
+                className="max-w-xl"
+              />
+              <Select
+                value={categoryFilter}
+                onValueChange={(value) => setCategoryFilter(value as CategoryFilter)}
+              >
+                <SelectTrigger className="w-full lg:w-[260px]">
+                  <SelectValue placeholder={t("filters.category")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("filters.categoryAll")}</SelectItem>
+                  {DOCUMENT_CATEGORY_OPTIONS.map((categoryOption) => (
+                    <SelectItem key={categoryOption.value} value={categoryOption.value}>
+                      {tBuilder(categoryOption.labelKey as never)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 type="button"
                 size="sm"
                 variant="ghost"
                 className="gap-1.5"
-                onClick={() => void loadCatalog({ force: true })}
+                onClick={handleRefresh}
               >
                 <IconRefresh className="size-3.5" />
                 {t("actions.refresh")}
               </Button>
             </div>
           </div>
-        </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 lg:px-6">
-          {!hasLoadedCatalog && loading ? (
-            <div className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground">
-              <IconLoader2 className="size-4 animate-spin" />
-              {t("status.loadingCatalog")}
-            </div>
-          ) : filteredItems.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border/70 px-6 py-16 text-center text-sm text-muted-foreground">
-              {t("status.empty")}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {loading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <IconLoader2 className="size-4 animate-spin" />
-                  {t("status.updatingCatalog")}
-                </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 lg:px-6">
+            <div className="space-y-6">
+              {!isMineView ? (
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-sm font-semibold">{t("sections.installedTitle")}</h2>
+                    <Badge variant="secondary">{installedItems.length}</Badge>
+                  </div>
+
+                  {!workspaceLoaded && workspaceLoading ? (
+                    <div className="flex min-h-24 items-center justify-center gap-2 rounded-2xl border border-dashed border-border/70 px-4 py-10 text-sm text-muted-foreground">
+                      <IconLoader2 className="size-4 animate-spin" />
+                      {t("status.loadingInstalled")}
+                    </div>
+                  ) : installedItems.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center text-sm text-muted-foreground">
+                      {t("status.installedEmpty")}
+                    </div>
+                  ) : (
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      {installedItems.map((item) => {
+                        const tabVisible = visibleTabs.has(
+                          buildDocumentTabId(item.templateId)
+                        )
+                        const isBusy =
+                          actionKey === item.templateId ||
+                          actionKey === `tab:${item.templateId}`
+
+                        return (
+                          <div
+                            key={`installed:${item.templateId}`}
+                            role="button"
+                            tabIndex={0}
+                            className="cursor-pointer rounded-2xl border border-border/70 bg-card p-4 text-left transition hover:border-border hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            onClick={() => setPreviewItem(item)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault()
+                                setPreviewItem(item)
+                              }
+                            }}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="truncate text-sm font-semibold">{item.title}</h3>
+                                  {item.isBuiltIn ? (
+                                    <IconRosetteDiscountCheckFilled
+                                      className="size-4 shrink-0 text-sky-500"
+                                      title={t("badges.builtIn")}
+                                      aria-label={t("badges.builtIn")}
+                                    />
+                                  ) : null}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {item.visibility !== "PUBLIC" ? (
+                                    <Badge variant="outline">{t("badges.draft")}</Badge>
+                                  ) : null}
+                                  {item.hasUpdate ? <Badge>{t("badges.updateAvailable")}</Badge> : null}
+                                </div>
+                                <p className="line-clamp-2 text-xs text-muted-foreground">
+                                  {item.description}
+                                </p>
+                              </div>
+                              <div
+                                className="flex shrink-0 items-center gap-2"
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                <Switch
+                                  checked={tabVisible}
+                                  disabled={isBusy}
+                                  onCheckedChange={(checked) =>
+                                    handleSetTabEnabled(item, checked)
+                                  }
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </section>
               ) : null}
 
-              <div className="grid gap-4 xl:grid-cols-2">
-                {filteredItems.map((item) => {
-                  const isBusy = actionKey === item.templateId
-                  return (
-                    <div
-                      key={item.templateId}
-                      className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="text-base font-semibold">{item.title}</h2>
-                          {item.isBuiltIn ? (
-                            <Badge variant="secondary">{t("badges.builtIn")}</Badge>
-                          ) : null}
-                            {item.visibility === "PUBLIC" ? (
-                              <Badge variant="outline">{t("badges.public")}</Badge>
-                            ) : (
-                              <Badge variant="outline">{t("badges.draft")}</Badge>
-                            )}
-                            {item.isInstalled ? (
-                              <Badge variant="outline">{t("badges.installed")}</Badge>
-                            ) : null}
-                            {item.hasUpdate ? <Badge>{t("badges.updateAvailable")}</Badge> : null}
-                          </div>
-                          <p className="text-sm text-muted-foreground">{item.description}</p>
-                          {item.preview.caseSummary ? (
-                            <p className="line-clamp-2 text-sm text-foreground/80">
-                              {item.preview.caseSummary}
-                            </p>
-                          ) : null}
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            <span>{item.authorName}</span>
-                            <span>&middot;</span>
-                            <span>{item.category}</span>
-                            {item.publishedVersionNumber ? (
-                              <>
-                                <span>&middot;</span>
-                                <span>
-                                  {t("badges.publishedVersion", {
-                                    version: item.publishedVersionNumber,
-                                  })}
-                                </span>
-                              </>
-                            ) : null}
-                            {item.installedVersionNumber ? (
-                              <>
-                                <span>&middot;</span>
-                                <span>
-                                  {t("badges.installedVersion", {
-                                    version: item.installedVersionNumber,
-                                  })}
-                                </span>
-                              </>
-                            ) : null}
-                          </div>
-                        </div>
+              <section className="space-y-3">
+                <h2 className="text-sm font-semibold">
+                  {isMineView
+                    ? t("sections.mineTitle")
+                    : t("sections.catalogTitle")}
+                </h2>
+
+                {!hasLoadedCatalog && loading ? (
+                  <div className="flex min-h-40 items-center justify-center gap-2 rounded-2xl border border-dashed border-border/70 px-6 py-16 text-sm text-muted-foreground">
+                    <IconLoader2 className="size-4 animate-spin" />
+                    {t("status.loadingCatalog")}
+                  </div>
+                ) : visibleItemList.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border/70 px-6 py-16 text-center text-sm text-muted-foreground">
+                    {isMineView ? t("status.mineEmpty") : t("status.catalogEmpty")}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {loading ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <IconLoader2 className="size-4 animate-spin" />
+                        {t("status.updatingCatalog")}
                       </div>
+                    ) : null}
 
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setPreviewItem(item)}
-                        >
-                          {t("actions.preview")}
-                        </Button>
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      {visibleItemList.map((item) => {
+                        const isBusy = actionKey === item.templateId
+                        const categoryLabel = tBuilder(
+                          getDocumentCategoryLabelKey(item.category) as never
+                        )
 
-                        {item.canInstall && !item.isInstalled ? (
-                          <Button
-                            size="sm"
-                            disabled={isBusy}
-                            onClick={() => handleInstall(item)}
+                        return (
+                          <div
+                            key={`list:${item.templateId}`}
+                            role="button"
+                            tabIndex={0}
+                            className="cursor-pointer rounded-2xl border border-border/70 bg-card p-4 text-left transition hover:border-border hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            onClick={() => setPreviewItem(item)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault()
+                                setPreviewItem(item)
+                              }
+                            }}
                           >
-                            {isBusy ? <IconLoader2 className="size-3.5 animate-spin" /> : null}
-                            {t("actions.install")}
-                          </Button>
-                        ) : null}
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <h3 className="truncate text-sm font-semibold">{item.title}</h3>
+                                {item.isBuiltIn ? (
+                                  <IconRosetteDiscountCheckFilled
+                                    className="size-4 shrink-0 text-sky-500"
+                                    title={t("badges.builtIn")}
+                                    aria-label={t("badges.builtIn")}
+                                  />
+                                ) : null}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {item.visibility !== "PUBLIC" ? (
+                                  <Badge variant="outline">{t("badges.draft")}</Badge>
+                                ) : null}
+                              </div>
 
-                        {item.canUninstall ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={isBusy}
-                            onClick={() => handleUninstall(item)}
-                          >
-                            {isBusy ? <IconLoader2 className="size-3.5 animate-spin" /> : null}
-                            {t("actions.uninstall")}
-                          </Button>
-                        ) : null}
+                              <p className="line-clamp-2 text-xs text-muted-foreground">
+                                {item.description}
+                              </p>
 
-                        {item.hasUpdate ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={isBusy}
-                            onClick={() => handleUpdate(item)}
-                          >
-                            {t("actions.update")}
-                          </Button>
-                        ) : null}
+                              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                <span>{item.authorName}</span>
+                                <span>&middot;</span>
+                                <span>{categoryLabel}</span>
+                                {item.publishedVersionNumber ? (
+                                  <>
+                                    <span>&middot;</span>
+                                    <span>
+                                      {t("badges.publishedVersion", {
+                                        version: item.publishedVersionNumber,
+                                      })}
+                                    </span>
+                                  </>
+                                ) : null}
+                              </div>
+                            </div>
 
-                        {item.isEditable ? (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => openEdit(item.templateId)}
-                          >
-                            {t("actions.edit")}
-                          </Button>
-                        ) : null}
-
-                        {item.canPublish ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={isBusy}
-                            onClick={() => handlePublish(item)}
-                          >
-                            {t("actions.publish")}
-                          </Button>
-                        ) : null}
-
-                        {item.canFork ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={isBusy}
-                            onClick={() => handleFork(item)}
-                          >
-                            {t("actions.fork")}
-                          </Button>
-                        ) : null}
-                      </div>
+                            {!isMineView && item.canInstall ? (
+                              <div className="mt-3 flex justify-end" onClick={(event) => event.stopPropagation()}>
+                                <Button
+                                  size="sm"
+                                  disabled={isBusy}
+                                  onClick={() => handleInstall(item)}
+                                >
+                                  {isBusy ? <IconLoader2 className="size-3.5 animate-spin" /> : null}
+                                  {t("actions.install")}
+                                </Button>
+                              </div>
+                            ) : null}
+                          </div>
+                        )
+                      })}
                     </div>
-                  )
-                })}
-              </div>
+                  </div>
+                )}
+              </section>
             </div>
-          )}
+          </div>
         </div>
+
+        <DocumentCatalogPreviewDialog
+          item={previewItem}
+          open={previewItem !== null}
+          mode={viewMode}
+          actionKey={actionKey}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPreviewItem(null)
+            }
+          }}
+          onInstall={(item) => {
+            setPreviewItem(null)
+            handleInstall(item)
+          }}
+          onUpdate={(item) => {
+            setPreviewItem(null)
+            handleUpdate(item)
+          }}
+          onEdit={(item) => {
+            setPreviewItem(null)
+            openEdit(item.templateId)
+          }}
+          onPublish={(item) => {
+            setPreviewItem(null)
+            handlePublish(item)
+          }}
+          onFork={handleFork}
+          onUnpublish={(item) => {
+            setPreviewItem(null)
+            setUnpublishTarget(item)
+          }}
+        />
       </div>
 
-      <DocumentCatalogPreviewDialog
-        item={previewItem}
-        open={previewItem !== null}
-        actionKey={actionKey}
+      <AlertDialog
+        open={unpublishTarget !== null}
         onOpenChange={(open) => {
-          if (!open) {
-            setPreviewItem(null)
-          }
+          if (!open) setUnpublishTarget(null)
         }}
-        onInstall={(item) => {
-          setPreviewItem(null)
-          handleInstall(item)
-        }}
-        onUninstall={(item) => {
-          setPreviewItem(null)
-          handleUninstall(item)
-        }}
-        onUpdate={(item) => {
-          setPreviewItem(null)
-          handleUpdate(item)
-        }}
-        onEdit={(item) => {
-          setPreviewItem(null)
-          openEdit(item.templateId)
-        }}
-        onPublish={(item) => {
-          setPreviewItem(null)
-          handlePublish(item)
-        }}
-        onFork={handleFork}
-      />
-    </div>
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("confirm.unpublishTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("confirm.unpublishDescription", {
+                title: unpublishTarget?.title ?? "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("confirm.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmUnpublish}>
+              {t("confirm.unpublishAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

@@ -95,7 +95,7 @@ export function GenericDocumentPreview({
   variant = "builder",
 }: {
   sections: GenericDocumentSection[]
-  variant?: "builder" | "catalog"
+  variant?: "builder" | "catalog" | "session"
 }) {
   const t = useTranslations("DocumentBuilder")
   const itemLabel = t("preview.sampleItem")
@@ -109,7 +109,15 @@ export function GenericDocumentPreview({
   }
 
   return (
-    <div className={variant === "catalog" ? "space-y-2" : "space-y-1"}>
+    <div
+      className={
+        variant === "catalog"
+          ? "space-y-2"
+          : variant === "session"
+            ? "space-y-3"
+            : "space-y-1"
+      }
+    >
       {sections.map((section) => (
         <SectionView
           key={`${section.kind}-${section.label}`}

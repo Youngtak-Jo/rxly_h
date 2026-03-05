@@ -12,7 +12,7 @@ export function createEmptyDraft(locale: UiLocale): DocumentBuilderDraft {
     title: "",
     description: "",
     iconKey: "file-text",
-    category: locale === "ko" ? "문서" : "documentation",
+    category: "clinical-documentation",
     visibility: "PRIVATE",
     schema: {
       nodes: [],

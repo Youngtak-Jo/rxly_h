@@ -9,6 +9,7 @@ export default async function EditDocumentPage({
 
   return (
     <DocumentStorePage
+      viewMode="catalog"
       initialDialogIntent={{
         mode: "edit",
         templateId,

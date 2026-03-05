@@ -24,6 +24,7 @@ import {
   buildSampleDocumentContent,
   reconcileSampleDocumentContent,
 } from "@/lib/documents/preview"
+import { normalizeDocumentCategory } from "@/lib/documents/categories"
 import { buildDocumentPreviewInputChecksum } from "@/lib/documents/preview-checksum"
 import type { UiLocale } from "@/i18n/config"
 import { useDocumentBuilderLocalDraft } from "@/hooks/use-document-builder-local-draft"
@@ -151,6 +152,15 @@ function createEmptyComparableState(locale: UiLocale): ComparableBuilderState {
     previewLocale: locale,
     previewInputChecksum: null,
     previewGeneratedAt: null,
+  }
+}
+
+function withNormalizedDraftCategory(
+  draft: DocumentBuilderDraft
+): DocumentBuilderDraft {
+  return {
+    ...draft,
+    category: normalizeDocumentCategory(draft.category),
   }
 }
 
@@ -465,14 +475,15 @@ export const DocumentBuilderFlow = forwardRef<
     }
 
     setAiPrompt(restoredSnapshot.aiPrompt)
-    setDraft(restoredSnapshot.draft)
+    const normalizedDraft = withNormalizedDraftCategory(restoredSnapshot.draft)
+    setDraft(normalizedDraft)
     setStep(restoredSnapshot.step)
     setResolvedTemplateId(restoredSnapshot.resolvedTemplateId)
     setPublishedVersionNumber(restoredSnapshot.publishedVersionNumber)
     setInstalledVersionNumber(restoredSnapshot.installedVersionNumber)
     setRestoredLocalChanges(true)
     const restoredContent = resolveSampleAndPreviewContent({
-      draft: restoredSnapshot.draft,
+      draft: normalizedDraft,
       locale,
       sampleContent: restoredSnapshot.sampleContent,
       previewContent: restoredSnapshot.previewContent,
@@ -517,7 +528,7 @@ export const DocumentBuilderFlow = forwardRef<
             title: payload.template.title,
             description: payload.template.description,
             iconKey: payload.template.iconKey,
-            category: payload.template.category,
+            category: normalizeDocumentCategory(payload.template.category),
             visibility: payload.template.visibility,
             schema: editableVersion.schemaJson,
             generationConfig: editableVersion.generationConfigJson,
@@ -539,7 +550,7 @@ export const DocumentBuilderFlow = forwardRef<
             title: payload.template.title,
             description: payload.template.description,
             iconKey: payload.template.iconKey,
-            category: payload.template.category,
+            category: normalizeDocumentCategory(payload.template.category),
             visibility: payload.template.visibility,
             schema: editableVersion.schemaJson,
             generationConfig: editableVersion.generationConfigJson,
@@ -591,14 +602,15 @@ export const DocumentBuilderFlow = forwardRef<
         if (!restoredSnapshot) return
 
         setAiPrompt(restoredSnapshot.aiPrompt)
-        setDraft(restoredSnapshot.draft)
+        const normalizedDraft = withNormalizedDraftCategory(restoredSnapshot.draft)
+        setDraft(normalizedDraft)
         setStep(restoredSnapshot.step)
         setResolvedTemplateId(restoredSnapshot.resolvedTemplateId)
         setPublishedVersionNumber(restoredSnapshot.publishedVersionNumber)
         setInstalledVersionNumber(restoredSnapshot.installedVersionNumber)
         setRestoredLocalChanges(true)
         const restoredContent = resolveSampleAndPreviewContent({
-          draft: restoredSnapshot.draft,
+          draft: normalizedDraft,
           locale,
           sampleContent: restoredSnapshot.sampleContent,
           previewContent: restoredSnapshot.previewContent,
@@ -817,7 +829,7 @@ export const DocumentBuilderFlow = forwardRef<
       }
 
       const payload = (await response.json()) as DocumentBuilderDraft
-      setDraft(payload)
+      setDraft(withNormalizedDraftCategory(payload))
       setSampleContent(buildSampleDocumentContent(payload.schema, locale))
       setPreviewContent({})
       setPreviewCaseSummary(null)

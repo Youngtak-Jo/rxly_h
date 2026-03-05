@@ -8,6 +8,7 @@ import {
   documentTemplateCreateSchema,
 } from "@/lib/documents/schema"
 import { buildFallbackDocumentDraft } from "@/lib/documents/fallback-draft"
+import { DOCUMENT_CATEGORIES } from "@/lib/documents/categories"
 import { getModel, isSupportedModel } from "@/lib/ai-provider"
 import { DEFAULT_MODEL } from "@/lib/xai"
 import { buildGenerationOptions } from "@/lib/ai-request-options"
@@ -23,7 +24,9 @@ function buildBuilderSystemPrompt() {
     "Keys must be snake_case and unique across the whole schema.",
     "Keep schema depth <= 3 and total leaf fields <= 60.",
     "Favor structured sections that are practical for real-world clinical workflows, including region-specific regulations if requested.",
-    "For publishability, description must clearly explain the use case.",
+    "For publishability, description must explain the document purpose and usage context in 1-2 sentences.",
+    "Do not mention prompts, generation process, or fallback behavior in description.",
+    `Category must be one of: ${DOCUMENT_CATEGORIES.join(", ")}.`,
   ].join("\n")
 }
 

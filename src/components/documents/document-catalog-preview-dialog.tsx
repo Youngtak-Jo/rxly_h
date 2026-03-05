@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { getDocumentCategoryLabelKey } from "@/lib/documents/categories"
 import { buildGenericDocumentSections } from "@/lib/documents/preview"
 import type { DocumentCatalogItem, DocumentPreviewResponse } from "@/types/document"
 
@@ -156,27 +157,30 @@ function BuiltInHandoutPreview({
 export function DocumentCatalogPreviewDialog({
   item,
   open,
+  mode,
   actionKey,
   onOpenChange,
   onInstall,
-  onUninstall,
   onUpdate,
   onEdit,
   onPublish,
   onFork,
+  onUnpublish,
 }: {
   item: DocumentCatalogItem | null
   open: boolean
+  mode: "catalog" | "mine"
   actionKey: string | null
   onOpenChange: (open: boolean) => void
   onInstall: (item: DocumentCatalogItem) => void
-  onUninstall: (item: DocumentCatalogItem) => void
   onUpdate: (item: DocumentCatalogItem) => void
   onEdit: (item: DocumentCatalogItem) => void
   onPublish: (item: DocumentCatalogItem) => void
   onFork: (item: DocumentCatalogItem) => void
+  onUnpublish: (item: DocumentCatalogItem) => void
 }) {
   const t = useTranslations("DocumentStore")
+  const tBuilder = useTranslations("DocumentBuilder")
   const [loading, setLoading] = useState(false)
   const [preview, setPreview] = useState<DocumentPreviewResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -230,7 +234,13 @@ export function DocumentCatalogPreviewDialog({
     return buildGenericDocumentSections(preview.previewContent)
   }, [preview])
 
-  const isBusy = item ? actionKey === item.templateId : false
+  const categoryLabel = preview
+    ? tBuilder(getDocumentCategoryLabelKey(preview.category) as never)
+    : null
+
+  const isBusy = item
+    ? actionKey === item.templateId || actionKey === `tab:${item.templateId}`
+    : false
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -254,6 +264,7 @@ export function DocumentCatalogPreviewDialog({
                     })}
                   </Badge>
                 ) : null}
+                {categoryLabel ? <Badge variant="outline">{categoryLabel}</Badge> : null}
               </div>
               <DialogDescription className="text-left">
                 {preview?.description || item?.description || ""}
@@ -298,15 +309,7 @@ export function DocumentCatalogPreviewDialog({
                   {t("actions.install")}
                 </Button>
               ) : null}
-              {item.canUninstall ? (
-                <Button
-                  variant="outline"
-                  disabled={isBusy}
-                  onClick={() => onUninstall(item)}
-                >
-                  {t("actions.uninstall")}
-                </Button>
-              ) : null}
+
               {item.hasUpdate ? (
                 <Button
                   variant="outline"
@@ -316,12 +319,14 @@ export function DocumentCatalogPreviewDialog({
                   {t("actions.update")}
                 </Button>
               ) : null}
+
               {item.isEditable ? (
                 <Button variant="secondary" onClick={() => onEdit(item)}>
                   {t("actions.edit")}
                 </Button>
               ) : null}
-              {item.canPublish ? (
+
+              {mode === "mine" && item.canPublish ? (
                 <Button
                   variant="outline"
                   disabled={isBusy}
@@ -330,7 +335,18 @@ export function DocumentCatalogPreviewDialog({
                   {t("actions.publish")}
                 </Button>
               ) : null}
-              {item.canFork ? (
+
+              {mode === "mine" && item.isEditable && item.visibility === "PUBLIC" ? (
+                <Button
+                  variant="outline"
+                  disabled={isBusy}
+                  onClick={() => onUnpublish(item)}
+                >
+                  {t("actions.unpublish")}
+                </Button>
+              ) : null}
+
+              {mode === "catalog" && item.canFork ? (
                 <Button
                   variant="outline"
                   disabled={isBusy}

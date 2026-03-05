@@ -16,6 +16,7 @@ import {
   DOCUMENT_TEMPLATE_VERSION_STATUSES,
   DOCUMENT_TEMPLATE_VISIBILITIES,
 } from "@/types/document"
+import { DOCUMENT_CATEGORIES } from "@/lib/documents/categories"
 
 const MAX_SCHEMA_DEPTH = 3
 const MAX_SCHEMA_FIELDS = 60
@@ -129,7 +130,7 @@ export const documentBuilderDraftSchema = z.object({
   title: z.string().trim().min(1).max(120),
   description: z.string().max(1000).default(""),
   iconKey: z.string().trim().min(1).max(64).default("file-text"),
-  category: z.string().trim().min(1).max(64).default("general"),
+  category: z.enum(DOCUMENT_CATEGORIES).default("clinical-documentation"),
   visibility: z.enum(DOCUMENT_TEMPLATE_VISIBILITIES).default("PRIVATE"),
   schema: documentTemplateSchemaSchema,
   generationConfig: documentGenerationConfigSchema,

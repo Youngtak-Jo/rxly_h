@@ -1,5 +1,5 @@
 import { DocumentStorePage } from "@/components/documents/document-store-page"
 
 export default function DocumentsPage() {
-  return <DocumentStorePage />
+  return <DocumentStorePage viewMode="catalog" />
 }

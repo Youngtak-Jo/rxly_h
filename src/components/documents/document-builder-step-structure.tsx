@@ -40,6 +40,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { createEmptyDocumentContent } from "@/lib/documents/schema"
 import { cn } from "@/lib/utils"
 import {
+  getDocumentCategoryOptions,
+  normalizeDocumentCategory,
+} from "@/lib/documents/categories"
+import {
   DOCUMENT_CONTEXT_SOURCES,
   type DocumentBuilderDraft,
   type DocumentSchemaNode,
@@ -48,6 +52,7 @@ import {
 
 type PathSegment = string | number
 type MutableCursor = Record<string, unknown> | unknown[]
+const DOCUMENT_CATEGORY_OPTIONS = getDocumentCategoryOptions()
 
 function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
@@ -707,15 +712,26 @@ export function DocumentBuilderStepStructure({
               <div className="flex flex-col gap-5">
                 <div className="space-y-2">
                   <Label>{t("templateSettings.categoryLabel")}</Label>
-                  <Input
-                    value={draft.category}
-                    onChange={(event) =>
+                  <Select
+                    value={normalizeDocumentCategory(draft.category)}
+                    onValueChange={(value) =>
                       setDraft((currentDraft) => ({
                         ...currentDraft,
-                        category: event.target.value,
+                        category: value,
                       }))
                     }
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DOCUMENT_CATEGORY_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {t(option.labelKey as never)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">

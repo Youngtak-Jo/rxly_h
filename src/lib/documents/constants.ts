@@ -55,7 +55,7 @@ export const BUILT_IN_DOCUMENTS: BuiltInDocumentDefinition[] = [
     description: "Generate and edit a structured visit note for the current consultation.",
     renderer: "BUILT_IN_RECORD",
     iconKey: "file-text",
-    category: "documentation",
+    category: "clinical-documentation",
     schema: EMPTY_SCHEMA,
     generationConfig: EMPTY_GENERATION_CONFIG,
   },

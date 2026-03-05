@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { GenericDocumentPreview } from "@/components/documents/generic-document-preview"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { getDocumentCategoryLabelKey } from "@/lib/documents/categories"
 import type { GenericDocumentSection } from "@/types/document"
 
 function PreviewStatusBadge({
@@ -64,6 +65,7 @@ export function DocumentBuilderStepReview({
   onRegeneratePreview: () => void
 }) {
   const t = useTranslations("DocumentBuilder")
+  const categoryLabel = t(getDocumentCategoryLabelKey(category) as never)
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
@@ -101,11 +103,11 @@ export function DocumentBuilderStepReview({
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
                 {t("review.summary.category")}
               </dt>
-              <dd className="text-sm font-medium">{category || "-"}</dd>
+              <dd className="text-sm font-medium">{categoryLabel}</dd>
             </div>
             <div className="space-y-1 rounded-2xl border border-border/70 bg-background px-4 py-3 lg:col-span-2">
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t("review.summary.description")}
+                {t("review.summary.purpose")}
               </dt>
               <dd className="text-sm leading-6 text-foreground/90">
                 {description || t("review.summary.none")}

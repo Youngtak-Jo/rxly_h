@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import {
   BUILT_IN_DOCUMENTS,
   DEFAULT_DOCUMENT_TEMPLATE_IDS,
+  SYSTEM_WORKSPACE_TAB_IDS,
   buildDocumentTabId,
   createDefaultTabOrder,
   getTemplateIdFromTabId,
@@ -26,6 +27,7 @@ import {
   createEmptyDocumentContent,
   normalizeDocumentContentForStorage,
 } from "@/lib/documents/schema"
+import { normalizeDocumentCategory } from "@/lib/documents/categories"
 
 type TemplateWithVersions = Prisma.DocumentTemplateGetPayload<{
   include: {
@@ -56,6 +58,15 @@ const defaultWorkspaceEnsureByUser = new Map<
 
 function toRecord<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
+}
+
+function withNormalizedTemplateCategory<T extends { category: string }>(
+  template: T
+): T {
+  return {
+    ...template,
+    category: normalizeDocumentCategory(template.category),
+  }
 }
 
 function toVersionRecord(
@@ -224,7 +235,7 @@ export async function ensureBuiltInDocumentTemplates(): Promise<void> {
             title: builtIn.title,
             description: builtIn.description,
             iconKey: builtIn.iconKey,
-            category: builtIn.category,
+            category: normalizeDocumentCategory(builtIn.category),
           },
           create: {
             id: builtIn.id,
@@ -235,7 +246,7 @@ export async function ensureBuiltInDocumentTemplates(): Promise<void> {
             title: builtIn.title,
             description: builtIn.description,
             iconKey: builtIn.iconKey,
-            category: builtIn.category,
+            category: normalizeDocumentCategory(builtIn.category),
           },
         })
 
@@ -431,11 +442,11 @@ export function reconcileWorkspaceTabOrder(
   }
 
   const deduped = Array.from(new Set(filtered))
-  const missingDefaults = createDefaultTabOrder(installedDocuments).filter(
-    (tabId) => !deduped.includes(tabId)
+  const missingSystemTabs = SYSTEM_WORKSPACE_TAB_IDS.filter(
+    (tabId) => !deduped.includes(tabId as WorkspaceTabId)
   )
 
-  return [...deduped, ...missingDefaults]
+  return [...deduped, ...missingSystemTabs]
 }
 
 function mapInstalledDocument(
@@ -453,7 +464,7 @@ function mapInstalledDocument(
     visibility: record.template.visibility,
     sourceKind: record.template.sourceKind,
     iconKey: record.template.iconKey,
-    category: record.template.category,
+    category: normalizeDocumentCategory(record.template.category),
     installedVersionId: record.installedVersionId,
     installedVersionNumber: record.installedVersion.versionNumber,
     latestPublishedVersionId: latestPublishedVersion?.id ?? null,
@@ -593,7 +604,7 @@ export async function getDocumentCatalog(
       visibility: template.visibility,
       sourceKind: template.sourceKind,
       iconKey: template.iconKey,
-      category: template.category,
+      category: normalizeDocumentCategory(template.category),
       authorName: getAuthorName(template, userId),
       publishedVersionNumber: publishedVersion?.versionNumber ?? null,
       installedVersionNumber: installed?.installedVersionNumber ?? null,
@@ -776,6 +787,7 @@ export async function createDocumentTemplateDraft(input: {
   previewGeneratedAt?: string | null
   previewInputChecksum?: string | null
 }): Promise<TemplateWithVersions> {
+  const normalizedCategory = normalizeDocumentCategory(input.category)
   const slugBase = input.title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -801,7 +813,7 @@ export async function createDocumentTemplateDraft(input: {
       title: input.title,
       description: input.description,
       iconKey: input.iconKey,
-      category: input.category,
+      category: normalizedCategory,
       versions: {
         create: {
           versionNumber: 1,
@@ -849,7 +861,7 @@ export async function createDocumentTemplateDraft(input: {
     },
   })
 
-  return updated
+  return withNormalizedTemplateCategory(updated)
 }
 
 export async function getDocumentTemplateForUser(
@@ -883,6 +895,7 @@ export async function getDocumentTemplateForUser(
   if (!template) {
     throw new Error("Template not found")
   }
+  const normalizedTemplate = withNormalizedTemplateCategory(template)
 
   const installed = await prisma.userInstalledDocument.findUnique({
     where: {
@@ -903,12 +916,16 @@ export async function getDocumentTemplateForUser(
   })
 
   return {
-    template,
+    template: normalizedTemplate,
     installed: installed ? mapInstalledDocument(installed) : null,
-    latestDraftVersion: toVersionRecord(template.latestDraftVersion),
-    latestPublishedVersion: toVersionRecord(template.latestPublishedVersion),
-    latestDraftPreview: toVersionPreview(template.latestDraftVersion),
-    latestPublishedPreview: toVersionPreview(template.latestPublishedVersion),
+    latestDraftVersion: toVersionRecord(normalizedTemplate.latestDraftVersion),
+    latestPublishedVersion: toVersionRecord(
+      normalizedTemplate.latestPublishedVersion
+    ),
+    latestDraftPreview: toVersionPreview(normalizedTemplate.latestDraftVersion),
+    latestPublishedPreview: toVersionPreview(
+      normalizedTemplate.latestPublishedVersion
+    ),
   }
 }
 
@@ -1033,13 +1050,16 @@ export async function patchDocumentTemplateDraft(input: {
     })
   }
 
-  return prisma.documentTemplate.update({
+  const updated = await prisma.documentTemplate.update({
     where: { id: template.id },
     data: {
       title: input.title,
       description: input.description,
       iconKey: input.iconKey,
-      category: input.category,
+      category:
+        input.category === undefined
+          ? undefined
+          : normalizeDocumentCategory(input.category),
       visibility: input.visibility,
       latestDraftVersionId: draftVersionId,
     },
@@ -1048,6 +1068,8 @@ export async function patchDocumentTemplateDraft(input: {
       latestPublishedVersion: true,
     },
   })
+
+  return withNormalizedTemplateCategory(updated)
 }
 
 export async function publishDocumentTemplate(input: {
@@ -1102,7 +1124,7 @@ export async function publishDocumentTemplate(input: {
     },
   })
 
-  return prisma.documentTemplate.update({
+  const updated = await prisma.documentTemplate.update({
     where: { id: template.id },
     data: {
       visibility: "PUBLIC",
@@ -1113,6 +1135,8 @@ export async function publishDocumentTemplate(input: {
       latestPublishedVersion: true,
     },
   })
+
+  return withNormalizedTemplateCategory(updated)
 }
 
 export async function forkDocumentTemplate(input: {
@@ -1139,7 +1163,7 @@ export async function forkDocumentTemplate(input: {
     title: `${template.title} Copy`,
     description: template.description,
     iconKey: template.iconKey,
-    category: template.category,
+    category: normalizeDocumentCategory(template.category),
     visibility: "PRIVATE",
     renderer: "GENERIC_STRUCTURED",
     schema: toRecord(
@@ -1203,7 +1227,7 @@ export async function getDocumentPreviewForUser(input: {
       previewContent: asset?.previewContent ?? null,
       builtInPreviewKey: asset?.key,
       authorName: getAuthorName(template, input.userId),
-      category: template.category,
+      category: normalizeDocumentCategory(template.category),
     }
   }
 
@@ -1227,7 +1251,7 @@ export async function getDocumentPreviewForUser(input: {
       ? (toRecord(preferredVersion.previewContentJson) as Record<string, unknown>)
       : null,
     authorName: getAuthorName(template, input.userId),
-    category: template.category,
+    category: normalizeDocumentCategory(template.category),
   }
 }
 
@@ -1258,6 +1282,7 @@ export async function getSessionDocumentForUser(input: {
   if (!template) {
     throw new Error("Template not found")
   }
+  const normalizedTemplate = withNormalizedTemplateCategory(template)
 
   const sessionDocument = await prisma.sessionDocument.findFirst({
     where: {
@@ -1270,7 +1295,7 @@ export async function getSessionDocumentForUser(input: {
     sessionDocument: sessionDocument
       ? mapSessionDocumentRecord(sessionDocument)
       : null,
-    template,
+    template: normalizedTemplate,
     installedDocument:
       workspace.installedDocuments.find(
         (document) => document.templateId === input.templateId

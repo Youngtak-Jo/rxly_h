@@ -8,6 +8,7 @@ import {
   documentTemplateCreateSchema,
 } from "@/lib/documents/schema"
 import { buildFallbackRevisedDocumentDraft } from "@/lib/documents/fallback-draft"
+import { DOCUMENT_CATEGORIES } from "@/lib/documents/categories"
 import { getModel, isSupportedModel } from "@/lib/ai-provider"
 import { DEFAULT_MODEL } from "@/lib/xai"
 import { buildGenerationOptions } from "@/lib/ai-request-options"
@@ -18,6 +19,9 @@ const systemPrompt = [
   "You revise structured medical document templates.",
   "Preserve valid existing structure when possible and only change what the user asks.",
   "Return JSON only.",
+  "Keep description focused on document purpose and workflow context.",
+  "Do not mention prompts, generation process, or fallback behavior in description.",
+  `Category must be one of: ${DOCUMENT_CATEGORIES.join(", ")}.`,
 ].join("\n")
 
 export async function POST(

@@ -695,7 +695,19 @@
   },
   "DocumentStore": {
     "title": "Documents",
-    "subtitle": "Install built-in and shared document templates, or create your own.",
+    "subtitle": "Document catalog",
+    "titles": {
+      "catalog": "Document Catalog",
+      "mine": "My Documents"
+    },
+    "subtitles": {
+      "catalog": "Manage installed documents and install public templates from the catalog.",
+      "mine": "Manage visibility and publishing for documents you created."
+    },
+    "views": {
+      "catalog": "Catalog",
+      "mine": "My Documents"
+    },
     "newDocument": "New Document",
     "searchPlaceholder": "Search documents",
     "filters": {
@@ -703,7 +715,9 @@
       "installed": "Installed",
       "builtIn": "Built-in",
       "mine": "My drafts",
-      "public": "Public"
+      "public": "Public",
+      "category": "Category",
+      "categoryAll": "All categories"
     },
     "actions": {
       "refresh": "Refresh",
@@ -713,7 +727,18 @@
       "update": "Update",
       "edit": "Edit",
       "publish": "Publish",
-      "fork": "Fork"
+      "fork": "Fork",
+      "unpublish": "Unpublish",
+      "showInWorkspace": "Visible in workspace",
+      "hideFromWorkspace": "Hidden from workspace"
+    },
+    "sections": {
+      "installedTitle": "Installed",
+      "installedDescription": "All installed documents are listed here. Use the switch to control workspace visibility.",
+      "catalogTitle": "Available to Install",
+      "catalogDescription": "Install public and built-in documents that are not installed yet.",
+      "mineTitle": "Manage My Documents",
+      "mineDescription": "Review your documents (public/private) and publish or unpublish them."
     },
     "preview": {
       "dialogTitle": "Document preview",
@@ -724,8 +749,12 @@
     },
     "status": {
       "loadingCatalog": "Loading catalog",
+      "loadingInstalled": "Loading installed documents",
       "updatingCatalog": "Updating catalog",
-      "empty": "No documents matched this filter."
+      "empty": "No documents matched this filter.",
+      "installedEmpty": "No installed documents yet.",
+      "catalogEmpty": "No installable documents found.",
+      "mineEmpty": "You have not created any documents yet."
     },
     "badges": {
       "builtIn": "Built-in",
@@ -741,11 +770,22 @@
       "removed": "{title} removed",
       "updated": "{title} updated",
       "published": "{title} published",
+      "unpublished": "{title} is now private",
       "copied": "{title} copied to your drafts",
       "actionFailed": "Document action failed",
       "loadFailed": "Failed to load document catalog",
+      "workspaceLoadFailed": "Failed to load document workspace",
       "publishFailed": "Failed to publish document",
-      "forkFailed": "Failed to fork document"
+      "unpublishFailed": "Failed to unpublish document",
+      "forkFailed": "Failed to fork document",
+      "tabEnabled": "{title} is now visible in workspace",
+      "tabDisabled": "{title} is now hidden from workspace"
+    },
+    "confirm": {
+      "unpublishTitle": "Unpublish this document?",
+      "unpublishDescription": "{title} will be removed from the public catalog and switched to private.",
+      "cancel": "Cancel",
+      "unpublishAction": "Unpublish"
     }
   },
   "DocumentBuilder": {
@@ -884,6 +924,20 @@
       "editTab": "Edit",
       "previewTab": "Preview"
     },
+    "categories": {
+      "claims-review": "Claims review",
+      "billing-compliance": "Billing compliance",
+      "insurer-communication": "Insurer communication",
+      "utilization-review": "Utilization review",
+      "clinical-documentation": "Clinical documentation",
+      "referral-communication": "Referral communication",
+      "consent-and-legal": "Consent and legal",
+      "discharge-and-followup": "Discharge and follow-up",
+      "care-plan": "Care plan",
+      "patient-education": "Patient education",
+      "administrative-form": "Administrative form",
+      "other": "Other"
+    },
     "contextSources": {
       "sessionMeta": "Session metadata",
       "transcript": "Transcript",
@@ -915,6 +969,7 @@
       "summary": {
         "title": "Title",
         "description": "Description",
+        "purpose": "Document purpose",
         "category": "Category",
         "visibility": "Visibility",
         "schemaNodes": "Schema fields",
