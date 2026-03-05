@@ -5,6 +5,8 @@ import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { documentCatalogQuerySchema } from "@/lib/documents/schema"
 import { getDocumentCatalog } from "@/lib/documents/server"
 import { logAudit } from "@/lib/audit"
+import { normalizeUiLocale } from "@/i18n/config"
+import { resolveServerUiLocale } from "@/i18n/server"
 
 export async function GET(req: Request) {
   try {
@@ -15,12 +17,16 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const parsed = documentCatalogQuerySchema.safeParse({
       q: url.searchParams.get("q") ?? undefined,
+      locale: url.searchParams.get("locale") ?? undefined,
     })
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid query" }, { status: 400 })
     }
 
-    const items = await getDocumentCatalog(user.id, parsed.data.q)
+    const locale =
+      normalizeUiLocale(parsed.data.locale) ?? (await resolveServerUiLocale())
+
+    const items = await getDocumentCatalog(user.id, parsed.data.q, locale)
     logAudit({
       userId: user.id,
       action: "READ",

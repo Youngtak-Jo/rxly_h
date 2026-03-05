@@ -114,6 +114,8 @@ export interface DocumentTemplateVersionPreview {
 export interface DocumentCatalogPreviewSummary {
   hasPreview: boolean
   caseSummary: string | null
+  cardPreviewLines: string[]
+  cardPreviewKind: "CONTENT" | "SUMMARY" | "EMPTY"
   locale: string | null
   generatedAt: string | null
 }

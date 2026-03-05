@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   IconFileDescription,
   IconHelp,
+  IconPlus,
   IconSettings,
   IconShield,
   type Icon,
@@ -34,12 +35,15 @@ import { Skeleton } from "@/components/ui/skeleton"
 import Image from "next/image"
 import Link from "next/link"
 import logoSymbol from "@/app/icon1.png"
+import { useCreateSession } from "@/hooks/use-create-session"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const t = useTranslations("AppSidebar")
+  const tNavSessions = useTranslations("NavSessions")
   const pathname = usePathname()
   const { user, loading } = useUser()
   const openSettings = useSettingsDialogStore((s) => s.openSettings)
+  const { createSession } = useCreateSession()
 
   const userData = {
     name:
@@ -115,6 +119,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup className="pb-0">
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => void createSession()}
+                  tooltip={tNavSessions("newSessionTitle")}
+                >
+                  <IconPlus />
+                  <span>{tNavSessions("newSessionTitle")}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild

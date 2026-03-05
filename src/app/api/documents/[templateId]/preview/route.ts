@@ -4,6 +4,8 @@ import { logger } from "@/lib/logger"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { getDocumentPreviewForUser } from "@/lib/documents/server"
 import { logAudit } from "@/lib/audit"
+import { normalizeUiLocale } from "@/i18n/config"
+import { resolveServerUiLocale } from "@/i18n/server"
 
 export async function GET(
   req: Request,
@@ -14,10 +16,15 @@ export async function GET(
     const user = await requireAuth()
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
+    const url = new URL(req.url)
+    const locale =
+      normalizeUiLocale(url.searchParams.get("locale")) ??
+      (await resolveServerUiLocale())
 
     const preview = await getDocumentPreviewForUser({
       userId: user.id,
       templateId,
+      locale,
     })
 
     logAudit({

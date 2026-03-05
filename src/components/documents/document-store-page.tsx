@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
+  IconFileText,
+  IconFolder,
   IconLoader2,
   IconPlus,
-  IconRefresh,
   IconRosetteDiscountCheckFilled,
 } from "@tabler/icons-react"
 import { useRouter } from "next/navigation"
@@ -26,13 +27,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -101,10 +95,185 @@ function buildFallbackCatalogItem(
     preview: {
       hasPreview: false,
       caseSummary: null,
+      cardPreviewLines: [],
+      cardPreviewKind: "EMPTY",
       locale: null,
       generatedAt: null,
     },
   }
+}
+
+function buildSummaryFallbackLines(summary: string): string[] {
+  const normalized = summary.replace(/\s+/g, " ").trim()
+  if (!normalized) return []
+
+  return normalized
+    .split(/(?<=[.!?])\s+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 2)
+}
+
+function getCardPreviewLines(item: DocumentCatalogItem, fallback: string): string[] {
+  if (item.preview.cardPreviewLines.length > 0) {
+    return item.preview.cardPreviewLines
+  }
+
+  if (item.preview.caseSummary) {
+    const summaryLines = buildSummaryFallbackLines(item.preview.caseSummary)
+    if (summaryLines.length > 0) {
+      return summaryLines
+    }
+  }
+
+  return [fallback]
+}
+
+function DocumentPreviewCard({
+  item,
+  builtInLabel,
+  draftLabel,
+  updateLabel,
+  publishedVersionLabel,
+  categoryLabel,
+  previewFallbackText,
+  summaryPreviewLabel,
+  cardHeaderLabel,
+  workspaceVisible,
+  workspaceToggleBusy,
+  workspaceShownLabel,
+  workspaceHiddenLabel,
+  onWorkspaceVisibilityChange,
+  onOpen,
+}: {
+  item: DocumentCatalogItem
+  builtInLabel: string
+  draftLabel: string
+  updateLabel: string
+  publishedVersionLabel: string | null
+  categoryLabel: string
+  previewFallbackText: string
+  summaryPreviewLabel: string
+  cardHeaderLabel: string
+  workspaceVisible?: boolean
+  workspaceToggleBusy?: boolean
+  workspaceShownLabel?: string
+  workspaceHiddenLabel?: string
+  onWorkspaceVisibilityChange?: (next: boolean) => void
+  onOpen: (item: DocumentCatalogItem) => void
+}) {
+  const previewLines = getCardPreviewLines(item, previewFallbackText)
+  const previewKind = item.preview.cardPreviewKind
+  const description = item.description.trim()
+
+  const renderPreviewLine = (line: string, index: number) => {
+    const separatorIndex = line.indexOf(": ")
+    if (separatorIndex <= 0) {
+      return (
+        <p
+          key={`${item.templateId}-preview-${index}`}
+          className="line-clamp-1 border-b border-border/30 pb-1 text-[10px] leading-4 text-foreground/80 last:border-b-0"
+        >
+          {line}
+        </p>
+      )
+    }
+
+    const label = line.slice(0, separatorIndex)
+    const value = line.slice(separatorIndex + 2)
+    return (
+      <p
+        key={`${item.templateId}-preview-${index}`}
+        className="line-clamp-1 border-b border-border/30 pb-1 text-[10px] leading-4 text-foreground/80 last:border-b-0"
+      >
+        <span className="font-semibold text-foreground/90">{label}:</span>{" "}
+        {value}
+      </p>
+    )
+  }
+
+  return (
+    <div className="group w-full">
+      <button
+        type="button"
+        className="w-full cursor-pointer rounded-2xl text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={() => onOpen(item)}
+      >
+        <div className="relative h-[14.5rem] overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-b from-muted/40 to-muted/20 transition group-hover:border-border group-hover:from-muted/55 group-hover:to-muted/35">
+        <div className="absolute inset-x-6 top-6 h-px bg-border/35" />
+        <div className="absolute inset-x-0 bottom-0 flex justify-center px-5">
+          <div className="w-full max-w-[66%] rounded-t-xl rounded-b-none border border-b-0 border-border/70 bg-card shadow-[0_-8px_20px_rgba(0,0,0,0.04)]">
+            <div className="border-b border-border/50 px-3 py-2">
+              <p className="line-clamp-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                {cardHeaderLabel}
+              </p>
+            </div>
+
+            <div className="space-y-1 px-3 py-2.5">
+              {previewKind === "SUMMARY" ? (
+                <p className="line-clamp-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/90">
+                  {summaryPreviewLabel}
+                </p>
+              ) : null}
+              {previewLines.map((line, index) => renderPreviewLine(line, index))}
+            </div>
+          </div>
+        </div>
+        </div>
+
+        <div className="space-y-1.5 px-1 pt-3">
+          <div className="flex items-center gap-2">
+            <h3 className="truncate text-base font-semibold">{item.title}</h3>
+            {item.isBuiltIn ? (
+              <IconRosetteDiscountCheckFilled
+                className="size-4 shrink-0 text-sky-500"
+                title={builtInLabel}
+                aria-label={builtInLabel}
+              />
+            ) : null}
+            {item.visibility !== "PUBLIC" ? (
+              <Badge variant="outline" className="ml-auto">
+                {draftLabel}
+              </Badge>
+            ) : null}
+          </div>
+          <p className="h-10 line-clamp-2 text-sm leading-5 text-muted-foreground">
+            {description || "\u00A0"}
+          </p>
+
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span>{item.authorName}</span>
+            <span>&middot;</span>
+            <span>{categoryLabel}</span>
+            {item.publishedVersionNumber ? (
+              <>
+                <span>&middot;</span>
+                <span>{publishedVersionLabel}</span>
+              </>
+            ) : null}
+            {item.hasUpdate ? (
+              <Badge className="ml-auto" variant="secondary">
+                {updateLabel}
+              </Badge>
+            ) : null}
+          </div>
+        </div>
+      </button>
+
+      {typeof workspaceVisible === "boolean" && onWorkspaceVisibilityChange ? (
+        <div className="mt-2 flex items-center justify-between rounded-xl border border-border/70 bg-muted/40 px-3 py-2">
+          <span className="text-xs text-muted-foreground">
+            {workspaceVisible ? workspaceShownLabel : workspaceHiddenLabel}
+          </span>
+          <Switch
+            checked={workspaceVisible}
+            disabled={workspaceToggleBusy}
+            onCheckedChange={onWorkspaceVisibilityChange}
+          />
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 export function DocumentStorePage({
@@ -157,7 +326,7 @@ export function DocumentStorePage({
   const loadCatalog = useCallback(
     async (options?: { force?: boolean }) => {
       const force = options?.force ?? false
-      const cacheKey = CATALOG_CACHE_KEY
+      const cacheKey = `${CATALOG_CACHE_KEY}:${locale}`
 
       if (!force) {
         const cachedItems = catalogCache.get(cacheKey)
@@ -173,7 +342,9 @@ export function DocumentStorePage({
 
         if (!request || force) {
           request = (async () => {
-            const response = await fetch("/api/documents/catalog")
+            const response = await fetch(
+              `/api/documents/catalog?locale=${encodeURIComponent(locale)}`
+            )
             if (!response.ok) {
               throw new Error(
                 await readErrorMessage(response, "Failed to load document catalog")
@@ -205,7 +376,7 @@ export function DocumentStorePage({
         setLoading(false)
       }
     },
-    [t]
+    [locale, t]
   )
 
   useEffect(() => {
@@ -301,6 +472,12 @@ export function DocumentStorePage({
   )
 
   const visibleTabs = useMemo(() => new Set(tabOrder), [tabOrder])
+  const previewFallbackText = t("preview.cardPlaceholder")
+  const builtInLabel = t("badges.builtIn")
+  const draftLabel = t("badges.draft")
+  const updateLabel = t("badges.updateAvailable")
+  const summaryPreviewLabel = t("preview.cardSummaryFallback")
+  const cardHeaderLabel = t("preview.cardHeader")
 
   const runAction = async (key: string, action: () => Promise<void>) => {
     try {
@@ -382,18 +559,6 @@ export function DocumentStorePage({
     })
 
   const visibleItemList = isMineView ? mineItems : installableCatalogItems
-
-  const handleRefresh = () => {
-    void loadCatalog({ force: true })
-    void loadWorkspaceSnapshot({ force: true }).catch((error) => {
-      const message =
-        error instanceof Error
-          ? error.message
-          : t("toasts.workspaceLoadFailed")
-      toast.error(message)
-    })
-  }
-
   const confirmUnpublish = () => {
     if (!unpublishTarget) return
     const target = unpublishTarget
@@ -410,251 +575,190 @@ export function DocumentStorePage({
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <DocumentsHeader
-          title={isMineView ? t("titles.mine") : t("titles.catalog")}
-          subtitle={isMineView ? t("subtitles.mine") : t("subtitles.catalog")}
-          actions={
-            <div className="flex items-center gap-2">
-              <Tabs value={viewMode} onValueChange={handleViewChange} className="gap-0">
-                <TabsList>
-                  <TabsTrigger value="catalog">{t("views.catalog")}</TabsTrigger>
-                  <TabsTrigger value="mine">{t("views.mine")}</TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <Button size="sm" className="gap-1.5" onClick={() => openCreate()}>
-                <IconPlus className="size-4" />
-                {t("newDocument")}
-              </Button>
-            </div>
-          }
-        />
+        <div className="@container/documents mx-auto flex w-full max-w-7xl min-h-0 flex-1 flex-col">
+          <DocumentsHeader
+            title={isMineView ? t("titles.mine") : t("titles.catalog")}
+            subtitle={isMineView ? t("subtitles.mine") : t("subtitles.catalog")}
+            actions={
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button size="sm" className="gap-1.5" onClick={() => openCreate()}>
+                  <IconPlus className="size-4" />
+                  {t("newDocument")}
+                </Button>
+              </div>
+            }
+          />
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="border-b px-4 py-4 lg:px-6">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("searchPlaceholder")}
-                className="max-w-xl"
-              />
-              <Select
-                value={categoryFilter}
-                onValueChange={(value) => setCategoryFilter(value as CategoryFilter)}
-              >
-                <SelectTrigger className="w-full lg:w-[260px]">
-                  <SelectValue placeholder={t("filters.category")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("filters.categoryAll")}</SelectItem>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="border-b px-4 py-4 lg:px-6">
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                  <Input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder={t("searchPlaceholder")}
+                    className="w-full min-w-0 md:flex-1"
+                  />
+                  <Tabs
+                    value={viewMode}
+                    onValueChange={handleViewChange}
+                    className="shrink-0 self-end md:self-auto"
+                  >
+                    <TabsList>
+                      <TabsTrigger value="catalog" className="gap-1.5">
+                        <IconFolder className="size-3.5" />
+                        {t("views.catalog")}
+                      </TabsTrigger>
+                      <TabsTrigger value="mine" className="gap-1.5">
+                        <IconFileText className="size-3.5" />
+                        {t("views.mine")}
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+                <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={categoryFilter === "all" ? "secondary" : "outline"}
+                    className="h-7 rounded-full px-2.5 text-[11px]"
+                    onClick={() => setCategoryFilter("all")}
+                  >
+                    {t("filters.categoryAll")}
+                  </Button>
                   {DOCUMENT_CATEGORY_OPTIONS.map((categoryOption) => (
-                    <SelectItem key={categoryOption.value} value={categoryOption.value}>
+                    <Button
+                      key={categoryOption.value}
+                      type="button"
+                      size="sm"
+                      variant={
+                        categoryFilter === categoryOption.value
+                          ? "secondary"
+                          : "outline"
+                      }
+                      className="h-7 rounded-full px-2.5 text-[11px]"
+                      onClick={() => setCategoryFilter(categoryOption.value)}
+                    >
                       {tBuilder(categoryOption.labelKey as never)}
-                    </SelectItem>
+                    </Button>
                   ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="gap-1.5"
-                onClick={handleRefresh}
-              >
-                <IconRefresh className="size-3.5" />
-                {t("actions.refresh")}
-              </Button>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 lg:px-6">
-            <div className="space-y-6">
-              {!isMineView ? (
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 className="text-sm font-semibold">{t("sections.installedTitle")}</h2>
-                    <Badge variant="secondary">{installedItems.length}</Badge>
-                  </div>
-
-                  {!workspaceLoaded && workspaceLoading ? (
-                    <div className="flex min-h-24 items-center justify-center gap-2 rounded-2xl border border-dashed border-border/70 px-4 py-10 text-sm text-muted-foreground">
-                      <IconLoader2 className="size-4 animate-spin" />
-                      {t("status.loadingInstalled")}
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 lg:px-6">
+              <div className="space-y-6">
+                {!isMineView ? (
+                  <section className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="text-sm font-semibold">{t("sections.installedTitle")}</h2>
+                      <Badge variant="secondary">{installedItems.length}</Badge>
                     </div>
-                  ) : installedItems.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center text-sm text-muted-foreground">
-                      {t("status.installedEmpty")}
+
+                    {!workspaceLoaded && workspaceLoading ? (
+                      <div className="flex min-h-24 items-center justify-center gap-2 rounded-2xl border border-dashed border-border/70 px-4 py-10 text-sm text-muted-foreground">
+                        <IconLoader2 className="size-4 animate-spin" />
+                        {t("status.loadingInstalled")}
+                      </div>
+                    ) : installedItems.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center text-sm text-muted-foreground">
+                        {t("status.installedEmpty")}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3 @xl/documents:grid-cols-2 @4xl/documents:grid-cols-3">
+                        {installedItems.map((item) => {
+                          const categoryLabel = tBuilder(
+                            getDocumentCategoryLabelKey(item.category) as never
+                          )
+
+                          return (
+                            <DocumentPreviewCard
+                              key={`installed:${item.templateId}`}
+                              item={item}
+                              categoryLabel={categoryLabel}
+                              previewFallbackText={previewFallbackText}
+                              builtInLabel={builtInLabel}
+                              draftLabel={draftLabel}
+                              updateLabel={updateLabel}
+                              publishedVersionLabel={
+                                item.publishedVersionNumber
+                                  ? t("badges.publishedVersion", {
+                                      version: item.publishedVersionNumber,
+                                    })
+                                  : null
+                              }
+                              onOpen={setPreviewItem}
+                              summaryPreviewLabel={summaryPreviewLabel}
+                              cardHeaderLabel={cardHeaderLabel}
+                              workspaceVisible={visibleTabs.has(
+                                buildDocumentTabId(item.templateId)
+                              )}
+                              workspaceToggleBusy={
+                                actionKey === item.templateId ||
+                                actionKey === `tab:${item.templateId}`
+                              }
+                              workspaceShownLabel={t("actions.showInWorkspace")}
+                              workspaceHiddenLabel={t("actions.hideFromWorkspace")}
+                              onWorkspaceVisibilityChange={(enabled) =>
+                                handleSetTabEnabled(item, enabled)
+                              }
+                            />
+                          )
+                        })}
+                      </div>
+                    )}
+                  </section>
+                ) : null}
+
+                <section className="space-y-3">
+                  <h2 className="text-sm font-semibold">
+                    {isMineView
+                      ? t("sections.mineTitle")
+                      : t("sections.catalogTitle")}
+                  </h2>
+
+                  {!hasLoadedCatalog && loading ? (
+                    <div className="flex min-h-40 items-center justify-center gap-2 rounded-2xl border border-dashed border-border/70 px-6 py-16 text-sm text-muted-foreground">
+                      <IconLoader2 className="size-4 animate-spin" />
+                      {t("status.loadingCatalog")}
+                    </div>
+                  ) : visibleItemList.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-border/70 px-6 py-16 text-center text-sm text-muted-foreground">
+                      {isMineView ? t("status.mineEmpty") : t("status.catalogEmpty")}
                     </div>
                   ) : (
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                      {installedItems.map((item) => {
-                        const tabVisible = visibleTabs.has(
-                          buildDocumentTabId(item.templateId)
-                        )
-                        const isBusy =
-                          actionKey === item.templateId ||
-                          actionKey === `tab:${item.templateId}`
-
-                        return (
-                          <div
-                            key={`installed:${item.templateId}`}
-                            role="button"
-                            tabIndex={0}
-                            className="cursor-pointer rounded-2xl border border-border/70 bg-card p-4 text-left transition hover:border-border hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            onClick={() => setPreviewItem(item)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault()
-                                setPreviewItem(item)
-                              }
-                            }}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0 space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <h3 className="truncate text-sm font-semibold">{item.title}</h3>
-                                  {item.isBuiltIn ? (
-                                    <IconRosetteDiscountCheckFilled
-                                      className="size-4 shrink-0 text-sky-500"
-                                      title={t("badges.builtIn")}
-                                      aria-label={t("badges.builtIn")}
-                                    />
-                                  ) : null}
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  {item.visibility !== "PUBLIC" ? (
-                                    <Badge variant="outline">{t("badges.draft")}</Badge>
-                                  ) : null}
-                                  {item.hasUpdate ? <Badge>{t("badges.updateAvailable")}</Badge> : null}
-                                </div>
-                                <p className="line-clamp-2 text-xs text-muted-foreground">
-                                  {item.description}
-                                </p>
-                              </div>
-                              <div
-                                className="flex shrink-0 items-center gap-2"
-                                onClick={(event) => event.stopPropagation()}
-                              >
-                                <Switch
-                                  checked={tabVisible}
-                                  disabled={isBusy}
-                                  onCheckedChange={(checked) =>
-                                    handleSetTabEnabled(item, checked)
-                                  }
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </section>
-              ) : null}
-
-              <section className="space-y-3">
-                <h2 className="text-sm font-semibold">
-                  {isMineView
-                    ? t("sections.mineTitle")
-                    : t("sections.catalogTitle")}
-                </h2>
-
-                {!hasLoadedCatalog && loading ? (
-                  <div className="flex min-h-40 items-center justify-center gap-2 rounded-2xl border border-dashed border-border/70 px-6 py-16 text-sm text-muted-foreground">
-                    <IconLoader2 className="size-4 animate-spin" />
-                    {t("status.loadingCatalog")}
-                  </div>
-                ) : visibleItemList.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-border/70 px-6 py-16 text-center text-sm text-muted-foreground">
-                    {isMineView ? t("status.mineEmpty") : t("status.catalogEmpty")}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {loading ? (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <IconLoader2 className="size-4 animate-spin" />
-                        {t("status.updatingCatalog")}
-                      </div>
-                    ) : null}
-
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-3 @xl/documents:grid-cols-2 @4xl/documents:grid-cols-3">
                       {visibleItemList.map((item) => {
-                        const isBusy = actionKey === item.templateId
                         const categoryLabel = tBuilder(
                           getDocumentCategoryLabelKey(item.category) as never
                         )
 
                         return (
-                          <div
+                          <DocumentPreviewCard
                             key={`list:${item.templateId}`}
-                            role="button"
-                            tabIndex={0}
-                            className="cursor-pointer rounded-2xl border border-border/70 bg-card p-4 text-left transition hover:border-border hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            onClick={() => setPreviewItem(item)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault()
-                                setPreviewItem(item)
-                              }
-                            }}
-                          >
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <h3 className="truncate text-sm font-semibold">{item.title}</h3>
-                                {item.isBuiltIn ? (
-                                  <IconRosetteDiscountCheckFilled
-                                    className="size-4 shrink-0 text-sky-500"
-                                    title={t("badges.builtIn")}
-                                    aria-label={t("badges.builtIn")}
-                                  />
-                                ) : null}
-                              </div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                {item.visibility !== "PUBLIC" ? (
-                                  <Badge variant="outline">{t("badges.draft")}</Badge>
-                                ) : null}
-                              </div>
-
-                              <p className="line-clamp-2 text-xs text-muted-foreground">
-                                {item.description}
-                              </p>
-
-                              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                <span>{item.authorName}</span>
-                                <span>&middot;</span>
-                                <span>{categoryLabel}</span>
-                                {item.publishedVersionNumber ? (
-                                  <>
-                                    <span>&middot;</span>
-                                    <span>
-                                      {t("badges.publishedVersion", {
-                                        version: item.publishedVersionNumber,
-                                      })}
-                                    </span>
-                                  </>
-                                ) : null}
-                              </div>
-                            </div>
-
-                            {!isMineView && item.canInstall ? (
-                              <div className="mt-3 flex justify-end" onClick={(event) => event.stopPropagation()}>
-                                <Button
-                                  size="sm"
-                                  disabled={isBusy}
-                                  onClick={() => handleInstall(item)}
-                                >
-                                  {isBusy ? <IconLoader2 className="size-3.5 animate-spin" /> : null}
-                                  {t("actions.install")}
-                                </Button>
-                              </div>
-                            ) : null}
-                          </div>
+                            item={item}
+                            categoryLabel={categoryLabel}
+                            previewFallbackText={previewFallbackText}
+                            builtInLabel={builtInLabel}
+                            draftLabel={draftLabel}
+                            updateLabel={updateLabel}
+                            publishedVersionLabel={
+                              item.publishedVersionNumber
+                                ? t("badges.publishedVersion", {
+                                    version: item.publishedVersionNumber,
+                                  })
+                                : null
+                            }
+                            onOpen={setPreviewItem}
+                            summaryPreviewLabel={summaryPreviewLabel}
+                            cardHeaderLabel={cardHeaderLabel}
+                          />
                         )
                       })}
                     </div>
-                  </div>
-                )}
-              </section>
+                  )}
+                </section>
+              </div>
             </div>
           </div>
         </div>

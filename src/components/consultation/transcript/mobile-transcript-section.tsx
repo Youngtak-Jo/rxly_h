@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type CSSProperties } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { useTranscriptStore } from "@/stores/transcript-store"
@@ -17,6 +17,7 @@ export function MobileTranscriptSection() {
   const tViewer = useTranslations("TranscriptViewer")
   const tBubble = useTranslations("TranscriptBubble")
   const [expanded, setExpanded] = useState(false)
+  const panelStyle = { "--background": "#ffffff" } as CSSProperties
   const entries = useTranscriptStore((s) => s.entries)
   const interimText = useTranscriptStore((s) => s.interimText)
   const { isRecording } = useRecordingStore()
@@ -37,7 +38,7 @@ export function MobileTranscriptSection() {
   }
 
   return (
-    <div className="overflow-hidden border-b bg-background">
+    <div className="overflow-hidden border-b bg-background" style={panelStyle}>
       <RecordingControls />
 
       {/* Mode selector: show before consultation starts on mobile */}

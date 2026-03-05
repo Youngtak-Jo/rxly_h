@@ -9,7 +9,10 @@ import {
   getTemplateIdFromTabId,
   isSystemWorkspaceTabId,
 } from "@/lib/documents/constants"
-import { getBuiltInDocumentPreviewAsset } from "@/lib/documents/built-in-preview"
+import {
+  getBuiltInDocumentCardPreviewLines,
+  getBuiltInDocumentPreviewAsset,
+} from "@/lib/documents/built-in-preview"
 import type {
   DocumentCatalogItem,
   DocumentCatalogPreviewSummary,
@@ -28,6 +31,8 @@ import {
   normalizeDocumentContentForStorage,
 } from "@/lib/documents/schema"
 import { normalizeDocumentCategory } from "@/lib/documents/categories"
+import { buildGenericDocumentSections } from "@/lib/documents/preview"
+import type { UiLocale } from "@/i18n/config"
 
 type TemplateWithVersions = Prisma.DocumentTemplateGetPayload<{
   include: {
@@ -146,6 +151,145 @@ function hasStoredPreview(
   return !!version?.previewContentJson || !!version?.previewCaseSummary
 }
 
+const CARD_PREVIEW_MAX_LINES = 6
+const CARD_PREVIEW_LINE_CHAR_LIMIT = 92
+const CARD_PREVIEW_SUMMARY_MAX_LINES = 2
+
+function truncateCardPreviewLine(value: string): string {
+  const compact = value.replace(/\s+/g, " ").trim()
+  if (!compact) return ""
+  if (compact.length <= CARD_PREVIEW_LINE_CHAR_LIMIT) {
+    return compact
+  }
+  return `${compact.slice(0, CARD_PREVIEW_LINE_CHAR_LIMIT - 1)}…`
+}
+
+function ensureRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null
+  }
+
+  return value as Record<string, unknown>
+}
+
+function appendCardPreviewLine(
+  lines: string[],
+  label: string | null,
+  value: string
+): void {
+  if (lines.length >= CARD_PREVIEW_MAX_LINES) return
+  const normalizedValue = truncateCardPreviewLine(value)
+  if (!normalizedValue) return
+
+  const normalizedLabel = label?.trim()
+  if (normalizedLabel) {
+    lines.push(truncateCardPreviewLine(`${normalizedLabel}: ${normalizedValue}`))
+    return
+  }
+
+  lines.push(normalizedValue)
+}
+
+function collectCardPreviewLines(
+  sections: ReturnType<typeof buildGenericDocumentSections>,
+  lines: string[],
+  parentLabel: string | null = null
+): void {
+  for (const section of sections) {
+    if (lines.length >= CARD_PREVIEW_MAX_LINES) return
+
+    if (section.kind === "field") {
+      if (Array.isArray(section.value)) {
+        const compact = section.value
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .slice(0, 2)
+          .join(", ")
+        appendCardPreviewLine(
+          lines,
+          parentLabel ? `${parentLabel} / ${section.label}` : section.label,
+          compact
+        )
+      } else {
+        appendCardPreviewLine(
+          lines,
+          parentLabel ? `${parentLabel} / ${section.label}` : section.label,
+          section.value
+        )
+      }
+      continue
+    }
+
+    if (section.kind === "group") {
+      collectCardPreviewLines(
+        section.children,
+        lines,
+        parentLabel ? `${parentLabel} / ${section.label}` : section.label
+      )
+      continue
+    }
+
+    if (section.kind === "repeatableGroup") {
+      const firstItem = section.items[0] ?? []
+      collectCardPreviewLines(
+        firstItem,
+        lines,
+        parentLabel ? `${parentLabel} / ${section.label}` : section.label
+      )
+    }
+  }
+}
+
+function buildCardPreviewLinesFromContent(
+  previewContent: Record<string, unknown> | null,
+  schemaNodes?: DocumentTemplateSchema["nodes"]
+): string[] {
+  if (!previewContent) return []
+
+  const sections = buildGenericDocumentSections(previewContent, schemaNodes)
+  if (sections.length === 0) return []
+
+  const lines: string[] = []
+  collectCardPreviewLines(sections, lines)
+  return lines.slice(0, CARD_PREVIEW_MAX_LINES)
+}
+
+function buildCardPreviewLinesFromSummary(summary: string | null): string[] {
+  if (!summary) return []
+  const normalized = summary.replace(/\s+/g, " ").trim()
+  if (!normalized) return []
+
+  const sentenceChunks = normalized
+    .split(/(?<=[.!?])\s+/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+
+  const sourceChunks = sentenceChunks.length > 0 ? sentenceChunks : [normalized]
+  return sourceChunks
+    .slice(0, CARD_PREVIEW_SUMMARY_MAX_LINES)
+    .map((chunk) => truncateCardPreviewLine(chunk))
+    .filter(Boolean)
+}
+
+function extractSchemaNodes(
+  schemaJson: unknown | null | undefined
+): DocumentTemplateSchema["nodes"] | undefined {
+  if (
+    !schemaJson ||
+    typeof schemaJson !== "object" ||
+    Array.isArray(schemaJson)
+  ) {
+    return undefined
+  }
+
+  const nodes = (schemaJson as { nodes?: unknown }).nodes
+  if (!Array.isArray(nodes)) {
+    return undefined
+  }
+
+  return nodes as DocumentTemplateSchema["nodes"]
+}
+
 function toCatalogPreviewSummary(
   templateId: string,
   version:
@@ -154,32 +298,72 @@ function toCatalogPreviewSummary(
         previewCaseSummary: string | null
         previewLocale: string | null
         previewGeneratedAt: Date | null
+        schemaJson?: unknown
       }
     | null,
-  isBuiltIn: boolean
+  isBuiltIn: boolean,
+  locale: UiLocale
 ): DocumentCatalogPreviewSummary {
   if (isBuiltIn) {
-    const builtInPreview = getBuiltInDocumentPreviewAsset(templateId)
+    const builtInPreview = getBuiltInDocumentPreviewAsset(templateId, locale)
     if (!builtInPreview) {
       return {
         hasPreview: false,
         caseSummary: null,
+        cardPreviewLines: [],
+        cardPreviewKind: "EMPTY",
         locale: null,
         generatedAt: null,
       }
     }
 
+    const contentLines = getBuiltInDocumentCardPreviewLines(templateId, locale)
+    if (contentLines.length > 0) {
+      return {
+        hasPreview: true,
+        caseSummary: builtInPreview.summary,
+        cardPreviewLines: contentLines,
+        cardPreviewKind: "CONTENT",
+        locale: builtInPreview.locale,
+        generatedAt: null,
+      }
+    }
+
+    const summaryLines = buildCardPreviewLinesFromSummary(builtInPreview.summary)
+
     return {
       hasPreview: true,
       caseSummary: builtInPreview.summary,
+      cardPreviewLines: summaryLines,
+      cardPreviewKind: summaryLines.length > 0 ? "SUMMARY" : "EMPTY",
       locale: builtInPreview.locale,
       generatedAt: null,
     }
   }
 
+  const previewContent = ensureRecord(version?.previewContentJson ?? null)
+  const schemaNodes = extractSchemaNodes(version?.schemaJson)
+  const contentLines = buildCardPreviewLinesFromContent(previewContent, schemaNodes)
+  if (contentLines.length > 0) {
+    return {
+      hasPreview: hasStoredPreview(version),
+      caseSummary: version?.previewCaseSummary ?? null,
+      cardPreviewLines: contentLines,
+      cardPreviewKind: "CONTENT",
+      locale: version?.previewLocale ?? null,
+      generatedAt: version?.previewGeneratedAt?.toISOString() ?? null,
+    }
+  }
+
+  const summaryLines = buildCardPreviewLinesFromSummary(
+    version?.previewCaseSummary ?? null
+  )
+
   return {
     hasPreview: hasStoredPreview(version),
     caseSummary: version?.previewCaseSummary ?? null,
+    cardPreviewLines: summaryLines,
+    cardPreviewKind: summaryLines.length > 0 ? "SUMMARY" : "EMPTY",
     locale: version?.previewLocale ?? null,
     generatedAt: version?.previewGeneratedAt?.toISOString() ?? null,
   }
@@ -521,7 +705,8 @@ function getAuthorName(template: TemplateWithVersions, userId: string): string {
 
 export async function getDocumentCatalog(
   userId: string,
-  query: string | undefined
+  query: string | undefined,
+  locale: UiLocale
 ): Promise<DocumentCatalogItem[]> {
   await ensureDefaultInstalledDocumentsExist(userId)
   const installedDocuments = await prisma.userInstalledDocument.findMany({
@@ -619,7 +804,12 @@ export async function getDocumentCatalog(
         template.latestDraftVersionId !== null,
       canInstall,
       canUninstall: !!installed,
-      preview: toCatalogPreviewSummary(template.id, previewVersion, isBuiltIn),
+      preview: toCatalogPreviewSummary(
+        template.id,
+        previewVersion,
+        isBuiltIn,
+        locale
+      ),
     }
   })
 }
@@ -1189,6 +1379,7 @@ export async function forkDocumentTemplate(input: {
 export async function getDocumentPreviewForUser(input: {
   userId: string
   templateId: string
+  locale: UiLocale
 }): Promise<DocumentPreviewResponse> {
   await ensureDefaultInstalledDocumentsExist(input.userId)
 
@@ -1212,7 +1403,7 @@ export async function getDocumentPreviewForUser(input: {
   }
 
   if (template.sourceKind === "BUILT_IN") {
-    const asset = getBuiltInDocumentPreviewAsset(template.id)
+    const asset = getBuiltInDocumentPreviewAsset(template.id, input.locale)
     return {
       templateId: template.id,
       title: template.title,

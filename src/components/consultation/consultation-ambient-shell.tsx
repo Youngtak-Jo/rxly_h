@@ -36,7 +36,7 @@ export function ConsultationAmbientShell({
       className="consultation-ambient-shell relative isolate flex min-h-0 flex-1 flex-col"
       data-recording-state={recordingState}
     >
-      <div className="consultation-ambient-shell__inner relative z-[1] flex min-h-0 flex-1 flex-col bg-background">
+      <div className="consultation-ambient-shell__inner relative z-[1] flex min-h-0 flex-1 flex-col bg-[#ffffff]">
         <div className="consultation-ambient-shell__content">
           {children}
         </div>

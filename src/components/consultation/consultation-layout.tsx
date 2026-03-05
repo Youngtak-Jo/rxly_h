@@ -247,11 +247,12 @@ export function ConsultationLayout() {
 
   const centerPanelStageStyle = {
     "--consultation-center-composer-height": `${composerHeight}px`,
+    "--background": "#ffffff",
   } as CSSProperties
 
   const centerPanelStage = (
     <div
-      className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+      className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#ffffff]"
       style={centerPanelStageStyle}
     >
       <div className="min-h-0 flex-1 overflow-hidden">

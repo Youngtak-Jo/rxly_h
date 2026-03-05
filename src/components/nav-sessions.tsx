@@ -10,7 +10,6 @@ import {
   IconPlus,
   IconTrash,
 } from "@tabler/icons-react"
-import { v4 as uuidv4 } from "uuid"
 import { toast } from "sonner"
 
 import { useSessionStore } from "@/stores/session-store"
@@ -33,9 +32,8 @@ import {
   prefetchCoreSessionById,
   deleteCachedSession,
   cancelSessionLoad,
-  setCoreCachedSession,
-  setCachedSession,
 } from "@/hooks/use-session-loader"
+import { useCreateSession } from "@/hooks/use-create-session"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,8 +69,9 @@ export function NavSessions() {
   const t = useTranslations("NavSessions")
   const router = useRouter()
   const pathname = usePathname()
-  const { sessions, activeSession, setActiveSession, addSession, setSessions } =
+  const { sessions, activeSession, setActiveSession, setSessions } =
     useSessionStore()
+  const { createSession } = useCreateSession()
   const transcriptStore = useTranscriptStore()
   const insightsStore = useInsightsStore()
   const recordStore = useRecordStore()
@@ -162,102 +161,6 @@ export function NavSessions() {
     useSessionStore.getState().setActiveSession(null)
     resetConsultationStores()
     router.replace("/consultation")
-  }
-
-  const createSession = async () => {
-    const storeBeforeCreate = useSessionStore.getState()
-    const previousSessions = storeBeforeCreate.sessions
-    const previousActiveSession = storeBeforeCreate.activeSession
-
-    cancelSessionLoad()
-    useSessionStore.getState().setSwitching(false)
-    stopSimulationIfRunning()
-
-    const tempId = uuidv4()
-    const now = new Date().toISOString()
-    const newConsultationTitle = t("newConsultation")
-    const optimisticSession: Session = {
-      id: tempId,
-      title: newConsultationTitle,
-      patientName: null,
-      mode: "DOCTOR",
-      startedAt: now,
-      endedAt: null,
-      createdAt: now,
-      updatedAt: now,
-    }
-
-    // Pre-populate caches to prevent use-session-loader from fetching a not-yet-created backend session
-    const dummyCoreSession = {
-      ...optimisticSession,
-      insights: null,
-      diagnoses: [],
-      record: null,
-      patientHandout: null,
-      sessionDocuments: [],
-      checklistItems: []
-    }
-    setCoreCachedSession(tempId, dummyCoreSession)
-    setCachedSession(tempId, {
-      session: dummyCoreSession,
-      transcriptEntries: [],
-      notes: [],
-      researchMessages: [],
-      recordingSegments: [],
-    })
-
-    addSession(optimisticSession)
-    setActiveSession(optimisticSession)
-    resetConsultationStores()
-
-    // Immediate navigation to prevent active work loss during the DB wait
-    router.push(`/consultation/${tempId}`)
-
-    try {
-      const res = await fetch("/api/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: tempId, title: newConsultationTitle }),
-      })
-      if (!res.ok) throw new Error("Failed to create session")
-      const realSession = await res.json()
-
-      const realCoreSession = {
-        ...realSession,
-        insights: realSession.insights ?? null,
-        diagnoses: [],
-        record: realSession.record ?? null,
-        patientHandout: null,
-        sessionDocuments: [],
-        checklistItems: [],
-      }
-
-      const store = useSessionStore.getState()
-      store.setSessions(
-        store.sessions.map((s) => (s.id === tempId ? realSession : s))
-      )
-      if (store.activeSession?.id === tempId) {
-        store.setActiveSession(realSession)
-      }
-      setCoreCachedSession(realSession.id, realCoreSession)
-      setCachedSession(realSession.id, {
-        session: realCoreSession,
-        transcriptEntries: [],
-        notes: [],
-        researchMessages: [],
-        recordingSegments: [],
-      })
-      if (realSession.id !== tempId) {
-        deleteCachedSession(tempId)
-      }
-    } catch (error) {
-      console.error("Failed to create session:", error)
-      toast.error(t("createFailed"))
-      deleteCachedSession(tempId)
-      const store = useSessionStore.getState()
-      store.setSessions(previousSessions)
-      await restorePreviousSessionContext(previousActiveSession)
-    }
   }
 
   const [deletingId, setDeletingId] = useState<string | null>(null)

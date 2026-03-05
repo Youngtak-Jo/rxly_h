@@ -2,12 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { IconLoader2 } from "@tabler/icons-react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 
 import { GenericDocumentPreview } from "@/components/documents/generic-document-preview"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  asBuiltInPatientHandoutPreviewContent,
+  asBuiltInRecordPreviewContent,
+} from "@/lib/documents/built-in-preview"
 import {
   Dialog,
   DialogContent,
@@ -18,6 +22,9 @@ import {
 import { getDocumentCategoryLabelKey } from "@/lib/documents/categories"
 import { buildGenericDocumentSections } from "@/lib/documents/preview"
 import type { DocumentCatalogItem, DocumentPreviewResponse } from "@/types/document"
+import {
+  PATIENT_HANDOUT_SECTION_KEYS,
+} from "@/types/patient-handout"
 
 async function readErrorMessage(
   response: Response,
@@ -40,27 +47,43 @@ function BuiltInRecordPreview({
 }: {
   content: Record<string, unknown>
 }) {
+  const tRecord = useTranslations("Record")
+  const locale = useLocale()
+  const record = asBuiltInRecordPreviewContent(content)
+  if (!record) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {locale === "ko"
+          ? "기본 제공 문서 미리보기를 렌더링할 수 없습니다."
+          : "Unable to render built-in preview."}
+      </p>
+    )
+  }
+
+  const patientLabel = locale === "ko" ? "환자" : "Patient"
   const sections = [
-    ["Chief complaint", content.chiefComplaint],
-    ["HPI", content.hpi],
-    ["Assessment", content.assessment],
+    [tRecord("sections.chiefComplaint"), record.chiefComplaint],
+    [tRecord("sections.hpiText"), record.hpiText],
+    [tRecord("sections.medications"), record.medications],
+    [tRecord("sections.rosText"), record.rosText],
+    [tRecord("sections.physicalExam"), record.physicalExam],
+    [tRecord("sections.labsStudies"), record.labsStudies],
+    [tRecord("sections.assessment"), record.assessment],
+    [tRecord("sections.plan"), record.plan],
   ] as const
-  const plan = Array.isArray(content.plan)
-    ? content.plan.filter((item): item is string => typeof item === "string")
-    : []
 
   return (
     <div className="space-y-5">
-      {typeof content.patientName === "string" ? (
+      {record.patientName ? (
         <div className="border-b border-border/60 pb-3">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Patient
+            {patientLabel}
           </p>
-          <p className="mt-1 text-sm text-foreground">{content.patientName}</p>
+          <p className="mt-1 text-sm text-foreground">{record.patientName}</p>
         </div>
       ) : null}
       {sections.map(([label, value]) =>
-        typeof value === "string" && value ? (
+        value ? (
           <section key={label} className="space-y-1.5">
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
               {label}
@@ -71,18 +94,6 @@ function BuiltInRecordPreview({
           </section>
         ) : null
       )}
-      {plan.length > 0 ? (
-        <section className="space-y-1.5">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Plan
-          </p>
-          <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-foreground/90">
-            {plan.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
     </div>
   )
 }
@@ -92,64 +103,53 @@ function BuiltInHandoutPreview({
 }: {
   content: Record<string, unknown>
 }) {
-  const selfCare = Array.isArray(content.selfCare)
-    ? content.selfCare.filter((item): item is string => typeof item === "string")
-    : []
-  const redFlags = Array.isArray(content.redFlags)
-    ? content.redFlags.filter((item): item is string => typeof item === "string")
-    : []
+  const tHandout = useTranslations("PatientHandout")
+  const locale = useLocale()
+  const handout = asBuiltInPatientHandoutPreviewContent(content)
+  if (!handout) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {locale === "ko"
+          ? "기본 제공 문서 미리보기를 렌더링할 수 없습니다."
+          : "Unable to render built-in preview."}
+      </p>
+    )
+  }
+
+  const condition = handout.conditions[0] ?? null
+  const entry = condition
+    ? handout.entries.find((candidate) => candidate.conditionId === condition.id) ??
+      handout.entries[0]
+    : handout.entries[0]
 
   return (
     <div className="space-y-5">
-      {typeof content.title === "string" ? (
+      {condition ? (
         <div className="border-b border-border/60 pb-3">
-          <h3 className="text-base font-semibold text-foreground">{content.title}</h3>
+          <h3 className="text-base font-semibold text-foreground">
+            {condition.diseaseName} ({condition.icdCode})
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {tHandout("source")}:{" "}
+            {condition.source === "ddx"
+              ? tHandout("sourceDdx")
+              : tHandout("sourceIcd11")}{" "}
+            · {locale === "ko" ? "언어" : "Language"}: {handout.language}
+          </p>
         </div>
       ) : null}
-      {typeof content.overview === "string" ? (
-        <section className="space-y-1.5">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Overview
-          </p>
-          <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/90">
-            {content.overview}
-          </p>
-        </section>
-      ) : null}
-      {selfCare.length > 0 ? (
-        <section className="space-y-1.5">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Self-care
-          </p>
-          <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-foreground/90">
-            {selfCare.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {redFlags.length > 0 ? (
-        <section className="space-y-1.5">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Seek care urgently if
-          </p>
-          <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-foreground/90">
-            {redFlags.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {typeof content.followUp === "string" ? (
-        <section className="space-y-1.5">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Follow-up
-          </p>
-          <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/90">
-            {content.followUp}
-          </p>
-        </section>
-      ) : null}
+      {entry
+        ? PATIENT_HANDOUT_SECTION_KEYS.map((sectionKey) => (
+            <section key={sectionKey} className="space-y-1.5">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                {tHandout(`sections.${sectionKey}`)}
+              </p>
+              <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/90">
+                {entry.sections[sectionKey] || "[Not provided]"}
+              </p>
+            </section>
+          ))
+        : null}
     </div>
   )
 }
@@ -181,6 +181,7 @@ export function DocumentCatalogPreviewDialog({
 }) {
   const t = useTranslations("DocumentStore")
   const tBuilder = useTranslations("DocumentBuilder")
+  const locale = useLocale()
   const [loading, setLoading] = useState(false)
   const [preview, setPreview] = useState<DocumentPreviewResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -195,7 +196,9 @@ export function DocumentCatalogPreviewDialog({
       setError(null)
 
       try {
-        const response = await fetch(`/api/documents/${item.templateId}/preview`)
+        const response = await fetch(
+          `/api/documents/${item.templateId}/preview?locale=${encodeURIComponent(locale)}`
+        )
         if (!response.ok) {
           throw new Error(
             await readErrorMessage(response, t("preview.loadFailed"))
@@ -224,7 +227,7 @@ export function DocumentCatalogPreviewDialog({
     return () => {
       cancelled = true
     }
-  }, [item, open, t])
+  }, [item, locale, open, t])
 
   const genericSections = useMemo(() => {
     if (!preview?.previewContent || preview.previewKind !== "AI_GENERATED") {
@@ -302,59 +305,61 @@ export function DocumentCatalogPreviewDialog({
 
         {item ? (
           <div className="border-t px-5 py-4">
-            <div className="flex flex-wrap gap-2">
-              {item.canInstall && !item.isInstalled ? (
-                <Button disabled={isBusy} onClick={() => onInstall(item)}>
-                  {isBusy ? <IconLoader2 className="size-3.5 animate-spin" /> : null}
-                  {t("actions.install")}
-                </Button>
-              ) : null}
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <div className="flex flex-wrap gap-2">
+                {item.canInstall && !item.isInstalled ? (
+                  <Button disabled={isBusy} onClick={() => onInstall(item)}>
+                    {isBusy ? <IconLoader2 className="size-3.5 animate-spin" /> : null}
+                    {t("actions.install")}
+                  </Button>
+                ) : null}
 
-              {item.hasUpdate ? (
-                <Button
-                  variant="outline"
-                  disabled={isBusy}
-                  onClick={() => onUpdate(item)}
-                >
-                  {t("actions.update")}
-                </Button>
-              ) : null}
+                {item.hasUpdate ? (
+                  <Button
+                    variant="outline"
+                    disabled={isBusy}
+                    onClick={() => onUpdate(item)}
+                  >
+                    {t("actions.update")}
+                  </Button>
+                ) : null}
 
-              {item.isEditable ? (
-                <Button variant="secondary" onClick={() => onEdit(item)}>
-                  {t("actions.edit")}
-                </Button>
-              ) : null}
+                {item.isEditable ? (
+                  <Button variant="secondary" onClick={() => onEdit(item)}>
+                    {t("actions.edit")}
+                  </Button>
+                ) : null}
 
-              {mode === "mine" && item.canPublish ? (
-                <Button
-                  variant="outline"
-                  disabled={isBusy}
-                  onClick={() => onPublish(item)}
-                >
-                  {t("actions.publish")}
-                </Button>
-              ) : null}
+                {mode === "mine" && item.canPublish ? (
+                  <Button
+                    variant="outline"
+                    disabled={isBusy}
+                    onClick={() => onPublish(item)}
+                  >
+                    {t("actions.publish")}
+                  </Button>
+                ) : null}
 
-              {mode === "mine" && item.isEditable && item.visibility === "PUBLIC" ? (
-                <Button
-                  variant="outline"
-                  disabled={isBusy}
-                  onClick={() => onUnpublish(item)}
-                >
-                  {t("actions.unpublish")}
-                </Button>
-              ) : null}
+                {mode === "mine" && item.isEditable && item.visibility === "PUBLIC" ? (
+                  <Button
+                    variant="outline"
+                    disabled={isBusy}
+                    onClick={() => onUnpublish(item)}
+                  >
+                    {t("actions.unpublish")}
+                  </Button>
+                ) : null}
 
-              {mode === "catalog" && item.canFork ? (
-                <Button
-                  variant="outline"
-                  disabled={isBusy}
-                  onClick={() => onFork(item)}
-                >
-                  {t("actions.fork")}
-                </Button>
-              ) : null}
+                {mode === "catalog" && item.canFork ? (
+                  <Button
+                    variant="outline"
+                    disabled={isBusy}
+                    onClick={() => onFork(item)}
+                  >
+                    {t("actions.fork")}
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </div>
         ) : null}

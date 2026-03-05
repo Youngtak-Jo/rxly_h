@@ -1,5 +1,6 @@
 "use client"
 
+import { useRef } from "react"
 import {
   DndContext,
   MouseSensor,
@@ -50,6 +51,7 @@ import { resolveWorkspaceTabDefinition } from "@/lib/documents/workspace"
 import type { WorkspaceTabId } from "@/types/document"
 
 type Translator = (...args: never[]) => string
+const JUST_DRAGGED_CLICK_SUPPRESS_MS = 250
 
 function getTabAriaLabel(
   label: string,
@@ -104,7 +106,7 @@ function WorkspaceTabChip({
   onSelect: (tabId: ConsultationTabId) => void
   onClose: (templateId: string) => void
 }) {
-  const { listeners, setNodeRef, transform, transition, isDragging } =
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({
       id: tab.id,
     })
@@ -118,9 +120,9 @@ function WorkspaceTabChip({
       }}
       className={cn("relative flex flex-none items-stretch", isDragging && "z-10")}
     >
-      <div
-        tabIndex={0}
-        aria-selected={tab.isActive}
+      <button
+        type="button"
+        aria-current={tab.isActive ? "page" : undefined}
         aria-label={tab.ariaLabel}
         onClick={() => onSelect(tab.id)}
         onKeyDown={(event) => {
@@ -132,11 +134,13 @@ function WorkspaceTabChip({
         className={consultationSegmentClassName({
           active: tab.isActive,
           className: cn(
+            "w-full",
             "pr-3",
             tab.closable && "pr-9",
             isDragging && "opacity-80 shadow-lg"
           ),
         })}
+        {...attributes}
         {...listeners}
       >
         <span className="truncate">{tab.label}</span>
@@ -166,7 +170,7 @@ function WorkspaceTabChip({
             ) : null}
           </span>
         )}
-      </div>
+      </button>
 
       {tab.closable && tab.templateId ? (
         <button
@@ -220,8 +224,21 @@ export function ConsultationWorkspaceTabs() {
   const isPatientHandoutGenerating = usePatientHandoutStore(
     (state) => state.isGenerating
   )
+  const justDraggedRef = useRef<{ tabId: WorkspaceTabId; at: number } | null>(null)
 
-  const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor))
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 6,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 140,
+        tolerance: 8,
+      },
+    })
+  )
   const showTranscriptToggle = !!toggleTranscript && isTranscriptCollapsed
   const systemLabels = {
     insights: t("insights"),
@@ -267,6 +284,21 @@ export function ConsultationWorkspaceTabs() {
       }
     })
 
+  const handleSelectTab = (tabId: ConsultationTabId) => {
+    const dragged = justDraggedRef.current
+    if (dragged) {
+      const elapsed = Date.now() - dragged.at
+      if (elapsed < JUST_DRAGGED_CLICK_SUPPRESS_MS && dragged.tabId === tabId) {
+        return
+      }
+      if (elapsed >= JUST_DRAGGED_CLICK_SUPPRESS_MS) {
+        justDraggedRef.current = null
+      }
+    }
+
+    setActiveTab(tabId)
+  }
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -274,6 +306,11 @@ export function ConsultationWorkspaceTabs() {
     const oldIndex = tabOrder.findIndex((tabId) => tabId === active.id)
     const newIndex = tabOrder.findIndex((tabId) => tabId === over.id)
     if (oldIndex < 0 || newIndex < 0) return
+
+    justDraggedRef.current = {
+      tabId: active.id as WorkspaceTabId,
+      at: Date.now(),
+    }
 
     const nextTabOrder = arrayMove(tabOrder, oldIndex, newIndex)
 
@@ -347,7 +384,7 @@ export function ConsultationWorkspaceTabs() {
                 <WorkspaceTabChip
                   key={tab.id}
                   tab={tab}
-                  onSelect={setActiveTab}
+                  onSelect={handleSelectTab}
                   onClose={handleCloseDocumentTab}
                 />
               ))}

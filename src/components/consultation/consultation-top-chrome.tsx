@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 export const CONSULTATION_TOP_RAIL_HEIGHT = 44
 
 export const TOP_RAIL_CLASS =
-  "flex h-[var(--consultation-top-rail-height)] items-stretch overflow-hidden border-b border-border/80 bg-muted/55"
+  "flex h-[var(--consultation-top-rail-height)] items-stretch overflow-hidden border-b border-border/80 bg-[#ffffff]"
 
 export const TOP_RAIL_SCROLL_CLASS =
   "flex h-full w-max min-w-full max-w-none flex-1 items-stretch justify-start gap-0 overflow-visible rounded-none border-0 bg-transparent p-0"

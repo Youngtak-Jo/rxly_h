@@ -745,7 +745,10 @@
       "loading": "문서 미리보기를 불러오는 중",
       "loadFailed": "문서 미리보기를 불러오지 못했습니다",
       "syntheticBadge": "합성 프리뷰",
-      "staticBadge": "정적 프리뷰"
+      "staticBadge": "정적 프리뷰",
+      "cardHeader": "임상 문서",
+      "cardPlaceholder": "아직 미리보기 내용이 없습니다.",
+      "cardSummaryFallback": "요약 미리보기"
     },
     "status": {
       "loadingCatalog": "카탈로그를 불러오는 중",

@@ -11,6 +11,7 @@ interface ConsultationTabState {
   setActiveTab: (tab: ConsultationTabId) => void
 
   unseenUpdates: Record<string, boolean>
+  visitedTabs: Record<string, boolean>
   markTabUpdated: (tab: ConsultationTabId) => void
   clearAllUnseenUpdates: () => void
   syncWithTabOrder: (tabOrder: WorkspaceTabId[]) => void
@@ -23,11 +24,11 @@ interface ConsultationTabState {
 
 export const useConsultationTabStore = create<ConsultationTabState>(
   (set) => ({
-      activeTab: "insights",
-      lastNonResearchTab: "insights",
-      setActiveTab: (tab) =>
-        set((state) => {
-          if (state.activeTab !== tab) {
+    activeTab: "insights",
+    lastNonResearchTab: "insights",
+    setActiveTab: (tab) =>
+      set((state) => {
+        if (state.activeTab !== tab) {
           trackClientEvent({
             eventType: "tab_switched",
             feature: tab,
@@ -43,10 +44,12 @@ export const useConsultationTabStore = create<ConsultationTabState>(
           lastNonResearchTab:
             tab === "research" ? state.lastNonResearchTab : tab,
           unseenUpdates: { ...state.unseenUpdates, [tab]: false },
+          visitedTabs: { ...state.visitedTabs, [tab]: true },
         }
-        }),
+      }),
 
     unseenUpdates: {},
+    visitedTabs: { insights: true },
     markTabUpdated: (tab) =>
       set((state) => {
         if (state.activeTab === tab) return state
@@ -69,11 +72,44 @@ export const useConsultationTabStore = create<ConsultationTabState>(
         const nextUnseenUpdates = Object.fromEntries(
           tabOrder.map((tab) => [tab, state.unseenUpdates[tab] ?? false])
         )
+        const nextVisitedTabs = Object.fromEntries(
+          tabOrder.map((tab) => [tab, state.visitedTabs[tab] ?? tab === nextActiveTab])
+        )
+        const currentUnseenKeys = Object.keys(state.unseenUpdates)
+        const hasSameUnseenKeys =
+          currentUnseenKeys.length === tabOrder.length &&
+          currentUnseenKeys.every((key) =>
+            tabOrder.includes(key as WorkspaceTabId)
+          )
+        const hasSameUnseenValues =
+          hasSameUnseenKeys &&
+          tabOrder.every(
+            (tab) => state.unseenUpdates[tab] === nextUnseenUpdates[tab]
+          )
+        const currentVisitedKeys = Object.keys(state.visitedTabs)
+        const hasSameVisitedKeys =
+          currentVisitedKeys.length === tabOrder.length &&
+          currentVisitedKeys.every((key) =>
+            tabOrder.includes(key as WorkspaceTabId)
+          )
+        const hasSameVisitedValues =
+          hasSameVisitedKeys &&
+          tabOrder.every((tab) => state.visitedTabs[tab] === nextVisitedTabs[tab])
+
+        if (
+          state.activeTab === nextActiveTab &&
+          state.lastNonResearchTab === nextLastNonResearchTab &&
+          hasSameUnseenValues &&
+          hasSameVisitedValues
+        ) {
+          return state
+        }
 
         return {
           activeTab: nextActiveTab,
           lastNonResearchTab: nextLastNonResearchTab,
           unseenUpdates: nextUnseenUpdates,
+          visitedTabs: nextVisitedTabs,
         }
       }),
 

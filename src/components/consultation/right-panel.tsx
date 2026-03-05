@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, type CSSProperties } from "react"
 import { useTranslations } from "next-intl"
 import { RecordingControls } from "./transcript/recording-controls"
 import { TranscriptViewer } from "./transcript/transcript-viewer"
@@ -14,6 +14,7 @@ export function RightPanel({ onAddFiles }: RightPanelProps) {
   const t = useTranslations("TranscriptViewer")
   const [isDragOver, setIsDragOver] = useState(false)
   const dragCounterRef = useRef(0)
+  const panelStyle = { "--background": "#ffffff" } as CSSProperties
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -53,6 +54,7 @@ export function RightPanel({ onAddFiles }: RightPanelProps) {
   return (
     <div
       className="relative flex h-full min-h-0 flex-col overflow-hidden bg-background"
+      style={panelStyle}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}

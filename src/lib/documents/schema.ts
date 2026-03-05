@@ -182,6 +182,7 @@ export const documentAiPreviewSchema = z.object({
 
 export const documentCatalogQuerySchema = z.object({
   q: z.string().max(200).optional(),
+  locale: z.string().trim().min(2).max(20).optional(),
 })
 
 export const documentTemplateSourceKindSchema = z.enum(

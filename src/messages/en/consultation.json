@@ -745,7 +745,10 @@
       "loading": "Loading preview",
       "loadFailed": "Failed to load document preview",
       "syntheticBadge": "Synthetic preview",
-      "staticBadge": "Static preview"
+      "staticBadge": "Static preview",
+      "cardHeader": "Clinical document",
+      "cardPlaceholder": "No preview is available yet.",
+      "cardSummaryFallback": "Summary Preview"
     },
     "status": {
       "loadingCatalog": "Loading catalog",
