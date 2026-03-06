@@ -3,6 +3,10 @@ import { requireAuth } from "@/lib/auth"
 import { logger } from "@/lib/logger"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { generateDocumentPreviewSnapshot } from "@/lib/documents/ai-preview"
+import {
+  resolveDocumentLanguage,
+  resolveDocumentRegion,
+} from "@/lib/documents/language-region"
 import { buildDocumentPreviewInputChecksum } from "@/lib/documents/preview-checksum"
 import {
   getDocumentTemplateForUser,
@@ -22,23 +26,24 @@ export async function POST(
     if (!allowed) return rateLimitResponse()
 
     const body = (await req.json().catch(() => ({}))) as {
-      locale?: string
       model?: string
     }
-    const locale = body.locale?.trim() || "en"
     const detail = await getDocumentTemplateForUser(user.id, templateId)
     const draftVersion = detail.latestDraftVersion
     if (!draftVersion) {
       return NextResponse.json({ error: "Draft not found" }, { status: 404 })
     }
+    const language = resolveDocumentLanguage(detail.template.language)
+    const region = resolveDocumentRegion(detail.template.region)
 
     const previewChecksum = buildDocumentPreviewInputChecksum({
       title: detail.template.title,
       description: detail.template.description,
       category: detail.template.category,
+      language,
+      region,
       schema: draftVersion.schemaJson,
       generationConfig: draftVersion.generationConfigJson,
-      locale,
     })
 
     if (
@@ -52,11 +57,12 @@ export async function POST(
           description: detail.template.description,
           iconKey: detail.template.iconKey,
           category: detail.template.category,
+          language,
+          region,
           visibility: detail.template.visibility,
           schema: draftVersion.schemaJson,
           generationConfig: draftVersion.generationConfigJson,
         },
-        locale,
         model: body.model,
       })
 
@@ -64,7 +70,6 @@ export async function POST(
         userId: user.id,
         templateId,
         previewContent: preview.previewContent,
-        previewCaseSummary: preview.previewCaseSummary,
         previewLocale: preview.previewLocale,
         previewModelId: preview.previewModelId,
         previewGeneratedAt: preview.previewGeneratedAt,

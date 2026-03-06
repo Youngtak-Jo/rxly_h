@@ -44,7 +44,6 @@ export interface BuiltInPatientHandoutPreviewContent {
 export interface BuiltInDocumentPreviewAsset {
   key: "record" | "patient-handout"
   locale: UiLocale
-  summary: string
   previewContent:
     | BuiltInRecordPreviewContent
     | BuiltInPatientHandoutPreviewContent
@@ -58,8 +57,6 @@ const BUILT_IN_PREVIEW_ASSETS: Record<
     en: {
       key: "record",
       locale: "en",
-      summary:
-        "Consultation Record sample reflecting the actual generated schema for acute right-lower-quadrant abdominal pain.",
       previewContent: {
         patientName: "Demo Patient A",
         chiefComplaint:
@@ -83,8 +80,6 @@ const BUILT_IN_PREVIEW_ASSETS: Record<
     ko: {
       key: "record",
       locale: "ko",
-      summary:
-        "우하복부 통증과 발열로 내원한 환자의 실제 진료기록 구조를 반영한 Consultation Record 예시입니다.",
       previewContent: {
         patientName: "가상 환자 A",
         chiefComplaint: "12시간 전부터 악화되는 우하복부 통증과 발열",
@@ -109,8 +104,6 @@ const BUILT_IN_PREVIEW_ASSETS: Record<
     en: {
       key: "patient-handout",
       locale: "en",
-      summary:
-        "Patient Handout sample reflecting the actual generated output structure (conditions plus 8 required sections).",
       previewContent: {
         language: "en",
         conditions: [
@@ -149,8 +142,6 @@ const BUILT_IN_PREVIEW_ASSETS: Record<
     ko: {
       key: "patient-handout",
       locale: "ko",
-      summary:
-        "동일 케이스에서 생성되는 Patient Handout의 실제 출력 구조(질환/섹션 8개)를 반영한 예시입니다.",
       previewContent: {
         language: "ko",
         conditions: [

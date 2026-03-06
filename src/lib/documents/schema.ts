@@ -11,6 +11,8 @@ import {
   DOCUMENT_EMPTY_VALUE_POLICIES,
   DOCUMENT_FIELD_TYPES,
   DOCUMENT_GROUP_TYPES,
+  DOCUMENT_TEMPLATE_LANGUAGES,
+  DOCUMENT_TEMPLATE_REGIONS,
   DOCUMENT_TEMPLATE_RENDERERS,
   DOCUMENT_TEMPLATE_SOURCE_KINDS,
   DOCUMENT_TEMPLATE_VERSION_STATUSES,
@@ -119,7 +121,6 @@ export const documentGenerationConfigSchema = z.object({
 
 export const documentTemplatePreviewPayloadSchema = z.object({
   previewContent: z.record(z.string(), z.unknown()).optional(),
-  previewCaseSummary: z.string().max(1000).nullable().optional(),
   previewLocale: z.string().trim().min(2).max(20).nullable().optional(),
   previewModelId: z.string().trim().min(1).max(200).nullable().optional(),
   previewGeneratedAt: z.string().datetime().nullable().optional(),
@@ -131,10 +132,17 @@ export const documentBuilderDraftSchema = z.object({
   description: z.string().max(1000).default(""),
   iconKey: z.string().trim().min(1).max(64).default("file-text"),
   category: z.enum(DOCUMENT_CATEGORIES).default("clinical-documentation"),
+  language: z.enum(DOCUMENT_TEMPLATE_LANGUAGES).default("en"),
+  region: z.enum(DOCUMENT_TEMPLATE_REGIONS).default("global"),
   visibility: z.enum(DOCUMENT_TEMPLATE_VISIBILITIES).default("PRIVATE"),
   schema: documentTemplateSchemaSchema,
   generationConfig: documentGenerationConfigSchema,
 })
+
+export const documentTemplateLanguageSchema = z.enum(
+  DOCUMENT_TEMPLATE_LANGUAGES
+)
+export const documentTemplateRegionSchema = z.enum(DOCUMENT_TEMPLATE_REGIONS)
 
 export const documentTemplateCreateSchema = documentBuilderDraftSchema
   .extend({
@@ -165,6 +173,8 @@ export const sessionDocumentSaveSchema = z.object({
 
 export const documentAiDraftSchema = z.object({
   prompt: z.string().trim().min(10).max(12000),
+  defaultLanguage: z.enum(DOCUMENT_TEMPLATE_LANGUAGES).default("en"),
+  defaultRegion: z.enum(DOCUMENT_TEMPLATE_REGIONS).default("global"),
   model: z.string().trim().min(1).max(200).optional(),
 })
 
@@ -176,7 +186,6 @@ export const documentAiReviseSchema = z.object({
 
 export const documentAiPreviewSchema = z.object({
   draft: documentBuilderDraftSchema,
-  locale: z.string().trim().min(2).max(20),
   model: z.string().trim().min(1).max(200).optional(),
 })
 

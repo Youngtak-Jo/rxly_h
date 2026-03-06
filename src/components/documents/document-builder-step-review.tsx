@@ -7,7 +7,18 @@ import { GenericDocumentPreview } from "@/components/documents/generic-document-
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getDocumentCategoryLabelKey } from "@/lib/documents/categories"
+import {
+  getDocumentLanguageOptions,
+  getDocumentRegionOptions,
+} from "@/lib/documents/language-region"
 import type { GenericDocumentSection } from "@/types/document"
+
+const DOCUMENT_LANGUAGE_LABELS = new Map(
+  getDocumentLanguageOptions().map((option) => [option.value, option.labelKey])
+)
+const DOCUMENT_REGION_LABELS = new Map(
+  getDocumentRegionOptions().map((option) => [option.value, option.labelKey])
+)
 
 function PreviewStatusBadge({
   status,
@@ -35,13 +46,14 @@ export function DocumentBuilderStepReview({
   title,
   description,
   category,
+  language,
+  region,
   visibility,
   schemaNodeCount,
   contextSources,
   publishedVersionNumber,
   installedVersionNumber,
   previewSections,
-  previewCaseSummary,
   previewLocale,
   previewGeneratedAt,
   previewStatus,
@@ -51,13 +63,14 @@ export function DocumentBuilderStepReview({
   title: string
   description: string
   category: string
+  language: "en" | "ko"
+  region: "global" | "kr" | "us"
   visibility: "PRIVATE" | "PUBLIC"
   schemaNodeCount: number
   contextSources: string[]
   publishedVersionNumber: number | null
   installedVersionNumber: number | null
   previewSections: GenericDocumentSection[]
-  previewCaseSummary: string | null
   previewLocale: string | null
   previewGeneratedAt: string | null
   previewStatus: "idle" | "generating" | "ready" | "failed" | "stale"
@@ -65,7 +78,14 @@ export function DocumentBuilderStepReview({
   onRegeneratePreview: () => void
 }) {
   const t = useTranslations("DocumentBuilder")
+  const tMeta = useTranslations("DocumentMetadata")
   const categoryLabel = t(getDocumentCategoryLabelKey(category) as never)
+  const languageLabel = tMeta(
+    (DOCUMENT_LANGUAGE_LABELS.get(language) ?? "languages.en") as never
+  )
+  const regionLabel = tMeta(
+    (DOCUMENT_REGION_LABELS.get(region) ?? "regions.global") as never
+  )
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
@@ -104,6 +124,14 @@ export function DocumentBuilderStepReview({
                 {t("review.summary.category")}
               </dt>
               <dd className="text-sm font-medium">{categoryLabel}</dd>
+            </div>
+            <div className="space-y-1 rounded-2xl border border-border/70 bg-background px-4 py-3">
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                {t("review.summary.languageRegion")}
+              </dt>
+              <dd className="text-sm font-medium">
+                {languageLabel} / {regionLabel}
+              </dd>
             </div>
             <div className="space-y-1 rounded-2xl border border-border/70 bg-background px-4 py-3 lg:col-span-2">
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -170,7 +198,7 @@ export function DocumentBuilderStepReview({
                 </div>
 
                 <p className="text-sm text-muted-foreground">
-                  {previewCaseSummary || t("preview.renderedDescription")}
+                  {t("preview.renderedDescription")}
                 </p>
 
                 {previewStatus === "stale" ? (

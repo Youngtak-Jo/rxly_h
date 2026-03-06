@@ -1,14 +1,22 @@
 import {
   documentTemplateCreateSchema,
+  documentTemplateLanguageSchema,
+  documentTemplateRegionSchema,
   normalizeDocumentGenerationConfig,
   normalizeDocumentTemplateSchema,
 } from "@/lib/documents/schema"
 import type {
   DocumentBuilderDraft,
   DocumentFieldNode,
+  DocumentTemplateLanguage,
+  DocumentTemplateRegion,
   DocumentSchemaNode,
   DocumentTemplateSchema,
 } from "@/types/document"
+import {
+  DEFAULT_DOCUMENT_REGION,
+  inferDocumentRegionFromText,
+} from "@/lib/documents/language-region"
 
 function isKorean(text: string) {
   return /[가-힣]/.test(text)
@@ -243,9 +251,23 @@ function buildFallbackPurposeDescription(args: {
     : "Purpose-built clinical template to structure post-consultation information for team handoff and follow-up actions."
 }
 
-export function buildFallbackDocumentDraft(prompt: string): DocumentBuilderDraft {
+export function buildFallbackDocumentDraft(
+  prompt: string,
+  options?: {
+    defaultLanguage?: DocumentTemplateLanguage
+    defaultRegion?: DocumentTemplateRegion
+  }
+): DocumentBuilderDraft {
   const preset = detectDraftPreset(prompt)
-  const korean = preset.korean
+  const language = documentTemplateLanguageSchema.parse(
+    preset.korean ? "ko" : "en"
+  )
+  const korean = language === "ko"
+  const region = documentTemplateRegionSchema.parse(
+    inferDocumentRegionFromText(prompt) ??
+      options?.defaultRegion ??
+      DEFAULT_DOCUMENT_REGION
+  )
   const schema = preset.claimReview
     ? buildClaimReviewSchema(korean)
     : buildGenericSchema(korean)
@@ -277,6 +299,8 @@ export function buildFallbackDocumentDraft(prompt: string): DocumentBuilderDraft
       : preset.patientFacing
         ? "patient-education"
         : "clinical-documentation",
+    language,
+    region,
     visibility: "PRIVATE",
     renderer: "GENERIC_STRUCTURED",
     schema: normalizeDocumentTemplateSchema(schema),
@@ -323,6 +347,17 @@ export function buildFallbackRevisedDocumentDraft(
   }
   if (/private|draft only/.test(lower) || /비공개|초안/.test(prompt)) {
     nextDraft.visibility = "PRIVATE"
+  }
+  if (/\b(?:english|영어)\b/i.test(prompt)) {
+    nextDraft.language = "en"
+  }
+  if (/\b(?:korean|한국어|한글)\b/i.test(prompt)) {
+    nextDraft.language = "ko"
+  }
+
+  const inferredRegion = inferDocumentRegionFromText(prompt)
+  if (inferredRegion) {
+    nextDraft.region = inferredRegion
   }
 
   if (/add field|new field|필드 추가/.test(lower + " " + prompt)) {

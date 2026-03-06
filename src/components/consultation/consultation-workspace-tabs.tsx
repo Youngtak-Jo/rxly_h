@@ -22,7 +22,7 @@ import {
   IconLoader2,
   IconX,
 } from "@tabler/icons-react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 
 import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
@@ -202,6 +202,7 @@ function WorkspaceTabChip({
 }
 
 export function ConsultationWorkspaceTabs() {
+  const locale = useLocale()
   const t = useTranslations("ConsultationTabs")
   const tTranscript = useTranslations("TranscriptViewer")
   const tHeader = useTranslations("SiteHeader")
@@ -323,7 +324,7 @@ export function ConsultationWorkspaceTabs() {
     const nextTabOrder = arrayMove(tabOrder, oldIndex, newIndex)
 
     try {
-      const snapshot = await persistTabOrder(nextTabOrder)
+      const snapshot = await persistTabOrder(nextTabOrder, locale)
       syncWithTabOrder(snapshot.tabOrder)
     } catch (error) {
       console.error("Failed to persist workspace tab order", error)
@@ -347,7 +348,7 @@ export function ConsultationWorkspaceTabs() {
         : (filteredBefore[0] ?? "insights")
 
     try {
-      const snapshot = await uninstallDocument(templateId)
+      const snapshot = await uninstallDocument(templateId, locale)
       syncWithTabOrder(snapshot.tabOrder)
       if (activeTab === closingTabId && snapshot.tabOrder.includes(fallbackActiveTab)) {
         setActiveTab(fallbackActiveTab)
@@ -356,8 +357,12 @@ export function ConsultationWorkspaceTabs() {
         action: {
           label: "Undo",
           onClick: () => {
-            void installDocument(templateId, existingDocument.installedVersionId)
-              .then(() => persistTabOrder(previousTabOrder))
+            void installDocument(
+              templateId,
+              existingDocument.installedVersionId,
+              locale
+            )
+              .then(() => persistTabOrder(previousTabOrder, locale))
               .then((restoredSnapshot) => {
                 syncWithTabOrder(restoredSnapshot.tabOrder)
                 setActiveTab(buildDocumentTabId(templateId))

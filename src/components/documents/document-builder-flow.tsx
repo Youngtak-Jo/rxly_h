@@ -25,6 +25,12 @@ import {
   reconcileSampleDocumentContent,
 } from "@/lib/documents/preview"
 import { normalizeDocumentCategory } from "@/lib/documents/categories"
+import {
+  documentLanguageToUiLocale,
+  resolveDocumentLanguage,
+  resolveDocumentRegion,
+  resolveUserRegion,
+} from "@/lib/documents/language-region"
 import { buildDocumentPreviewInputChecksum } from "@/lib/documents/preview-checksum"
 import type { UiLocale } from "@/i18n/config"
 import { useDocumentBuilderLocalDraft } from "@/hooks/use-document-builder-local-draft"
@@ -55,6 +61,8 @@ interface TemplateRouteResponse {
     description: string
     iconKey: string
     category: string
+    language: DocumentBuilderDraft["language"]
+    region: DocumentBuilderDraft["region"]
     visibility: "PRIVATE" | "PUBLIC"
     sourceKind: "BUILT_IN" | "USER"
   }
@@ -66,7 +74,6 @@ interface TemplateRouteResponse {
     schemaJson: DocumentTemplateSchema
     generationConfigJson: DocumentBuilderDraft["generationConfig"]
     previewContentJson: Record<string, unknown> | null
-    previewCaseSummary: string | null
     previewLocale: string | null
     previewGeneratedAt: string | null
     previewInputChecksum: string | null
@@ -76,21 +83,18 @@ interface TemplateRouteResponse {
     schemaJson: DocumentTemplateSchema
     generationConfigJson: DocumentBuilderDraft["generationConfig"]
     previewContentJson: Record<string, unknown> | null
-    previewCaseSummary: string | null
     previewLocale: string | null
     previewGeneratedAt: string | null
     previewInputChecksum: string | null
   } | null
   latestDraftPreview: {
     contentJson: Record<string, unknown> | null
-    caseSummary: string | null
     locale: string | null
     generatedAt: string | null
     inputChecksum: string | null
   } | null
   latestPublishedPreview: {
     contentJson: Record<string, unknown> | null
-    caseSummary: string | null
     locale: string | null
     generatedAt: string | null
     inputChecksum: string | null
@@ -105,7 +109,6 @@ interface ComparableBuilderState {
   installedVersionNumber: number | null
   sampleContent: Record<string, unknown>
   previewContent: Record<string, unknown>
-  previewCaseSummary: string | null
   previewLocale: string | null
   previewInputChecksum: string | null
   previewGeneratedAt: string | null
@@ -136,20 +139,20 @@ async function readErrorMessage(
   return `${fallback} (${response.status})`
 }
 
-function createEmptyComparableState(locale: UiLocale): ComparableBuilderState {
+function createEmptyComparableState(
+  locale: UiLocale,
+  defaultRegion: DocumentBuilderDraft["region"]
+): ComparableBuilderState {
+  const draft = createEmptyDraft(locale, defaultRegion)
   return {
     aiPrompt: "",
-    draft: createEmptyDraft(locale),
+    draft,
     resolvedTemplateId: null,
     publishedVersionNumber: null,
     installedVersionNumber: null,
-    sampleContent: buildSampleDocumentContent(
-      createEmptyDraft(locale).schema,
-      locale
-    ),
+    sampleContent: buildSampleDocumentContent(draft.schema, draft.language),
     previewContent: {},
-    previewCaseSummary: null,
-    previewLocale: locale,
+    previewLocale: draft.language,
     previewInputChecksum: null,
     previewGeneratedAt: null,
   }
@@ -161,6 +164,8 @@ function withNormalizedDraftCategory(
   return {
     ...draft,
     category: normalizeDocumentCategory(draft.category),
+    language: resolveDocumentLanguage(draft.language),
+    region: resolveDocumentRegion(draft.region),
   }
 }
 
@@ -175,7 +180,6 @@ function buildLocalSnapshot(input: {
   installedVersionNumber: number | null
   sampleContent: Record<string, unknown>
   previewContent: Record<string, unknown>
-  previewCaseSummary: string | null
   previewLocale: string | null
   previewInputChecksum: string | null
   previewGeneratedAt: string | null
@@ -192,11 +196,11 @@ function hasStoredContent(value: Record<string, unknown> | null | undefined) {
 
 function resolveSampleAndPreviewContent(args: {
   draft: DocumentBuilderDraft
-  locale: UiLocale
   sampleContent?: Record<string, unknown> | null
   previewContent?: Record<string, unknown> | null
   previewInputChecksum?: string | null
 }) {
+  const sampleLocale = documentLanguageToUiLocale(args.draft.language)
   const sampleSource: Record<string, unknown> | null = hasStoredContent(
     args.sampleContent
   )
@@ -212,12 +216,13 @@ function resolveSampleAndPreviewContent(args: {
   const normalizedSampleContent = reconcileSampleDocumentContent(
     args.draft.schema,
     sampleSource,
-    args.locale
+    sampleLocale
   )
 
   if (!args.previewInputChecksum || !previewSource) {
     return {
-      sampleContent: sampleSource ?? buildSampleDocumentContent(args.draft.schema, args.locale),
+      sampleContent:
+        sampleSource ?? buildSampleDocumentContent(args.draft.schema, sampleLocale),
       previewContent: {},
     }
   }
@@ -264,6 +269,8 @@ export const DocumentBuilderFlow = forwardRef<
   const locale = useLocale() as UiLocale
   const t = useTranslations("DocumentBuilder")
   const documentModel = useSettingsStore((state) => state.aiModel.documentModel)
+  const storedUserRegion = useSettingsStore((state) => state.regional.userRegion)
+  const userRegion = resolveUserRegion(storedUserRegion, locale)
   const openSettings = useSettingsDialogStore((state) => state.openSettings)
   const refreshWorkspaceSnapshot = useDocumentWorkspaceStore(
     (state) => state.refreshWorkspaceSnapshot
@@ -276,7 +283,7 @@ export const DocumentBuilderFlow = forwardRef<
   const initialStep = initialMode === "edit" ? "structure" : "start"
   const [step, setStep] = useState<DocumentBuilderStep>(initialStep)
   const [draft, setDraft] = useState<DocumentBuilderDraft>(() =>
-    createEmptyDraft(locale)
+    createEmptyDraft(locale, userRegion)
   )
   const [aiPrompt, setAiPrompt] = useState("")
   const [loading, setLoading] = useState(initialMode === "edit")
@@ -291,16 +298,19 @@ export const DocumentBuilderFlow = forwardRef<
   const [publishedVersionNumber, setPublishedVersionNumber] = useState<number | null>(null)
   const [installedVersionNumber, setInstalledVersionNumber] = useState<number | null>(null)
   const [baselineComparableState, setBaselineComparableState] = useState(() =>
-    toComparableState(createEmptyComparableState(locale))
+    toComparableState(createEmptyComparableState(locale, userRegion))
   )
   const [restoredLocalChanges, setRestoredLocalChanges] = useState(false)
   const [serverComparableState, setServerComparableState] =
     useState<ComparableBuilderState | null>(null)
   const [sampleContent, setSampleContent] = useState<Record<string, unknown>>(
-    () => buildSampleDocumentContent(createEmptyDraft(locale).schema, locale)
+    () =>
+      buildSampleDocumentContent(
+        createEmptyDraft(locale, userRegion).schema,
+        locale
+      )
   )
   const [previewContent, setPreviewContent] = useState<Record<string, unknown>>({})
-  const [previewCaseSummary, setPreviewCaseSummary] = useState<string | null>(null)
   const [previewLocale, setPreviewLocale] = useState<string | null>(locale)
   const [previewGeneratedAt, setPreviewGeneratedAt] = useState<string | null>(null)
   const [previewInputChecksum, setPreviewInputChecksum] = useState<string | null>(
@@ -340,7 +350,6 @@ export const DocumentBuilderFlow = forwardRef<
         installedVersionNumber,
         sampleContent,
         previewContent,
-        previewCaseSummary,
         previewLocale,
         previewInputChecksum,
         previewGeneratedAt,
@@ -349,7 +358,6 @@ export const DocumentBuilderFlow = forwardRef<
       aiPrompt,
       draft,
       installedVersionNumber,
-      previewCaseSummary,
       sampleContent,
       previewContent,
       previewGeneratedAt,
@@ -365,13 +373,6 @@ export const DocumentBuilderFlow = forwardRef<
     () => buildGenericDocumentSections(previewContent, draft.schema.nodes),
     [draft.schema.nodes, previewContent]
   )
-  const handleSampleContentChange = useCallback(
-    (nextContent: Record<string, unknown>) => {
-      setSampleContent(nextContent)
-    },
-    []
-  )
-
   useEffect(() => {
     localSnapshotRef.current = buildLocalSnapshot({
       mode: effectiveMode,
@@ -384,7 +385,6 @@ export const DocumentBuilderFlow = forwardRef<
       installedVersionNumber,
       sampleContent,
       previewContent,
-      previewCaseSummary,
       previewLocale,
       previewInputChecksum,
       previewGeneratedAt,
@@ -396,7 +396,6 @@ export const DocumentBuilderFlow = forwardRef<
     initialMode,
     initialTemplateId,
     installedVersionNumber,
-    previewCaseSummary,
     sampleContent,
     previewContent,
     previewGeneratedAt,
@@ -413,17 +412,19 @@ export const DocumentBuilderFlow = forwardRef<
         title: draft.title,
         description: draft.description,
         category: draft.category,
+        language: draft.language,
+        region: draft.region,
         schema: draft.schema,
         generationConfig: draft.generationConfig,
-        locale,
       }),
     [
       draft.category,
       draft.description,
       draft.generationConfig,
+      draft.language,
+      draft.region,
       draft.schema,
       draft.title,
-      locale,
     ]
   )
   const previewHasContent = Object.keys(previewContent).length > 0
@@ -448,9 +449,13 @@ export const DocumentBuilderFlow = forwardRef<
 
   useEffect(() => {
     setSampleContent((currentContent) =>
-      reconcileSampleDocumentContent(draft.schema, currentContent, locale)
+      reconcileSampleDocumentContent(
+        draft.schema,
+        currentContent,
+        documentLanguageToUiLocale(draft.language)
+      )
     )
-  }, [draft.schema, locale])
+  }, [draft.language, draft.schema])
 
   useEffect(() => {
     if (initialMode !== "create") return
@@ -458,15 +463,15 @@ export const DocumentBuilderFlow = forwardRef<
 
     const restoredSnapshot = readInitialSnapshot()
     if (!restoredSnapshot) {
+      const emptyDraft = createEmptyDraft(locale, userRegion)
       setBaselineComparableState(
-        toComparableState(createEmptyComparableState(locale))
+        toComparableState(
+          createEmptyComparableState(locale, userRegion)
+        )
       )
-      setSampleContent(
-        buildSampleDocumentContent(createEmptyDraft(locale).schema, locale)
-      )
+      setSampleContent(buildSampleDocumentContent(emptyDraft.schema, emptyDraft.language))
       setPreviewContent({})
-      setPreviewCaseSummary(null)
-      setPreviewLocale(locale)
+      setPreviewLocale(emptyDraft.language)
       setPreviewGeneratedAt(null)
       setPreviewInputChecksum(null)
       setPreviewStatus("idle")
@@ -484,15 +489,13 @@ export const DocumentBuilderFlow = forwardRef<
     setRestoredLocalChanges(true)
     const restoredContent = resolveSampleAndPreviewContent({
       draft: normalizedDraft,
-      locale,
       sampleContent: restoredSnapshot.sampleContent,
       previewContent: restoredSnapshot.previewContent,
       previewInputChecksum: restoredSnapshot.previewInputChecksum,
     })
     setSampleContent(restoredContent.sampleContent)
     setPreviewContent(restoredContent.previewContent)
-    setPreviewCaseSummary(restoredSnapshot.previewCaseSummary ?? null)
-    setPreviewLocale(restoredSnapshot.previewLocale ?? locale)
+    setPreviewLocale(restoredSnapshot.previewLocale ?? normalizedDraft.language)
     setPreviewGeneratedAt(restoredSnapshot.previewGeneratedAt ?? null)
     setPreviewInputChecksum(restoredSnapshot.previewInputChecksum ?? null)
     setPreviewStatus(
@@ -500,7 +503,14 @@ export const DocumentBuilderFlow = forwardRef<
     )
     setPreviewError(null)
     toast.message(t("localDraft.restoredToast"))
-  }, [initialMode, locale, readInitialSnapshot, resolvedTemplateId, t])
+  }, [
+    initialMode,
+    locale,
+    readInitialSnapshot,
+    resolvedTemplateId,
+    t,
+    userRegion,
+  ])
 
   useEffect(() => {
     if (initialMode !== "edit" || !initialTemplateId) return
@@ -529,11 +539,12 @@ export const DocumentBuilderFlow = forwardRef<
             description: payload.template.description,
             iconKey: payload.template.iconKey,
             category: normalizeDocumentCategory(payload.template.category),
+            language: payload.template.language,
+            region: payload.template.region,
             visibility: payload.template.visibility,
             schema: editableVersion.schemaJson,
             generationConfig: editableVersion.generationConfigJson,
           },
-          locale,
           previewContent:
             payload.latestDraftPreview?.contentJson ??
             payload.latestPublishedPreview?.contentJson ??
@@ -551,6 +562,8 @@ export const DocumentBuilderFlow = forwardRef<
             description: payload.template.description,
             iconKey: payload.template.iconKey,
             category: normalizeDocumentCategory(payload.template.category),
+            language: payload.template.language,
+            region: payload.template.region,
             visibility: payload.template.visibility,
             schema: editableVersion.schemaJson,
             generationConfig: editableVersion.generationConfigJson,
@@ -560,14 +573,10 @@ export const DocumentBuilderFlow = forwardRef<
           installedVersionNumber: payload.installed?.installedVersionNumber ?? null,
           sampleContent: resolvedContent.sampleContent,
           previewContent: resolvedContent.previewContent,
-          previewCaseSummary:
-            payload.latestDraftPreview?.caseSummary ??
-            payload.latestPublishedPreview?.caseSummary ??
-            null,
           previewLocale:
             payload.latestDraftPreview?.locale ??
             payload.latestPublishedPreview?.locale ??
-            locale,
+            payload.template.language,
           previewInputChecksum:
             payload.latestDraftPreview?.inputChecksum ??
             payload.latestPublishedPreview?.inputChecksum ??
@@ -589,7 +598,6 @@ export const DocumentBuilderFlow = forwardRef<
         setLoadedTemplateId(payload.template.id)
         setSampleContent(comparable.sampleContent)
         setPreviewContent(comparable.previewContent)
-        setPreviewCaseSummary(comparable.previewCaseSummary)
         setPreviewLocale(comparable.previewLocale)
         setPreviewGeneratedAt(comparable.previewGeneratedAt)
         setPreviewInputChecksum(comparable.previewInputChecksum)
@@ -611,15 +619,15 @@ export const DocumentBuilderFlow = forwardRef<
         setRestoredLocalChanges(true)
         const restoredContent = resolveSampleAndPreviewContent({
           draft: normalizedDraft,
-          locale,
           sampleContent: restoredSnapshot.sampleContent,
           previewContent: restoredSnapshot.previewContent,
           previewInputChecksum: restoredSnapshot.previewInputChecksum,
         })
         setSampleContent(restoredContent.sampleContent)
         setPreviewContent(restoredContent.previewContent)
-        setPreviewCaseSummary(restoredSnapshot.previewCaseSummary ?? null)
-        setPreviewLocale(restoredSnapshot.previewLocale ?? locale)
+        setPreviewLocale(
+          restoredSnapshot.previewLocale ?? normalizedDraft.language
+        )
         setPreviewGeneratedAt(restoredSnapshot.previewGeneratedAt ?? null)
         setPreviewInputChecksum(restoredSnapshot.previewInputChecksum ?? null)
         setPreviewStatus(
@@ -685,18 +693,19 @@ export const DocumentBuilderFlow = forwardRef<
   }, [draft.schema, draft.title, t])
 
   const goToStructureStep = useCallback(() => {
-    const nextDraft = createEmptyDraft(locale)
+    const nextDraft = createEmptyDraft(locale, userRegion)
     setDraft(nextDraft)
-    setSampleContent(buildSampleDocumentContent(nextDraft.schema, locale))
+    setSampleContent(
+      buildSampleDocumentContent(nextDraft.schema, nextDraft.language)
+    )
     setPreviewContent({})
-    setPreviewCaseSummary(null)
-    setPreviewLocale(locale)
+    setPreviewLocale(nextDraft.language)
     setPreviewGeneratedAt(null)
     setPreviewInputChecksum(null)
     setPreviewStatus("idle")
     setPreviewError(null)
     setStep("structure")
-  }, [locale])
+  }, [locale, userRegion])
 
   const generatePreview = useCallback(
     async (options?: { force?: boolean; showToastOnFailure?: boolean }) => {
@@ -706,7 +715,6 @@ export const DocumentBuilderFlow = forwardRef<
       if (!draft.title.trim() || draft.schema.nodes.length === 0) {
         setPreviewStatus("idle")
         setPreviewError(null)
-        setPreviewCaseSummary(null)
         setPreviewInputChecksum(null)
         setPreviewGeneratedAt(null)
         setPreviewContent({})
@@ -733,7 +741,6 @@ export const DocumentBuilderFlow = forwardRef<
           signal: controller.signal,
           body: JSON.stringify({
             draft,
-            locale,
             model: documentModel,
           }),
         })
@@ -745,7 +752,6 @@ export const DocumentBuilderFlow = forwardRef<
 
         const payload = (await response.json()) as {
           previewContent: Record<string, unknown>
-          previewCaseSummary: string
           previewLocale: string
           previewGeneratedAt: string
           previewInputChecksum: string
@@ -754,7 +760,6 @@ export const DocumentBuilderFlow = forwardRef<
         if (previewRequestIdRef.current !== requestId) return
 
         setPreviewContent(payload.previewContent)
-        setPreviewCaseSummary(payload.previewCaseSummary)
         setPreviewLocale(payload.previewLocale)
         setPreviewGeneratedAt(payload.previewGeneratedAt)
         setPreviewInputChecksum(payload.previewInputChecksum)
@@ -781,7 +786,6 @@ export const DocumentBuilderFlow = forwardRef<
       currentPreviewChecksum,
       documentModel,
       draft,
-      locale,
       previewInputChecksum,
       t,
     ]
@@ -819,7 +823,12 @@ export const DocumentBuilderFlow = forwardRef<
         body: JSON.stringify(
           effectiveMode === "edit" && resolvedTemplateId
             ? { prompt: aiPrompt, draft, model: documentModel }
-            : { prompt: aiPrompt, model: documentModel }
+            : {
+                prompt: aiPrompt,
+                defaultLanguage: locale,
+                defaultRegion: userRegion,
+                model: documentModel,
+              }
         ),
       })
       if (!response.ok) {
@@ -830,10 +839,11 @@ export const DocumentBuilderFlow = forwardRef<
 
       const payload = (await response.json()) as DocumentBuilderDraft
       setDraft(withNormalizedDraftCategory(payload))
-      setSampleContent(buildSampleDocumentContent(payload.schema, locale))
+      setSampleContent(
+        buildSampleDocumentContent(payload.schema, payload.language)
+      )
       setPreviewContent({})
-      setPreviewCaseSummary(null)
-      setPreviewLocale(locale)
+      setPreviewLocale(payload.language)
       setPreviewGeneratedAt(null)
       setPreviewInputChecksum(null)
       setPreviewStatus("idle")
@@ -860,6 +870,7 @@ export const DocumentBuilderFlow = forwardRef<
     locale,
     resolvedTemplateId,
     t,
+    userRegion,
   ])
 
   const saveDraft = useCallback(async (): Promise<string | null> => {
@@ -872,7 +883,6 @@ export const DocumentBuilderFlow = forwardRef<
           body: JSON.stringify({
             ...draft,
             previewContent,
-            previewCaseSummary,
             previewLocale,
             previewGeneratedAt,
             previewInputChecksum,
@@ -893,7 +903,6 @@ export const DocumentBuilderFlow = forwardRef<
           installedVersionNumber,
           sampleContent,
           previewContent,
-          previewCaseSummary,
           previewLocale,
           previewInputChecksum,
           previewGeneratedAt,
@@ -911,7 +920,6 @@ export const DocumentBuilderFlow = forwardRef<
         body: JSON.stringify({
           ...draft,
           previewContent,
-          previewCaseSummary,
           previewLocale,
           previewGeneratedAt,
           previewInputChecksum,
@@ -939,7 +947,6 @@ export const DocumentBuilderFlow = forwardRef<
           installedVersionNumber,
           sampleContent,
           previewContent,
-          previewCaseSummary,
           previewLocale,
           previewInputChecksum,
           previewGeneratedAt,
@@ -972,7 +979,6 @@ export const DocumentBuilderFlow = forwardRef<
     installedVersionNumber,
     invalidateCatalog,
     openEditDialog,
-    previewCaseSummary,
     sampleContent,
     previewContent,
     previewGeneratedAt,
@@ -1001,7 +1007,6 @@ export const DocumentBuilderFlow = forwardRef<
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          locale,
           model: documentModel,
         }),
       })
@@ -1026,7 +1031,6 @@ export const DocumentBuilderFlow = forwardRef<
           installedVersionNumber,
           sampleContent,
           previewContent,
-          previewCaseSummary,
           previewLocale,
           previewInputChecksum,
           previewGeneratedAt,
@@ -1049,8 +1053,6 @@ export const DocumentBuilderFlow = forwardRef<
     draft,
     installedVersionNumber,
     invalidateCatalog,
-    locale,
-    previewCaseSummary,
     sampleContent,
     previewContent,
     previewGeneratedAt,
@@ -1069,16 +1071,19 @@ export const DocumentBuilderFlow = forwardRef<
 
     try {
       setInstalling(true)
-      const response = await fetch(`/api/documents/${resolvedTemplateId}/install`, {
-        method: "POST",
-      })
+      const response = await fetch(
+        `/api/documents/${resolvedTemplateId}/install?locale=${encodeURIComponent(locale)}`,
+        {
+          method: "POST",
+        }
+      )
       if (!response.ok) {
         throw new Error(
           await readErrorMessage(response, t("toasts.installFailed"))
         )
       }
 
-      const snapshot = await refreshWorkspaceSnapshot()
+      const snapshot = await refreshWorkspaceSnapshot({ locale })
       const installedDocument =
         snapshot?.installedDocuments.find(
           (document) => document.templateId === resolvedTemplateId
@@ -1099,6 +1104,7 @@ export const DocumentBuilderFlow = forwardRef<
   }, [
     discardSnapshot,
     invalidateCatalog,
+    locale,
     onClose,
     refreshWorkspaceSnapshot,
     resolvedTemplateId,
@@ -1119,7 +1125,6 @@ export const DocumentBuilderFlow = forwardRef<
     resetToServerVersion(resolvedTemplateId)
     setSampleContent(serverComparableState.sampleContent)
     setPreviewContent(serverComparableState.previewContent)
-    setPreviewCaseSummary(serverComparableState.previewCaseSummary)
     setPreviewLocale(serverComparableState.previewLocale)
     setPreviewGeneratedAt(serverComparableState.previewGeneratedAt)
     setPreviewInputChecksum(serverComparableState.previewInputChecksum)
@@ -1204,7 +1209,6 @@ export const DocumentBuilderFlow = forwardRef<
         <DocumentBuilderStepStructure
           draft={draft}
           setDraft={setDraft}
-          previewContent={sampleContent}
           aiLoading={aiLoading}
           aiPrompt={aiPrompt}
           showAiRevisePanel={effectiveMode === "edit"}
@@ -1212,7 +1216,6 @@ export const DocumentBuilderFlow = forwardRef<
           onAiPromptChange={setAiPrompt}
           onAiRevise={handleAiDraft}
           onOpenModelSettings={() => openSettings("models")}
-          onPreviewContentChange={handleSampleContentChange}
           onResetToServerVersion={
             restoredLocalChanges && serverComparableState
               ? handleResetToServerVersion
@@ -1226,13 +1229,14 @@ export const DocumentBuilderFlow = forwardRef<
           title={draft.title}
           description={draft.description}
           category={draft.category}
+          language={draft.language}
+          region={draft.region}
           visibility={draft.visibility}
           schemaNodeCount={schemaNodeCount}
           contextSources={draft.generationConfig.contextSources}
           publishedVersionNumber={publishedVersionNumber}
           installedVersionNumber={installedVersionNumber}
           previewSections={previewSections}
-          previewCaseSummary={previewCaseSummary}
           previewLocale={previewLocale}
           previewGeneratedAt={previewGeneratedAt}
           previewStatus={effectivePreviewStatus}

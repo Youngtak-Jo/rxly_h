@@ -14,6 +14,14 @@ export const DOCUMENT_TEMPLATE_VISIBILITIES = ["PRIVATE", "PUBLIC"] as const
 export type DocumentTemplateVisibility =
   (typeof DOCUMENT_TEMPLATE_VISIBILITIES)[number]
 
+export const DOCUMENT_TEMPLATE_LANGUAGES = ["en", "ko"] as const
+export type DocumentTemplateLanguage =
+  (typeof DOCUMENT_TEMPLATE_LANGUAGES)[number]
+
+export const DOCUMENT_TEMPLATE_REGIONS = ["global", "kr", "us"] as const
+export type DocumentTemplateRegion =
+  (typeof DOCUMENT_TEMPLATE_REGIONS)[number]
+
 export const DOCUMENT_TEMPLATE_VERSION_STATUSES = [
   "DRAFT",
   "PUBLISHED",
@@ -92,7 +100,6 @@ export interface DocumentTemplateVersionRecord {
   schemaJson: DocumentTemplateSchema
   generationConfigJson: DocumentGenerationConfig
   previewContentJson: Record<string, unknown> | null
-  previewCaseSummary: string | null
   previewLocale: string | null
   previewModelId: string | null
   previewGeneratedAt: string | null
@@ -104,7 +111,6 @@ export interface DocumentTemplateVersionRecord {
 
 export interface DocumentTemplateVersionPreview {
   contentJson: Record<string, unknown> | null
-  caseSummary: string | null
   locale: string | null
   modelId: string | null
   generatedAt: string | null
@@ -116,7 +122,6 @@ export type DocumentPreviewKind = "AI_GENERATED" | "BUILT_IN_STATIC"
 export interface DocumentPreviewPayload {
   versionNumber: number | null
   previewKind: DocumentPreviewKind
-  previewCaseSummary: string | null
   previewLocale: string | null
   previewContent: Record<string, unknown> | null
   builtInPreviewKey?: "record" | "patient-handout"
@@ -134,6 +139,8 @@ export interface DocumentTemplateRecord {
   description: string
   iconKey: string
   category: string
+  language: DocumentTemplateLanguage
+  region: DocumentTemplateRegion
   latestDraftVersionId: string | null
   latestPublishedVersionId: string | null
   createdAt: string
@@ -150,7 +157,10 @@ export interface DocumentCatalogItem {
   sourceKind: DocumentTemplateSourceKind
   iconKey: string
   category: string
+  language: DocumentTemplateLanguage
+  region: DocumentTemplateRegion
   authorName: string
+  installCount: number
   publishedVersionNumber: number | null
   installedVersionNumber: number | null
   isInstalled: boolean
@@ -173,6 +183,8 @@ export interface DocumentPreviewResponse extends DocumentPreviewPayload {
   visibility: DocumentTemplateVisibility
   authorName: string
   category: string
+  language: DocumentTemplateLanguage
+  region: DocumentTemplateRegion
 }
 
 export interface InstalledDocumentSummary {
@@ -185,6 +197,10 @@ export interface InstalledDocumentSummary {
   sourceKind: DocumentTemplateSourceKind
   iconKey: string
   category: string
+  language: DocumentTemplateLanguage
+  region: DocumentTemplateRegion
+  authorName: string
+  installCount: number
   installedVersionId: string
   installedVersionNumber: number
   latestPublishedVersionId: string | null
@@ -240,6 +256,8 @@ export interface DocumentBuilderDraft {
   description: string
   iconKey: string
   category: string
+  language: DocumentTemplateLanguage
+  region: DocumentTemplateRegion
   visibility: DocumentTemplateVisibility
   schema: DocumentTemplateSchema
   generationConfig: DocumentGenerationConfig
@@ -265,7 +283,6 @@ export interface DocumentBuilderLocalSnapshot {
   installedVersionNumber: number | null
   sampleContent?: Record<string, unknown>
   previewContent?: Record<string, unknown>
-  previewCaseSummary?: string | null
   previewLocale?: string | null
   previewInputChecksum?: string | null
   previewGeneratedAt?: string | null

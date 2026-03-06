@@ -13,7 +13,10 @@ import type {
 } from "@/types/admin"
 
 type TranslationValues = Record<string, string | number>
-type AdminTranslator = (...args: never[]) => string
+type AdminTranslator = {
+  (...args: never[]): string
+  has?: (...args: never[]) => boolean
+}
 
 type AdminAlertLike = Pick<AdminInsightAlert, "rule" | "title" | "description" | "metadata"> |
   Pick<AdminIncidentRow, "rule" | "title" | "description" | "metadata">
@@ -37,10 +40,13 @@ function translateOrFallback(
   fallback: string,
   values?: TranslationValues
 ): string {
-  const translate = t as unknown as (key: string, values?: TranslationValues) => string
-  const hasTranslation = (t as unknown as {
-    has?: (key: string) => boolean
-  }).has
+  const translate = t as unknown as (
+    key: string,
+    values?: TranslationValues
+  ) => string
+  const hasTranslation = t.has as
+    | ((key: string) => boolean)
+    | undefined
 
   if (typeof hasTranslation === "function" && hasTranslation(key)) {
     return translate(key, values)
@@ -148,8 +154,17 @@ export function getAdminAlertCopy(
       if (aiCallCount !== null) {
         return {
           label,
-          title: t("rules.HighAiRegeneration.title"),
-          description: t("rules.HighAiRegeneration.description", { aiCallCount }),
+          title: translateOrFallback(
+            t,
+            "rules.HighAiRegeneration.title",
+            alert.title || label
+          ),
+          description: translateOrFallback(
+            t,
+            "rules.HighAiRegeneration.description",
+            alert.description || "",
+            { aiCallCount }
+          ),
         }
       }
       break
@@ -160,11 +175,20 @@ export function getAdminAlertCopy(
       if (transcriptAvgConfidence !== null && transcriptUnknownRatio !== null) {
         return {
           label,
-          title: t("rules.LowTranscriptQuality.title"),
-          description: t("rules.LowTranscriptQuality.description", {
-            confidence: toPercentValue(transcriptAvgConfidence),
-            unknownRatio: toPercentValue(transcriptUnknownRatio),
-          }),
+          title: translateOrFallback(
+            t,
+            "rules.LowTranscriptQuality.title",
+            alert.title || label
+          ),
+          description: translateOrFallback(
+            t,
+            "rules.LowTranscriptQuality.description",
+            alert.description || "",
+            {
+              confidence: toPercentValue(transcriptAvgConfidence),
+              unknownRatio: toPercentValue(transcriptUnknownRatio),
+            }
+          ),
         }
       }
       break
@@ -174,8 +198,17 @@ export function getAdminAlertCopy(
       if (redFlagCount !== null) {
         return {
           label,
-          title: t("rules.RedFlagUnresolved.title"),
-          description: t("rules.RedFlagUnresolved.description", { redFlagCount }),
+          title: translateOrFallback(
+            t,
+            "rules.RedFlagUnresolved.title",
+            alert.title || label
+          ),
+          description: translateOrFallback(
+            t,
+            "rules.RedFlagUnresolved.description",
+            alert.description || "",
+            { redFlagCount }
+          ),
         }
       }
       break
@@ -186,11 +219,20 @@ export function getAdminAlertCopy(
       if (last7Days !== null && last30Days !== null) {
         return {
           label,
-          title: t("rules.DormantPowerUser.title"),
-          description: t("rules.DormantPowerUser.description", {
-            last7Days,
-            last30Days,
-          }),
+          title: translateOrFallback(
+            t,
+            "rules.DormantPowerUser.title",
+            alert.title || label
+          ),
+          description: translateOrFallback(
+            t,
+            "rules.DormantPowerUser.description",
+            alert.description || "",
+            {
+              last7Days,
+              last30Days,
+            }
+          ),
         }
       }
       break
@@ -201,13 +243,23 @@ export function getAdminAlertCopy(
       if (feature && failedCount !== null) {
         return {
           label,
-          title: t("rules.RepeatedAnalysisFailure.title", {
-            feature: getAdminFeatureLabel(t, feature),
-          }),
-          description: t("rules.RepeatedAnalysisFailure.description", {
-            feature: getAdminFeatureLabel(t, feature),
-            failedCount,
-          }),
+          title: translateOrFallback(
+            t,
+            "rules.RepeatedAnalysisFailure.title",
+            alert.title || label,
+            {
+              feature: getAdminFeatureLabel(t, feature),
+            }
+          ),
+          description: translateOrFallback(
+            t,
+            "rules.RepeatedAnalysisFailure.description",
+            alert.description || "",
+            {
+              feature: getAdminFeatureLabel(t, feature),
+              failedCount,
+            }
+          ),
         }
       }
       break
@@ -223,12 +275,21 @@ export function getAdminAlertCopy(
       ) {
         return {
           label,
-          title: t("rules.AiFailureImbalance.title"),
-          description: t("rules.AiFailureImbalance.description", {
-            aiSuccessCount,
-            aiFailureCount,
-            aiFailureRate: toPercentValue(aiFailureRate),
-          }),
+          title: translateOrFallback(
+            t,
+            "rules.AiFailureImbalance.title",
+            alert.title || label
+          ),
+          description: translateOrFallback(
+            t,
+            "rules.AiFailureImbalance.description",
+            alert.description || "",
+            {
+              aiSuccessCount,
+              aiFailureCount,
+              aiFailureRate: toPercentValue(aiFailureRate),
+            }
+          ),
         }
       }
       break
@@ -243,7 +304,11 @@ export function getAdminAlertCopy(
       ) {
         return {
           label,
-          title: t(`rules.${alert.rule}.title`),
+          title: translateOrFallback(
+            t,
+            `rules.${alert.rule}.title`,
+            alert.title || label
+          ),
           description: translateOrFallback(
             t,
             `rules.${alert.rule}.description`,

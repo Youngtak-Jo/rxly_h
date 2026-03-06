@@ -31,18 +31,20 @@ export function buildDocumentPreviewInputChecksum(input: {
   title: string
   description: string
   category: string
+  language: DocumentBuilderDraft["language"]
+  region: DocumentBuilderDraft["region"]
   schema: DocumentBuilderDraft["schema"]
   generationConfig: DocumentBuilderDraft["generationConfig"]
-  locale: string
 }): string {
   return hashString(
     stableSerialize({
       title: input.title,
       description: input.description,
       category: input.category,
+      language: input.language,
+      region: input.region,
       schema: input.schema,
       generationConfig: input.generationConfig,
-      locale: input.locale,
     })
   )
 }

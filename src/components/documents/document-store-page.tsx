@@ -7,6 +7,7 @@ import {
   IconLoader2,
   IconPlus,
   IconRosetteDiscountCheckFilled,
+  IconUsers,
 } from "@tabler/icons-react"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
@@ -28,6 +29,13 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -37,12 +45,20 @@ import {
   type DocumentCategory,
 } from "@/lib/documents/categories"
 import { buildDocumentTabId } from "@/lib/documents/constants"
+import {
+  getDocumentLanguageOptions,
+  getDocumentRegionOptions,
+} from "@/lib/documents/language-region"
+import { normalizeUiLocale } from "@/i18n/config"
+import { formatNumber } from "@/i18n/format"
 import { useDocumentBuilderDialogStore } from "@/stores/document-builder-dialog-store"
 import { useDocumentCatalogStore } from "@/stores/document-catalog-store"
 import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
 import type {
   DocumentBuilderDialogMode,
   DocumentCatalogItem,
+  DocumentTemplateLanguage,
+  DocumentTemplateRegion,
   InstalledDocumentSummary,
 } from "@/types/document"
 
@@ -63,11 +79,38 @@ async function readErrorMessage(
 }
 
 type CategoryFilter = "all" | DocumentCategory
+type LanguageFilter = "all" | DocumentTemplateLanguage
+type RegionFilter = "all" | DocumentTemplateRegion
 
 const DOCUMENT_CATEGORY_OPTIONS = getDocumentCategoryOptions()
+const DOCUMENT_LANGUAGE_OPTIONS = getDocumentLanguageOptions()
+const DOCUMENT_REGION_OPTIONS = getDocumentRegionOptions()
 const CATALOG_CACHE_KEY = "all"
 const catalogCache = new Map<string, DocumentCatalogItem[]>()
 const inFlightCatalogRequests = new Map<string, Promise<DocumentCatalogItem[]>>()
+const FILTER_TRIGGER_BASE_CLASS =
+  "h-8 w-auto max-w-full justify-start gap-1.5 rounded-full px-3 pr-2 text-xs font-medium shadow-none [&_svg]:size-3.5"
+
+function getFilterTriggerClass(active: boolean): string {
+  if (active) {
+    return `${FILTER_TRIGGER_BASE_CLASS} border-primary/50 bg-primary/10 text-primary hover:border-primary/60 hover:bg-primary/15 data-[state=open]:bg-primary/15`
+  }
+
+  return `${FILTER_TRIGGER_BASE_CLASS} border-border/70 bg-transparent text-foreground hover:border-border hover:bg-transparent data-[state=open]:bg-transparent`
+}
+
+function DocumentStoreFilterPlaceholder() {
+  return (
+    <div
+      aria-hidden="true"
+      className="flex flex-wrap items-center justify-start gap-2"
+    >
+      <div className="h-8 w-28 rounded-full border border-border/70" />
+      <div className="h-8 w-24 rounded-full border border-border/70" />
+      <div className="h-8 w-24 rounded-full border border-border/70" />
+    </div>
+  )
+}
 
 function buildFallbackCatalogItem(
   installed: InstalledDocumentSummary
@@ -82,7 +125,10 @@ function buildFallbackCatalogItem(
     sourceKind: installed.sourceKind,
     iconKey: installed.iconKey,
     category: normalizeDocumentCategory(installed.category),
-    authorName: installed.sourceKind === "BUILT_IN" ? "Rxly" : "You",
+    language: installed.language,
+    region: installed.region,
+    authorName: installed.authorName,
+    installCount: installed.installCount,
     publishedVersionNumber: installed.latestPublishedVersionNumber,
     installedVersionNumber: installed.installedVersionNumber,
     isInstalled: true,
@@ -97,7 +143,6 @@ function buildFallbackCatalogItem(
       versionNumber: installed.latestPublishedVersionNumber,
       previewKind:
         installed.sourceKind === "BUILT_IN" ? "BUILT_IN_STATIC" : "AI_GENERATED",
-      previewCaseSummary: null,
       previewLocale: null,
       previewContent: null,
       generatedAt: null,
@@ -110,8 +155,10 @@ function DocumentPreviewCard({
   builtInLabel,
   draftLabel,
   updateLabel,
-  publishedVersionLabel,
+  installCountLabel,
   categoryLabel,
+  languageLabel,
+  regionLabel,
   previewFallbackText,
   workspaceVisible,
   workspaceToggleBusy,
@@ -124,8 +171,10 @@ function DocumentPreviewCard({
   builtInLabel: string
   draftLabel: string
   updateLabel: string
-  publishedVersionLabel: string | null
+  installCountLabel: string | null
   categoryLabel: string
+  languageLabel: string
+  regionLabel: string
   previewFallbackText: string
   workspaceVisible?: boolean
   workspaceToggleBusy?: boolean
@@ -139,6 +188,8 @@ function DocumentPreviewCard({
     ? workspaceShownLabel ?? "Shown in workspace"
     : workspaceHiddenLabel ?? "Hidden from workspace"
   const previewHeightClass = "h-[16.25rem]"
+  const hasWorkspaceSwitch =
+    typeof workspaceVisible === "boolean" && !!onWorkspaceVisibilityChange
 
   return (
     <div className="group relative w-full">
@@ -150,6 +201,35 @@ function DocumentPreviewCard({
         <div
           className={`relative ${previewHeightClass} overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-b from-muted/40 to-muted/20 transition group-hover:border-border group-hover:from-muted/55 group-hover:to-muted/35`}
         >
+          {item.hasUpdate ? (
+            <div className="absolute inset-x-0 top-0 z-10 border-b border-emerald-300/70 bg-emerald-100/95 px-3 py-1.5 text-xs font-semibold text-emerald-900 backdrop-blur-sm">
+              {updateLabel}
+            </div>
+          ) : null}
+
+          <div
+            className={`absolute bottom-3 left-3 z-20 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-1.5 ${hasWorkspaceSwitch ? "pr-10" : ""}`}
+          >
+            <Badge
+              variant="outline"
+              className="border-border/60 bg-background/90 shadow-sm backdrop-blur-sm"
+            >
+              {categoryLabel}
+            </Badge>
+            <Badge
+              variant="outline"
+              className="border-border/60 bg-background/90 shadow-sm backdrop-blur-sm"
+            >
+              {languageLabel}
+            </Badge>
+            <Badge
+              variant="outline"
+              className="border-border/60 bg-background/90 shadow-sm backdrop-blur-sm"
+            >
+              {regionLabel}
+            </Badge>
+          </div>
+
           <div className="absolute inset-x-0 bottom-1 flex justify-center px-5">
             <div className="w-full max-w-[72%] rounded-t-xl rounded-b-none border border-b-0 border-border/70 bg-card shadow-[0_-8px_20px_rgba(0,0,0,0.04)]">
               <div className="relative h-[14rem] overflow-hidden px-3 py-2">
@@ -186,31 +266,24 @@ function DocumentPreviewCard({
             {description || "\u00A0"}
           </p>
 
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <span>{item.authorName}</span>
-            <span>&middot;</span>
-            <span>{categoryLabel}</span>
-            {item.publishedVersionNumber ? (
-              <>
-                <span>&middot;</span>
-                <span>{publishedVersionLabel}</span>
-              </>
-            ) : null}
-            {item.hasUpdate ? (
-              <Badge className="ml-auto" variant="secondary">
-                {updateLabel}
-              </Badge>
+          <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+            <span className="min-w-0 truncate">{item.authorName}</span>
+            {installCountLabel ? (
+              <span className="inline-flex shrink-0 items-center gap-1">
+                <IconUsers className="size-3.5" />
+                {installCountLabel}
+              </span>
             ) : null}
           </div>
         </div>
       </button>
 
-      {typeof workspaceVisible === "boolean" && onWorkspaceVisibilityChange ? (
+      {hasWorkspaceSwitch ? (
         <Switch
           checked={workspaceVisible}
           disabled={workspaceToggleBusy}
           size="sm"
-          className="absolute bottom-[calc(100%-16.25rem+0.75rem)] right-3 z-10 scale-110 shadow-sm"
+          className="absolute bottom-[1.05rem] right-3 z-30 scale-110 shadow-sm"
           aria-label={workspaceSwitchLabel}
           title={workspaceSwitchLabel}
           onClick={(event) => event.stopPropagation()}
@@ -235,8 +308,10 @@ export function DocumentStorePage({
 }) {
   const t = useTranslations("DocumentStore")
   const tBuilder = useTranslations("DocumentBuilder")
+  const tMeta = useTranslations("DocumentMetadata")
   const locale = useLocale()
   const router = useRouter()
+  const uiLocale = normalizeUiLocale(locale) ?? "en"
 
   const isMineView = viewMode === "mine"
 
@@ -260,6 +335,8 @@ export function DocumentStorePage({
 
   const [query, setQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
+  const [languageFilter, setLanguageFilter] = useState<LanguageFilter>("all")
+  const [regionFilter, setRegionFilter] = useState<RegionFilter>("all")
   const [items, setItems] = useState<DocumentCatalogItem[]>([])
   const [loading, setLoading] = useState(false)
   const [hasLoadedCatalog, setHasLoadedCatalog] = useState(false)
@@ -269,7 +346,12 @@ export function DocumentStorePage({
     useState<DocumentCatalogItem | null>(null)
   const [deleteTarget, setDeleteTarget] =
     useState<DocumentCatalogItem | null>(null)
+  const [toolbarReady, setToolbarReady] = useState(false)
   const initialIntentAppliedRef = useRef(false)
+
+  useEffect(() => {
+    setToolbarReady(true)
+  }, [])
 
   const loadCatalog = useCallback(
     async (options?: { force?: boolean }) => {
@@ -337,14 +419,14 @@ export function DocumentStorePage({
   }, [loadCatalog, refreshKey])
 
   useEffect(() => {
-    void loadWorkspaceSnapshot().catch((error) => {
+    void loadWorkspaceSnapshot({ locale }).catch((error) => {
       const message =
         error instanceof Error
           ? error.message
           : t("toasts.workspaceLoadFailed")
       toast.error(message)
     })
-  }, [loadWorkspaceSnapshot, t])
+  }, [loadWorkspaceSnapshot, locale, t])
 
   useEffect(() => {
     if (!initialDialogIntent || initialIntentAppliedRef.current) return
@@ -368,6 +450,12 @@ export function DocumentStorePage({
       ) {
         return false
       }
+      if (languageFilter !== "all" && item.language !== languageFilter) {
+        return false
+      }
+      if (regionFilter !== "all" && item.region !== regionFilter) {
+        return false
+      }
 
       const normalizedQuery = query.trim().toLowerCase()
       if (!normalizedQuery) return true
@@ -377,13 +465,15 @@ export function DocumentStorePage({
         item.description,
         item.authorName,
         normalizeDocumentCategory(item.category),
+        item.language,
+        item.region,
       ]
         .join(" ")
         .toLowerCase()
 
       return haystack.includes(normalizedQuery)
     },
-    [categoryFilter, query]
+    [categoryFilter, languageFilter, query, regionFilter]
   )
 
   const catalogByTemplateId = useMemo(
@@ -397,8 +487,8 @@ export function DocumentStorePage({
         (installed) =>
           catalogByTemplateId.get(installed.templateId) ??
           buildFallbackCatalogItem(installed)
-      ),
-    [catalogByTemplateId, installedDocuments]
+      ).filter(matchesSearchAndCategory),
+    [catalogByTemplateId, installedDocuments, matchesSearchAndCategory]
   )
 
   const installableCatalogItems = useMemo(
@@ -442,13 +532,13 @@ export function DocumentStorePage({
 
   const handleInstall = (item: DocumentCatalogItem) =>
     void runAction(item.templateId, async () => {
-      await installDocument(item.templateId)
+      await installDocument(item.templateId, undefined, locale)
       toast.success(t("toasts.installed", { title: item.title }))
     })
 
   const handleUpdate = (item: DocumentCatalogItem) =>
     void runAction(item.templateId, async () => {
-      await installDocument(item.templateId)
+      await installDocument(item.templateId, undefined, locale)
       toast.success(t("toasts.updated", { title: item.title }))
     })
 
@@ -492,7 +582,7 @@ export function DocumentStorePage({
       }
 
       // Keep workspace tabs/install list in sync after template deletion.
-      await loadWorkspaceSnapshot({ force: true }).catch((error) => {
+      await loadWorkspaceSnapshot({ force: true, locale }).catch((error) => {
         console.error("Failed to refresh workspace after deleting template", error)
       })
 
@@ -515,7 +605,7 @@ export function DocumentStorePage({
 
   const handleSetTabEnabled = (item: DocumentCatalogItem, enabled: boolean) =>
     void runAction(`tab:${item.templateId}`, async () => {
-      await setDocumentTabEnabled(item.templateId, enabled)
+      await setDocumentTabEnabled(item.templateId, enabled, locale)
       toast.success(
         enabled
           ? t("toasts.tabEnabled", { title: item.title })
@@ -562,7 +652,7 @@ export function DocumentStorePage({
           />
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="border-b px-4 py-4 lg:px-6">
+            <div className="px-4 py-4 lg:px-6">
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-2 md:flex-row md:items-center">
                   <Input
@@ -571,50 +661,102 @@ export function DocumentStorePage({
                     placeholder={t("searchPlaceholder")}
                     className="w-full min-w-0 md:flex-1"
                   />
-                  <Tabs
-                    value={viewMode}
-                    onValueChange={handleViewChange}
-                    className="shrink-0 self-end md:self-auto"
-                  >
-                    <TabsList>
-                      <TabsTrigger value="catalog" className="gap-1.5">
-                        <IconFolder className="size-3.5" />
-                        {t("views.catalog")}
-                      </TabsTrigger>
-                      <TabsTrigger value="mine" className="gap-1.5">
-                        <IconFileText className="size-3.5" />
-                        {t("views.mine")}
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-                <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={categoryFilter === "all" ? "secondary" : "outline"}
-                    className="h-7 rounded-full px-2.5 text-[11px]"
-                    onClick={() => setCategoryFilter("all")}
-                  >
-                    {t("filters.categoryAll")}
-                  </Button>
-                  {DOCUMENT_CATEGORY_OPTIONS.map((categoryOption) => (
-                    <Button
-                      key={categoryOption.value}
-                      type="button"
-                      size="sm"
-                      variant={
-                        categoryFilter === categoryOption.value
-                          ? "secondary"
-                          : "outline"
-                      }
-                      className="h-7 rounded-full px-2.5 text-[11px]"
-                      onClick={() => setCategoryFilter(categoryOption.value)}
+                  {toolbarReady ? (
+                    <Tabs
+                      value={viewMode}
+                      onValueChange={handleViewChange}
+                      className="shrink-0 self-end md:self-auto"
                     >
-                      {tBuilder(categoryOption.labelKey as never)}
-                    </Button>
-                  ))}
+                      <TabsList>
+                        <TabsTrigger value="catalog" className="gap-1.5">
+                          <IconFolder className="size-3.5" />
+                          {t("views.catalog")}
+                        </TabsTrigger>
+                        <TabsTrigger value="mine" className="gap-1.5">
+                          <IconFileText className="size-3.5" />
+                          {t("views.mine")}
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  ) : (
+                    <div
+                      aria-hidden="true"
+                      className="h-9 w-[7.5rem] shrink-0 self-end rounded-lg border border-transparent md:self-auto"
+                    />
+                  )}
                 </div>
+                {toolbarReady ? (
+                  <div className="flex flex-wrap items-center justify-start gap-2">
+                    <Select
+                      value={categoryFilter}
+                      onValueChange={(value) =>
+                        setCategoryFilter(value as CategoryFilter)
+                      }
+                    >
+                      <SelectTrigger
+                        size="sm"
+                        className={getFilterTriggerClass(categoryFilter !== "all")}
+                      >
+                        <SelectValue placeholder={t("filters.categoryAll")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t("filters.categoryAll")}</SelectItem>
+                        {DOCUMENT_CATEGORY_OPTIONS.map((categoryOption) => (
+                          <SelectItem
+                            key={categoryOption.value}
+                            value={categoryOption.value}
+                          >
+                            {tBuilder(categoryOption.labelKey as never)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={languageFilter}
+                      onValueChange={(value) =>
+                        setLanguageFilter(value as LanguageFilter)
+                      }
+                    >
+                      <SelectTrigger
+                        size="sm"
+                        className={getFilterTriggerClass(languageFilter !== "all")}
+                      >
+                        <SelectValue placeholder={t("filters.languageAll")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t("filters.languageAll")}</SelectItem>
+                        {DOCUMENT_LANGUAGE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {tMeta(option.labelKey as never)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={regionFilter}
+                      onValueChange={(value) => setRegionFilter(value as RegionFilter)}
+                    >
+                      <SelectTrigger
+                        size="sm"
+                        className={getFilterTriggerClass(regionFilter !== "all")}
+                      >
+                        <SelectValue placeholder={t("filters.regionAll")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t("filters.regionAll")}</SelectItem>
+                        {DOCUMENT_REGION_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {tMeta(option.labelKey as never)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <DocumentStoreFilterPlaceholder />
+                )}
               </div>
             </div>
 
@@ -637,28 +779,29 @@ export function DocumentStorePage({
                         {t("status.installedEmpty")}
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 gap-3 @xl/documents:grid-cols-2 @4xl/documents:grid-cols-3">
+                      <div className="grid grid-cols-1 gap-x-4 gap-y-7 @xl/documents:grid-cols-2 @4xl/documents:grid-cols-3">
                         {installedItems.map((item) => {
                           const categoryLabel = tBuilder(
                             getDocumentCategoryLabelKey(item.category) as never
                           )
+                          const languageLabel = tMeta(
+                            `languages.${item.language}` as never
+                          )
+                          const regionLabel = tMeta(`regions.${item.region}` as never)
+                          const installCountLabel = null
 
                           return (
                             <DocumentPreviewCard
                               key={`installed:${item.templateId}`}
                               item={item}
                               categoryLabel={categoryLabel}
+                              languageLabel={languageLabel}
+                              regionLabel={regionLabel}
                               previewFallbackText={previewFallbackText}
                               builtInLabel={builtInLabel}
                               draftLabel={draftLabel}
                               updateLabel={updateLabel}
-                              publishedVersionLabel={
-                                item.publishedVersionNumber
-                                  ? t("badges.publishedVersion", {
-                                      version: item.publishedVersionNumber,
-                                    })
-                                  : null
-                              }
+                              installCountLabel={installCountLabel}
                               onOpen={setPreviewItem}
                               workspaceVisible={visibleTabs.has(
                                 buildDocumentTabId(item.templateId)
@@ -697,28 +840,32 @@ export function DocumentStorePage({
                       {isMineView ? t("status.mineEmpty") : t("status.catalogEmpty")}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 gap-3 @xl/documents:grid-cols-2 @4xl/documents:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-7 @xl/documents:grid-cols-2 @4xl/documents:grid-cols-3">
                       {visibleItemList.map((item) => {
                         const categoryLabel = tBuilder(
                           getDocumentCategoryLabelKey(item.category) as never
                         )
+                        const languageLabel = tMeta(
+                          `languages.${item.language}` as never
+                        )
+                        const regionLabel = tMeta(`regions.${item.region}` as never)
+                        const installCountLabel =
+                          item.visibility === "PUBLIC"
+                            ? formatNumber(item.installCount, uiLocale)
+                            : null
 
                         return (
                           <DocumentPreviewCard
                             key={`list:${item.templateId}`}
                             item={item}
                             categoryLabel={categoryLabel}
+                            languageLabel={languageLabel}
+                            regionLabel={regionLabel}
                             previewFallbackText={previewFallbackText}
                             builtInLabel={builtInLabel}
                             draftLabel={draftLabel}
                             updateLabel={updateLabel}
-                            publishedVersionLabel={
-                              item.publishedVersionNumber
-                                ? t("badges.publishedVersion", {
-                                    version: item.publishedVersionNumber,
-                                  })
-                                : null
-                            }
+                            installCountLabel={installCountLabel}
                             onOpen={setPreviewItem}
                           />
                         )

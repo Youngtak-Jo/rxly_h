@@ -1,5 +1,10 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import type { DocumentTemplateRegion } from "@/types/document"
+import {
+  normalizeUserRegion,
+  type UserRegion,
+} from "@/lib/documents/language-region"
 
 const CLAUDE_SONNET_45_MODEL = "claude-sonnet-4-5-20250929"
 const CLAUDE_SONNET_46_MODEL = "claude-sonnet-4-6"
@@ -176,6 +181,10 @@ interface EmrSettings {
   provider: (typeof EMR_PROVIDERS)[number]["value"]
 }
 
+interface RegionalSettings {
+  userRegion: UserRegion | null
+}
+
 interface AppearanceSettings {
   theme: "light" | "dark" | "system"
   fontSize: FontSize
@@ -223,6 +232,7 @@ interface SettingsState {
   aiModel: AiModelSettings
   customInstructions: CustomInstructionsSettings
   emr: EmrSettings
+  regional: RegionalSettings
   appearance: AppearanceSettings
   accessibility: AccessibilitySettings
   setSttLanguage: (language: string) => void
@@ -253,6 +263,7 @@ interface SettingsState {
   setResearchInstructions: (instructions: string) => void
   setPatientHandoutInstructions: (instructions: string) => void
   setEmrProvider: (provider: EmrSettings["provider"]) => void
+  setUserRegion: (region: UserRegion) => void
   setTheme: (theme: "light" | "dark" | "system") => void
   setFontSize: (fontSize: FontSize) => void
   setUiDensity: (uiDensity: UiDensity) => void
@@ -313,6 +324,10 @@ const DEFAULT_EMR: EmrSettings = {
   provider: "medplum",
 }
 
+const DEFAULT_REGIONAL: RegionalSettings = {
+  userRegion: null,
+}
+
 const DEFAULT_APPEARANCE: AppearanceSettings = {
   theme: "system",
   fontSize: "default",
@@ -337,6 +352,7 @@ export const useSettingsStore = create<SettingsState>()(
       aiModel: { ...DEFAULT_AI_MODEL },
       customInstructions: { ...DEFAULT_CUSTOM_INSTRUCTIONS },
       emr: { ...DEFAULT_EMR },
+      regional: { ...DEFAULT_REGIONAL },
       appearance: { ...DEFAULT_APPEARANCE },
       accessibility: { ...DEFAULT_ACCESSIBILITY },
 
@@ -404,6 +420,9 @@ export const useSettingsStore = create<SettingsState>()(
       setEmrProvider: (provider) =>
         set((state) => ({ emr: { ...state.emr, provider } })),
 
+      setUserRegion: (userRegion) =>
+        set((state) => ({ regional: { ...state.regional, userRegion } })),
+
       setTheme: (theme) =>
         set((state) => ({ appearance: { ...state.appearance, theme } })),
       setFontSize: (fontSize) =>
@@ -432,6 +451,7 @@ export const useSettingsStore = create<SettingsState>()(
           aiModel: { ...DEFAULT_AI_MODEL },
           customInstructions: { ...DEFAULT_CUSTOM_INSTRUCTIONS },
           emr: { ...DEFAULT_EMR },
+          regional: { ...DEFAULT_REGIONAL },
           appearance: { ...DEFAULT_APPEARANCE },
           accessibility: { ...DEFAULT_ACCESSIBILITY },
         }),
@@ -439,19 +459,45 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: "rxly-settings",
       merge: (persisted, current) => {
-        const p = persisted as Partial<SettingsState> | undefined
-        const normalizedAiModel = normalizeAiModelSettings(p?.aiModel)
+        const p = persisted as
+          | (Partial<SettingsState> & {
+              documents?: {
+                defaultRegion?: DocumentTemplateRegion | null
+              }
+            })
+          | undefined
+        const {
+          documents: legacyDocuments,
+          ...persistedSettings
+        } = p ?? {}
+        const normalizedAiModel = normalizeAiModelSettings(
+          persistedSettings.aiModel
+        )
+        const persistedUserRegion = normalizeUserRegion(
+          persistedSettings.regional?.userRegion ?? legacyDocuments?.defaultRegion
+        )
         return {
           ...current,
-          ...p,
-          stt: { ...current.stt, ...p?.stt },
-          audio: { ...current.audio, ...p?.audio },
-          analysis: { ...current.analysis, ...p?.analysis },
+          ...persistedSettings,
+          stt: { ...current.stt, ...persistedSettings.stt },
+          audio: { ...current.audio, ...persistedSettings.audio },
+          analysis: { ...current.analysis, ...persistedSettings.analysis },
           aiModel: { ...current.aiModel, ...normalizedAiModel },
-          customInstructions: { ...current.customInstructions, ...p?.customInstructions },
-          emr: { ...current.emr, ...p?.emr },
-          appearance: { ...current.appearance, ...p?.appearance },
-          accessibility: { ...current.accessibility, ...p?.accessibility },
+          customInstructions: {
+            ...current.customInstructions,
+            ...persistedSettings.customInstructions,
+          },
+          emr: { ...current.emr, ...persistedSettings.emr },
+          regional: {
+            ...current.regional,
+            ...persistedSettings.regional,
+            userRegion: persistedUserRegion ?? current.regional.userRegion,
+          },
+          appearance: { ...current.appearance, ...persistedSettings.appearance },
+          accessibility: {
+            ...current.accessibility,
+            ...persistedSettings.accessibility,
+          },
         }
       },
     }

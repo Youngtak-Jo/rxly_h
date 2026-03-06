@@ -9,6 +9,7 @@ export const DOCUMENT_CATEGORIES = [
   "discharge-and-followup",
   "care-plan",
   "patient-education",
+  "patient-certificates",
   "administrative-form",
   "other",
 ] as const
@@ -30,6 +31,7 @@ const CATEGORY_ALIASES: Record<string, DocumentCategory> = {
   // Built-in/legacy variants
   "patient-education": "patient-education",
   "clinical-documentation": "clinical-documentation",
+  "patient-certificates": "patient-certificates",
 
   // Common synonyms
   billing: "billing-compliance",
@@ -46,6 +48,14 @@ const CATEGORY_ALIASES: Record<string, DocumentCategory> = {
   followup: "discharge-and-followup",
   "후속-관리": "discharge-and-followup",
   "care-plan": "care-plan",
+  certificate: "patient-certificates",
+  certificates: "patient-certificates",
+  "patient-certificate": "patient-certificates",
+  "medical-certificate": "patient-certificates",
+  "환자-발급": "patient-certificates",
+  "환자-증명서": "patient-certificates",
+  "제증명": "patient-certificates",
+  "제증명서": "patient-certificates",
   "administrative-form": "administrative-form",
   admin: "administrative-form",
   other: "other",

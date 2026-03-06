@@ -5,8 +5,23 @@ import type {
   WorkspaceTabId,
 } from "@/types/document"
 import { buildDocumentTabId } from "@/lib/documents/constants"
+import type { UiLocale } from "@/i18n/config"
 
-let inFlightWorkspaceRequest: Promise<DocumentWorkspaceSnapshot | null> | null = null
+const inFlightWorkspaceRequests = new Map<
+  UiLocale,
+  Promise<DocumentWorkspaceSnapshot | null>
+>()
+
+function normalizeWorkspaceLocale(locale?: string | null): UiLocale {
+  return locale?.toLowerCase().startsWith("ko") ? "ko" : "en"
+}
+
+function withLocale(path: string, locale?: string | null): string {
+  const normalizedLocale = normalizeWorkspaceLocale(locale)
+  const url = new URL(path, "http://localhost")
+  url.searchParams.set("locale", normalizedLocale)
+  return `${url.pathname}${url.search}`
+}
 
 async function readErrorMessage(
   response: Response,
@@ -28,32 +43,44 @@ interface DocumentWorkspaceState {
   tabOrder: WorkspaceTabId[]
   installedDocuments: InstalledDocumentSummary[]
   defaultTemplateIds: string[]
+  loadedLocale: UiLocale | null
   isLoading: boolean
   hasLoaded: boolean
   error: string | null
   setWorkspaceSnapshot: (snapshot: DocumentWorkspaceSnapshot) => void
   loadWorkspaceSnapshot: (options?: {
     force?: boolean
+    locale?: string | null
   }) => Promise<DocumentWorkspaceSnapshot | null>
-  refreshWorkspaceSnapshot: () => Promise<DocumentWorkspaceSnapshot | null>
+  refreshWorkspaceSnapshot: (options?: {
+    locale?: string | null
+  }) => Promise<DocumentWorkspaceSnapshot | null>
   installDocument: (
     templateId: string,
-    versionId?: string | null
+    versionId?: string | null,
+    locale?: string | null
   ) => Promise<DocumentWorkspaceSnapshot>
-  uninstallDocument: (templateId: string) => Promise<DocumentWorkspaceSnapshot>
+  uninstallDocument: (
+    templateId: string,
+    locale?: string | null
+  ) => Promise<DocumentWorkspaceSnapshot>
   persistTabOrder: (
-    tabOrder: WorkspaceTabId[]
+    tabOrder: WorkspaceTabId[],
+    locale?: string | null
   ) => Promise<DocumentWorkspaceSnapshot>
   setDocumentTabEnabled: (
     templateId: string,
-    enabled: boolean
+    enabled: boolean,
+    locale?: string | null
   ) => Promise<DocumentWorkspaceSnapshot>
   getInstalledDocument: (templateId: string) => InstalledDocumentSummary | null
   isDocumentInstalled: (templateId: string) => boolean
   reset: () => void
 }
 
-function getCurrentSnapshot(state: DocumentWorkspaceState): DocumentWorkspaceSnapshot {
+function getCurrentSnapshot(
+  state: DocumentWorkspaceState
+): DocumentWorkspaceSnapshot {
   return {
     tabOrder: state.tabOrder,
     installedDocuments: state.installedDocuments,
@@ -61,7 +88,10 @@ function getCurrentSnapshot(state: DocumentWorkspaceState): DocumentWorkspaceSna
   }
 }
 
-function applySnapshot(set: (partial: Partial<DocumentWorkspaceState>) => void, snapshot: DocumentWorkspaceSnapshot) {
+function applySnapshot(
+  set: (partial: Partial<DocumentWorkspaceState>) => void,
+  snapshot: DocumentWorkspaceSnapshot
+) {
   set({
     tabOrder: snapshot.tabOrder,
     installedDocuments: snapshot.installedDocuments,
@@ -77,6 +107,7 @@ export const useDocumentWorkspaceStore = create<DocumentWorkspaceState>(
     tabOrder: [],
     installedDocuments: [],
     defaultTemplateIds: [],
+    loadedLocale: null,
     isLoading: false,
     hasLoaded: false,
     error: null,
@@ -85,22 +116,28 @@ export const useDocumentWorkspaceStore = create<DocumentWorkspaceState>(
 
     loadWorkspaceSnapshot: async (options) => {
       const force = options?.force ?? false
-      if (!force && get().hasLoaded) {
+      const locale = normalizeWorkspaceLocale(options?.locale)
+      const state = get()
+
+      if (!force && state.hasLoaded && state.loadedLocale === locale) {
         return {
-          tabOrder: get().tabOrder,
-          installedDocuments: get().installedDocuments,
-          defaultTemplateIds: get().defaultTemplateIds,
+          tabOrder: state.tabOrder,
+          installedDocuments: state.installedDocuments,
+          defaultTemplateIds: state.defaultTemplateIds,
         }
       }
 
-      if (!force && inFlightWorkspaceRequest) {
-        return inFlightWorkspaceRequest
+      if (!force) {
+        const inFlight = inFlightWorkspaceRequests.get(locale)
+        if (inFlight) {
+          return inFlight
+        }
       }
 
       set({ isLoading: true, error: null })
 
       const request = (async () => {
-        const response = await fetch("/api/documents/workspace")
+        const response = await fetch(withLocale("/api/documents/workspace", locale))
         if (!response.ok) {
           throw new Error(
             await readErrorMessage(response, "Failed to fetch document workspace")
@@ -109,6 +146,7 @@ export const useDocumentWorkspaceStore = create<DocumentWorkspaceState>(
 
         const snapshot = (await response.json()) as DocumentWorkspaceSnapshot
         applySnapshot(set, snapshot)
+        set({ loadedLocale: locale })
         return snapshot
       })()
         .catch((error) => {
@@ -119,38 +157,49 @@ export const useDocumentWorkspaceStore = create<DocumentWorkspaceState>(
           throw error
         })
         .finally(() => {
-          if (inFlightWorkspaceRequest === request) {
-            inFlightWorkspaceRequest = null
+          if (inFlightWorkspaceRequests.get(locale) === request) {
+            inFlightWorkspaceRequests.delete(locale)
           }
         })
 
-      inFlightWorkspaceRequest = request
+      inFlightWorkspaceRequests.set(locale, request)
       return request
     },
 
-    refreshWorkspaceSnapshot: () => get().loadWorkspaceSnapshot({ force: true }),
+    refreshWorkspaceSnapshot: (options) =>
+      get().loadWorkspaceSnapshot({
+        force: true,
+        locale: options?.locale,
+      }),
 
-    installDocument: async (templateId, versionId) => {
-      const response = await fetch(`/api/documents/${templateId}/install`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          versionId ? { versionId } : {}
-        ),
-      })
+    installDocument: async (templateId, versionId, locale) => {
+      const response = await fetch(
+        withLocale(`/api/documents/${templateId}/install`, locale),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(versionId ? { versionId } : {}),
+        }
+      )
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "Failed to install document"))
+        throw new Error(
+          await readErrorMessage(response, "Failed to install document")
+        )
       }
 
       const snapshot = (await response.json()) as DocumentWorkspaceSnapshot
       applySnapshot(set, snapshot)
+      set({ loadedLocale: normalizeWorkspaceLocale(locale) })
       return snapshot
     },
 
-    uninstallDocument: async (templateId) => {
-      const response = await fetch(`/api/documents/${templateId}/install`, {
-        method: "DELETE",
-      })
+    uninstallDocument: async (templateId, locale) => {
+      const response = await fetch(
+        withLocale(`/api/documents/${templateId}/install`, locale),
+        {
+          method: "DELETE",
+        }
+      )
       if (!response.ok) {
         throw new Error(
           await readErrorMessage(response, "Failed to uninstall document")
@@ -159,15 +208,19 @@ export const useDocumentWorkspaceStore = create<DocumentWorkspaceState>(
 
       const snapshot = (await response.json()) as DocumentWorkspaceSnapshot
       applySnapshot(set, snapshot)
+      set({ loadedLocale: normalizeWorkspaceLocale(locale) })
       return snapshot
     },
 
-    persistTabOrder: async (tabOrder) => {
-      const response = await fetch("/api/documents/workspace/layout", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tabOrder }),
-      })
+    persistTabOrder: async (tabOrder, locale) => {
+      const response = await fetch(
+        withLocale("/api/documents/workspace/layout", locale),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tabOrder }),
+        }
+      )
       if (!response.ok) {
         throw new Error(
           await readErrorMessage(
@@ -179,10 +232,11 @@ export const useDocumentWorkspaceStore = create<DocumentWorkspaceState>(
 
       const snapshot = (await response.json()) as DocumentWorkspaceSnapshot
       applySnapshot(set, snapshot)
+      set({ loadedLocale: normalizeWorkspaceLocale(locale) })
       return snapshot
     },
 
-    setDocumentTabEnabled: async (templateId, enabled) => {
+    setDocumentTabEnabled: async (templateId, enabled, locale) => {
       const current = getCurrentSnapshot(get())
       const targetTabId = buildDocumentTabId(templateId)
       const hasTab = current.tabOrder.includes(targetTabId)
@@ -194,7 +248,7 @@ export const useDocumentWorkspaceStore = create<DocumentWorkspaceState>(
         ? [...current.tabOrder, targetTabId]
         : current.tabOrder.filter((tabId) => tabId !== targetTabId)
 
-      return get().persistTabOrder(nextTabOrder)
+      return get().persistTabOrder(nextTabOrder, locale)
     },
 
     getInstalledDocument: (templateId) =>
@@ -209,6 +263,7 @@ export const useDocumentWorkspaceStore = create<DocumentWorkspaceState>(
         tabOrder: [],
         installedDocuments: [],
         defaultTemplateIds: [],
+        loadedLocale: null,
         isLoading: false,
         hasLoaded: false,
         error: null,

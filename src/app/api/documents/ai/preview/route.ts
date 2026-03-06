@@ -20,7 +20,6 @@ export async function POST(req: Request) {
     const preview = await generateDocumentPreviewSnapshot({
       userId: user.id,
       draft: parsed.data.draft,
-      locale: parsed.data.locale,
       model: parsed.data.model,
     })
 

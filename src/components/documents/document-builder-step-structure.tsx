@@ -10,7 +10,6 @@ import {
   IconArrowDown,
   IconArrowUp,
   IconChevronDown,
-  IconChevronRight,
   IconLoader2,
   IconPlus,
   IconSparkles,
@@ -37,12 +36,15 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { createEmptyDocumentContent } from "@/lib/documents/schema"
 import { cn } from "@/lib/utils"
 import {
   getDocumentCategoryOptions,
   normalizeDocumentCategory,
 } from "@/lib/documents/categories"
+import {
+  getDocumentLanguageOptions,
+  getDocumentRegionOptions,
+} from "@/lib/documents/language-region"
 import {
   DOCUMENT_CONTEXT_SOURCES,
   type DocumentBuilderDraft,
@@ -50,13 +52,9 @@ import {
   type DocumentSchemaNodeType,
 } from "@/types/document"
 
-type PathSegment = string | number
-type MutableCursor = Record<string, unknown> | unknown[]
 const DOCUMENT_CATEGORY_OPTIONS = getDocumentCategoryOptions()
-
-function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T
-}
+const DOCUMENT_LANGUAGE_OPTIONS = getDocumentLanguageOptions()
+const DOCUMENT_REGION_OPTIONS = getDocumentRegionOptions()
 
 function humanizeKey(key: string) {
   return key
@@ -65,113 +63,6 @@ function humanizeKey(key: string) {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ")
-}
-
-function updateValueAtPath(
-  content: Record<string, unknown>,
-  path: PathSegment[],
-  value: unknown
-) {
-  const next = deepClone(content)
-  let cursor: MutableCursor = next
-
-  for (let index = 0; index < path.length - 1; index += 1) {
-    const segment = path[index]
-    const nextCursor = Array.isArray(cursor)
-      ? cursor[segment as number]
-      : cursor[segment as string]
-    if (!nextCursor || typeof nextCursor !== "object") {
-      return next
-    }
-    cursor = nextCursor as MutableCursor
-  }
-
-  const finalSegment = path[path.length - 1]
-  if (Array.isArray(cursor) && typeof finalSegment === "number") {
-    cursor[finalSegment] = value
-  } else if (!Array.isArray(cursor) && typeof finalSegment === "string") {
-    cursor[finalSegment] = value
-  }
-
-  return next
-}
-
-function removeArrayItemAtPath(
-  content: Record<string, unknown>,
-  path: PathSegment[],
-  indexToRemove: number
-) {
-  const next = deepClone(content)
-  let cursor: MutableCursor = next
-
-  for (const segment of path) {
-    const nextCursor = Array.isArray(cursor)
-      ? cursor[segment as number]
-      : cursor[segment as string]
-    if (!nextCursor || typeof nextCursor !== "object") {
-      return next
-    }
-    cursor = nextCursor as MutableCursor
-  }
-
-  if (Array.isArray(cursor)) {
-    cursor.splice(indexToRemove, 1)
-  }
-
-  return next
-}
-
-function appendArrayItemAtPath(
-  content: Record<string, unknown>,
-  path: PathSegment[],
-  value: unknown
-) {
-  const next = deepClone(content)
-  let cursor: MutableCursor = next
-
-  for (const segment of path) {
-    const nextCursor = Array.isArray(cursor)
-      ? cursor[segment as number]
-      : cursor[segment as string]
-    if (!nextCursor || typeof nextCursor !== "object") {
-      return next
-    }
-    cursor = nextCursor as MutableCursor
-  }
-
-  if (Array.isArray(cursor)) {
-    cursor.push(value)
-  }
-
-  return next
-}
-
-function getValueAtPath(
-  content: Record<string, unknown>,
-  path: PathSegment[]
-): unknown {
-  let cursor: unknown = content
-
-  for (const segment of path) {
-    if (Array.isArray(cursor) && typeof segment === "number") {
-      cursor = cursor[segment]
-      continue
-    }
-
-    if (
-      cursor &&
-      typeof cursor === "object" &&
-      !Array.isArray(cursor) &&
-      typeof segment === "string"
-    ) {
-      cursor = (cursor as Record<string, unknown>)[segment]
-      continue
-    }
-
-    return undefined
-  }
-
-  return cursor
 }
 
 function toNodePathId(path: number[]) {
@@ -201,53 +92,6 @@ function coerceNodeType(
     placeholder: currentNode.placeholder,
     type: nextType,
   }
-}
-
-function ExampleFieldInput({
-  node,
-  value,
-  onChange,
-}: {
-  node: DocumentSchemaNode
-  value: unknown
-  onChange: (value: unknown) => void
-}) {
-  if (node.type === "shortText") {
-    return (
-      <Input
-        value={typeof value === "string" ? value : ""}
-        placeholder={node.placeholder || node.label || humanizeKey(node.key)}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    )
-  }
-
-  if (node.type === "longText") {
-    return (
-      <Textarea
-        value={typeof value === "string" ? value : ""}
-        placeholder={node.placeholder || node.label || humanizeKey(node.key)}
-        onChange={(event) => onChange(event.target.value)}
-        className="min-h-[120px] resize-y"
-      />
-    )
-  }
-
-  return (
-    <Textarea
-      value={Array.isArray(value) ? value.join("\n") : ""}
-      placeholder={node.placeholder || `${node.label || humanizeKey(node.key)} (one item per line)`}
-      onChange={(event) =>
-        onChange(
-          event.target.value
-            .split("\n")
-            .map((item) => item.trim())
-            .filter(Boolean)
-        )
-      }
-      className="min-h-[120px] resize-y"
-    />
-  )
 }
 
 function CompactActionButton({
@@ -619,7 +463,6 @@ function SectionToggle({
 export function DocumentBuilderStepStructure({
   draft,
   setDraft,
-  previewContent,
   aiLoading,
   aiPrompt,
   showAiRevisePanel,
@@ -627,14 +470,12 @@ export function DocumentBuilderStepStructure({
   onAiPromptChange,
   onAiRevise,
   onOpenModelSettings,
-  onPreviewContentChange,
   onResetToServerVersion,
   restoredLocalChanges,
   validationError,
 }: {
   draft: DocumentBuilderDraft
   setDraft: Dispatch<SetStateAction<DocumentBuilderDraft>>
-  previewContent: Record<string, unknown>
   aiLoading: boolean
   aiPrompt: string
   showAiRevisePanel: boolean
@@ -642,12 +483,12 @@ export function DocumentBuilderStepStructure({
   onAiPromptChange: (value: string) => void
   onAiRevise: () => Promise<void>
   onOpenModelSettings: () => void
-  onPreviewContentChange: (nextContent: Record<string, unknown>) => void
   onResetToServerVersion: (() => void) | null
   restoredLocalChanges: boolean
   validationError: string | null
 }) {
   const t = useTranslations("DocumentBuilder")
+  const tMeta = useTranslations("DocumentMetadata")
   const [activeNodePathId, setActiveNodePathId] = useState<string | null>(null)
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
   const [advancedPanelOpen, setAdvancedPanelOpen] = useState(false)
@@ -732,6 +573,56 @@ export function DocumentBuilderStepStructure({
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>{t("templateSettings.languageLabel")}</Label>
+                    <Select
+                      value={draft.language}
+                      onValueChange={(value: DocumentBuilderDraft["language"]) =>
+                        setDraft((currentDraft) => ({
+                          ...currentDraft,
+                          language: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DOCUMENT_LANGUAGE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {tMeta(option.labelKey as never)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{t("templateSettings.regionLabel")}</Label>
+                    <Select
+                      value={draft.region}
+                      onValueChange={(value: DocumentBuilderDraft["region"]) =>
+                        setDraft((currentDraft) => ({
+                          ...currentDraft,
+                          region: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DOCUMENT_REGION_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {tMeta(option.labelKey as never)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="space-y-2">

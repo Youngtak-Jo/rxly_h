@@ -8,6 +8,8 @@ import {
   uninstallDocumentForUser,
 } from "@/lib/documents/server"
 import { logAudit } from "@/lib/audit"
+import { normalizeUiLocale } from "@/i18n/config"
+import { resolveServerUiLocale } from "@/i18n/server"
 
 export async function POST(
   req: Request,
@@ -18,6 +20,10 @@ export async function POST(
     const user = await requireAuth()
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
+    const url = new URL(req.url)
+    const locale =
+      normalizeUiLocale(url.searchParams.get("locale")) ??
+      (await resolveServerUiLocale())
 
     const parsed = documentInstallSchema.safeParse(await req.json().catch(() => ({})))
     if (!parsed.success) {
@@ -27,7 +33,8 @@ export async function POST(
     const workspace = await installDocumentForUser(
       user.id,
       templateId,
-      parsed.data.versionId
+      parsed.data.versionId,
+      locale
     )
 
     logAudit({
@@ -63,8 +70,12 @@ export async function DELETE(
     const user = await requireAuth()
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
+    const url = new URL(req.url)
+    const locale =
+      normalizeUiLocale(url.searchParams.get("locale")) ??
+      (await resolveServerUiLocale())
 
-    const workspace = await uninstallDocumentForUser(user.id, templateId)
+    const workspace = await uninstallDocumentForUser(user.id, templateId, locale)
     logAudit({
       userId: user.id,
       action: "DELETE",

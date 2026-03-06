@@ -87,6 +87,10 @@ import {
   applyBorderRadius,
   applyAllAppearanceSettings,
 } from "@/lib/apply-appearance"
+import {
+  getUserRegionOptions,
+  resolveUserRegion,
+} from "@/lib/documents/language-region"
 import { useUiLocale } from "@/components/intl-provider"
 import { useConnectorStore } from "@/stores/connector-store"
 import type { ConnectorState } from "@/types/insights"
@@ -99,6 +103,7 @@ const CONNECTORS: (keyof ConnectorState)[] = [
   "clinical_trials",
   "dailymed",
 ]
+const USER_REGION_OPTIONS = getUserRegionOptions()
 
 const NAV_ITEMS = [
   { key: "language" as const, icon: IconLanguage },
@@ -311,7 +316,10 @@ function SettingRow({
 
 function LanguageSettings() {
   const t = useTranslations("SettingsDialog")
+  const tMeta = useTranslations("DocumentMetadata")
   const { locale, setLocale } = useUiLocale()
+  const { regional, setUserRegion } = useSettingsStore()
+  const selectedUserRegion = resolveUserRegion(regional.userRegion, locale)
 
   return (
     <div className="space-y-4">
@@ -328,6 +336,27 @@ function LanguageSettings() {
           <SelectContent>
             <SelectItem value="en">{t("language.options.en")}</SelectItem>
             <SelectItem value="ko">{t("language.options.ko")}</SelectItem>
+          </SelectContent>
+        </Select>
+      </SettingRow>
+
+      <SettingRow
+        label={t("language.regionLabel")}
+        description={t("language.regionDescription")}
+      >
+        <Select
+          value={selectedUserRegion}
+          onValueChange={(value) => setUserRegion(value as typeof selectedUserRegion)}
+        >
+          <SelectTrigger className="w-full sm:w-[200px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {USER_REGION_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {tMeta(option.labelKey as never)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </SettingRow>

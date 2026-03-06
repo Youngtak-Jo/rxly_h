@@ -4,14 +4,21 @@ import { logger } from "@/lib/logger"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { getDocumentWorkspaceSnapshot } from "@/lib/documents/server"
 import { logAudit } from "@/lib/audit"
+import { normalizeUiLocale } from "@/i18n/config"
+import { resolveServerUiLocale } from "@/i18n/server"
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const user = await requireAuth()
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
-    const snapshot = await getDocumentWorkspaceSnapshot(user.id)
+    const url = new URL(req.url)
+    const locale =
+      normalizeUiLocale(url.searchParams.get("locale")) ??
+      (await resolveServerUiLocale())
+
+    const snapshot = await getDocumentWorkspaceSnapshot(user.id, locale)
     logAudit({
       userId: user.id,
       action: "READ",

@@ -34,6 +34,7 @@ import {
   type DocumentTemplateSchema,
 } from "@/types/document"
 import type { UiLocale } from "@/i18n/config"
+import { DEFAULT_DOCUMENT_REGION } from "@/lib/documents/language-region"
 import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
 import { useSettingsStore } from "@/stores/settings-store"
 
@@ -44,6 +45,8 @@ interface TemplateRouteResponse {
     description: string
     iconKey: string
     category: string
+    language: DocumentBuilderDraft["language"]
+    region: DocumentBuilderDraft["region"]
     visibility: "PRIVATE" | "PUBLIC"
     sourceKind: "BUILT_IN" | "USER"
   }
@@ -68,6 +71,8 @@ function createEmptyDraft(locale: UiLocale): DocumentBuilderDraft {
     description: "",
     iconKey: "file-text",
     category: locale === "ko" ? "문서" : "documentation",
+    language: locale,
+    region: DEFAULT_DOCUMENT_REGION,
     visibility: "PRIVATE",
     schema: {
       nodes: [],
@@ -517,6 +522,8 @@ export function DocumentBuilder({
           description: payload.template.description,
           iconKey: payload.template.iconKey,
           category: payload.template.category,
+          language: payload.template.language,
+          region: payload.template.region,
           visibility: payload.template.visibility,
           schema: editableVersion.schemaJson,
           generationConfig: editableVersion.generationConfigJson,
@@ -562,7 +569,12 @@ export function DocumentBuilder({
         body: JSON.stringify(
           resolvedTemplateId
             ? { prompt: aiPrompt, draft, model: documentModel }
-            : { prompt: aiPrompt, model: documentModel }
+            : {
+                prompt: aiPrompt,
+                defaultLanguage: locale,
+                defaultRegion: DEFAULT_DOCUMENT_REGION,
+                model: documentModel,
+              }
         ),
       })
       if (!response.ok) {
@@ -659,13 +671,16 @@ export function DocumentBuilder({
 
     try {
       setInstalling(true)
-      const response = await fetch(`/api/documents/${resolvedTemplateId}/install`, {
-        method: "POST",
-      })
+      const response = await fetch(
+        `/api/documents/${resolvedTemplateId}/install?locale=${encodeURIComponent(locale)}`,
+        {
+          method: "POST",
+        }
+      )
       if (!response.ok) {
         throw new Error(t("toasts.installFailed"))
       }
-      const snapshot = await refreshWorkspaceSnapshot()
+      const snapshot = await refreshWorkspaceSnapshot({ locale })
       const installedDocument =
         snapshot?.installedDocuments.find(
           (document) => document.templateId === resolvedTemplateId

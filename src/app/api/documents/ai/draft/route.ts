@@ -20,6 +20,9 @@ function buildBuilderSystemPrompt() {
     "You design structured medical document templates for clinicians.",
     "Return a JSON object only.",
     "Renderer is always GENERIC_STRUCTURED.",
+    "Include template language and region in the response.",
+    "Language must be one of: en, ko.",
+    "Region must be one of: global, kr, us.",
     "Use only field types shortText, longText, stringList and group types group, repeatableGroup.",
     "Keys must be snake_case and unique across the whole schema.",
     "Keep schema depth <= 3 and total leaf fields <= 60.",
@@ -61,7 +64,13 @@ export async function POST(req: Request) {
             model,
             schema: documentTemplateCreateSchema,
             system: buildBuilderSystemPrompt(),
-            prompt: parsed.data.prompt,
+            prompt: [
+              `Default language: ${parsed.data.defaultLanguage}`,
+              `Default region: ${parsed.data.defaultRegion}`,
+              "Infer language/region only if the request clearly specifies them. Otherwise use the provided defaults.",
+              "",
+              parsed.data.prompt,
+            ].join("\n"),
             ...buildGenerationOptions(modelId, { temperature: 0.2 }),
           })
 
@@ -81,7 +90,10 @@ export async function POST(req: Request) {
         error: error instanceof Error ? error.message : String(error),
         modelId,
       })
-      result = buildFallbackDocumentDraft(parsed.data.prompt)
+      result = buildFallbackDocumentDraft(parsed.data.prompt, {
+        defaultLanguage: parsed.data.defaultLanguage,
+        defaultRegion: parsed.data.defaultRegion,
+      })
     }
 
     logAudit({

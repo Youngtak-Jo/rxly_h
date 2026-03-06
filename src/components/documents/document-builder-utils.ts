@@ -1,18 +1,24 @@
 "use client"
 
 import type { UiLocale } from "@/i18n/config"
+import type { DocumentTemplateRegion } from "@/types/document"
 import type {
   DocumentBuilderDraft,
   DocumentSchemaNode,
   DocumentSchemaNodeType,
 } from "@/types/document"
 
-export function createEmptyDraft(locale: UiLocale): DocumentBuilderDraft {
+export function createEmptyDraft(
+  locale: UiLocale,
+  region: DocumentTemplateRegion
+): DocumentBuilderDraft {
   return {
     title: "",
     description: "",
     iconKey: "file-text",
     category: "clinical-documentation",
+    language: locale,
+    region,
     visibility: "PRIVATE",
     schema: {
       nodes: [],
@@ -29,9 +35,10 @@ export function createEmptyDraft(locale: UiLocale): DocumentBuilderDraft {
 
 export function isPristineDraftForLocale(
   draft: DocumentBuilderDraft,
-  locale: UiLocale
+  locale: UiLocale,
+  region: DocumentTemplateRegion
 ): boolean {
-  return JSON.stringify(draft) === JSON.stringify(createEmptyDraft(locale))
+  return JSON.stringify(draft) === JSON.stringify(createEmptyDraft(locale, region))
 }
 
 export function createNode(type: DocumentSchemaNodeType): DocumentSchemaNode {

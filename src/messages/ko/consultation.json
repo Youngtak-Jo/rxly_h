@@ -177,6 +177,8 @@
     },
     "language": {
       "description": "인터페이스 전반에 사용되는 언어를 변경합니다.",
+      "regionDescription": "국가별 규제, 컴플라이언스 동작, 제품 전반의 지역별 기본 동작에 사용할 운영 지역을 설정합니다.",
+      "regionLabel": "지역",
       "label": "UI 언어",
       "options": {
         "en": "English",
@@ -717,7 +719,9 @@
       "mine": "내 초안",
       "public": "공개",
       "category": "카테고리",
-      "categoryAll": "전체 카테고리"
+      "categoryAll": "전체 카테고리",
+      "languageAll": "전체 언어",
+      "regionAll": "전체 지역"
     },
     "actions": {
       "refresh": "새로고침",
@@ -760,6 +764,9 @@
       "catalogEmpty": "설치 가능한 문서가 없습니다.",
       "mineEmpty": "내 문서가 없습니다."
     },
+    "meta": {
+      "installCount": "설치 {count}"
+    },
     "badges": {
       "builtIn": "기본 제공",
       "public": "공개",
@@ -795,6 +802,20 @@
       "deleteTitle": "이 문서를 삭제할까요?",
       "deleteDescription": "{title} 문서와 관련 문서 데이터가 영구적으로 삭제됩니다.",
       "deleteAction": "삭제"
+    }
+  },
+  "DocumentMetadata": {
+    "languageLabel": "언어",
+    "regionLabel": "지역",
+    "languageRegionLabel": "언어 / 지역",
+    "languages": {
+      "en": "영어",
+      "ko": "한국어"
+    },
+    "regions": {
+      "global": "글로벌",
+      "kr": "한국",
+      "us": "미국"
     }
   },
   "DocumentBuilder": {
@@ -843,6 +864,8 @@
       "basicDescription": "구조를 편집하기 전에 문서 이름, 설명, 카테고리, 공개 범위를 먼저 정리하세요.",
       "titleLabel": "제목",
       "categoryLabel": "카테고리",
+      "languageLabel": "언어",
+      "regionLabel": "지역",
       "iconKeyLabel": "아이콘 키",
       "visibilityLabel": "공개 범위",
       "descriptionLabel": "설명",
@@ -944,6 +967,7 @@
       "discharge-and-followup": "퇴원/추적관리",
       "care-plan": "진료 계획",
       "patient-education": "환자 교육",
+      "patient-certificates": "환자 발급 증명서",
       "administrative-form": "행정 서식",
       "other": "기타"
     },
@@ -980,6 +1004,7 @@
         "description": "설명",
         "purpose": "문서 목적",
         "category": "카테고리",
+        "languageRegion": "언어 / 지역",
         "visibility": "공개 범위",
         "schemaNodes": "스키마 필드 수",
         "schemaNodesValue": "{count}개 필드",

@@ -33,6 +33,8 @@ function buildContextPrompt(args: {
   sessionDocumentTemplate: {
     title: string
     description: string
+    language: string
+    region: string
   }
   generationConfig: {
     audience: string
@@ -45,10 +47,26 @@ function buildContextPrompt(args: {
   const parts: string[] = [
     `Document title: ${args.sessionDocumentTemplate.title}`,
     `Description: ${args.sessionDocumentTemplate.description}`,
+    `Document language: ${args.sessionDocumentTemplate.language}`,
+    `Document region: ${args.sessionDocumentTemplate.region}`,
     `Audience: ${args.generationConfig.audience}`,
     `Tone: ${args.generationConfig.outputTone}`,
     `Empty value policy: ${args.generationConfig.emptyValuePolicy}`,
   ]
+
+  if (args.sessionDocumentTemplate.region === "global") {
+    parts.push(
+      "Region guidance: Keep the document globally applicable. Avoid country-specific regulatory assumptions unless the template explicitly requires them."
+    )
+  } else if (args.sessionDocumentTemplate.region === "kr") {
+    parts.push(
+      "Region guidance: Use Korean clinical and administrative conventions when region-specific wording matters."
+    )
+  } else if (args.sessionDocumentTemplate.region === "us") {
+    parts.push(
+      "Region guidance: Use United States clinical and administrative conventions when region-specific wording matters."
+    )
+  }
 
   const sourceSet = new Set(args.generationConfig.contextSources)
   if (sourceSet.has("sessionMeta")) {
@@ -183,6 +201,8 @@ export async function POST(
       sessionDocumentTemplate: {
         title: sessionDocumentContext.template.title,
         description: sessionDocumentContext.template.description,
+        language: sessionDocumentContext.template.language,
+        region: sessionDocumentContext.template.region,
       },
       generationConfig,
     })
@@ -202,6 +222,7 @@ export async function POST(
           system: [
             "Generate a structured medical document matching the supplied schema.",
             "Return only valid structured output.",
+            "Honor the requested document language and region.",
             generationConfig.systemInstructions || "",
           ]
             .filter(Boolean)

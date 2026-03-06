@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect } from "react"
+import { useLocale } from "next-intl"
 import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 
 export function useDocumentWorkspaceLoader(enabled = true) {
+  const locale = useLocale()
   const hasLoaded = useDocumentWorkspaceStore((state) => state.hasLoaded)
   const loadWorkspaceSnapshot = useDocumentWorkspaceStore(
     (state) => state.loadWorkspaceSnapshot
@@ -12,11 +14,10 @@ export function useDocumentWorkspaceLoader(enabled = true) {
 
   useEffect(() => {
     if (!enabled) return
-    if (hasLoaded) return
-    void loadWorkspaceSnapshot().catch(() => {
+    void loadWorkspaceSnapshot({ locale }).catch(() => {
       // The store keeps the error state; avoid surfacing this as an unhandled rejection.
     })
-  }, [enabled, hasLoaded, loadWorkspaceSnapshot])
+  }, [enabled, hasLoaded, loadWorkspaceSnapshot, locale])
 }
 
 export function useWorkspaceTabReconciliation() {

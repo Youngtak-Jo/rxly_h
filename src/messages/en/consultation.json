@@ -177,6 +177,8 @@
     },
     "language": {
       "description": "Changes the language used across the interface.",
+      "regionDescription": "Sets your operating region for country-specific regulations, compliance behavior, and default regional behavior across the product.",
+      "regionLabel": "Region",
       "label": "UI Language",
       "options": {
         "en": "English",
@@ -717,7 +719,9 @@
       "mine": "My drafts",
       "public": "Public",
       "category": "Category",
-      "categoryAll": "All categories"
+      "categoryAll": "All categories",
+      "languageAll": "All languages",
+      "regionAll": "All regions"
     },
     "actions": {
       "refresh": "Refresh",
@@ -760,6 +764,9 @@
       "catalogEmpty": "No installable documents found.",
       "mineEmpty": "You have not created any documents yet."
     },
+    "meta": {
+      "installCount": "{count} installs"
+    },
     "badges": {
       "builtIn": "Built-in",
       "public": "Public",
@@ -795,6 +802,20 @@
       "deleteTitle": "Delete this document?",
       "deleteDescription": "{title} and its related document data will be permanently deleted.",
       "deleteAction": "Delete"
+    }
+  },
+  "DocumentMetadata": {
+    "languageLabel": "Language",
+    "regionLabel": "Region",
+    "languageRegionLabel": "Language / Region",
+    "languages": {
+      "en": "English",
+      "ko": "Korean"
+    },
+    "regions": {
+      "global": "Global",
+      "kr": "Korea",
+      "us": "United States"
     }
   },
   "DocumentBuilder": {
@@ -843,6 +864,8 @@
       "basicDescription": "Set the document name, description, category, and visibility before editing the structure.",
       "titleLabel": "Title",
       "categoryLabel": "Category",
+      "languageLabel": "Language",
+      "regionLabel": "Region",
       "iconKeyLabel": "Icon key",
       "visibilityLabel": "Visibility",
       "descriptionLabel": "Description",
@@ -944,6 +967,7 @@
       "discharge-and-followup": "Discharge and follow-up",
       "care-plan": "Care plan",
       "patient-education": "Patient education",
+      "patient-certificates": "Patient certificates",
       "administrative-form": "Administrative form",
       "other": "Other"
     },
@@ -980,6 +1004,7 @@
         "description": "Description",
         "purpose": "Document purpose",
         "category": "Category",
+        "languageRegion": "Language / Region",
         "visibility": "Visibility",
         "schemaNodes": "Schema fields",
         "schemaNodesValue": "{count} fields",

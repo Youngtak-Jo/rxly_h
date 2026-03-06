@@ -13,19 +13,23 @@ import { buildSampleDocumentContent } from "@/lib/documents/preview"
 import { buildDocumentPreviewInputChecksum } from "@/lib/documents/preview-checksum"
 import type { UiLocale } from "@/i18n/config"
 import type { DocumentBuilderDraft } from "@/types/document"
-
-function normalizePreviewLocale(locale: string): string {
-  return locale.toLowerCase().startsWith("ko") ? "ko" : "en"
-}
+import { documentLanguageToUiLocale } from "@/lib/documents/language-region"
 
 function buildPreviewSystemPrompt(args: {
   draft: DocumentBuilderDraft
   locale: string
 }) {
+  const regionInstruction =
+    args.draft.region === "global"
+      ? "Use globally applicable wording. Avoid country-specific regulatory assumptions unless the template explicitly asks for them."
+      : args.draft.region === "kr"
+        ? "Use Korean clinical and administrative conventions when region-specific details are relevant."
+        : "Use United States clinical and administrative conventions when region-specific details are relevant."
+
   return [
     "You generate synthetic but realistic medical document previews.",
     "Imagine a plausible post-consultation scenario and fill the document as if it had just been generated for clinician review.",
-    "Return only valid structured output matching the supplied schema plus a short case summary.",
+    "Return only valid structured output matching the supplied schema.",
     "Populate every field with specific, non-placeholder values whenever a realistic synthetic value can be inferred.",
     "For long-text fields, write complete concise content rather than fragments.",
     "For repeatable groups, vary the items meaningfully instead of duplicating the same phrasing.",
@@ -34,13 +38,16 @@ function buildPreviewSystemPrompt(args: {
     "If the document is regulatory, billing, or administrative, produce values that look ready for that workflow.",
     "If the document is patient-facing, use plain language.",
     "If the document is clinician-facing, use concise clinical wording.",
-    `Locale: ${args.locale}`,
+    `Document language: ${args.draft.language}`,
+    `Document region: ${args.draft.region}`,
+    `Preview language: ${args.locale}`,
     `Title: ${args.draft.title}`,
     `Description: ${args.draft.description}`,
     `Category: ${args.draft.category}`,
     `Audience: ${args.draft.generationConfig.audience}`,
     `Output tone: ${args.draft.generationConfig.outputTone}`,
     `Context sources: ${args.draft.generationConfig.contextSources.join(", ")}`,
+    regionInstruction,
     args.draft.generationConfig.systemInstructions
       ? `Template-specific instructions:\n${args.draft.generationConfig.systemInstructions}`
       : "",
@@ -49,38 +56,32 @@ function buildPreviewSystemPrompt(args: {
     .join("\n\n")
 }
 
-function buildPreviewPrompt(args: {
-  draft: DocumentBuilderDraft
-  locale: string
-}) {
+function buildPreviewPrompt(args: { draft: DocumentBuilderDraft }) {
   return [
     "Document schema:",
     JSON.stringify(args.draft.schema, null, 2),
     "",
     "Generate:",
-    "- previewCaseSummary: 2-3 sentences summarizing the synthetic case and why this document exists",
     "- previewContent: a complete structured document matching the schema",
     "- Avoid placeholders like 'sample value', 'TBD', or repeated billing codes in note fields unless the field itself is specifically a code field",
     "- If the template looks like a HIRA/EDI review workflow, use payer-review language, Korean claim-review terminology, and actionable submission guidance",
+    args.draft.region === "global"
+      ? "- Keep the content globally reusable rather than tied to one country's forms or regulations"
+      : "",
   ].join("\n")
 }
 
 function buildFallbackPreviewSnapshot(args: {
   draft: DocumentBuilderDraft
-  locale: string
   modelId: string
   checksum: string
 }) {
-  const locale = normalizePreviewLocale(args.locale)
+  const locale = documentLanguageToUiLocale(args.draft.language)
   return {
     previewContent: buildSampleDocumentContent(
       args.draft.schema,
       locale as UiLocale
     ) as Record<string, unknown>,
-    previewCaseSummary:
-      locale === "ko"
-        ? `${args.draft.title} 문서가 실제 진료 후 생성된 상황을 가정한 예시 프리뷰입니다.`
-        : `Synthetic post-consultation preview for ${args.draft.title}.`,
     previewLocale: locale,
     previewModelId: `${args.modelId}:fallback`,
     previewGeneratedAt: new Date().toISOString(),
@@ -91,7 +92,6 @@ function buildFallbackPreviewSnapshot(args: {
 export async function generateDocumentPreviewSnapshot(input: {
   userId: string
   draft: DocumentBuilderDraft
-  locale: string
   model?: string
 }) {
   const modelId = input.model || DEFAULT_MODEL
@@ -99,14 +99,15 @@ export async function generateDocumentPreviewSnapshot(input: {
     throw new Error("Unsupported model id")
   }
 
-  const locale = normalizePreviewLocale(input.locale)
+  const locale = documentLanguageToUiLocale(input.draft.language)
   const checksum = buildDocumentPreviewInputChecksum({
     title: input.draft.title,
     description: input.draft.description,
     category: input.draft.category,
+    language: input.draft.language,
+    region: input.draft.region,
     schema: input.draft.schema,
     generationConfig: input.draft.generationConfig,
-    locale,
   })
 
   try {
@@ -122,17 +123,13 @@ export async function generateDocumentPreviewSnapshot(input: {
         const result = await generateObject({
           model,
           schema: z.object({
-            previewCaseSummary: z.string().min(1).max(400),
             previewContent: buildDocumentContentSchema(input.draft.schema),
           }),
           system: buildPreviewSystemPrompt({
             draft: input.draft,
             locale,
           }),
-          prompt: buildPreviewPrompt({
-            draft: input.draft,
-            locale,
-          }),
+          prompt: buildPreviewPrompt({ draft: input.draft }),
           ...buildGenerationOptions(modelId, { temperature: 0.2 }),
         })
 
@@ -153,7 +150,6 @@ export async function generateDocumentPreviewSnapshot(input: {
         input.draft.schema,
         generated.previewContent
       ),
-      previewCaseSummary: generated.previewCaseSummary,
       previewLocale: locale,
       previewModelId: modelId,
       previewGeneratedAt: new Date().toISOString(),
@@ -168,7 +164,6 @@ export async function generateDocumentPreviewSnapshot(input: {
 
     return buildFallbackPreviewSnapshot({
       draft: input.draft,
-      locale,
       modelId,
       checksum,
     })

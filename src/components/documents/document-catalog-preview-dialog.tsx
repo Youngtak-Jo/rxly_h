@@ -16,7 +16,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { getDocumentCategoryLabelKey } from "@/lib/documents/categories"
+import {
+  getDocumentLanguageOptions,
+  getDocumentRegionOptions,
+} from "@/lib/documents/language-region"
 import type { DocumentCatalogItem, DocumentPreviewResponse } from "@/types/document"
+
+const DOCUMENT_LANGUAGE_LABELS = new Map(
+  getDocumentLanguageOptions().map((option) => [option.value, option.labelKey])
+)
+const DOCUMENT_REGION_LABELS = new Map(
+  getDocumentRegionOptions().map((option) => [option.value, option.labelKey])
+)
 
 async function readErrorMessage(
   response: Response,
@@ -63,6 +74,7 @@ export function DocumentCatalogPreviewDialog({
 }) {
   const t = useTranslations("DocumentStore")
   const tBuilder = useTranslations("DocumentBuilder")
+  const tMeta = useTranslations("DocumentMetadata")
   const locale = useLocale()
   const [loading, setLoading] = useState(false)
   const [preview, setPreview] = useState<DocumentPreviewResponse | null>(null)
@@ -131,6 +143,16 @@ export function DocumentCatalogPreviewDialog({
   const categoryLabel = item
     ? tBuilder(getDocumentCategoryLabelKey(item.category) as never)
     : null
+  const languageLabel = item
+    ? tMeta(
+        (DOCUMENT_LANGUAGE_LABELS.get(item.language) ?? "languages.en") as never
+      )
+    : null
+  const regionLabel = item
+    ? tMeta(
+        (DOCUMENT_REGION_LABELS.get(item.region) ?? "regions.global") as never
+      )
+    : null
 
   const isBusy = item
     ? actionKey === item.templateId || actionKey === `tab:${item.templateId}`
@@ -138,14 +160,17 @@ export function DocumentCatalogPreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] max-w-4xl overflow-hidden p-0">
-        <DialogHeader className="border-b px-5 py-4">
+      <DialogContent className="max-h-[min(92dvh,56rem)] max-w-[min(72rem,calc(100vw-2rem))] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-[min(72rem,calc(100vw-3rem))]">
+        <DialogHeader className="shrink-0 border-b bg-background/95 px-5 py-4 pr-14 backdrop-blur supports-[backdrop-filter]:bg-background/90 sm:px-6 sm:py-5 sm:pr-16">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-2">
+              <DialogTitle className="text-left text-xl leading-tight">
+                {item?.title || preview?.title || t("preview.dialogTitle")}
+              </DialogTitle>
+              <DialogDescription className="text-left">
+                {item?.description || preview?.description || ""}
+              </DialogDescription>
               <div className="flex flex-wrap items-center gap-2">
-                <DialogTitle className="text-left">
-                  {item?.title || preview?.title || t("preview.dialogTitle")}
-                </DialogTitle>
                 {effectivePreview ? (
                   <Badge variant="outline">
                     {effectivePreview.previewKind === "BUILT_IN_STATIC"
@@ -161,39 +186,39 @@ export function DocumentCatalogPreviewDialog({
                   </Badge>
                 ) : null}
                 {categoryLabel ? <Badge variant="outline">{categoryLabel}</Badge> : null}
+                {languageLabel ? (
+                  <Badge variant="outline">{languageLabel}</Badge>
+                ) : null}
+                {regionLabel ? <Badge variant="outline">{regionLabel}</Badge> : null}
               </div>
-              <DialogDescription className="text-left">
-                {item?.description || preview?.description || ""}
-              </DialogDescription>
-              {effectivePreview?.previewCaseSummary ? (
-                <p className="max-w-3xl text-sm text-muted-foreground">
-                  {effectivePreview.previewCaseSummary}
-                </p>
-              ) : null}
             </div>
           </div>
         </DialogHeader>
 
-        <div className="min-h-0 overflow-y-auto px-5 py-5">
-          {loading ? (
-            <div className="flex min-h-56 items-center justify-center gap-2 text-sm text-muted-foreground">
-              <IconLoader2 className="size-4 animate-spin" />
-              {t("preview.loading")}
-            </div>
-          ) : error ? (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-8 text-sm text-destructive">
-              {error}
-            </div>
-          ) : (
-            <DocumentPreviewContent
-              preview={effectivePreview}
-              placeholder={t("preview.cardPlaceholder")}
-            />
-          )}
+        <div className="min-h-0 overflow-y-auto overscroll-contain">
+          <div className="mx-auto w-full max-w-5xl px-5 py-5 sm:px-6 sm:py-6">
+            {loading ? (
+              <div className="flex min-h-56 items-center justify-center gap-2 rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 py-12 text-sm text-muted-foreground">
+                <IconLoader2 className="size-4 animate-spin" />
+                {t("preview.loading")}
+              </div>
+            ) : error ? (
+              <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-8 text-sm text-destructive">
+                {error}
+              </div>
+            ) : (
+              <div className="rounded-[1.75rem] border border-border/70 bg-card px-4 py-4 shadow-sm sm:px-6 sm:py-5">
+                <DocumentPreviewContent
+                  preview={effectivePreview}
+                  placeholder={t("preview.cardPlaceholder")}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {item ? (
-          <div className="border-t px-5 py-4">
+          <div className="shrink-0 border-t bg-background/95 px-5 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/90 sm:px-6">
             <div className="flex flex-wrap items-center justify-end gap-3">
               <div className="flex flex-wrap gap-2">
                 {item.canInstall && !item.isInstalled ? (

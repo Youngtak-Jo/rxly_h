@@ -429,6 +429,7 @@ export function DataTable({
   data: z.infer<typeof schema>[]
 }) {
   const t = useTranslations("Dashboard.table")
+  const dashboardT = t as unknown as DashboardTranslations
   const locale = useLocale() as UiLocale
   const timeZone = useTimeZone() ?? DEFAULT_UI_TIME_ZONE
   const [data, setData] = React.useState(() => initialData)
@@ -455,8 +456,8 @@ export function DataTable({
     [data]
   )
   const columns = React.useMemo(
-    () => createColumns(t, locale, timeZone),
-    [locale, t, timeZone]
+    () => createColumns(dashboardT, locale, timeZone),
+    [dashboardT, locale, timeZone]
   )
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table is not fully compatible with React Compiler

@@ -1,10 +1,17 @@
 import type {
   DocumentGenerationConfig,
+  DocumentTemplateLanguage,
+  DocumentTemplateRegion,
   DocumentTemplateRenderer,
   DocumentTemplateSchema,
   InstalledDocumentSummary,
   WorkspaceTabId,
 } from "@/types/document"
+import {
+  DEFAULT_DOCUMENT_LANGUAGE,
+  DEFAULT_DOCUMENT_REGION,
+} from "@/lib/documents/language-region"
+import type { UiLocale } from "@/i18n/config"
 
 export const BUILT_IN_RECORD_TEMPLATE_ID = "record"
 export const BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID = "patient-handout"
@@ -31,6 +38,10 @@ export interface BuiltInDocumentDefinition {
   renderer: DocumentTemplateRenderer
   iconKey: string
   category: string
+  language: DocumentTemplateLanguage
+  region: DocumentTemplateRegion
+  authorName?: string
+  featuredInstallCount?: number
   schema: DocumentTemplateSchema
   generationConfig: DocumentGenerationConfig
 }
@@ -56,6 +67,10 @@ export const BUILT_IN_DOCUMENTS: BuiltInDocumentDefinition[] = [
     renderer: "BUILT_IN_RECORD",
     iconKey: "file-text",
     category: "clinical-documentation",
+    language: DEFAULT_DOCUMENT_LANGUAGE,
+    region: DEFAULT_DOCUMENT_REGION,
+    authorName: "Rxly",
+    featuredInstallCount: 1248,
     schema: EMPTY_SCHEMA,
     generationConfig: EMPTY_GENERATION_CONFIG,
   },
@@ -67,6 +82,10 @@ export const BUILT_IN_DOCUMENTS: BuiltInDocumentDefinition[] = [
     renderer: "BUILT_IN_PATIENT_HANDOUT",
     iconKey: "receipt-text",
     category: "patient-education",
+    language: DEFAULT_DOCUMENT_LANGUAGE,
+    region: DEFAULT_DOCUMENT_REGION,
+    authorName: "Rxly",
+    featuredInstallCount: 982,
     schema: EMPTY_SCHEMA,
     generationConfig: {
       ...EMPTY_GENERATION_CONFIG,
@@ -77,9 +96,65 @@ export const BUILT_IN_DOCUMENTS: BuiltInDocumentDefinition[] = [
   },
 ]
 
+const BUILT_IN_DOCUMENT_DISPLAY_METADATA: Record<
+  string,
+  Record<
+    UiLocale,
+    {
+      title: string
+      description: string
+    }
+  >
+> = {
+  [BUILT_IN_RECORD_TEMPLATE_ID]: {
+    en: {
+      title: "Consultation Record",
+      description:
+        "Generate and edit a structured visit note for the current consultation.",
+    },
+    ko: {
+      title: "진료 기록",
+      description:
+        "현재 상담 내용을 바탕으로 구조화된 진료 기록을 생성하고 수정합니다.",
+    },
+  },
+  [BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID]: {
+    en: {
+      title: "Patient Handout",
+      description:
+        "Create patient-friendly handouts that explain diagnoses and follow-up guidance.",
+    },
+    ko: {
+      title: "환자 안내문",
+      description:
+        "진단 내용과 추적 관리 계획을 환자 친화적인 안내문으로 생성합니다.",
+    },
+  },
+}
+
 export const DEFAULT_DOCUMENT_TEMPLATE_IDS = BUILT_IN_DOCUMENTS.map(
   (document) => document.id
 )
+
+export function getBuiltInDocumentDisplayMetadata(
+  templateId: string,
+  locale: UiLocale
+): {
+  title: string
+  description: string
+  language: DocumentTemplateLanguage
+  region: DocumentTemplateRegion
+} | null {
+  const localized = BUILT_IN_DOCUMENT_DISPLAY_METADATA[templateId]?.[locale]
+  if (!localized) return null
+
+  return {
+    title: localized.title,
+    description: localized.description,
+    language: locale,
+    region: DEFAULT_DOCUMENT_REGION,
+  }
+}
 
 export function buildDocumentTabId(templateId: string): `document:${string}` {
   return `document:${templateId}`

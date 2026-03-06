@@ -6,12 +6,20 @@ import {
   SYSTEM_WORKSPACE_TAB_IDS,
   buildDocumentTabId,
   createDefaultTabOrder,
+  getBuiltInDocumentDisplayMetadata,
   getTemplateIdFromTabId,
   isSystemWorkspaceTabId,
 } from "@/lib/documents/constants"
 import {
   getBuiltInDocumentPreviewAsset,
 } from "@/lib/documents/built-in-preview"
+import { SEEDED_PUBLIC_DOCUMENTS } from "@/lib/documents/seeded-public-documents"
+import {
+  DEFAULT_DOCUMENT_LANGUAGE,
+  DEFAULT_DOCUMENT_REGION,
+  resolveDocumentLanguage,
+  resolveDocumentRegion,
+} from "@/lib/documents/language-region"
 import type {
   DocumentCatalogItem,
   DocumentGenerationConfig,
@@ -45,6 +53,11 @@ type InstalledDocumentWithRelations = Prisma.UserInstalledDocumentGetPayload<{
       include: {
         latestDraftVersion: true
         latestPublishedVersion: true
+        _count: {
+          select: {
+            installedBy: true
+          }
+        }
       }
     }
     installedVersion: true
@@ -58,6 +71,117 @@ const defaultWorkspaceEnsureByUser = new Map<
   string,
   Promise<DocumentWorkspaceSnapshot>
 >()
+const BUILT_IN_TEMPLATE_METADATA = new Map(
+  BUILT_IN_DOCUMENTS.map((document) => [
+    document.id,
+    {
+      authorName: document.authorName ?? null,
+      featuredInstallCount: document.featuredInstallCount ?? 0,
+    },
+  ])
+)
+const SEEDED_PUBLIC_TEMPLATE_METADATA = new Map(
+  SEEDED_PUBLIC_DOCUMENTS.map((document) => [
+    document.id,
+    {
+      authorName: document.authorName ?? null,
+      featuredInstallCount: document.featuredInstallCount ?? 0,
+    },
+  ])
+)
+
+function buildWorkspaceEnsureKey(userId: string, locale: UiLocale): string {
+  return `${userId}:${locale}`
+}
+
+function isRxlyAuthoredTemplate(template: {
+  sourceKind: string
+  ownerUserId: string | null
+}): boolean {
+  return template.sourceKind === "BUILT_IN" || template.ownerUserId === null
+}
+
+function getFeaturedTemplateMetadata(template: {
+  id: string
+  sourceKind: string
+  ownerUserId: string | null
+}): {
+  authorName: string | null
+  featuredInstallCount: number
+} | null {
+  if (template.sourceKind === "BUILT_IN") {
+    return BUILT_IN_TEMPLATE_METADATA.get(template.id) ?? null
+  }
+
+  if (template.ownerUserId === null) {
+    return SEEDED_PUBLIC_TEMPLATE_METADATA.get(template.id) ?? null
+  }
+
+  return null
+}
+
+function getDisplayInstallCount(
+  template: {
+    id: string
+    sourceKind: string
+    ownerUserId: string | null
+  },
+  actualInstallCount: number
+): number {
+  const featuredInstallCount =
+    getFeaturedTemplateMetadata(template)?.featuredInstallCount ?? 0
+  return Math.max(actualInstallCount, featuredInstallCount)
+}
+
+function getDocumentDisplayMetadata<
+  T extends {
+    id: string
+    title: string
+    description: string
+    sourceKind: string
+    language: string | null
+    region: string | null
+  },
+>(template: T, locale: UiLocale): {
+  title: string
+  description: string
+  language: DocumentCatalogItem["language"]
+  region: DocumentCatalogItem["region"]
+} {
+  if (template.sourceKind === "BUILT_IN") {
+    const localized = getBuiltInDocumentDisplayMetadata(template.id, locale)
+    if (localized) {
+      return localized
+    }
+  }
+
+  return {
+    title: template.title,
+    description: template.description,
+    language: resolveDocumentLanguage(template.language),
+    region: resolveDocumentRegion(template.region),
+  }
+}
+
+function getLocaleAffinityRank(
+  language: DocumentCatalogItem["language"],
+  region: DocumentCatalogItem["region"],
+  locale: UiLocale
+): number {
+  if (locale === "ko") {
+    if (language === "ko" && region === "kr") return 0
+    if (language === "ko" && region === "global") return 1
+    if (language === "en" && region === "global") return 2
+    if (language === "en" && region === "us") return 3
+    return 4
+  }
+
+  if (language === "en" && region === "global") return 0
+  if (language === "en" && region === "us") return 1
+  if (language === "ko" && region === "kr") return 2
+  if (language === "ko" && region === "global") return 3
+  return 4
+}
 
 function toRecord<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
@@ -81,7 +205,6 @@ function toVersionRecord(
     schemaJson: unknown
     generationConfigJson: unknown
     previewContentJson: unknown | null
-    previewCaseSummary: string | null
     previewLocale: string | null
     previewModelId: string | null
     previewGeneratedAt: Date | null
@@ -105,7 +228,6 @@ function toVersionRecord(
     previewContentJson: version.previewContentJson
       ? (toRecord(version.previewContentJson) as Record<string, unknown>)
       : null,
-    previewCaseSummary: version.previewCaseSummary,
     previewLocale: version.previewLocale,
     previewModelId: version.previewModelId,
     previewGeneratedAt: version.previewGeneratedAt?.toISOString() ?? null,
@@ -119,7 +241,6 @@ function toVersionRecord(
 function toVersionPreview(
   version: {
     previewContentJson: unknown | null
-    previewCaseSummary: string | null
     previewLocale: string | null
     previewModelId: string | null
     previewGeneratedAt: Date | null
@@ -132,7 +253,6 @@ function toVersionPreview(
     contentJson: version.previewContentJson
       ? (toRecord(version.previewContentJson) as Record<string, unknown>)
       : null,
-    caseSummary: version.previewCaseSummary,
     locale: version.previewLocale,
     modelId: version.previewModelId,
     generatedAt: version.previewGeneratedAt?.toISOString() ?? null,
@@ -145,7 +265,6 @@ function buildStoredPreviewPayload(
     | {
         versionNumber: number
         previewContentJson: unknown | null
-        previewCaseSummary: string | null
         previewLocale: string | null
         previewGeneratedAt: Date | null
       }
@@ -154,7 +273,6 @@ function buildStoredPreviewPayload(
   return {
     versionNumber: version?.versionNumber ?? null,
     previewKind: "AI_GENERATED",
-    previewCaseSummary: version?.previewCaseSummary ?? null,
     previewLocale: version?.previewLocale ?? null,
     previewContent: version?.previewContentJson
       ? (toRecord(version.previewContentJson) as Record<string, unknown>)
@@ -177,14 +295,13 @@ function resolvePreviewVersion(
 function resolveTemplatePreviewPayload(
   template: TemplateWithVersions,
   userId: string,
-  locale: UiLocale
+  locale: UiLocale = resolveDocumentLanguage(template.language)
 ): DocumentPreviewPayload {
   if (template.sourceKind === "BUILT_IN") {
     const asset = getBuiltInDocumentPreviewAsset(template.id, locale)
     return {
       versionNumber: template.latestPublishedVersion?.versionNumber ?? 1,
       previewKind: "BUILT_IN_STATIC",
-      previewCaseSummary: asset?.summary ?? null,
       previewLocale: asset?.locale ?? null,
       previewContent: asset?.previewContent ?? null,
       builtInPreviewKey: asset?.key,
@@ -220,20 +337,6 @@ export async function ensureBuiltInDocumentTemplates(): Promise<void> {
 
   if (!builtInTemplateEnsurePromise) {
     builtInTemplateEnsurePromise = (async () => {
-      const existingBuiltInTemplates = await prisma.documentTemplate.findMany({
-        where: {
-          id: { in: DEFAULT_DOCUMENT_TEMPLATE_IDS },
-          sourceKind: "BUILT_IN",
-          latestPublishedVersionId: { not: null },
-        },
-        select: { id: true },
-      })
-
-      if (existingBuiltInTemplates.length === DEFAULT_DOCUMENT_TEMPLATE_IDS.length) {
-        hasEnsuredBuiltInTemplates = true
-        return
-      }
-
       for (const builtIn of BUILT_IN_DOCUMENTS) {
         await prisma.documentTemplate.upsert({
           where: { id: builtIn.id },
@@ -246,6 +349,8 @@ export async function ensureBuiltInDocumentTemplates(): Promise<void> {
             description: builtIn.description,
             iconKey: builtIn.iconKey,
             category: normalizeDocumentCategory(builtIn.category),
+            language: builtIn.language,
+            region: builtIn.region,
           },
           create: {
             id: builtIn.id,
@@ -257,6 +362,8 @@ export async function ensureBuiltInDocumentTemplates(): Promise<void> {
             description: builtIn.description,
             iconKey: builtIn.iconKey,
             category: normalizeDocumentCategory(builtIn.category),
+            language: builtIn.language,
+            region: builtIn.region,
           },
         })
 
@@ -290,6 +397,87 @@ export async function ensureBuiltInDocumentTemplates(): Promise<void> {
         await prisma.documentTemplate.update({
           where: { id: builtIn.id },
           data: {
+            latestPublishedVersionId: publishedVersion.id,
+          },
+        })
+      }
+
+      for (const seeded of SEEDED_PUBLIC_DOCUMENTS) {
+        await prisma.documentTemplate.upsert({
+          where: { id: seeded.id },
+          update: {
+            slug: seeded.slug,
+            ownerUserId: null,
+            sourceKind: "USER",
+            renderer: "GENERIC_STRUCTURED",
+            visibility: "PUBLIC",
+            title: seeded.title,
+            description: seeded.description,
+            iconKey: seeded.iconKey,
+            category: normalizeDocumentCategory(seeded.category),
+            language: seeded.language ?? DEFAULT_DOCUMENT_LANGUAGE,
+            region: seeded.region ?? DEFAULT_DOCUMENT_REGION,
+            latestDraftVersionId: null,
+          },
+          create: {
+            id: seeded.id,
+            slug: seeded.slug,
+            ownerUserId: null,
+            sourceKind: "USER",
+            renderer: "GENERIC_STRUCTURED",
+            visibility: "PUBLIC",
+            title: seeded.title,
+            description: seeded.description,
+            iconKey: seeded.iconKey,
+            category: normalizeDocumentCategory(seeded.category),
+            language: seeded.language ?? DEFAULT_DOCUMENT_LANGUAGE,
+            region: seeded.region ?? DEFAULT_DOCUMENT_REGION,
+          },
+        })
+
+        const publishedVersion = await prisma.documentTemplateVersion.upsert({
+          where: {
+            templateId_versionNumber: {
+              templateId: seeded.id,
+              versionNumber: 1,
+            },
+          },
+          update: {
+            status: "PUBLISHED",
+            schemaJson: seeded.schema as unknown as Prisma.InputJsonValue,
+            generationConfigJson:
+              seeded.generationConfig as unknown as Prisma.InputJsonValue,
+            previewContentJson:
+              seeded.previewContent as unknown as Prisma.InputJsonValue,
+            previewLocale: seeded.previewLocale,
+            previewModelId: null,
+            previewGeneratedAt: null,
+            previewInputChecksum: null,
+            changelog: "Seeded public template",
+            createdByUserId: null,
+          },
+          create: {
+            templateId: seeded.id,
+            versionNumber: 1,
+            status: "PUBLISHED",
+            schemaJson: seeded.schema as unknown as Prisma.InputJsonValue,
+            generationConfigJson:
+              seeded.generationConfig as unknown as Prisma.InputJsonValue,
+            previewContentJson:
+              seeded.previewContent as unknown as Prisma.InputJsonValue,
+            previewLocale: seeded.previewLocale,
+            previewModelId: null,
+            previewGeneratedAt: null,
+            previewInputChecksum: null,
+            changelog: "Seeded public template",
+            createdByUserId: null,
+          },
+        })
+
+        await prisma.documentTemplate.update({
+          where: { id: seeded.id },
+          data: {
+            latestDraftVersionId: null,
             latestPublishedVersionId: publishedVersion.id,
           },
         })
@@ -350,7 +538,8 @@ async function ensureDefaultInstalledDocumentsExistInternal(
 }
 
 async function ensureDefaultInstalledDocumentsInternal(
-  userId: string
+  userId: string,
+  locale: UiLocale
 ): Promise<DocumentWorkspaceSnapshot> {
   await ensureDefaultInstalledDocumentsExist(userId)
 
@@ -365,6 +554,11 @@ async function ensureDefaultInstalledDocumentsInternal(
           include: {
             latestDraftVersion: true,
             latestPublishedVersion: true,
+            _count: {
+              select: {
+                installedBy: true,
+              },
+            },
           },
         },
         installedVersion: true,
@@ -373,7 +567,9 @@ async function ensureDefaultInstalledDocumentsInternal(
     }),
   ])
 
-  const mappedInstalledDocuments = installedDocuments.map(mapInstalledDocument)
+  const mappedInstalledDocuments = installedDocuments.map((document) =>
+    mapInstalledDocument(document, userId, locale)
+  )
 
   const reconciledTabOrder = reconcileWorkspaceTabOrder(
     mappedInstalledDocuments,
@@ -460,21 +656,31 @@ export function reconcileWorkspaceTabOrder(
 }
 
 function mapInstalledDocument(
-  record: InstalledDocumentWithRelations
+  record: InstalledDocumentWithRelations,
+  userId: string,
+  locale: UiLocale = "en"
 ): InstalledDocumentSummary {
   const latestPublishedVersion =
     record.template.latestPublishedVersion ?? null
+  const display = getDocumentDisplayMetadata(record.template, locale)
 
   return {
     templateId: record.templateId,
     slug: record.template.slug,
-    title: record.template.title,
-    description: record.template.description,
+    title: display.title,
+    description: display.description,
     renderer: record.template.renderer,
     visibility: record.template.visibility,
     sourceKind: record.template.sourceKind,
     iconKey: record.template.iconKey,
     category: normalizeDocumentCategory(record.template.category),
+    language: display.language,
+    region: display.region,
+    authorName: getAuthorName(record.template, userId),
+    installCount: getDisplayInstallCount(
+      record.template,
+      record.template._count.installedBy
+    ),
     installedVersionId: record.installedVersionId,
     installedVersionNumber: record.installedVersion.versionNumber,
     latestPublishedVersionId: latestPublishedVersion?.id ?? null,
@@ -486,18 +692,20 @@ function mapInstalledDocument(
 }
 
 export async function ensureDefaultInstalledDocuments(
-  userId: string
+  userId: string,
+  locale: UiLocale = "en"
 ): Promise<DocumentWorkspaceSnapshot> {
-  const inFlight = defaultWorkspaceEnsureByUser.get(userId)
+  const requestKey = buildWorkspaceEnsureKey(userId, locale)
+  const inFlight = defaultWorkspaceEnsureByUser.get(requestKey)
   if (inFlight) return inFlight
 
-  const request = ensureDefaultInstalledDocumentsInternal(userId).finally(() => {
-    if (defaultWorkspaceEnsureByUser.get(userId) === request) {
-      defaultWorkspaceEnsureByUser.delete(userId)
+  const request = ensureDefaultInstalledDocumentsInternal(userId, locale).finally(() => {
+    if (defaultWorkspaceEnsureByUser.get(requestKey) === request) {
+      defaultWorkspaceEnsureByUser.delete(requestKey)
     }
   })
 
-  defaultWorkspaceEnsureByUser.set(userId, request)
+  defaultWorkspaceEnsureByUser.set(requestKey, request)
   return request
 }
 
@@ -518,14 +726,17 @@ async function ensureDefaultInstalledDocumentsExist(
 }
 
 export async function getDocumentWorkspaceSnapshot(
-  userId: string
+  userId: string,
+  locale: UiLocale = "en"
 ): Promise<DocumentWorkspaceSnapshot> {
-  return ensureDefaultInstalledDocuments(userId)
+  return ensureDefaultInstalledDocuments(userId, locale)
 }
 
 function getAuthorName(template: TemplateWithVersions, userId: string): string {
-  if (template.sourceKind === "BUILT_IN") return "Rxly"
+  const featuredAuthorName = getFeaturedTemplateMetadata(template)?.authorName
+  if (featuredAuthorName) return featuredAuthorName
   if (template.ownerUserId === userId) return "You"
+  if (isRxlyAuthoredTemplate(template)) return "Rxly"
   return "Community"
 }
 
@@ -542,6 +753,11 @@ export async function getDocumentCatalog(
         include: {
           latestDraftVersion: true,
           latestPublishedVersion: true,
+          _count: {
+            select: {
+              installedBy: true,
+            },
+          },
         },
       },
       installedVersion: true,
@@ -551,42 +767,27 @@ export async function getDocumentCatalog(
   const installedByTemplateId = new Map(
     installedDocuments.map((document) => [
       document.templateId,
-      mapInstalledDocument(document),
+      mapInstalledDocument(document, userId, locale),
     ])
   )
 
   const q = query?.trim() ?? ""
   const templates = await prisma.documentTemplate.findMany({
     where: {
-      AND: [
-        {
-          OR: [
-            { sourceKind: "BUILT_IN" },
-            { visibility: "PUBLIC" },
-            { ownerUserId: userId },
-          ],
-        },
-        ...(q
-          ? [
-              {
-                OR: [
-                  { title: { contains: q, mode: "insensitive" as const } },
-                  {
-                    description: {
-                      contains: q,
-                      mode: "insensitive" as const,
-                    },
-                  },
-                  { category: { contains: q, mode: "insensitive" as const } },
-                ],
-              },
-            ]
-          : []),
+      OR: [
+        { sourceKind: "BUILT_IN" },
+        { visibility: "PUBLIC" },
+        { ownerUserId: userId },
       ],
     },
     include: {
       latestDraftVersion: true,
       latestPublishedVersion: true,
+      _count: {
+        select: {
+          installedBy: true,
+        },
+      },
     },
     orderBy: [
       { sourceKind: "asc" },
@@ -594,49 +795,105 @@ export async function getDocumentCatalog(
     ],
   })
 
-  return templates.map((template) => {
-    const installed = installedByTemplateId.get(template.id) ?? null
-    const publishedVersion = template.latestPublishedVersion
-    const isOwner = template.ownerUserId === userId
-    const isBuiltIn = template.sourceKind === "BUILT_IN"
-    const canInstall =
-      !!template.latestPublishedVersionId && (!installed || !!publishedVersion)
+  const catalogTemplates = [...templates].sort((left, right) => {
+    const leftRank =
+      left.sourceKind === "BUILT_IN" ? 0 : isRxlyAuthoredTemplate(left) ? 1 : 2
+    const rightRank =
+      right.sourceKind === "BUILT_IN" ? 0 : isRxlyAuthoredTemplate(right) ? 1 : 2
+    const leftDisplay = getDocumentDisplayMetadata(left, locale)
+    const rightDisplay = getDocumentDisplayMetadata(right, locale)
 
-    return {
-      templateId: template.id,
-      slug: template.slug,
-      title: template.title,
-      description: template.description,
-      renderer: template.renderer,
-      visibility: template.visibility,
-      sourceKind: template.sourceKind,
-      iconKey: template.iconKey,
-      category: normalizeDocumentCategory(template.category),
-      authorName: getAuthorName(template, userId),
-      publishedVersionNumber: publishedVersion?.versionNumber ?? null,
-      installedVersionNumber: installed?.installedVersionNumber ?? null,
-      isInstalled: !!installed,
-      hasUpdate: installed?.hasUpdate ?? false,
-      isEditable: !isBuiltIn && isOwner,
-      isBuiltIn,
-      canFork: !isBuiltIn && !isOwner && template.visibility === "PUBLIC",
-      canPublish:
-        !isBuiltIn &&
-        isOwner &&
-        template.latestDraftVersionId !== null,
-      canInstall,
-      canUninstall: !!installed,
-      preview: resolveTemplatePreviewPayload(template, userId, locale),
+    if (leftRank !== rightRank) {
+      return leftRank - rightRank
     }
+
+    const leftLocaleRank = getLocaleAffinityRank(
+      leftDisplay.language,
+      leftDisplay.region,
+      locale
+    )
+    const rightLocaleRank = getLocaleAffinityRank(
+      rightDisplay.language,
+      rightDisplay.region,
+      locale
+    )
+
+    if (leftLocaleRank !== rightLocaleRank) {
+      return leftLocaleRank - rightLocaleRank
+    }
+
+    return right.updatedAt.getTime() - left.updatedAt.getTime()
   })
+
+  const normalizedQuery = q.toLowerCase()
+
+  return catalogTemplates
+    .map((template) => {
+      const display = getDocumentDisplayMetadata(template, locale)
+      const installed = installedByTemplateId.get(template.id) ?? null
+      const publishedVersion = template.latestPublishedVersion
+      const isOwner = template.ownerUserId === userId
+      const isBuiltIn = template.sourceKind === "BUILT_IN"
+      const canInstall =
+        !!template.latestPublishedVersionId && (!installed || !!publishedVersion)
+
+      return {
+        templateId: template.id,
+        slug: template.slug,
+        title: display.title,
+        description: display.description,
+        renderer: template.renderer,
+        visibility: template.visibility,
+        sourceKind: template.sourceKind,
+        iconKey: template.iconKey,
+        category: normalizeDocumentCategory(template.category),
+        language: display.language,
+        region: display.region,
+        authorName: getAuthorName(template, userId),
+        installCount: getDisplayInstallCount(
+          template,
+          template._count.installedBy
+        ),
+        publishedVersionNumber: publishedVersion?.versionNumber ?? null,
+        installedVersionNumber: installed?.installedVersionNumber ?? null,
+        isInstalled: !!installed,
+        hasUpdate: installed?.hasUpdate ?? false,
+        isEditable: !isBuiltIn && isOwner,
+        isBuiltIn,
+        canFork: !isBuiltIn && !isOwner && template.visibility === "PUBLIC",
+        canPublish:
+          !isBuiltIn &&
+          isOwner &&
+          template.latestDraftVersionId !== null,
+        canInstall,
+        canUninstall: !!installed,
+        preview: resolveTemplatePreviewPayload(template, userId, locale),
+      }
+    })
+    .filter((item) => {
+      if (!normalizedQuery) return true
+
+      return [
+        item.title,
+        item.description,
+        item.authorName,
+        item.category,
+        item.language,
+        item.region,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery)
+    })
 }
 
 export async function installDocumentForUser(
   userId: string,
   templateId: string,
-  versionId?: string
+  versionId?: string,
+  locale: UiLocale = "en"
 ): Promise<DocumentWorkspaceSnapshot> {
-  await ensureDefaultInstalledDocuments(userId)
+  await ensureDefaultInstalledDocuments(userId, locale)
 
   const template = await prisma.documentTemplate.findFirst({
     where: {
@@ -687,7 +944,7 @@ export async function installDocumentForUser(
     },
   })
 
-  const workspace = await ensureDefaultInstalledDocuments(userId)
+  const workspace = await ensureDefaultInstalledDocuments(userId, locale)
   const nextTabId = buildDocumentTabId(templateId)
   if (!workspace.tabOrder.includes(nextTabId)) {
     const nextTabOrder = [...workspace.tabOrder, nextTabId]
@@ -708,19 +965,25 @@ export async function installDocumentForUser(
 
 export async function uninstallDocumentForUser(
   userId: string,
-  templateId: string
+  templateId: string,
+  locale: UiLocale = "en"
 ): Promise<DocumentWorkspaceSnapshot> {
   await prisma.userInstalledDocument.deleteMany({
     where: { userId, templateId },
   })
 
-  const workspace = await ensureBuiltInSafeWorkspaceAfterUninstall(userId, templateId)
+  const workspace = await ensureBuiltInSafeWorkspaceAfterUninstall(
+    userId,
+    templateId,
+    locale
+  )
   return workspace
 }
 
 async function ensureBuiltInSafeWorkspaceAfterUninstall(
   userId: string,
-  templateId: string
+  templateId: string,
+  locale: UiLocale
 ): Promise<DocumentWorkspaceSnapshot> {
   const installedDocuments = await prisma.userInstalledDocument.findMany({
     where: { userId },
@@ -729,6 +992,11 @@ async function ensureBuiltInSafeWorkspaceAfterUninstall(
         include: {
           latestDraftVersion: true,
           latestPublishedVersion: true,
+          _count: {
+            select: {
+              installedBy: true,
+            },
+          },
         },
       },
       installedVersion: true,
@@ -736,7 +1004,9 @@ async function ensureBuiltInSafeWorkspaceAfterUninstall(
     orderBy: { createdAt: "asc" },
   })
 
-  const mappedInstalledDocuments = installedDocuments.map(mapInstalledDocument)
+  const mappedInstalledDocuments = installedDocuments.map((document) =>
+    mapInstalledDocument(document, userId, locale)
+  )
   const layout = await prisma.userWorkspaceLayout.findUnique({
     where: { userId },
   })
@@ -761,9 +1031,10 @@ async function ensureBuiltInSafeWorkspaceAfterUninstall(
 
 export async function updateWorkspaceTabOrder(
   userId: string,
-  tabOrder: string[]
+  tabOrder: string[],
+  locale: UiLocale = "en"
 ): Promise<DocumentWorkspaceSnapshot> {
-  const workspace = await ensureDefaultInstalledDocuments(userId)
+  const workspace = await ensureDefaultInstalledDocuments(userId, locale)
   const reconciled = reconcileWorkspaceTabOrder(workspace.installedDocuments, tabOrder)
   await prisma.userWorkspaceLayout.upsert({
     where: { userId },
@@ -783,12 +1054,13 @@ export async function createDocumentTemplateDraft(input: {
   description: string
   iconKey: string
   category: string
+  language: string
+  region: string
   visibility: "PRIVATE" | "PUBLIC"
   renderer: "GENERIC_STRUCTURED"
   schema: DocumentTemplateSchema
   generationConfig: DocumentGenerationConfig
   previewContent?: Record<string, unknown>
-  previewCaseSummary?: string | null
   previewLocale?: string | null
   previewModelId?: string | null
   previewGeneratedAt?: string | null
@@ -821,6 +1093,8 @@ export async function createDocumentTemplateDraft(input: {
       description: input.description,
       iconKey: input.iconKey,
       category: normalizedCategory,
+      language: resolveDocumentLanguage(input.language),
+      region: resolveDocumentRegion(input.region),
       versions: {
         create: {
           versionNumber: 1,
@@ -834,7 +1108,6 @@ export async function createDocumentTemplateDraft(input: {
                   input.previewContent as unknown as Prisma.InputJsonValue,
               }
             : {}),
-          previewCaseSummary: input.previewCaseSummary ?? null,
           previewLocale: input.previewLocale ?? null,
           previewModelId: input.previewModelId ?? null,
           previewGeneratedAt: input.previewGeneratedAt
@@ -916,6 +1189,11 @@ export async function getDocumentTemplateForUser(
         include: {
           latestDraftVersion: true,
           latestPublishedVersion: true,
+          _count: {
+            select: {
+              installedBy: true,
+            },
+          },
         },
       },
       installedVersion: true,
@@ -924,7 +1202,7 @@ export async function getDocumentTemplateForUser(
 
   return {
     template: normalizedTemplate,
-    installed: installed ? mapInstalledDocument(installed) : null,
+    installed: installed ? mapInstalledDocument(installed, userId) : null,
     latestDraftVersion: toVersionRecord(normalizedTemplate.latestDraftVersion),
     latestPublishedVersion: toVersionRecord(
       normalizedTemplate.latestPublishedVersion
@@ -943,12 +1221,13 @@ export async function patchDocumentTemplateDraft(input: {
   description?: string
   iconKey?: string
   category?: string
+  language?: string
+  region?: string
   visibility?: "PRIVATE" | "PUBLIC"
   schema?: DocumentTemplateSchema
   generationConfig?: DocumentGenerationConfig
   changelog?: string
   previewContent?: Record<string, unknown>
-  previewCaseSummary?: string | null
   previewLocale?: string | null
   previewModelId?: string | null
   previewGeneratedAt?: string | null
@@ -998,7 +1277,6 @@ export async function patchDocumentTemplateDraft(input: {
                 input.previewContent as unknown as Prisma.InputJsonValue,
             }
           : {}),
-        previewCaseSummary: input.previewCaseSummary ?? null,
         previewLocale: input.previewLocale ?? null,
         previewModelId: input.previewModelId ?? null,
         previewGeneratedAt: input.previewGeneratedAt
@@ -1033,9 +1311,6 @@ export async function patchDocumentTemplateDraft(input: {
                   : Prisma.JsonNull,
             }
           : {}),
-        ...(input.previewCaseSummary !== undefined
-          ? { previewCaseSummary: input.previewCaseSummary }
-          : {}),
         ...(input.previewLocale !== undefined
           ? { previewLocale: input.previewLocale }
           : {}),
@@ -1067,6 +1342,14 @@ export async function patchDocumentTemplateDraft(input: {
         input.category === undefined
           ? undefined
           : normalizeDocumentCategory(input.category),
+      language:
+        input.language === undefined
+          ? undefined
+          : resolveDocumentLanguage(input.language),
+      region:
+        input.region === undefined
+          ? undefined
+          : resolveDocumentRegion(input.region),
       visibility: input.visibility,
       latestDraftVersionId: draftVersionId,
     },
@@ -1150,7 +1433,6 @@ export async function publishDocumentTemplate(input: {
                 .previewContentJson as Prisma.InputJsonValue,
           }
         : {}),
-      previewCaseSummary: template.latestDraftVersion.previewCaseSummary,
       previewLocale: template.latestDraftVersion.previewLocale,
       previewModelId: template.latestDraftVersion.previewModelId,
       previewGeneratedAt: template.latestDraftVersion.previewGeneratedAt,
@@ -1200,6 +1482,8 @@ export async function forkDocumentTemplate(input: {
     description: template.description,
     iconKey: template.iconKey,
     category: normalizeDocumentCategory(template.category),
+    language: template.language,
+    region: template.region,
     visibility: "PRIVATE",
     renderer: "GENERIC_STRUCTURED",
     schema: toRecord(
@@ -1213,7 +1497,6 @@ export async function forkDocumentTemplate(input: {
           template.latestPublishedVersion.previewContentJson
         ) as Record<string, unknown>)
       : undefined,
-    previewCaseSummary: template.latestPublishedVersion.previewCaseSummary,
     previewLocale: template.latestPublishedVersion.previewLocale,
     previewModelId: template.latestPublishedVersion.previewModelId,
     previewGeneratedAt:
@@ -1247,6 +1530,7 @@ export async function getDocumentPreviewForUser(input: {
   if (!template) {
     throw new Error("Template not found")
   }
+  const display = getDocumentDisplayMetadata(template, input.locale)
   const preview = resolveTemplatePreviewPayload(
     template,
     input.userId,
@@ -1255,13 +1539,15 @@ export async function getDocumentPreviewForUser(input: {
 
   return {
     templateId: template.id,
-    title: template.title,
-    description: template.description,
+    title: display.title,
+    description: display.description,
     renderer: template.renderer,
     sourceKind: template.sourceKind,
     visibility: template.visibility,
     authorName: getAuthorName(template, input.userId),
     category: normalizeDocumentCategory(template.category),
+    language: display.language,
+    region: display.region,
     ...preview,
   }
 }
