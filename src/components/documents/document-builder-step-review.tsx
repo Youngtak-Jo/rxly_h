@@ -6,6 +6,14 @@ import { useTranslations } from "next-intl"
 import { GenericDocumentPreview } from "@/components/documents/generic-document-preview"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 import { getDocumentCategoryLabelKey } from "@/lib/documents/categories"
 import {
   getDocumentLanguageOptions,
@@ -27,8 +35,15 @@ function PreviewStatusBadge({
 }) {
   const t = useTranslations("DocumentBuilder")
 
+  const variant =
+    status === "failed"
+      ? "destructive"
+      : status === "generating"
+        ? "secondary"
+        : "outline"
+
   return (
-    <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] text-muted-foreground">
+    <Badge variant={variant} className="text-[11px] font-normal">
       {status === "generating"
         ? t("preview.status.generating")
         : status === "failed"
@@ -38,7 +53,7 @@ function PreviewStatusBadge({
             : status === "ready"
               ? t("preview.status.ready")
               : t("preview.status.idle")}
-    </span>
+    </Badge>
   )
 }
 
@@ -88,131 +103,129 @@ export function DocumentBuilderStepReview({
   )
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
-        <section className="space-y-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-2">
-              <h2 className="text-lg font-semibold">{t("review.title")}</h2>
-              <p className="text-sm text-muted-foreground">
-                {t("review.description")}
-              </p>
+    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+        {/* ── Summary card ── */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle className="text-base">{t("review.title")}</CardTitle>
+                <CardDescription className="text-xs">
+                  {t("review.description")}
+                </CardDescription>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-1.5">
+                {publishedVersionNumber ? (
+                  <Badge variant="secondary" className="text-[11px]">
+                    {t("badges.publishedVersion", { version: publishedVersionNumber })}
+                  </Badge>
+                ) : null}
+                {installedVersionNumber ? (
+                  <Badge variant="outline" className="text-[11px]">
+                    {t("badges.installedVersion", { version: installedVersionNumber })}
+                  </Badge>
+                ) : null}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {publishedVersionNumber ? (
-                <Badge variant="secondary">
-                  {t("badges.publishedVersion", { version: publishedVersionNumber })}
-                </Badge>
-              ) : null}
-              {installedVersionNumber ? (
-                <Badge variant="outline">
-                  {t("badges.installedVersion", { version: installedVersionNumber })}
-                </Badge>
-              ) : null}
-            </div>
-          </div>
+          </CardHeader>
 
-          <dl className="grid gap-x-8 gap-y-4 md:grid-cols-2">
-            <div className="space-y-1 border-b border-border/60 pb-4">
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t("review.summary.title")}
-              </dt>
-              <dd className="text-sm font-medium">{title || "-"}</dd>
-            </div>
-            <div className="space-y-1 border-b border-border/60 pb-4">
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t("review.summary.category")}
-              </dt>
-              <dd className="text-sm font-medium">{categoryLabel}</dd>
-            </div>
-            <div className="space-y-1 border-b border-border/60 pb-4">
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t("review.summary.language")}
-              </dt>
-              <dd className="text-sm font-medium">{languageLabel}</dd>
-            </div>
-            <div className="space-y-1 border-b border-border/60 pb-4">
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t("review.summary.region")}
-              </dt>
-              <dd className="text-sm font-medium">{regionLabel}</dd>
-            </div>
-            <div className="space-y-1 border-b border-border/60 pb-4">
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t("review.summary.visibility")}
-              </dt>
-              <dd className="text-sm font-medium">
-                {visibility === "PUBLIC"
-                  ? t("templateSettings.visibility.public")
-                  : t("templateSettings.visibility.private")}
-              </dd>
-            </div>
-            <div className="space-y-1 border-b border-border/60 pb-4">
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t("review.summary.schemaNodes")}
-              </dt>
-              <dd className="text-sm font-medium">
-                {t("review.summary.schemaNodesValue", { count: schemaNodeCount })}
-              </dd>
-            </div>
-            <div className="space-y-1 border-b border-border/60 pb-4 md:col-span-2">
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t("review.summary.purpose")}
-              </dt>
-              <dd className="text-sm leading-6 text-foreground/90">
-                {description || t("review.summary.none")}
-              </dd>
-            </div>
-            <div className="space-y-1 border-b border-border/60 pb-4 md:col-span-2">
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t("review.summary.contextSources")}
-              </dt>
-              <dd className="flex flex-wrap gap-2">
-                {contextSources.length > 0 ? (
-                  contextSources.map((source) => (
-                    <Badge key={source} variant="outline">
-                      {t(`contextSources.${source}` as never)}
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="text-sm font-medium">{t("review.summary.none")}</span>
-                )}
-              </dd>
-            </div>
-          </dl>
-        </section>
+          <CardContent>
+            <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
+              <SummaryRow
+                label={t("review.summary.title")}
+                value={title || "-"}
+              />
+              <SummaryRow
+                label={t("review.summary.category")}
+                value={categoryLabel}
+              />
+              <SummaryRow
+                label={t("review.summary.language")}
+                value={languageLabel}
+              />
+              <SummaryRow
+                label={t("review.summary.region")}
+                value={regionLabel}
+              />
+              <SummaryRow
+                label={t("review.summary.visibility")}
+                value={
+                  visibility === "PUBLIC"
+                    ? t("templateSettings.visibility.public")
+                    : t("templateSettings.visibility.private")
+                }
+              />
+              <SummaryRow
+                label={t("review.summary.schemaNodes")}
+                value={t("review.summary.schemaNodesValue", {
+                  count: schemaNodeCount,
+                })}
+              />
+            </dl>
 
-        <section className="overflow-hidden rounded-2xl border border-border/70 bg-card">
-          <div className="border-b border-border/60 px-5 py-5 sm:px-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0 flex-1 space-y-2">
+            <Separator className="my-4" />
+
+            <dl className="space-y-3 text-sm">
+              <SummaryRow
+                label={t("review.summary.purpose")}
+                value={description || t("review.summary.none")}
+                block
+              />
+              <div className="space-y-1">
+                <dt className="text-xs text-muted-foreground">
+                  {t("review.summary.contextSources")}
+                </dt>
+                <dd className="flex flex-wrap gap-1.5">
+                  {contextSources.length > 0 ? (
+                    contextSources.map((source) => (
+                      <Badge key={source} variant="outline" className="text-[11px] font-normal">
+                        {t(`contextSources.${source}` as never)}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-sm text-muted-foreground">
+                      {t("review.summary.none")}
+                    </span>
+                  )}
+                </dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+
+        {/* ── Preview card ── */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-lg font-semibold">
+                  <CardTitle className="text-base">
                     {t("preview.renderedTitle")}
-                  </h2>
-                  <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  </CardTitle>
+                  <Badge variant="outline" className="text-[11px] font-normal">
                     {t("preview.syntheticBadge")}
-                  </span>
+                  </Badge>
                   <PreviewStatusBadge status={previewStatus} />
                   {previewLocale ? (
-                    <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] text-muted-foreground">
+                    <Badge variant="outline" className="text-[11px] font-normal">
                       {previewLocale.toUpperCase()}
-                    </span>
+                    </Badge>
                   ) : null}
                 </div>
 
-                <p className="text-sm text-muted-foreground">
+                <CardDescription className="text-xs">
                   {t("preview.renderedDescription")}
-                </p>
+                </CardDescription>
 
                 {previewStatus === "stale" ? (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {t("preview.staleDescription")}
                   </p>
                 ) : null}
 
                 {previewGeneratedAt ? (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground">
                     {t("preview.generatedAt", {
                       value: new Date(previewGeneratedAt).toLocaleString(),
                     })}
@@ -223,30 +236,46 @@ export function DocumentBuilderStepReview({
               <Button
                 type="button"
                 variant="outline"
+                size="sm"
                 className="gap-1.5 self-start"
                 onClick={onRegeneratePreview}
               >
                 {previewStatus === "generating" ? (
-                  <IconLoader2 className="size-4 animate-spin" />
+                  <IconLoader2 className="size-3.5 animate-spin" />
                 ) : (
-                  <IconRefresh className="size-4" />
+                  <IconRefresh className="size-3.5" />
                 )}
                 {t("preview.regenerate")}
               </Button>
             </div>
 
             {previewError ? (
-              <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-                {previewError}
-              </div>
+              <p className="mt-2 text-sm text-destructive">{previewError}</p>
             ) : null}
-          </div>
+          </CardHeader>
 
-          <div className="px-5 py-6 sm:px-6">
+          <CardContent>
             <GenericDocumentPreview sections={previewSections} />
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       </div>
+    </div>
+  )
+}
+
+function SummaryRow({
+  label,
+  value,
+  block = false,
+}: {
+  label: string
+  value: string
+  block?: boolean
+}) {
+  return (
+    <div className={`space-y-0.5 ${block ? "sm:col-span-2" : ""}`}>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="font-medium leading-snug">{value}</dd>
     </div>
   )
 }

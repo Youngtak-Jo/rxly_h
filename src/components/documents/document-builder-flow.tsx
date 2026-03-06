@@ -10,6 +10,7 @@ import {
   useState,
 } from "react"
 import {
+  IconCheck,
   IconChevronLeft,
   IconChevronRight,
   IconLoader2,
@@ -18,6 +19,7 @@ import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import { documentTemplateSchemaSchema } from "@/lib/documents/schema"
 import {
   buildGenericDocumentSections,
@@ -854,11 +856,11 @@ export const DocumentBuilderFlow = forwardRef<
           effectiveMode === "edit" && resolvedTemplateId
             ? { prompt: aiPrompt, draft, model: documentModel }
             : {
-                prompt: aiPrompt,
-                defaultLanguage: locale,
-                defaultRegion: userRegion,
-                model: documentModel,
-              }
+              prompt: aiPrompt,
+              defaultLanguage: locale,
+              defaultRegion: userRegion,
+              model: documentModel,
+            }
         ),
       })
       if (!response.ok) {
@@ -1185,41 +1187,46 @@ export const DocumentBuilderFlow = forwardRef<
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b px-4 py-4 sm:px-6">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="border-b px-5 py-3 sm:px-6">
+        <nav className="flex items-center" aria-label="Progress">
           {stepLabels.map((label, index) => {
             const isActive = index === activeStepIndex
             const isComplete = index < activeStepIndex
 
             return (
-              <div key={label} className="flex items-center gap-3">
+              <div key={label} className="flex items-center">
                 <div className="flex items-center gap-2">
                   <div
-                    className={`flex size-7 items-center justify-center rounded-full border text-xs font-semibold ${
-                      isActive
-                        ? "border-primary bg-primary text-primary-foreground"
+                    className={`flex size-6 items-center justify-center rounded-full text-xs font-medium transition-colors ${isActive
+                        ? "bg-primary text-primary-foreground"
                         : isComplete
-                          ? "border-primary/40 bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground"
-                    }`}
+                          ? "bg-primary/15 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      }`}
                   >
-                    {index + 1}
+                    {isComplete ? (
+                      <IconCheck className="size-3.5" />
+                    ) : (
+                      index + 1
+                    )}
                   </div>
                   <span
-                    className={`text-sm ${
-                      isActive ? "font-medium text-foreground" : "text-muted-foreground"
-                    }`}
+                    className={`hidden text-[13px] sm:inline ${isActive ? "font-medium text-foreground" : "text-muted-foreground"
+                      }`}
                   >
                     {label}
                   </span>
                 </div>
                 {index < stepLabels.length - 1 ? (
-                  <div className="hidden h-px w-8 bg-border sm:block" />
+                  <Separator
+                    className="mx-3 hidden !w-6 sm:block"
+                    orientation="horizontal"
+                  />
                 ) : null}
               </div>
             )
           })}
-        </div>
+        </nav>
       </div>
 
       {loading ? (
@@ -1288,13 +1295,14 @@ export const DocumentBuilderFlow = forwardRef<
       )}
 
       {step === "start" ? null : (
-        <div className="border-t px-4 py-4 sm:px-6">
+        <div className="border-t px-5 py-3 sm:px-6">
           {step === "settings" ? (
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center justify-between">
               {effectiveMode === "create" ? (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setStep("start")}
                 >
                   <IconChevronLeft className="size-4" />
@@ -1306,6 +1314,7 @@ export const DocumentBuilderFlow = forwardRef<
 
               <Button
                 type="button"
+                size="sm"
                 disabled={!canGoSettingsNext}
                 onClick={() => setStep("schema")}
               >
@@ -1314,10 +1323,11 @@ export const DocumentBuilderFlow = forwardRef<
               </Button>
             </div>
           ) : step === "schema" ? (
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center justify-between">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
+                size="sm"
                 onClick={() => setStep("settings")}
               >
                 <IconChevronLeft className="size-4" />
@@ -1326,6 +1336,7 @@ export const DocumentBuilderFlow = forwardRef<
 
               <Button
                 type="button"
+                size="sm"
                 disabled={!canGoSchemaNext}
                 onClick={() => setStep("review")}
               >
@@ -1334,10 +1345,11 @@ export const DocumentBuilderFlow = forwardRef<
               </Button>
             </div>
           ) : (
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
+                size="sm"
                 className="self-start"
                 onClick={() => setStep("schema")}
               >
@@ -1345,10 +1357,11 @@ export const DocumentBuilderFlow = forwardRef<
                 {t("navigation.back")}
               </Button>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:justify-end">
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
                   disabled={saving}
                   onClick={() => void saveDraft()}
                 >
@@ -1358,6 +1371,7 @@ export const DocumentBuilderFlow = forwardRef<
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
                   disabled={publishing}
                   onClick={() => void publishDraft()}
                 >
@@ -1368,6 +1382,7 @@ export const DocumentBuilderFlow = forwardRef<
                 </Button>
                 <Button
                   type="button"
+                  size="sm"
                   disabled={installing || publishedVersionNumber === null}
                   onClick={() => void installPublished()}
                 >

@@ -126,6 +126,7 @@ export interface DocumentPreviewPayload {
   previewContent: Record<string, unknown> | null
   builtInPreviewKey?: "record" | "patient-handout"
   generatedAt: string | null
+  schemaNodes?: DocumentSchemaNode[]
 }
 
 export interface DocumentTemplateRecord {

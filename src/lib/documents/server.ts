@@ -263,13 +263,17 @@ function toVersionPreview(
 function buildStoredPreviewPayload(
   version:
     | {
-        versionNumber: number
-        previewContentJson: unknown | null
-        previewLocale: string | null
-        previewGeneratedAt: Date | null
-      }
+      versionNumber: number
+      schemaJson: unknown
+      previewContentJson: unknown | null
+      previewLocale: string | null
+      previewGeneratedAt: Date | null
+    }
     | null
 ): DocumentPreviewPayload {
+  const schema = version?.schemaJson
+    ? (toRecord(version.schemaJson) as DocumentTemplateSchema)
+    : null
   return {
     versionNumber: version?.versionNumber ?? null,
     previewKind: "AI_GENERATED",
@@ -278,6 +282,7 @@ function buildStoredPreviewPayload(
       ? (toRecord(version.previewContentJson) as Record<string, unknown>)
       : null,
     generatedAt: version?.previewGeneratedAt?.toISOString() ?? null,
+    schemaNodes: schema?.nodes,
   }
 }
 
@@ -909,12 +914,12 @@ export async function installDocumentForUser(
 
   const targetVersion = versionId
     ? await prisma.documentTemplateVersion.findFirst({
-        where: {
-          id: versionId,
-          templateId,
-          status: "PUBLISHED",
-        },
-      })
+      where: {
+        id: versionId,
+        templateId,
+        status: "PUBLISHED",
+      },
+    })
     : template.latestPublishedVersion
 
   if (!targetVersion) {
@@ -1096,9 +1101,9 @@ export async function createDocumentTemplateDraft(input: {
             input.generationConfig as unknown as Prisma.InputJsonValue,
           ...(input.previewContent
             ? {
-                previewContentJson:
-                  input.previewContent as unknown as Prisma.InputJsonValue,
-              }
+              previewContentJson:
+                input.previewContent as unknown as Prisma.InputJsonValue,
+            }
             : {}),
           previewLocale: input.previewLocale ?? null,
           previewModelId: input.previewModelId ?? null,
@@ -1264,9 +1269,9 @@ export async function patchDocumentTemplateDraft(input: {
           }) as Prisma.InputJsonValue),
         ...(input.previewContent
           ? {
-              previewContentJson:
-                input.previewContent as unknown as Prisma.InputJsonValue,
-            }
+            previewContentJson:
+              input.previewContent as unknown as Prisma.InputJsonValue,
+          }
           : {}),
         previewLocale: input.previewLocale ?? null,
         previewModelId: input.previewModelId ?? null,
@@ -1290,17 +1295,17 @@ export async function patchDocumentTemplateDraft(input: {
           : {}),
         ...(input.generationConfig
           ? {
-              generationConfigJson:
-                input.generationConfig as unknown as Prisma.InputJsonValue,
-            }
+            generationConfigJson:
+              input.generationConfig as unknown as Prisma.InputJsonValue,
+          }
           : {}),
         ...(input.previewContent !== undefined
           ? {
-              previewContentJson:
-                input.previewContent
-                  ? (input.previewContent as unknown as Prisma.InputJsonValue)
-                  : Prisma.JsonNull,
-            }
+            previewContentJson:
+              input.previewContent
+                ? (input.previewContent as unknown as Prisma.InputJsonValue)
+                : Prisma.JsonNull,
+          }
           : {}),
         ...(input.previewLocale !== undefined
           ? { previewLocale: input.previewLocale }
@@ -1310,10 +1315,10 @@ export async function patchDocumentTemplateDraft(input: {
           : {}),
         ...(input.previewGeneratedAt !== undefined
           ? {
-              previewGeneratedAt: input.previewGeneratedAt
-                ? new Date(input.previewGeneratedAt)
-                : null,
-            }
+            previewGeneratedAt: input.previewGeneratedAt
+              ? new Date(input.previewGeneratedAt)
+              : null,
+          }
           : {}),
         ...(input.previewInputChecksum !== undefined
           ? { previewInputChecksum: input.previewInputChecksum }
@@ -1418,10 +1423,10 @@ export async function publishDocumentTemplate(input: {
         template.latestDraftVersion.generationConfigJson as Prisma.InputJsonValue,
       ...(template.latestDraftVersion.previewContentJson
         ? {
-            previewContentJson:
-              template.latestDraftVersion
-                .previewContentJson as Prisma.InputJsonValue,
-          }
+          previewContentJson:
+            template.latestDraftVersion
+              .previewContentJson as Prisma.InputJsonValue,
+        }
         : {}),
       previewLocale: template.latestDraftVersion.previewLocale,
       previewModelId: template.latestDraftVersion.previewModelId,
@@ -1483,8 +1488,8 @@ export async function forkDocumentTemplate(input: {
     ) as unknown as DocumentGenerationConfig,
     previewContent: template.latestPublishedVersion.previewContentJson
       ? (toRecord(
-          template.latestPublishedVersion.previewContentJson
-        ) as Record<string, unknown>)
+        template.latestPublishedVersion.previewContentJson
+      ) as Record<string, unknown>)
       : undefined,
     previewLocale: template.latestPublishedVersion.previewLocale,
     previewModelId: template.latestPublishedVersion.previewModelId,

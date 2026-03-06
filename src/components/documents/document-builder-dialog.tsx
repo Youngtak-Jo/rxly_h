@@ -77,25 +77,27 @@ export function DocumentBuilderDialog() {
       >
         <DialogContent
           showCloseButton={false}
-          className="h-[100dvh] w-screen max-w-none gap-0 overflow-hidden rounded-none p-0 sm:h-[min(90dvh,880px)] sm:w-[min(96vw,1280px)] sm:max-w-[1280px] sm:rounded-3xl"
+          className="h-[100dvh] w-screen max-w-none gap-0 overflow-hidden rounded-none p-0 sm:h-[min(90dvh,880px)] sm:w-[min(96vw,1280px)] sm:max-w-[1280px] sm:rounded-lg"
           onEscapeKeyDown={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
           <div className="flex min-h-0 flex-1 flex-col">
-            <DialogHeader className="border-b px-4 py-4 text-left sm:px-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <DialogTitle>
+            <DialogHeader className="border-b px-5 py-3.5 text-left sm:px-6">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <DialogTitle className="text-base">
                     {mode === "create" ? t("titleNew") : t("titleEdit")}
                   </DialogTitle>
-                  <DialogDescription>{t("subtitle")}</DialogDescription>
+                  <DialogDescription className="text-xs">
+                    {t("subtitle")}
+                  </DialogDescription>
                 </div>
 
                 <Button
                   type="button"
                   size="icon"
                   variant="ghost"
-                  className="shrink-0"
+                  className="size-8 shrink-0"
                   onClick={requestClose}
                   aria-label={t("navigation.close")}
                 >

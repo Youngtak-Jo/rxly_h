@@ -24,6 +24,13 @@ import {
   updateNodeAtPath,
 } from "@/components/documents/document-builder-utils"
 import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -34,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import type {
@@ -102,7 +110,7 @@ function CompactActionButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "size-8 rounded-full border border-transparent text-muted-foreground hover:border-border/70 hover:text-foreground",
+        "size-7 rounded-md text-muted-foreground hover:text-foreground",
         destructive && "text-destructive hover:text-destructive"
       )}
     >
@@ -126,9 +134,9 @@ function NodeDetailsPanel({
   const t = useTranslations("DocumentBuilder")
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div className="space-y-2">
-        <Label>{t("schemaNode.typeLabel")}</Label>
+        <Label className="text-xs">{t("schemaNode.typeLabel")}</Label>
         <Select
           value={node.type}
           onValueChange={(value) =>
@@ -159,7 +167,7 @@ function NodeDetailsPanel({
       </div>
 
       <div className="space-y-2">
-        <Label>{t("schemaNode.keyLabel")}</Label>
+        <Label className="text-xs">{t("schemaNode.keyLabel")}</Label>
         <Input
           value={node.key}
           onChange={(event) =>
@@ -173,7 +181,7 @@ function NodeDetailsPanel({
       </div>
 
       <div className="space-y-2">
-        <Label>{t("schemaNode.fieldLabel")}</Label>
+        <Label className="text-xs">{t("schemaNode.fieldLabel")}</Label>
         <Input
           value={node.label}
           onChange={(event) =>
@@ -187,7 +195,7 @@ function NodeDetailsPanel({
       </div>
 
       <div className="space-y-2">
-        <Label>{t("schemaNode.placeholderLabel")}</Label>
+        <Label className="text-xs">{t("schemaNode.placeholderLabel")}</Label>
         <Input
           value={node.placeholder}
           onChange={(event) =>
@@ -201,7 +209,7 @@ function NodeDetailsPanel({
       </div>
 
       <div className="space-y-2">
-        <Label>{t("schemaNode.helpTextLabel")}</Label>
+        <Label className="text-xs">{t("schemaNode.helpTextLabel")}</Label>
         <Textarea
           value={node.helpText}
           onChange={(event) =>
@@ -210,7 +218,7 @@ function NodeDetailsPanel({
               helpText: event.target.value,
             }))
           }
-          className="min-h-24 resize-y"
+          className="min-h-20 resize-y"
           placeholder={t("schemaNode.helpTextPlaceholder")}
         />
       </div>
@@ -292,9 +300,9 @@ function CanvasBlockEditor({
   return (
     <div
       className={cn(
-        "group/block relative rounded-2xl border bg-background transition-colors",
+        "group/block relative rounded-lg border bg-background transition-colors",
         isActive
-          ? "border-primary/40 bg-primary/5 shadow-sm"
+          ? "border-primary/40 ring-1 ring-primary/20"
           : "border-border/60 hover:border-border"
       )}
       onClick={(event) => {
@@ -304,7 +312,7 @@ function CanvasBlockEditor({
     >
       <div
         className={cn(
-          "absolute -right-3 -top-3 z-20 flex items-center gap-1 rounded-full border border-border/80 bg-background p-1 shadow-sm transition-all",
+          "absolute -right-2 -top-2 z-20 flex items-center gap-0.5 rounded-md border border-border/80 bg-background px-0.5 py-0.5 shadow-sm transition-opacity",
           isActive
             ? "opacity-100"
             : "opacity-0 group-hover/block:opacity-100 group-focus-within/block:opacity-100"
@@ -318,7 +326,7 @@ function CanvasBlockEditor({
             onMoveNode(path, "up")
           }}
         >
-          <IconArrowUp className="size-3.5" />
+          <IconArrowUp className="size-3" />
         </CompactActionButton>
         <CompactActionButton
           label={t("schemaNode.actions.moveDown")}
@@ -328,7 +336,7 @@ function CanvasBlockEditor({
             onMoveNode(path, "down")
           }}
         >
-          <IconArrowDown className="size-3.5" />
+          <IconArrowDown className="size-3" />
         </CompactActionButton>
         <CompactActionButton
           label={t("schemaNode.actions.delete")}
@@ -338,18 +346,18 @@ function CanvasBlockEditor({
             onRemoveNode(path)
           }}
         >
-          <IconTrash className="size-3.5" />
+          <IconTrash className="size-3" />
         </CompactActionButton>
       </div>
 
-      <div className="space-y-4 p-4 sm:p-5">
+      <div className="space-y-3 p-3.5 sm:p-4">
         {isGroup ? (
           <>
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2 text-base font-semibold text-foreground">
+            <div className="space-y-0.5">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
                 <span>{nodeTitle}</span>
                 {node.type === "repeatableGroup" ? (
-                  <span className="rounded-md border border-border/70 bg-muted/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span className="rounded border border-border/60 bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                     {t("schemaNode.types.repeatableGroup")}
                   </span>
                 ) : null}
@@ -358,15 +366,15 @@ function CanvasBlockEditor({
                 ) : null}
               </div>
               {node.helpText ? (
-                <p className="text-sm leading-relaxed text-muted-foreground">
+                <p className="text-xs leading-relaxed text-muted-foreground">
                   {node.helpText}
                 </p>
               ) : null}
             </div>
 
-            <div className="space-y-3 rounded-xl border border-dashed border-border/60 bg-muted/20 p-4">
+            <div className="space-y-2.5 rounded-md border border-dashed border-border/50 bg-muted/10 p-3">
               {node.children.length === 0 ? (
-                <div className="py-4 text-center text-sm text-muted-foreground">
+                <div className="py-3 text-center text-xs text-muted-foreground">
                   {t("schemaNode.noChildren")}
                 </div>
               ) : (
@@ -387,48 +395,48 @@ function CanvasBlockEditor({
               )}
 
               <div
-                className="flex flex-wrap justify-center gap-2"
+                className="flex flex-wrap justify-center gap-1.5"
                 onClick={(event) => event.stopPropagation()}
               >
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
-                  className="gap-1.5 rounded-full"
+                  variant="ghost"
+                  className="h-7 gap-1 text-xs"
                   onClick={(event) => {
                     event.stopPropagation()
                     onAddChild(path, "shortText")
                     onSetActiveNode(toNodePathId([...path, node.children.length]))
                   }}
                 >
-                  <IconPlus className="size-3.5" />
+                  <IconPlus className="size-3" />
                   {t("schemaEditor.addField")}
                 </Button>
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
-                  className="gap-1.5 rounded-full"
+                  variant="ghost"
+                  className="h-7 gap-1 text-xs"
                   onClick={(event) => {
                     event.stopPropagation()
                     onAddChild(path, "group")
                     onSetActiveNode(toNodePathId([...path, node.children.length]))
                   }}
                 >
-                  <IconPlus className="size-3.5" />
+                  <IconPlus className="size-3" />
                   {t("schemaEditor.addGroup")}
                 </Button>
               </div>
             </div>
           </>
         ) : (
-          <div className="pointer-events-none space-y-2">
+          <div className="pointer-events-none space-y-1.5">
             <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
               <span>{nodeTitle}</span>
               {node.required ? (
                 <span className="font-bold text-destructive">*</span>
               ) : null}
-              <span className="rounded-md border border-border/50 bg-muted/70 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              <span className="rounded border border-border/50 bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                 {node.type === "shortText"
                   ? t("schemaNode.types.shortText")
                   : node.type === "longText"
@@ -444,7 +452,7 @@ function CanvasBlockEditor({
                 readOnly
                 tabIndex={-1}
                 placeholder={node.placeholder || "..."}
-                className="h-10 border-border/60 bg-background/60 shadow-none"
+                className="h-9 border-border/50 bg-muted/20 shadow-none"
               />
             ) : (
               <Textarea
@@ -454,7 +462,7 @@ function CanvasBlockEditor({
                   node.placeholder ||
                   (node.type === "stringList" ? "Item 1\nItem 2..." : "...")
                 }
-                className="min-h-[100px] resize-none border-border/60 bg-background/60 shadow-none"
+                className="min-h-[80px] resize-none border-border/50 bg-muted/20 shadow-none"
               />
             )}
           </div>
@@ -505,93 +513,96 @@ export function DocumentBuilderStepSchema({
   return (
     <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background">
       <div
-        className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6"
+        className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6"
         onClick={() => setActiveNodePathId(null)}
       >
         <div
-          className="mx-auto flex w-full max-w-4xl flex-col gap-8"
+          className="mx-auto flex w-full max-w-3xl flex-col gap-6"
           onClick={(event) => event.stopPropagation()}
         >
           {validationError ? (
-            <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              {validationError}
-            </div>
+            <p className="text-sm text-destructive">{validationError}</p>
           ) : null}
 
           {showAiRevisePanel ? (
-            <section className="space-y-4">
-              <div className="space-y-1.5">
-                <h2 className="text-lg font-semibold">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
                   {t("aiDraft.revisePanelTitle")}
-                </h2>
-                <p className="text-sm text-muted-foreground">
+                </CardTitle>
+                <CardDescription>
                   {t("aiDraft.revisePanelDescription")}
-                </p>
-              </div>
+                </CardDescription>
+              </CardHeader>
 
-              <Textarea
-                value={aiPrompt}
-                onChange={(event) => onAiPromptChange(event.target.value)}
-                className="min-h-[140px] resize-y"
-                placeholder={t("aiDraft.revisePlaceholder")}
-              />
+              <CardContent className="space-y-4">
+                <Textarea
+                  value={aiPrompt}
+                  onChange={(event) => onAiPromptChange(event.target.value)}
+                  className="min-h-[120px] resize-y"
+                  placeholder={t("aiDraft.revisePlaceholder")}
+                />
 
-              <div className="flex flex-col gap-3 rounded-xl bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {t("model.currentLabel", { model: documentModelLabel })}
-                </p>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={onOpenModelSettings}
-                  >
-                    {t("model.changeInSettings")}
-                  </Button>
-                  <Button
-                    type="button"
-                    className="gap-2"
-                    disabled={aiLoading}
-                    onClick={() => void onAiRevise()}
-                  >
-                    {aiLoading ? (
-                      <IconLoader2 className="size-4 animate-spin" />
-                    ) : (
-                      <IconSparkles className="size-4" />
-                    )}
-                    {t("aiDraft.revise")}
-                  </Button>
+                <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 px-3.5 py-2.5">
+                  <p className="text-xs text-muted-foreground">
+                    {t("model.currentLabel", { model: documentModelLabel })}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-xs"
+                      onClick={onOpenModelSettings}
+                    >
+                      {t("model.changeInSettings")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={aiLoading}
+                      onClick={() => void onAiRevise()}
+                    >
+                      {aiLoading ? (
+                        <IconLoader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <IconSparkles className="size-3.5" />
+                      )}
+                      {t("aiDraft.revise")}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </section>
+              </CardContent>
+            </Card>
           ) : null}
 
-          <section className="space-y-4">
-            <div className="space-y-1.5">
-              <h2 className="text-lg font-semibold">{t("schemaEditor.title")}</h2>
-              <p className="text-sm text-muted-foreground">
+          <div className="space-y-3">
+            <div className="space-y-0.5">
+              <h2 className="text-sm font-semibold">{t("schemaEditor.title")}</h2>
+              <p className="text-xs text-muted-foreground">
                 {t("schemaEditor.canvasDescription")}
               </p>
             </div>
 
-            <div className="space-y-5 rounded-2xl border border-border/60 bg-muted/10 p-4 sm:p-5">
+            <div className="space-y-3 rounded-lg border border-border/50 bg-muted/5 p-4">
               {draft.schema.nodes.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border/60 bg-background px-4 py-16 text-center">
-                  <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-muted">
-                    <IconPlus className="size-6 text-foreground/70" />
+                <div className="rounded-lg border border-dashed border-border/50 bg-background px-4 py-12 text-center">
+                  <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-muted">
+                    <IconPlus className="size-5 text-muted-foreground" />
                   </div>
-                  <h3 className="text-base font-semibold">
+                  <h3 className="text-sm font-semibold">
                     {t("schemaEditor.empty")}
                   </h3>
-                  <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
+                  <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">
                     {t("schemaEditor.emptyDescription")}
                   </p>
-                  <div className="mt-6 flex flex-wrap justify-center gap-3">
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
                     <Button
                       type="button"
                       variant="outline"
-                      className="gap-2 rounded-full"
+                      size="sm"
+                      className="gap-1.5"
                       onClick={() => {
                         updateNodes((nodes) => [...nodes, createNode("shortText")])
                         setActiveNodePathId(
@@ -599,13 +610,14 @@ export function DocumentBuilderStepSchema({
                         )
                       }}
                     >
-                      <IconPlus className="size-4" />
+                      <IconPlus className="size-3.5" />
                       {t("schemaEditor.addField")}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
-                      className="gap-2 rounded-full"
+                      size="sm"
+                      className="gap-1.5"
                       onClick={() => {
                         updateNodes((nodes) => [...nodes, createNode("group")])
                         setActiveNodePathId(
@@ -613,14 +625,14 @@ export function DocumentBuilderStepSchema({
                         )
                       }}
                     >
-                      <IconPlus className="size-4" />
+                      <IconPlus className="size-3.5" />
                       {t("schemaEditor.addGroup")}
                     </Button>
                   </div>
                 </div>
               ) : (
                 <>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {draft.schema.nodes.map((node, index) => (
                       <CanvasBlockEditor
                         key={`${node.key}-${index}`}
@@ -658,11 +670,12 @@ export function DocumentBuilderStepSchema({
                     ))}
                   </div>
 
-                  <div className="flex justify-center gap-3">
+                  <div className="flex justify-center gap-2 pt-1">
                     <Button
                       type="button"
-                      variant="secondary"
-                      className="gap-2 rounded-full"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
                       onClick={() => {
                         updateNodes((nodes) => [...nodes, createNode("shortText")])
                         setActiveNodePathId(
@@ -670,13 +683,14 @@ export function DocumentBuilderStepSchema({
                         )
                       }}
                     >
-                      <IconPlus className="size-4" />
+                      <IconPlus className="size-3.5" />
                       {t("schemaEditor.addField")}
                     </Button>
                     <Button
                       type="button"
-                      variant="secondary"
-                      className="gap-2 rounded-full"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
                       onClick={() => {
                         updateNodes((nodes) => [...nodes, createNode("group")])
                         setActiveNodePathId(
@@ -684,25 +698,25 @@ export function DocumentBuilderStepSchema({
                         )
                       }}
                     >
-                      <IconPlus className="size-4" />
+                      <IconPlus className="size-3.5" />
                       {t("schemaEditor.addGroup")}
                     </Button>
                   </div>
                 </>
               )}
             </div>
-          </section>
+          </div>
         </div>
       </div>
 
-      <aside className="w-[340px] shrink-0 border-l border-border/70 bg-card xl:w-[400px]">
-        <div className="sticky top-0 z-10 border-b border-border/60 bg-card/95 px-5 py-4 backdrop-blur">
-          <h3 className="text-sm font-semibold tracking-tight text-foreground">
+      <aside className="hidden w-[320px] shrink-0 border-l bg-card md:block xl:w-[360px]">
+        <div className="border-b px-4 py-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {t("schemaEditor.inspectorTitle")}
           </h3>
         </div>
 
-        <div className="min-h-0 overflow-y-auto p-5">
+        <div className="min-h-0 overflow-y-auto p-4">
           {activeNodeData ? (
             <NodeDetailsPanel
               node={activeNodeData.node}
@@ -712,15 +726,15 @@ export function DocumentBuilderStepSchema({
               }}
             />
           ) : (
-            <div className="flex h-[300px] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
-              <div className="rounded-full bg-muted/60 p-4 ring-1 ring-border/50">
-                <IconSparkles className="size-6 text-muted-foreground/50" />
+            <div className="flex h-[260px] flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+              <div className="rounded-full bg-muted/50 p-3">
+                <IconSparkles className="size-5 text-muted-foreground/40" />
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground/80">
+              <div className="space-y-0.5">
+                <p className="text-xs font-medium text-foreground/70">
                   {t("schemaEditor.inspectorEmptyTitle")}
                 </p>
-                <p className="mx-auto max-w-[220px] text-xs text-muted-foreground">
+                <p className="mx-auto max-w-[200px] text-[11px] text-muted-foreground">
                   {t("schemaEditor.inspectorEmptyDescription")}
                 </p>
               </div>

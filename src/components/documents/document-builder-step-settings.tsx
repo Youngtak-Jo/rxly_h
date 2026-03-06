@@ -3,6 +3,13 @@
 import type { Dispatch, SetStateAction } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -52,13 +59,13 @@ export function DocumentBuilderStepSettings({
   const tMeta = useTranslations("DocumentMetadata")
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
+    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         {restoredLocalChanges ? (
-          <div className="flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-medium">{t("localDraft.restoredTitle")}</p>
-              <p className="text-xs opacity-80">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+            <div className="min-w-0">
+              <p className="font-medium text-[13px]">{t("localDraft.restoredTitle")}</p>
+              <p className="text-xs opacity-70">
                 {t("localDraft.restoredDescription")}
               </p>
             </div>
@@ -67,6 +74,7 @@ export function DocumentBuilderStepSettings({
                 type="button"
                 size="sm"
                 variant="outline"
+                className="shrink-0"
                 onClick={onResetToServerVersion}
               >
                 {t("localDraft.resetToServer")}
@@ -76,31 +84,27 @@ export function DocumentBuilderStepSettings({
         ) : null}
 
         {validationError ? (
-          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {validationError}
-          </div>
+          <p className="text-sm text-destructive">{validationError}</p>
         ) : null}
 
-        <section className="space-y-5">
-          <div className="space-y-1.5">
-            <h2 className="text-lg font-semibold">
+        {/* ── Basic info ── */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
               {t("templateSettings.basicTitle")}
-            </h2>
-            <p className="text-sm text-muted-foreground">
+            </CardTitle>
+            <CardDescription>
               {t("templateSettings.basicDescription")}
-            </p>
-          </div>
+            </CardDescription>
+          </CardHeader>
 
-          <div className="grid gap-5">
+          <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>{t("templateSettings.titleLabel")}</Label>
               <Input
                 value={draft.title}
                 onChange={(event) =>
-                  setDraft((currentDraft) => ({
-                    ...currentDraft,
-                    title: event.target.value,
-                  }))
+                  setDraft((d) => ({ ...d, title: event.target.value }))
                 }
               />
             </div>
@@ -110,12 +114,9 @@ export function DocumentBuilderStepSettings({
               <Textarea
                 value={draft.description}
                 onChange={(event) =>
-                  setDraft((currentDraft) => ({
-                    ...currentDraft,
-                    description: event.target.value,
-                  }))
+                  setDraft((d) => ({ ...d, description: event.target.value }))
                 }
-                className="min-h-28 resize-y"
+                className="min-h-24 resize-y"
               />
             </div>
 
@@ -124,10 +125,7 @@ export function DocumentBuilderStepSettings({
               <Select
                 value={normalizeDocumentCategory(draft.category)}
                 onValueChange={(value) =>
-                  setDraft((currentDraft) => ({
-                    ...currentDraft,
-                    category: value,
-                  }))
+                  setDraft((d) => ({ ...d, category: value }))
                 }
               >
                 <SelectTrigger>
@@ -143,16 +141,13 @@ export function DocumentBuilderStepSettings({
               </Select>
             </div>
 
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>{t("templateSettings.languageLabel")}</Label>
                 <Select
                   value={draft.language}
                   onValueChange={(value: DocumentBuilderDraft["language"]) =>
-                    setDraft((currentDraft) => ({
-                      ...currentDraft,
-                      language: value,
-                    }))
+                    setDraft((d) => ({ ...d, language: value }))
                   }
                 >
                   <SelectTrigger>
@@ -173,10 +168,7 @@ export function DocumentBuilderStepSettings({
                 <Select
                   value={draft.region}
                   onValueChange={(value: DocumentBuilderDraft["region"]) =>
-                    setDraft((currentDraft) => ({
-                      ...currentDraft,
-                      region: value,
-                    }))
+                    setDraft((d) => ({ ...d, region: value }))
                   }
                 >
                   <SelectTrigger>
@@ -198,10 +190,7 @@ export function DocumentBuilderStepSettings({
               <Select
                 value={draft.visibility}
                 onValueChange={(value: "PRIVATE" | "PUBLIC") =>
-                  setDraft((currentDraft) => ({
-                    ...currentDraft,
-                    visibility: value,
-                  }))
+                  setDraft((d) => ({ ...d, visibility: value }))
                 }
               >
                 <SelectTrigger>
@@ -217,125 +206,128 @@ export function DocumentBuilderStepSettings({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        <section className="space-y-5 border-t border-border/60 pt-8">
-          <div className="space-y-1.5">
-            <h2 className="text-lg font-semibold">
+        {/* ── Advanced generation settings ── */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
               {t("generationSettings.advancedTitle")}
-            </h2>
-            <p className="text-sm text-muted-foreground">
+            </CardTitle>
+            <CardDescription>
               {t("generationSettings.advancedDescription")}
-            </p>
-          </div>
+            </CardDescription>
+          </CardHeader>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted/30 px-4 py-3">
-            <p className="text-sm text-muted-foreground">
-              {t("model.currentLabel", { model: documentModelLabel })}
-            </p>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onOpenModelSettings}
-            >
-              {t("model.changeInSettings")}
-            </Button>
-          </div>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 px-3.5 py-2.5">
+              <p className="text-xs text-muted-foreground">
+                {t("model.currentLabel", { model: documentModelLabel })}
+              </p>
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-xs"
+                onClick={onOpenModelSettings}
+              >
+                {t("model.changeInSettings")}
+              </Button>
+            </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>{t("generationSettings.audienceLabel")}</Label>
-              <Input
-                value={draft.generationConfig.audience}
-                onChange={(event) =>
-                  setDraft((currentDraft) => ({
-                    ...currentDraft,
-                    generationConfig: {
-                      ...currentDraft.generationConfig,
-                      audience: event.target.value,
-                    },
-                  }))
-                }
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t("generationSettings.audienceLabel")}</Label>
+                <Input
+                  value={draft.generationConfig.audience}
+                  onChange={(event) =>
+                    setDraft((d) => ({
+                      ...d,
+                      generationConfig: {
+                        ...d.generationConfig,
+                        audience: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("generationSettings.outputToneLabel")}</Label>
+                <Input
+                  value={draft.generationConfig.outputTone}
+                  onChange={(event) =>
+                    setDraft((d) => ({
+                      ...d,
+                      generationConfig: {
+                        ...d.generationConfig,
+                        outputTone: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label>{t("generationSettings.outputToneLabel")}</Label>
-              <Input
-                value={draft.generationConfig.outputTone}
+              <Label>{t("generationSettings.systemInstructionsLabel")}</Label>
+              <Textarea
+                value={draft.generationConfig.systemInstructions}
                 onChange={(event) =>
-                  setDraft((currentDraft) => ({
-                    ...currentDraft,
+                  setDraft((d) => ({
+                    ...d,
                     generationConfig: {
-                      ...currentDraft.generationConfig,
-                      outputTone: event.target.value,
+                      ...d.generationConfig,
+                      systemInstructions: event.target.value,
                     },
                   }))
                 }
+                className="min-h-28 resize-y"
               />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label>{t("generationSettings.systemInstructionsLabel")}</Label>
-            <Textarea
-              value={draft.generationConfig.systemInstructions}
-              onChange={(event) =>
-                setDraft((currentDraft) => ({
-                  ...currentDraft,
-                  generationConfig: {
-                    ...currentDraft.generationConfig,
-                    systemInstructions: event.target.value,
-                  },
-                }))
-              }
-              className="min-h-32 resize-y"
-            />
-          </div>
-
-          <div className="space-y-3">
-            <Label>{t("generationSettings.contextSourcesLabel")}</Label>
-            <div className="grid gap-3 md:grid-cols-2">
-              {DOCUMENT_CONTEXT_SOURCES.map((source) => {
-                const checked =
-                  draft.generationConfig.contextSources.includes(source)
-                return (
-                  <label
-                    key={source}
-                    className="flex items-center gap-2 text-sm text-foreground/90"
-                  >
-                    <Checkbox
-                      checked={checked}
-                      onCheckedChange={(nextChecked) =>
-                        setDraft((currentDraft) => ({
-                          ...currentDraft,
-                          generationConfig: {
-                            ...currentDraft.generationConfig,
-                            contextSources:
-                              nextChecked === true
-                                ? Array.from(
+            <div className="space-y-2.5">
+              <Label>{t("generationSettings.contextSourcesLabel")}</Label>
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                {DOCUMENT_CONTEXT_SOURCES.map((source) => {
+                  const checked =
+                    draft.generationConfig.contextSources.includes(source)
+                  return (
+                    <label
+                      key={source}
+                      className="flex items-center gap-2 text-sm text-foreground/90"
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(nextChecked) =>
+                          setDraft((d) => ({
+                            ...d,
+                            generationConfig: {
+                              ...d.generationConfig,
+                              contextSources:
+                                nextChecked === true
+                                  ? Array.from(
                                     new Set([
-                                      ...currentDraft.generationConfig
-                                        .contextSources,
+                                      ...d.generationConfig.contextSources,
                                       source,
                                     ])
                                   )
-                                : currentDraft.generationConfig.contextSources.filter(
+                                  : d.generationConfig.contextSources.filter(
                                     (item) => item !== source
                                   ),
-                          },
-                        }))
-                      }
-                    />
-                    {t(`contextSources.${source}` as never)}
-                  </label>
-                )
-              })}
+                            },
+                          }))
+                        }
+                      />
+                      {t(`contextSources.${source}` as never)}
+                    </label>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

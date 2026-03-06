@@ -131,7 +131,7 @@ function BuiltInHandoutPreview({
   const condition = handout.conditions[0] ?? null
   const entry = condition
     ? handout.entries.find((candidate) => candidate.conditionId === condition.id) ??
-      handout.entries[0]
+    handout.entries[0]
     : handout.entries[0]
 
   return (
@@ -162,30 +162,30 @@ function BuiltInHandoutPreview({
       ) : null}
       {entry
         ? PATIENT_HANDOUT_SECTION_KEYS.map((sectionKey) => (
-            <section
-              key={sectionKey}
-              className={compact ? "space-y-0.5" : "space-y-1.5"}
+          <section
+            key={sectionKey}
+            className={compact ? "space-y-0.5" : "space-y-1.5"}
+          >
+            <p
+              className={cn(
+                "font-medium uppercase text-muted-foreground",
+                compact
+                  ? "text-[9px] tracking-[0.14em]"
+                  : "text-xs tracking-[0.18em]"
+              )}
             >
-              <p
-                className={cn(
-                  "font-medium uppercase text-muted-foreground",
-                  compact
-                    ? "text-[9px] tracking-[0.14em]"
-                    : "text-xs tracking-[0.18em]"
-                )}
-              >
-                {tHandout(`sections.${sectionKey}`)}
-              </p>
-              <p
-                className={cn(
-                  "whitespace-pre-wrap text-foreground/90",
-                  compact ? "text-[10px] leading-[0.9rem]" : "text-sm leading-6"
-                )}
-              >
-                {entry.sections[sectionKey] || "[Not provided]"}
-              </p>
-            </section>
-          ))
+              {tHandout(`sections.${sectionKey}`)}
+            </p>
+            <p
+              className={cn(
+                "whitespace-pre-wrap text-foreground/90",
+                compact ? "text-[10px] leading-[0.9rem]" : "text-sm leading-6"
+              )}
+            >
+              {entry.sections[sectionKey] || "[Not provided]"}
+            </p>
+          </section>
+        ))
         : null}
     </div>
   )
@@ -205,7 +205,7 @@ export function DocumentPreviewContent({
       return []
     }
 
-    return buildGenericDocumentSections(preview.previewContent)
+    return buildGenericDocumentSections(preview.previewContent, preview.schemaNodes)
   }, [preview])
 
   if (!preview?.previewContent) {
