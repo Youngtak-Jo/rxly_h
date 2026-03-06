@@ -61,7 +61,6 @@ export async function PATCH(
       templateId,
       title: parsed.data.title,
       description: parsed.data.description,
-      iconKey: parsed.data.iconKey,
       category: parsed.data.category,
       language: parsed.data.language,
       region: parsed.data.region,

@@ -21,7 +21,6 @@ export async function POST(req: Request) {
       userId: user.id,
       title: parsed.data.title,
       description: parsed.data.description,
-      iconKey: parsed.data.iconKey,
       category: parsed.data.category,
       language: parsed.data.language,
       region: parsed.data.region,

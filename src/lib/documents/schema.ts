@@ -1,5 +1,7 @@
 import { z } from "zod"
 import type {
+  DocumentBuilderDraft,
+  DocumentBuilderLocalSnapshot,
   DocumentFieldNode,
   DocumentGenerationConfig,
   DocumentGroupNode,
@@ -18,10 +20,24 @@ import {
   DOCUMENT_TEMPLATE_VERSION_STATUSES,
   DOCUMENT_TEMPLATE_VISIBILITIES,
 } from "@/types/document"
-import { DOCUMENT_CATEGORIES } from "@/lib/documents/categories"
+import {
+  DOCUMENT_CATEGORIES,
+  normalizeDocumentCategory,
+} from "@/lib/documents/categories"
+import {
+  resolveDocumentLanguage,
+  resolveDocumentRegion,
+} from "@/lib/documents/language-region"
 
 const MAX_SCHEMA_DEPTH = 3
 const MAX_SCHEMA_FIELDS = 60
+const DOCUMENT_BUILDER_STORAGE_STEPS = [
+  "start",
+  "structure",
+  "settings",
+  "schema",
+  "review",
+] as const
 
 const documentKeySchema = z
   .string()
@@ -130,13 +146,62 @@ export const documentTemplatePreviewPayloadSchema = z.object({
 export const documentBuilderDraftSchema = z.object({
   title: z.string().trim().min(1).max(120),
   description: z.string().max(1000).default(""),
-  iconKey: z.string().trim().min(1).max(64).default("file-text"),
   category: z.enum(DOCUMENT_CATEGORIES).default("clinical-documentation"),
   language: z.enum(DOCUMENT_TEMPLATE_LANGUAGES).default("en"),
   region: z.enum(DOCUMENT_TEMPLATE_REGIONS).default("global"),
   visibility: z.enum(DOCUMENT_TEMPLATE_VISIBILITIES).default("PRIVATE"),
   schema: documentTemplateSchemaSchema,
   generationConfig: documentGenerationConfigSchema,
+})
+
+const documentBuilderStoredDraftSchema = z.object({
+  title: z.string().max(120).default(""),
+  description: z.string().max(1000).default(""),
+  category: z
+    .string()
+    .trim()
+    .default("clinical-documentation")
+    .transform((value) => normalizeDocumentCategory(value)),
+  language: z
+    .string()
+    .trim()
+    .default("en")
+    .transform((value) => resolveDocumentLanguage(value)),
+  region: z
+    .string()
+    .trim()
+    .default("global")
+    .transform((value) => resolveDocumentRegion(value)),
+  visibility: z.enum(DOCUMENT_TEMPLATE_VISIBILITIES).default("PRIVATE"),
+  schema: documentTemplateSchemaSchema.catch({ nodes: [] }),
+  generationConfig: documentGenerationConfigSchema.catch({
+    audience: "clinician",
+    outputTone: "clinical",
+    contextSources: ["insights", "doctorNotes"],
+    systemInstructions: "",
+    emptyValuePolicy: "BLANK",
+  }),
+})
+
+const documentBuilderStoredStepSchema = z
+  .enum(DOCUMENT_BUILDER_STORAGE_STEPS)
+  .transform((step) => (step === "structure" ? "settings" : step))
+
+const documentBuilderLocalSnapshotSchema = z.object({
+  mode: z.enum(["create", "edit"]).default("create"),
+  templateId: z.string().min(1).nullable().default(null),
+  step: documentBuilderStoredStepSchema,
+  aiPrompt: z.string().default(""),
+  draft: documentBuilderStoredDraftSchema,
+  resolvedTemplateId: z.string().min(1).nullable().default(null),
+  publishedVersionNumber: z.number().int().nullable().default(null),
+  installedVersionNumber: z.number().int().nullable().default(null),
+  sampleContent: z.record(z.string(), z.unknown()).optional(),
+  previewContent: z.record(z.string(), z.unknown()).optional(),
+  previewLocale: z.string().trim().min(2).max(20).nullable().optional(),
+  previewInputChecksum: z.string().trim().min(1).max(128).nullable().optional(),
+  previewGeneratedAt: z.string().datetime().nullable().optional(),
+  savedAt: z.string().default(""),
 })
 
 export const documentTemplateLanguageSchema = z.enum(
@@ -217,6 +282,20 @@ export function normalizeDocumentGenerationConfig(
   config: DocumentGenerationConfig
 ): DocumentGenerationConfig {
   return documentGenerationConfigSchema.parse(config)
+}
+
+export function sanitizeDocumentBuilderDraft(
+  draft: unknown
+): DocumentBuilderDraft | null {
+  const parsed = documentBuilderStoredDraftSchema.safeParse(draft)
+  return parsed.success ? parsed.data : null
+}
+
+export function sanitizeDocumentBuilderLocalSnapshot(
+  snapshot: unknown
+): DocumentBuilderLocalSnapshot | null {
+  const parsed = documentBuilderLocalSnapshotSchema.safeParse(snapshot)
+  return parsed.success ? parsed.data : null
 }
 
 export function buildDocumentContentSchema(schema: DocumentTemplateSchema): z.ZodObject<z.ZodRawShape> {

@@ -407,7 +407,6 @@ model DocumentTemplate {
   visibility               DocumentTemplateVisibility @default(PRIVATE)
   title                    String
   description              String                     @default("")
-  iconKey                  String                     @default("file-text") @map("icon_key")
   category                 String                     @default("general")
   language                 String                     @default("en")
   region                   String                     @default("global")

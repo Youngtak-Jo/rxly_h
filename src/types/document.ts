@@ -137,7 +137,6 @@ export interface DocumentTemplateRecord {
   visibility: DocumentTemplateVisibility
   title: string
   description: string
-  iconKey: string
   category: string
   language: DocumentTemplateLanguage
   region: DocumentTemplateRegion
@@ -155,7 +154,6 @@ export interface DocumentCatalogItem {
   renderer: DocumentTemplateRenderer
   visibility: DocumentTemplateVisibility
   sourceKind: DocumentTemplateSourceKind
-  iconKey: string
   category: string
   language: DocumentTemplateLanguage
   region: DocumentTemplateRegion
@@ -195,7 +193,6 @@ export interface InstalledDocumentSummary {
   renderer: DocumentTemplateRenderer
   visibility: DocumentTemplateVisibility
   sourceKind: DocumentTemplateSourceKind
-  iconKey: string
   category: string
   language: DocumentTemplateLanguage
   region: DocumentTemplateRegion
@@ -254,7 +251,6 @@ export interface DocumentBuilderDraft {
   templateId?: string
   title: string
   description: string
-  iconKey: string
   category: string
   language: DocumentTemplateLanguage
   region: DocumentTemplateRegion
@@ -267,7 +263,8 @@ export type DocumentBuilderDialogMode = "create" | "edit"
 
 export const DOCUMENT_BUILDER_STEPS = [
   "start",
-  "structure",
+  "settings",
+  "schema",
   "review",
 ] as const
 export type DocumentBuilderStep = (typeof DOCUMENT_BUILDER_STEPS)[number]

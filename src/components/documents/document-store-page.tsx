@@ -123,7 +123,6 @@ function buildFallbackCatalogItem(
     renderer: installed.renderer,
     visibility: installed.visibility,
     sourceKind: installed.sourceKind,
-    iconKey: installed.iconKey,
     category: normalizeDocumentCategory(installed.category),
     language: installed.language,
     region: installed.region,

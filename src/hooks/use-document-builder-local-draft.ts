@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useMemo } from "react"
+import { sanitizeDocumentBuilderLocalSnapshot } from "@/lib/documents/schema"
 import type {
   DocumentBuilderDialogMode,
   DocumentBuilderLocalSnapshot,
@@ -22,7 +23,7 @@ function readSnapshotFromStorage(
   try {
     const raw = window.sessionStorage.getItem(key)
     if (!raw) return null
-    return JSON.parse(raw) as DocumentBuilderLocalSnapshot
+    return sanitizeDocumentBuilderLocalSnapshot(JSON.parse(raw))
   } catch {
     return null
   }

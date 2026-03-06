@@ -12,7 +12,6 @@ interface SeededPublicDocumentDefinition {
   slug: string
   title: string
   description: string
-  iconKey: string
   category: string
   language?: DocumentTemplateLanguage
   region?: DocumentTemplateRegion
@@ -879,7 +878,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "After Visit Summary",
     description:
       "Patient-facing visit summary with medication changes, ordered tests, follow-up actions, and return precautions.",
-    iconKey: "clipboard-list",
     category: "discharge-and-followup",
     authorName: "Jack",
     featuredInstallCount: 184,
@@ -942,7 +940,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "Referral Request Letter",
     description:
       "Provider-to-provider referral or transfer summary that frames the clinical question, urgency, suspected findings, and workup to date.",
-    iconKey: "send",
     category: "referral-communication",
     authorName: "Youngtak",
     featuredInstallCount: 137,
@@ -1003,7 +1000,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "Consultation Reply Letter",
     description:
       "Specialist response letter summarizing impressions, workup, treatment changes, and co-management recommendations for the referring clinician.",
-    iconKey: "messages",
     category: "referral-communication",
     authorName: "Emma",
     featuredInstallCount: 96,
@@ -1062,7 +1058,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "진료의뢰서",
     description:
       "상급병원 또는 타과 협진을 위해 의뢰 목적, 임상 요약, 요청사항을 구조화해 전달하는 한국형 진료의뢰서입니다.",
-    iconKey: "send",
     category: "referral-communication",
     language: "ko",
     region: "kr",
@@ -1126,7 +1121,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "진료회송서",
     description:
       "협진 또는 상급병원 평가 후 원의뢰 의료진에게 평가 결과와 향후 관리 계획을 전달하는 한국형 진료회송서입니다.",
-    iconKey: "messages",
     category: "referral-communication",
     language: "ko",
     region: "kr",
@@ -1186,7 +1180,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "일반진단서",
     description:
       "진단명, 발병 및 진단 시점, 치료 경과와 의학적 소견을 외부 제출용으로 정리하는 한국형 일반진단서입니다.",
-    iconKey: "badge-check",
     category: "patient-certificates",
     language: "ko",
     region: "kr",
@@ -1241,7 +1234,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "진료확인서",
     description:
       "실제 진료 사실과 진료 일자, 향후 계획을 외부 제출용으로 확인해 주는 한국형 진료확인서입니다.",
-    iconKey: "file-text",
     category: "patient-certificates",
     language: "ko",
     region: "kr",
@@ -1296,7 +1288,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "통원확인서",
     description:
       "외래 통원 사실과 통원 일자, 진료과, 간단한 진료 요약을 제출용으로 정리하는 한국형 통원확인서입니다.",
-    iconKey: "clipboard-list",
     category: "patient-certificates",
     language: "ko",
     region: "kr",
@@ -1345,7 +1336,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "입퇴원확인서",
     description:
       "입원 및 퇴원 사실, 입원 경과, 시행한 처치와 퇴원 후 계획을 제출용으로 정리하는 한국형 입퇴원확인서입니다.",
-    iconKey: "file-text",
     category: "patient-certificates",
     language: "ko",
     region: "kr",
@@ -1399,7 +1389,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "Medical Necessity Letter",
     description:
       "Reviewer-facing justification letter for imaging, medications, or procedures with documented findings, prior management, and urgency.",
-    iconKey: "shield-check",
     category: "insurer-communication",
     authorName: "Ethan",
     featuredInstallCount: 128,
@@ -1460,7 +1449,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "Medical Certificate",
     description:
       "Flexible patient-issued certificate for general, injury, or service-related requests with diagnosis date, codes, and clinician attestation.",
-    iconKey: "badge-check",
     category: "patient-certificates",
     language: "en",
     region: "global",
@@ -1524,7 +1512,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "Medical Leave Certificate",
     description:
       "Formal sick leave or leave-of-absence certificate for work or school with incapacity rationale and recommended rest period.",
-    iconKey: "briefcase-medical",
     category: "patient-certificates",
     language: "en",
     region: "global",
@@ -1582,7 +1569,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "Treatment Confirmation Letter",
     description:
       "Proof-of-visit or ongoing-treatment letter for employers, schools, or administrative submissions with encounter dates and care summary.",
-    iconKey: "clipboard-check",
     category: "patient-certificates",
     language: "en",
     region: "global",
@@ -1638,7 +1624,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "Hospitalization and Surgery Confirmation",
     description:
       "Admission, discharge, and procedure confirmation for insurance, employer, or school submission with major hospital-course details.",
-    iconKey: "hospital",
     category: "patient-certificates",
     language: "en",
     region: "global",
@@ -1695,7 +1680,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "Insurance Claim Medical Confirmation",
     description:
       "Claim-supporting medical confirmation for patients submitting reimbursement requests with encounter details, diagnoses, and documented treatments.",
-    iconKey: "shield-check",
     category: "insurer-communication",
     language: "en",
     region: "global",
@@ -1764,7 +1748,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "Return-to-Activity Clearance",
     description:
       "Return-to-work, school, or activity clearance with current clinical status, restrictions, and reassessment guidance.",
-    iconKey: "file-check",
     category: "patient-certificates",
     language: "en",
     region: "global",
@@ -1822,7 +1805,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "Longitudinal Care Plan",
     description:
       "Problem-oriented care plan for chronic specialty follow-up with goals, interventions, monitoring metrics, and escalation criteria.",
-    iconKey: "route",
     category: "care-plan",
     authorName: "Mason",
     featuredInstallCount: 74,
@@ -1905,7 +1887,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "Procedure Note",
     description:
       "Specialty office procedure documentation for indication, consent, technique, findings, complications, and aftercare.",
-    iconKey: "stethoscope",
     category: "clinical-documentation",
     authorName: "Owen",
     featuredInstallCount: 111,
@@ -1958,7 +1939,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     title: "Work Status Note",
     description:
       "Modified-duty or attendance restriction note for work or school when the patient needs temporary limits rather than full leave.",
-    iconKey: "briefcase",
     category: "patient-certificates",
     language: "en",
     region: "global",

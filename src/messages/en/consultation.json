@@ -829,12 +829,13 @@
     },
     "steps": {
       "start": "Start",
-      "structure": "Structure",
-      "review": "Review"
+      "settings": "Settings",
+      "schema": "Schema",
+      "review": "Review & Deploy"
     },
     "navigation": {
       "back": "Back",
-      "review": "Review",
+      "next": "Next",
       "close": "Close",
       "closeTitle": "Close this draft?",
       "closeDescription": "You have unsaved local changes. Keep them for later, discard them, or stay in the builder.",
@@ -866,7 +867,6 @@
       "categoryLabel": "Category",
       "languageLabel": "Language",
       "regionLabel": "Region",
-      "iconKeyLabel": "Icon key",
       "visibilityLabel": "Visibility",
       "descriptionLabel": "Description",
       "visibility": {
@@ -877,8 +877,13 @@
     "schemaEditor": {
       "title": "Schema editor",
       "description": "Add fields and groups that define the document structure.",
-      "canvasDescription": "Define the schema and example input values without leaving this step.",
+      "canvasDescription": "Define the schema and field properties for the final document structure in this step.",
       "empty": "No fields yet. Start from AI or add fields manually.",
+      "emptyDescription": "Add at least one field or group to define the document shape before review.",
+      "nodeUntitled": "Untitled field",
+      "inspectorTitle": "Field Properties",
+      "inspectorEmptyTitle": "Select a field",
+      "inspectorEmptyDescription": "Click any block in the schema canvas to edit its properties here.",
       "addField": "Add field",
       "addGroup": "Add group"
     },
@@ -994,17 +999,19 @@
     },
     "validation": {
       "titleRequired": "Title is required",
+      "schemaRequired": "Add at least one field before continuing",
       "schemaInvalid": "The document schema is invalid"
     },
     "review": {
-      "title": "Review and publish",
+      "title": "Review & Deploy",
       "description": "Confirm the template details and final document preview before saving, publishing, or installing it.",
       "summary": {
         "title": "Title",
         "description": "Description",
         "purpose": "Document purpose",
         "category": "Category",
-        "languageRegion": "Language / Region",
+        "language": "Language",
+        "region": "Region",
         "visibility": "Visibility",
         "schemaNodes": "Schema fields",
         "schemaNodesValue": "{count} fields",

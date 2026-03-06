@@ -51,15 +51,15 @@ import type {
 } from "@/types/document"
 import { countSchemaLeafNodes, createEmptyDraft } from "@/components/documents/document-builder-utils"
 import { DocumentBuilderStepReview } from "@/components/documents/document-builder-step-review"
+import { DocumentBuilderStepSettings } from "@/components/documents/document-builder-step-settings"
 import { DocumentBuilderStepStart } from "@/components/documents/document-builder-step-start"
-import { DocumentBuilderStepStructure } from "@/components/documents/document-builder-step-structure"
+import { DocumentBuilderStepSchema } from "@/components/documents/document-builder-step-structure"
 
 interface TemplateRouteResponse {
   template: {
     id: string
     title: string
     description: string
-    iconKey: string
     category: string
     language: DocumentBuilderDraft["language"]
     region: DocumentBuilderDraft["region"]
@@ -162,10 +162,14 @@ function withNormalizedDraftCategory(
   draft: DocumentBuilderDraft
 ): DocumentBuilderDraft {
   return {
-    ...draft,
+    title: draft.title,
+    description: draft.description,
     category: normalizeDocumentCategory(draft.category),
     language: resolveDocumentLanguage(draft.language),
     region: resolveDocumentRegion(draft.region),
+    visibility: draft.visibility,
+    schema: draft.schema,
+    generationConfig: draft.generationConfig,
   }
 }
 
@@ -237,10 +241,12 @@ function stepOrder(step: DocumentBuilderStep): number {
   switch (step) {
     case "start":
       return 0
-    case "structure":
+    case "settings":
       return 1
-    case "review":
+    case "schema":
       return 2
+    case "review":
+      return 3
     default:
       return 0
   }
@@ -280,7 +286,7 @@ export const DocumentBuilderFlow = forwardRef<
   )
   const openEditDialog = useDocumentBuilderDialogStore((state) => state.openEdit)
 
-  const initialStep = initialMode === "edit" ? "structure" : "start"
+  const initialStep = initialMode === "edit" ? "settings" : "start"
   const [step, setStep] = useState<DocumentBuilderStep>(initialStep)
   const [draft, setDraft] = useState<DocumentBuilderDraft>(() =>
     createEmptyDraft(locale, userRegion)
@@ -537,7 +543,6 @@ export const DocumentBuilderFlow = forwardRef<
           draft: {
             title: payload.template.title,
             description: payload.template.description,
-            iconKey: payload.template.iconKey,
             category: normalizeDocumentCategory(payload.template.category),
             language: payload.template.language,
             region: payload.template.region,
@@ -560,7 +565,6 @@ export const DocumentBuilderFlow = forwardRef<
           draft: {
             title: payload.template.title,
             description: payload.template.description,
-            iconKey: payload.template.iconKey,
             category: normalizeDocumentCategory(payload.template.category),
             language: payload.template.language,
             region: payload.template.region,
@@ -594,7 +598,7 @@ export const DocumentBuilderFlow = forwardRef<
         setResolvedTemplateId(payload.template.id)
         setPublishedVersionNumber(comparable.publishedVersionNumber)
         setInstalledVersionNumber(comparable.installedVersionNumber)
-        setStep("structure")
+        setStep("settings")
         setLoadedTemplateId(payload.template.id)
         setSampleContent(comparable.sampleContent)
         setPreviewContent(comparable.previewContent)
@@ -612,7 +616,7 @@ export const DocumentBuilderFlow = forwardRef<
         setAiPrompt(restoredSnapshot.aiPrompt)
         const normalizedDraft = withNormalizedDraftCategory(restoredSnapshot.draft)
         setDraft(normalizedDraft)
-        setStep(restoredSnapshot.step)
+        setStep(restoredSnapshot.step === "start" ? "settings" : restoredSnapshot.step)
         setResolvedTemplateId(restoredSnapshot.resolvedTemplateId)
         setPublishedVersionNumber(restoredSnapshot.publishedVersionNumber)
         setInstalledVersionNumber(restoredSnapshot.installedVersionNumber)
@@ -682,37 +686,61 @@ export const DocumentBuilderFlow = forwardRef<
     [discardSnapshot, isDirty, persistSnapshot]
   )
 
+  const settingsValidationMessage = useMemo(() => {
+    return draft.title.trim() ? null : t("validation.titleRequired")
+  }, [draft.title, t])
+
   const schemaValidationMessage = useMemo(() => {
-    if (!draft.title.trim()) {
-      return t("validation.titleRequired")
+    if (draft.schema.nodes.length === 0) {
+      return t("validation.schemaRequired")
     }
 
     const parsed = documentTemplateSchemaSchema.safeParse(draft.schema)
     if (parsed.success) return null
     return parsed.error.issues[0]?.message ?? t("validation.schemaInvalid")
-  }, [draft.schema, draft.title, t])
+  }, [draft.schema, t])
 
-  const goToStructureStep = useCallback(() => {
+  const resetPreviewState = useCallback((nextLocale: string | null) => {
+    previewAbortControllerRef.current?.abort()
+    previewAbortControllerRef.current = null
+    setPreviewContent({})
+    setPreviewLocale(nextLocale)
+    setPreviewGeneratedAt(null)
+    setPreviewInputChecksum(null)
+    setPreviewStatus("idle")
+    setPreviewError(null)
+  }, [])
+
+  const goToSettingsStep = useCallback(() => {
     const nextDraft = createEmptyDraft(locale, userRegion)
     setDraft(nextDraft)
     setSampleContent(
       buildSampleDocumentContent(nextDraft.schema, nextDraft.language)
     )
-    setPreviewContent({})
-    setPreviewLocale(nextDraft.language)
-    setPreviewGeneratedAt(null)
-    setPreviewInputChecksum(null)
-    setPreviewStatus("idle")
-    setPreviewError(null)
-    setStep("structure")
-  }, [locale, userRegion])
+    resetPreviewState(nextDraft.language)
+    setStep("settings")
+  }, [locale, resetPreviewState, userRegion])
 
   const generatePreview = useCallback(
-    async (options?: { force?: boolean; showToastOnFailure?: boolean }) => {
+    async (options?: {
+      draft?: DocumentBuilderDraft
+      force?: boolean
+      showToastOnFailure?: boolean
+    }) => {
+      const nextDraft = options?.draft ?? draft
       const force = options?.force ?? false
       const showToastOnFailure = options?.showToastOnFailure ?? false
+      const nextChecksum = buildDocumentPreviewInputChecksum({
+        title: nextDraft.title,
+        description: nextDraft.description,
+        category: nextDraft.category,
+        language: nextDraft.language,
+        region: nextDraft.region,
+        schema: nextDraft.schema,
+        generationConfig: nextDraft.generationConfig,
+      })
 
-      if (!draft.title.trim() || draft.schema.nodes.length === 0) {
+      if (!nextDraft.title.trim() || nextDraft.schema.nodes.length === 0) {
         setPreviewStatus("idle")
         setPreviewError(null)
         setPreviewInputChecksum(null)
@@ -721,7 +749,7 @@ export const DocumentBuilderFlow = forwardRef<
         return
       }
 
-      if (!force && previewInputChecksum === currentPreviewChecksum) {
+      if (!force && previewInputChecksum === nextChecksum) {
         return
       }
 
@@ -740,7 +768,7 @@ export const DocumentBuilderFlow = forwardRef<
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,
           body: JSON.stringify({
-            draft,
+            draft: nextDraft,
             model: documentModel,
           }),
         })
@@ -783,7 +811,6 @@ export const DocumentBuilderFlow = forwardRef<
       }
     },
     [
-      currentPreviewChecksum,
       documentModel,
       draft,
       previewInputChecksum,
@@ -794,14 +821,17 @@ export const DocumentBuilderFlow = forwardRef<
   useEffect(() => {
     if (step !== "review") return
     if (!draft.title.trim() || draft.schema.nodes.length === 0) return
-    if (previewHasContent) return
+    if (previewStatus === "generating") return
+    if (previewHasContent && !isPreviewStale) return
 
-    void generatePreview()
+    void generatePreview({ force: isPreviewStale })
   }, [
     draft.schema.nodes.length,
     draft.title,
     generatePreview,
+    isPreviewStale,
     previewHasContent,
+    previewStatus,
     step,
   ])
 
@@ -837,18 +867,16 @@ export const DocumentBuilderFlow = forwardRef<
         )
       }
 
-      const payload = (await response.json()) as DocumentBuilderDraft
-      setDraft(withNormalizedDraftCategory(payload))
-      setSampleContent(
-        buildSampleDocumentContent(payload.schema, payload.language)
+      const nextDraft = withNormalizedDraftCategory(
+        (await response.json()) as DocumentBuilderDraft
       )
-      setPreviewContent({})
-      setPreviewLocale(payload.language)
-      setPreviewGeneratedAt(null)
-      setPreviewInputChecksum(null)
-      setPreviewStatus("idle")
-      setPreviewError(null)
-      setStep("structure")
+      setDraft(nextDraft)
+      setSampleContent(
+        buildSampleDocumentContent(nextDraft.schema, nextDraft.language)
+      )
+      resetPreviewState(nextDraft.language)
+      setStep("settings")
+      void generatePreview({ draft: nextDraft, force: true })
       toast.success(
         effectiveMode === "edit"
           ? t("toasts.draftRevised")
@@ -867,7 +895,9 @@ export const DocumentBuilderFlow = forwardRef<
     documentModel,
     draft,
     effectiveMode,
+    generatePreview,
     locale,
+    resetPreviewState,
     resolvedTemplateId,
     t,
     userRegion,
@@ -1119,7 +1149,7 @@ export const DocumentBuilderFlow = forwardRef<
     setResolvedTemplateId(serverComparableState.resolvedTemplateId)
     setPublishedVersionNumber(serverComparableState.publishedVersionNumber)
     setInstalledVersionNumber(serverComparableState.installedVersionNumber)
-    setStep("structure")
+    setStep("settings")
     setBaselineComparableState(toComparableState(serverComparableState))
     setRestoredLocalChanges(false)
     resetToServerVersion(resolvedTemplateId)
@@ -1144,12 +1174,14 @@ export const DocumentBuilderFlow = forwardRef<
 
   const stepLabels = [
     t("steps.start"),
-    t("steps.structure"),
+    t("steps.settings"),
+    t("steps.schema"),
     t("steps.review"),
   ]
   const activeStepIndex = stepOrder(step)
   const schemaNodeCount = countSchemaLeafNodes(draft.schema.nodes)
-  const canGoNext = step === "structure" ? !schemaValidationMessage : true
+  const canGoSettingsNext = !settingsValidationMessage
+  const canGoSchemaNext = !schemaValidationMessage
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -1203,10 +1235,24 @@ export const DocumentBuilderFlow = forwardRef<
           onAiPromptChange={setAiPrompt}
           onOpenModelSettings={() => openSettings("models")}
           onGenerateDraft={handleAiDraft}
-          onStartBlank={goToStructureStep}
+          onStartBlank={goToSettingsStep}
         />
-      ) : step === "structure" ? (
-        <DocumentBuilderStepStructure
+      ) : step === "settings" ? (
+        <DocumentBuilderStepSettings
+          draft={draft}
+          setDraft={setDraft}
+          documentModelLabel={documentModelLabel}
+          onOpenModelSettings={() => openSettings("models")}
+          onResetToServerVersion={
+            restoredLocalChanges && serverComparableState
+              ? handleResetToServerVersion
+              : null
+          }
+          restoredLocalChanges={restoredLocalChanges}
+          validationError={settingsValidationMessage}
+        />
+      ) : step === "schema" ? (
+        <DocumentBuilderStepSchema
           draft={draft}
           setDraft={setDraft}
           aiLoading={aiLoading}
@@ -1216,12 +1262,6 @@ export const DocumentBuilderFlow = forwardRef<
           onAiPromptChange={setAiPrompt}
           onAiRevise={handleAiDraft}
           onOpenModelSettings={() => openSettings("models")}
-          onResetToServerVersion={
-            restoredLocalChanges && serverComparableState
-              ? handleResetToServerVersion
-              : null
-          }
-          restoredLocalChanges={restoredLocalChanges}
           validationError={schemaValidationMessage}
         />
       ) : (
@@ -1249,12 +1289,36 @@ export const DocumentBuilderFlow = forwardRef<
 
       {step === "start" ? null : (
         <div className="border-t px-4 py-4 sm:px-6">
-          {step === "structure" ? (
+          {step === "settings" ? (
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+              {effectiveMode === "create" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep("start")}
+                >
+                  <IconChevronLeft className="size-4" />
+                  {t("navigation.back")}
+                </Button>
+              ) : (
+                <div />
+              )}
+
+              <Button
+                type="button"
+                disabled={!canGoSettingsNext}
+                onClick={() => setStep("schema")}
+              >
+                {t("navigation.next")}
+                <IconChevronRight className="size-4" />
+              </Button>
+            </div>
+          ) : step === "schema" ? (
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setStep("start")}
+                onClick={() => setStep("settings")}
               >
                 <IconChevronLeft className="size-4" />
                 {t("navigation.back")}
@@ -1262,10 +1326,10 @@ export const DocumentBuilderFlow = forwardRef<
 
               <Button
                 type="button"
-                disabled={!canGoNext}
+                disabled={!canGoSchemaNext}
                 onClick={() => setStep("review")}
               >
-                {t("navigation.review")}
+                {t("navigation.next")}
                 <IconChevronRight className="size-4" />
               </Button>
             </div>
@@ -1275,7 +1339,7 @@ export const DocumentBuilderFlow = forwardRef<
                 type="button"
                 variant="outline"
                 className="self-start"
-                onClick={() => setStep("structure")}
+                onClick={() => setStep("schema")}
               >
                 <IconChevronLeft className="size-4" />
                 {t("navigation.back")}

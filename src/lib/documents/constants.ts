@@ -36,7 +36,6 @@ export interface BuiltInDocumentDefinition {
   title: string
   description: string
   renderer: DocumentTemplateRenderer
-  iconKey: string
   category: string
   language: DocumentTemplateLanguage
   region: DocumentTemplateRegion
@@ -65,7 +64,6 @@ export const BUILT_IN_DOCUMENTS: BuiltInDocumentDefinition[] = [
     title: "Consultation Record",
     description: "Generate and edit a structured visit note for the current consultation.",
     renderer: "BUILT_IN_RECORD",
-    iconKey: "file-text",
     category: "clinical-documentation",
     language: DEFAULT_DOCUMENT_LANGUAGE,
     region: DEFAULT_DOCUMENT_REGION,
@@ -80,7 +78,6 @@ export const BUILT_IN_DOCUMENTS: BuiltInDocumentDefinition[] = [
     title: "Patient Handout",
     description: "Create patient-friendly handouts that explain diagnoses and follow-up guidance.",
     renderer: "BUILT_IN_PATIENT_HANDOUT",
-    iconKey: "receipt-text",
     category: "patient-education",
     language: DEFAULT_DOCUMENT_LANGUAGE,
     region: DEFAULT_DOCUMENT_REGION,

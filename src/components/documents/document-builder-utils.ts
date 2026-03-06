@@ -15,7 +15,6 @@ export function createEmptyDraft(
   return {
     title: "",
     description: "",
-    iconKey: "file-text",
     category: "clinical-documentation",
     language: locale,
     region,
@@ -26,7 +25,7 @@ export function createEmptyDraft(
     generationConfig: {
       audience: locale === "ko" ? "의료진" : "clinician",
       outputTone: locale === "ko" ? "임상적" : "clinical",
-      contextSources: ["transcript", "doctorNotes", "insights"],
+      contextSources: ["insights", "doctorNotes"],
       systemInstructions: "",
       emptyValuePolicy: "BLANK",
     },

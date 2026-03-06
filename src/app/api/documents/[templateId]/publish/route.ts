@@ -55,7 +55,6 @@ export async function POST(
         draft: {
           title: detail.template.title,
           description: detail.template.description,
-          iconKey: detail.template.iconKey,
           category: detail.template.category,
           language,
           region,

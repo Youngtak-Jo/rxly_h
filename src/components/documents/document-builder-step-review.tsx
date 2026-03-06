@@ -89,8 +89,8 @@ export function DocumentBuilderStepReview({
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
-        <section className="rounded-3xl border border-border/70 bg-card p-6 shadow-sm">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+        <section className="space-y-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
               <h2 className="text-lg font-semibold">{t("review.title")}</h2>
@@ -112,36 +112,32 @@ export function DocumentBuilderStepReview({
             </div>
           </div>
 
-          <dl className="mt-6 grid gap-4 lg:grid-cols-2">
-            <div className="space-y-1 rounded-2xl border border-border/70 bg-background px-4 py-3">
+          <dl className="grid gap-x-8 gap-y-4 md:grid-cols-2">
+            <div className="space-y-1 border-b border-border/60 pb-4">
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
                 {t("review.summary.title")}
               </dt>
               <dd className="text-sm font-medium">{title || "-"}</dd>
             </div>
-            <div className="space-y-1 rounded-2xl border border-border/70 bg-background px-4 py-3">
+            <div className="space-y-1 border-b border-border/60 pb-4">
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
                 {t("review.summary.category")}
               </dt>
               <dd className="text-sm font-medium">{categoryLabel}</dd>
             </div>
-            <div className="space-y-1 rounded-2xl border border-border/70 bg-background px-4 py-3">
+            <div className="space-y-1 border-b border-border/60 pb-4">
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t("review.summary.languageRegion")}
+                {t("review.summary.language")}
               </dt>
-              <dd className="text-sm font-medium">
-                {languageLabel} / {regionLabel}
-              </dd>
+              <dd className="text-sm font-medium">{languageLabel}</dd>
             </div>
-            <div className="space-y-1 rounded-2xl border border-border/70 bg-background px-4 py-3 lg:col-span-2">
+            <div className="space-y-1 border-b border-border/60 pb-4">
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t("review.summary.purpose")}
+                {t("review.summary.region")}
               </dt>
-              <dd className="text-sm leading-6 text-foreground/90">
-                {description || t("review.summary.none")}
-              </dd>
+              <dd className="text-sm font-medium">{regionLabel}</dd>
             </div>
-            <div className="space-y-1 rounded-2xl border border-border/70 bg-background px-4 py-3">
+            <div className="space-y-1 border-b border-border/60 pb-4">
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
                 {t("review.summary.visibility")}
               </dt>
@@ -151,7 +147,7 @@ export function DocumentBuilderStepReview({
                   : t("templateSettings.visibility.private")}
               </dd>
             </div>
-            <div className="space-y-1 rounded-2xl border border-border/70 bg-background px-4 py-3">
+            <div className="space-y-1 border-b border-border/60 pb-4">
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
                 {t("review.summary.schemaNodes")}
               </dt>
@@ -159,7 +155,15 @@ export function DocumentBuilderStepReview({
                 {t("review.summary.schemaNodesValue", { count: schemaNodeCount })}
               </dd>
             </div>
-            <div className="space-y-1 rounded-2xl border border-border/70 bg-background px-4 py-3 lg:col-span-2">
+            <div className="space-y-1 border-b border-border/60 pb-4 md:col-span-2">
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                {t("review.summary.purpose")}
+              </dt>
+              <dd className="text-sm leading-6 text-foreground/90">
+                {description || t("review.summary.none")}
+              </dd>
+            </div>
+            <div className="space-y-1 border-b border-border/60 pb-4 md:col-span-2">
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
                 {t("review.summary.contextSources")}
               </dt>
@@ -178,8 +182,8 @@ export function DocumentBuilderStepReview({
           </dl>
         </section>
 
-        <section className="overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm">
-          <div className="border-b border-border/60 px-6 py-5">
+        <section className="overflow-hidden rounded-2xl border border-border/70 bg-card">
+          <div className="border-b border-border/60 px-5 py-5 sm:px-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
@@ -238,7 +242,7 @@ export function DocumentBuilderStepReview({
             ) : null}
           </div>
 
-          <div className="px-6 py-6">
+          <div className="px-5 py-6 sm:px-6">
             <GenericDocumentPreview sections={previewSections} />
           </div>
         </section>

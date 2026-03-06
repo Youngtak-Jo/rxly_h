@@ -293,7 +293,6 @@ export function buildFallbackDocumentDraft(
   return documentTemplateCreateSchema.parse({
     title,
     description,
-    iconKey: preset.claimReview ? "receipt" : "file-text",
     category: preset.claimReview
       ? "claims-review"
       : preset.patientFacing
@@ -307,7 +306,7 @@ export function buildFallbackDocumentDraft(
     generationConfig: normalizeDocumentGenerationConfig({
       audience: korean ? "의료진" : "clinician",
       outputTone: korean ? "임상적" : "clinical",
-      contextSources: ["transcript", "doctorNotes", "insights"],
+      contextSources: ["insights", "doctorNotes"],
       systemInstructions: korean
         ? `원본 프롬프트를 반영해 수동으로 다듬어 주세요: ${summarizePrompt(prompt, 200)}`
         : `Refine this fallback draft manually to match the original request: ${summarizePrompt(prompt, 200)}`,

@@ -347,7 +347,6 @@ export async function ensureBuiltInDocumentTemplates(): Promise<void> {
             visibility: "PUBLIC",
             title: builtIn.title,
             description: builtIn.description,
-            iconKey: builtIn.iconKey,
             category: normalizeDocumentCategory(builtIn.category),
             language: builtIn.language,
             region: builtIn.region,
@@ -360,7 +359,6 @@ export async function ensureBuiltInDocumentTemplates(): Promise<void> {
             visibility: "PUBLIC",
             title: builtIn.title,
             description: builtIn.description,
-            iconKey: builtIn.iconKey,
             category: normalizeDocumentCategory(builtIn.category),
             language: builtIn.language,
             region: builtIn.region,
@@ -413,7 +411,6 @@ export async function ensureBuiltInDocumentTemplates(): Promise<void> {
             visibility: "PUBLIC",
             title: seeded.title,
             description: seeded.description,
-            iconKey: seeded.iconKey,
             category: normalizeDocumentCategory(seeded.category),
             language: seeded.language ?? DEFAULT_DOCUMENT_LANGUAGE,
             region: seeded.region ?? DEFAULT_DOCUMENT_REGION,
@@ -428,7 +425,6 @@ export async function ensureBuiltInDocumentTemplates(): Promise<void> {
             visibility: "PUBLIC",
             title: seeded.title,
             description: seeded.description,
-            iconKey: seeded.iconKey,
             category: normalizeDocumentCategory(seeded.category),
             language: seeded.language ?? DEFAULT_DOCUMENT_LANGUAGE,
             region: seeded.region ?? DEFAULT_DOCUMENT_REGION,
@@ -672,7 +668,6 @@ function mapInstalledDocument(
     renderer: record.template.renderer,
     visibility: record.template.visibility,
     sourceKind: record.template.sourceKind,
-    iconKey: record.template.iconKey,
     category: normalizeDocumentCategory(record.template.category),
     language: display.language,
     region: display.region,
@@ -845,7 +840,6 @@ export async function getDocumentCatalog(
         renderer: template.renderer,
         visibility: template.visibility,
         sourceKind: template.sourceKind,
-        iconKey: template.iconKey,
         category: normalizeDocumentCategory(template.category),
         language: display.language,
         region: display.region,
@@ -1052,7 +1046,6 @@ export async function createDocumentTemplateDraft(input: {
   userId: string
   title: string
   description: string
-  iconKey: string
   category: string
   language: string
   region: string
@@ -1091,7 +1084,6 @@ export async function createDocumentTemplateDraft(input: {
       visibility: input.visibility,
       title: input.title,
       description: input.description,
-      iconKey: input.iconKey,
       category: normalizedCategory,
       language: resolveDocumentLanguage(input.language),
       region: resolveDocumentRegion(input.region),
@@ -1219,7 +1211,6 @@ export async function patchDocumentTemplateDraft(input: {
   templateId: string
   title?: string
   description?: string
-  iconKey?: string
   category?: string
   language?: string
   region?: string
@@ -1337,7 +1328,6 @@ export async function patchDocumentTemplateDraft(input: {
     data: {
       title: input.title,
       description: input.description,
-      iconKey: input.iconKey,
       category:
         input.category === undefined
           ? undefined
@@ -1480,7 +1470,6 @@ export async function forkDocumentTemplate(input: {
     userId: input.userId,
     title: `${template.title} Copy`,
     description: template.description,
-    iconKey: template.iconKey,
     category: normalizeDocumentCategory(template.category),
     language: template.language,
     region: template.region,
