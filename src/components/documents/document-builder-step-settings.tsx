@@ -120,29 +120,29 @@ export function DocumentBuilderStepSettings({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>{t("templateSettings.categoryLabel")}</Label>
-              <Select
-                value={normalizeDocumentCategory(draft.category)}
-                onValueChange={(value) =>
-                  setDraft((d) => ({ ...d, category: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DOCUMENT_CATEGORY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {t(option.labelKey as never)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="min-w-0 space-y-2">
+                <Label>{t("templateSettings.categoryLabel")}</Label>
+                <Select
+                  value={normalizeDocumentCategory(draft.category)}
+                  onValueChange={(value) =>
+                    setDraft((d) => ({ ...d, category: value }))
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DOCUMENT_CATEGORY_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {t(option.labelKey as never)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 <Label>{t("templateSettings.languageLabel")}</Label>
                 <Select
                   value={draft.language}
@@ -150,7 +150,7 @@ export function DocumentBuilderStepSettings({
                     setDraft((d) => ({ ...d, language: value }))
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -163,7 +163,7 @@ export function DocumentBuilderStepSettings({
                 </Select>
               </div>
 
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 <Label>{t("templateSettings.regionLabel")}</Label>
                 <Select
                   value={draft.region}
@@ -171,7 +171,7 @@ export function DocumentBuilderStepSettings({
                     setDraft((d) => ({ ...d, region: value }))
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
