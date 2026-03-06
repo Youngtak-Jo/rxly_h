@@ -58,7 +58,6 @@ export async function POST(
           category: detail.template.category,
           language,
           region,
-          visibility: detail.template.visibility,
           schema: draftVersion.schemaJson,
           generationConfig: draftVersion.generationConfigJson,
         },

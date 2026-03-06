@@ -862,17 +862,12 @@
     "templateSettings": {
       "title": "템플릿 설정",
       "basicTitle": "문서 기본 정보",
-      "basicDescription": "구조를 편집하기 전에 문서 이름, 설명, 카테고리, 공개 범위를 먼저 정리하세요.",
+      "basicDescription": "구조를 편집하기 전에 문서 이름, 설명, 카테고리를 먼저 정리하세요. 공개는 검토 단계에서 게시하면 됩니다.",
       "titleLabel": "제목",
       "categoryLabel": "카테고리",
       "languageLabel": "언어",
       "regionLabel": "지역",
-      "visibilityLabel": "공개 범위",
-      "descriptionLabel": "설명",
-      "visibility": {
-        "private": "비공개 초안",
-        "public": "공개"
-      }
+      "descriptionLabel": "설명"
     },
     "schemaEditor": {
       "title": "스키마 편집기",
@@ -891,8 +886,6 @@
       "title": "생성 설정",
       "advancedTitle": "고급 생성 설정",
       "advancedDescription": "세션 컨텍스트에서 문서를 생성할 때 AI가 어떤 방식으로 작성할지 조정합니다.",
-      "audienceLabel": "대상 독자",
-      "outputToneLabel": "출력 톤",
       "systemInstructionsLabel": "시스템 지침",
       "contextSourcesLabel": "컨텍스트 소스"
     },
@@ -1012,7 +1005,6 @@
         "category": "카테고리",
         "language": "언어",
         "region": "지역",
-        "visibility": "공개 범위",
         "schemaNodes": "스키마 필드 수",
         "schemaNodesValue": "{count}개 필드",
         "contextSources": "컨텍스트 소스",

@@ -24,7 +24,6 @@ export async function POST(req: Request) {
       category: parsed.data.category,
       language: parsed.data.language,
       region: parsed.data.region,
-      visibility: parsed.data.visibility,
       renderer: "GENERIC_STRUCTURED",
       schema: parsed.data.schema,
       generationConfig: parsed.data.generationConfig,

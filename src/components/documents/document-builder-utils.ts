@@ -18,13 +18,10 @@ export function createEmptyDraft(
     category: "clinical-documentation",
     language: locale,
     region,
-    visibility: "PRIVATE",
     schema: {
       nodes: [],
     },
     generationConfig: {
-      audience: locale === "ko" ? "의료진" : "clinician",
-      outputTone: locale === "ko" ? "임상적" : "clinical",
       contextSources: ["insights", "doctorNotes"],
       systemInstructions: "",
       emptyValuePolicy: "BLANK",

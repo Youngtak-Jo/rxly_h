@@ -125,8 +125,6 @@ export const documentTemplateSchemaSchema = z
   })
 
 export const documentGenerationConfigSchema = z.object({
-  audience: z.string().trim().min(1).max(120),
-  outputTone: z.string().trim().min(1).max(120),
   contextSources: z
     .array(z.enum(DOCUMENT_CONTEXT_SOURCES))
     .min(1)
@@ -149,7 +147,6 @@ export const documentBuilderDraftSchema = z.object({
   category: z.enum(DOCUMENT_CATEGORIES).default("clinical-documentation"),
   language: z.enum(DOCUMENT_TEMPLATE_LANGUAGES).default("en"),
   region: z.enum(DOCUMENT_TEMPLATE_REGIONS).default("global"),
-  visibility: z.enum(DOCUMENT_TEMPLATE_VISIBILITIES).default("PRIVATE"),
   schema: documentTemplateSchemaSchema,
   generationConfig: documentGenerationConfigSchema,
 })
@@ -172,11 +169,8 @@ const documentBuilderStoredDraftSchema = z.object({
     .trim()
     .default("global")
     .transform((value) => resolveDocumentRegion(value)),
-  visibility: z.enum(DOCUMENT_TEMPLATE_VISIBILITIES).default("PRIVATE"),
   schema: documentTemplateSchemaSchema.catch({ nodes: [] }),
   generationConfig: documentGenerationConfigSchema.catch({
-    audience: "clinician",
-    outputTone: "clinical",
     contextSources: ["insights", "doctorNotes"],
     systemInstructions: "",
     emptyValuePolicy: "BLANK",
@@ -218,6 +212,7 @@ export const documentTemplateCreateSchema = documentBuilderDraftSchema
 export const documentTemplatePatchSchema = documentBuilderDraftSchema
   .partial()
   .extend({
+    visibility: z.literal("PRIVATE").optional(),
     changelog: z.string().max(1000).optional(),
   })
   .merge(documentTemplatePreviewPayloadSchema)
@@ -279,7 +274,7 @@ export function normalizeDocumentTemplateSchema(
 }
 
 export function normalizeDocumentGenerationConfig(
-  config: DocumentGenerationConfig
+  config: unknown
 ): DocumentGenerationConfig {
   return documentGenerationConfigSchema.parse(config)
 }

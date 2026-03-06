@@ -20,7 +20,10 @@ import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { documentTemplateSchemaSchema } from "@/lib/documents/schema"
+import {
+  documentTemplateSchemaSchema,
+  normalizeDocumentGenerationConfig,
+} from "@/lib/documents/schema"
 import {
   buildGenericDocumentSections,
   buildSampleDocumentContent,
@@ -160,7 +163,7 @@ function createEmptyComparableState(
   }
 }
 
-function withNormalizedDraftCategory(
+function withNormalizedDraft(
   draft: DocumentBuilderDraft
 ): DocumentBuilderDraft {
   return {
@@ -169,9 +172,8 @@ function withNormalizedDraftCategory(
     category: normalizeDocumentCategory(draft.category),
     language: resolveDocumentLanguage(draft.language),
     region: resolveDocumentRegion(draft.region),
-    visibility: draft.visibility,
     schema: draft.schema,
-    generationConfig: draft.generationConfig,
+    generationConfig: normalizeDocumentGenerationConfig(draft.generationConfig),
   }
 }
 
@@ -488,7 +490,7 @@ export const DocumentBuilderFlow = forwardRef<
     }
 
     setAiPrompt(restoredSnapshot.aiPrompt)
-    const normalizedDraft = withNormalizedDraftCategory(restoredSnapshot.draft)
+    const normalizedDraft = withNormalizedDraft(restoredSnapshot.draft)
     setDraft(normalizedDraft)
     setStep(restoredSnapshot.step)
     setResolvedTemplateId(restoredSnapshot.resolvedTemplateId)
@@ -541,17 +543,17 @@ export const DocumentBuilderFlow = forwardRef<
           throw new Error(t("toasts.loadTemplateFailed"))
         }
 
+        const normalizedDraft = withNormalizedDraft({
+          title: payload.template.title,
+          description: payload.template.description,
+          category: payload.template.category,
+          language: payload.template.language,
+          region: payload.template.region,
+          schema: editableVersion.schemaJson,
+          generationConfig: editableVersion.generationConfigJson,
+        })
         const resolvedContent = resolveSampleAndPreviewContent({
-          draft: {
-            title: payload.template.title,
-            description: payload.template.description,
-            category: normalizeDocumentCategory(payload.template.category),
-            language: payload.template.language,
-            region: payload.template.region,
-            visibility: payload.template.visibility,
-            schema: editableVersion.schemaJson,
-            generationConfig: editableVersion.generationConfigJson,
-          },
+          draft: normalizedDraft,
           previewContent:
             payload.latestDraftPreview?.contentJson ??
             payload.latestPublishedPreview?.contentJson ??
@@ -564,16 +566,7 @@ export const DocumentBuilderFlow = forwardRef<
 
         const comparable = {
           aiPrompt: "",
-          draft: {
-            title: payload.template.title,
-            description: payload.template.description,
-            category: normalizeDocumentCategory(payload.template.category),
-            language: payload.template.language,
-            region: payload.template.region,
-            visibility: payload.template.visibility,
-            schema: editableVersion.schemaJson,
-            generationConfig: editableVersion.generationConfigJson,
-          },
+          draft: normalizedDraft,
           resolvedTemplateId: payload.template.id,
           publishedVersionNumber: payload.latestPublishedVersion?.versionNumber ?? null,
           installedVersionNumber: payload.installed?.installedVersionNumber ?? null,
@@ -616,15 +609,15 @@ export const DocumentBuilderFlow = forwardRef<
         if (!restoredSnapshot) return
 
         setAiPrompt(restoredSnapshot.aiPrompt)
-        const normalizedDraft = withNormalizedDraftCategory(restoredSnapshot.draft)
-        setDraft(normalizedDraft)
+        const normalizedRestoredDraft = withNormalizedDraft(restoredSnapshot.draft)
+        setDraft(normalizedRestoredDraft)
         setStep(restoredSnapshot.step === "start" ? "settings" : restoredSnapshot.step)
         setResolvedTemplateId(restoredSnapshot.resolvedTemplateId)
         setPublishedVersionNumber(restoredSnapshot.publishedVersionNumber)
         setInstalledVersionNumber(restoredSnapshot.installedVersionNumber)
         setRestoredLocalChanges(true)
         const restoredContent = resolveSampleAndPreviewContent({
-          draft: normalizedDraft,
+          draft: normalizedRestoredDraft,
           sampleContent: restoredSnapshot.sampleContent,
           previewContent: restoredSnapshot.previewContent,
           previewInputChecksum: restoredSnapshot.previewInputChecksum,
@@ -632,7 +625,7 @@ export const DocumentBuilderFlow = forwardRef<
         setSampleContent(restoredContent.sampleContent)
         setPreviewContent(restoredContent.previewContent)
         setPreviewLocale(
-          restoredSnapshot.previewLocale ?? normalizedDraft.language
+          restoredSnapshot.previewLocale ?? normalizedRestoredDraft.language
         )
         setPreviewGeneratedAt(restoredSnapshot.previewGeneratedAt ?? null)
         setPreviewInputChecksum(restoredSnapshot.previewInputChecksum ?? null)
@@ -869,7 +862,7 @@ export const DocumentBuilderFlow = forwardRef<
         )
       }
 
-      const nextDraft = withNormalizedDraftCategory(
+      const nextDraft = withNormalizedDraft(
         (await response.json()) as DocumentBuilderDraft
       )
       setDraft(nextDraft)
@@ -1278,7 +1271,6 @@ export const DocumentBuilderFlow = forwardRef<
           category={draft.category}
           language={draft.language}
           region={draft.region}
-          visibility={draft.visibility}
           schemaNodeCount={schemaNodeCount}
           contextSources={draft.generationConfig.contextSources}
           publishedVersionNumber={publishedVersionNumber}

@@ -35,6 +35,7 @@ import type {
 } from "@/types/document"
 import {
   createEmptyDocumentContent,
+  normalizeDocumentGenerationConfig,
   normalizeDocumentContentForStorage,
 } from "@/lib/documents/schema"
 import { normalizeDocumentCategory } from "@/lib/documents/categories"
@@ -187,6 +188,44 @@ function toRecord<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
 }
 
+function normalizeStoredGenerationConfig(
+  value: unknown
+): DocumentGenerationConfig {
+  return normalizeDocumentGenerationConfig(toRecord(value))
+}
+
+function buildPublishedTemplateWhere(): Prisma.DocumentTemplateWhereInput {
+  return {
+    visibility: "PUBLIC",
+    latestPublishedVersionId: {
+      not: null,
+    },
+  }
+}
+
+function buildAccessibleTemplateWhere(
+  userId: string
+): Prisma.DocumentTemplateWhereInput {
+  return {
+    OR: [
+      { ownerUserId: userId },
+      { sourceKind: "BUILT_IN" },
+      buildPublishedTemplateWhere(),
+    ],
+  }
+}
+
+function buildAccessibleInstalledDocumentWhere(
+  userId: string
+): Prisma.UserInstalledDocumentWhereInput {
+  return {
+    userId,
+    template: {
+      is: buildAccessibleTemplateWhere(userId),
+    },
+  }
+}
+
 function withNormalizedTemplateCategory<T extends { category: string }>(
   template: T
 ): T {
@@ -222,9 +261,9 @@ function toVersionRecord(
     versionNumber: version.versionNumber,
     status: version.status as DocumentTemplateVersionRecord["status"],
     schemaJson: toRecord(version.schemaJson) as DocumentTemplateSchema,
-    generationConfigJson: toRecord(
+    generationConfigJson: normalizeStoredGenerationConfig(
       version.generationConfigJson
-    ) as DocumentGenerationConfig,
+    ),
     previewContentJson: version.previewContentJson
       ? (toRecord(version.previewContentJson) as Record<string, unknown>)
       : null,
@@ -294,7 +333,22 @@ function resolvePreviewVersion(
     return template.latestDraftVersion
   }
 
-  return template.latestPublishedVersion ?? template.latestDraftVersion
+  return template.latestPublishedVersion
+}
+
+function sanitizeTemplateForViewer(
+  template: TemplateWithVersions,
+  userId: string
+): TemplateWithVersions {
+  if (template.ownerUserId === userId) {
+    return template
+  }
+
+  return {
+    ...template,
+    latestDraftVersionId: null,
+    latestDraftVersion: null,
+  }
 }
 
 function resolveTemplatePreviewPayload(
@@ -549,7 +603,7 @@ async function ensureDefaultInstalledDocumentsInternal(
       where: { userId },
     }),
     prisma.userInstalledDocument.findMany({
-      where: { userId },
+      where: buildAccessibleInstalledDocumentWhere(userId),
       include: {
         template: {
           include: {
@@ -747,7 +801,7 @@ export async function getDocumentCatalog(
 ): Promise<DocumentCatalogItem[]> {
   await ensureDefaultInstalledDocumentsExist(userId)
   const installedDocuments = await prisma.userInstalledDocument.findMany({
-    where: { userId },
+    where: buildAccessibleInstalledDocumentWhere(userId),
     include: {
       template: {
         include: {
@@ -773,13 +827,7 @@ export async function getDocumentCatalog(
 
   const q = query?.trim() ?? ""
   const templates = await prisma.documentTemplate.findMany({
-    where: {
-      OR: [
-        { sourceKind: "BUILT_IN" },
-        { visibility: "PUBLIC" },
-        { ownerUserId: userId },
-      ],
-    },
+    where: buildAccessibleTemplateWhere(userId),
     include: {
       latestDraftVersion: true,
       latestPublishedVersion: true,
@@ -859,7 +907,11 @@ export async function getDocumentCatalog(
         hasUpdate: installed?.hasUpdate ?? false,
         isEditable: !isBuiltIn && isOwner,
         isBuiltIn,
-        canFork: !isBuiltIn && !isOwner && template.visibility === "PUBLIC",
+        canFork:
+          !isBuiltIn &&
+          !isOwner &&
+          template.visibility === "PUBLIC" &&
+          !!template.latestPublishedVersionId,
         canPublish:
           !isBuiltIn &&
           isOwner &&
@@ -897,11 +949,7 @@ export async function installDocumentForUser(
   const template = await prisma.documentTemplate.findFirst({
     where: {
       id: templateId,
-      OR: [
-        { sourceKind: "BUILT_IN" },
-        { visibility: "PUBLIC" },
-        { ownerUserId: userId },
-      ],
+      ...buildAccessibleTemplateWhere(userId),
     },
     include: {
       latestPublishedVersion: true,
@@ -985,7 +1033,7 @@ async function ensureBuiltInSafeWorkspaceAfterUninstall(
   locale: UiLocale
 ): Promise<DocumentWorkspaceSnapshot> {
   const installedDocuments = await prisma.userInstalledDocument.findMany({
-    where: { userId },
+    where: buildAccessibleInstalledDocumentWhere(userId),
     include: {
       template: {
         include: {
@@ -1054,7 +1102,6 @@ export async function createDocumentTemplateDraft(input: {
   category: string
   language: string
   region: string
-  visibility: "PRIVATE" | "PUBLIC"
   renderer: "GENERIC_STRUCTURED"
   schema: DocumentTemplateSchema
   generationConfig: DocumentGenerationConfig
@@ -1065,6 +1112,9 @@ export async function createDocumentTemplateDraft(input: {
   previewInputChecksum?: string | null
 }): Promise<TemplateWithVersions> {
   const normalizedCategory = normalizeDocumentCategory(input.category)
+  const normalizedGenerationConfig = normalizeDocumentGenerationConfig(
+    input.generationConfig
+  )
   const slugBase = input.title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -1086,7 +1136,7 @@ export async function createDocumentTemplateDraft(input: {
       ownerUserId: input.userId,
       sourceKind: "USER",
       renderer: input.renderer,
-      visibility: input.visibility,
+      visibility: "PRIVATE",
       title: input.title,
       description: input.description,
       category: normalizedCategory,
@@ -1098,7 +1148,7 @@ export async function createDocumentTemplateDraft(input: {
           status: "DRAFT",
           schemaJson: input.schema as unknown as Prisma.InputJsonValue,
           generationConfigJson:
-            input.generationConfig as unknown as Prisma.InputJsonValue,
+            normalizedGenerationConfig as unknown as Prisma.InputJsonValue,
           ...(input.previewContent
             ? {
               previewContentJson:
@@ -1157,11 +1207,7 @@ export async function getDocumentTemplateForUser(
   const template = await prisma.documentTemplate.findFirst({
     where: {
       id: templateId,
-      OR: [
-        { ownerUserId: userId },
-        { visibility: "PUBLIC" },
-        { sourceKind: "BUILT_IN" },
-      ],
+      ...buildAccessibleTemplateWhere(userId),
     },
     include: {
       latestDraftVersion: true,
@@ -1172,7 +1218,9 @@ export async function getDocumentTemplateForUser(
   if (!template) {
     throw new Error("Template not found")
   }
-  const normalizedTemplate = withNormalizedTemplateCategory(template)
+  const normalizedTemplate = withNormalizedTemplateCategory(
+    sanitizeTemplateForViewer(template, userId)
+  )
 
   const installed = await prisma.userInstalledDocument.findUnique({
     where: {
@@ -1219,7 +1267,7 @@ export async function patchDocumentTemplateDraft(input: {
   category?: string
   language?: string
   region?: string
-  visibility?: "PRIVATE" | "PUBLIC"
+  visibility?: "PRIVATE"
   schema?: DocumentTemplateSchema
   generationConfig?: DocumentGenerationConfig
   changelog?: string
@@ -1248,6 +1296,13 @@ export async function patchDocumentTemplateDraft(input: {
   let draftVersionId = template.latestDraftVersionId
 
   if (!draftVersionId) {
+    const normalizedGenerationConfig = normalizeStoredGenerationConfig(
+      input.generationConfig ?? template.latestPublishedVersion?.generationConfigJson ?? {
+        contextSources: ["transcript"],
+        systemInstructions: "",
+        emptyValuePolicy: "BLANK",
+      }
+    )
     const nextVersion = await prisma.documentTemplateVersion.create({
       data: {
         templateId: template.id,
@@ -1259,14 +1314,7 @@ export async function patchDocumentTemplateDraft(input: {
           ((template.latestPublishedVersion?.schemaJson ??
             { nodes: [] }) as Prisma.InputJsonValue),
         generationConfigJson:
-          (input.generationConfig as unknown as Prisma.InputJsonValue) ??
-          ((template.latestPublishedVersion?.generationConfigJson ?? {
-            audience: "clinician",
-            outputTone: "clinical",
-            contextSources: ["transcript"],
-            systemInstructions: "",
-            emptyValuePolicy: "BLANK",
-          }) as Prisma.InputJsonValue),
+          normalizedGenerationConfig as unknown as Prisma.InputJsonValue,
         ...(input.previewContent
           ? {
             previewContentJson:
@@ -1296,7 +1344,9 @@ export async function patchDocumentTemplateDraft(input: {
         ...(input.generationConfig
           ? {
             generationConfigJson:
-              input.generationConfig as unknown as Prisma.InputJsonValue,
+              normalizeDocumentGenerationConfig(
+                input.generationConfig
+              ) as unknown as Prisma.InputJsonValue,
           }
           : {}),
         ...(input.previewContent !== undefined
@@ -1420,7 +1470,9 @@ export async function publishDocumentTemplate(input: {
       schemaJson:
         template.latestDraftVersion.schemaJson as Prisma.InputJsonValue,
       generationConfigJson:
-        template.latestDraftVersion.generationConfigJson as Prisma.InputJsonValue,
+        normalizeStoredGenerationConfig(
+          template.latestDraftVersion.generationConfigJson
+        ) as unknown as Prisma.InputJsonValue,
       ...(template.latestDraftVersion.previewContentJson
         ? {
           previewContentJson:
@@ -1459,8 +1511,8 @@ export async function forkDocumentTemplate(input: {
   const template = await prisma.documentTemplate.findFirst({
     where: {
       id: input.templateId,
-      visibility: "PUBLIC",
       sourceKind: "USER",
+      ...buildPublishedTemplateWhere(),
     },
     include: {
       latestPublishedVersion: true,
@@ -1478,14 +1530,13 @@ export async function forkDocumentTemplate(input: {
     category: normalizeDocumentCategory(template.category),
     language: template.language,
     region: template.region,
-    visibility: "PRIVATE",
     renderer: "GENERIC_STRUCTURED",
     schema: toRecord(
       template.latestPublishedVersion.schemaJson
     ) as unknown as DocumentTemplateSchema,
-    generationConfig: toRecord(
+    generationConfig: normalizeStoredGenerationConfig(
       template.latestPublishedVersion.generationConfigJson
-    ) as unknown as DocumentGenerationConfig,
+    ),
     previewContent: template.latestPublishedVersion.previewContentJson
       ? (toRecord(
         template.latestPublishedVersion.previewContentJson
@@ -1509,11 +1560,7 @@ export async function getDocumentPreviewForUser(input: {
   const template = await prisma.documentTemplate.findFirst({
     where: {
       id: input.templateId,
-      OR: [
-        { ownerUserId: input.userId },
-        { visibility: "PUBLIC" },
-        { sourceKind: "BUILT_IN" },
-      ],
+      ...buildAccessibleTemplateWhere(input.userId),
     },
     include: {
       latestDraftVersion: true,
@@ -1559,11 +1606,7 @@ export async function getSessionDocumentForUser(input: {
   const template = await prisma.documentTemplate.findFirst({
     where: {
       id: input.templateId,
-      OR: [
-        { ownerUserId: input.userId },
-        { visibility: "PUBLIC" },
-        { sourceKind: "BUILT_IN" },
-      ],
+      ...buildAccessibleTemplateWhere(input.userId),
     },
     include: {
       latestDraftVersion: true,
@@ -1573,7 +1616,9 @@ export async function getSessionDocumentForUser(input: {
   if (!template) {
     throw new Error("Template not found")
   }
-  const normalizedTemplate = withNormalizedTemplateCategory(template)
+  const normalizedTemplate = withNormalizedTemplateCategory(
+    sanitizeTemplateForViewer(template, input.userId)
+  )
 
   const sessionDocument = await prisma.sessionDocument.findFirst({
     where: {

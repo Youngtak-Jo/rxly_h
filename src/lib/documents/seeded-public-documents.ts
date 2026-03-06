@@ -62,15 +62,11 @@ function createGroup(
 }
 
 function createGenerationConfig(input: {
-  audience: string
-  outputTone: string
   contextSources: DocumentGenerationContextSource[]
   systemInstructions: string
   emptyValuePolicy: DocumentGenerationConfig["emptyValuePolicy"]
 }): DocumentGenerationConfig {
   return {
-    audience: input.audience,
-    outputTone: input.outputTone,
     contextSources: input.contextSources,
     systemInstructions: input.systemInstructions,
     emptyValuePolicy: input.emptyValuePolicy,
@@ -883,8 +879,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 184,
     schema: AFTER_VISIT_SUMMARY_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "patient",
-      outputTone: "plain-language",
       contextSources: [
         "sessionMeta",
         "record",
@@ -945,8 +939,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 137,
     schema: REFERRAL_REQUEST_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "clinician",
-      outputTone: "clinical",
       contextSources: [
         "sessionMeta",
         "transcript",
@@ -1005,8 +997,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 96,
     schema: CONSULTATION_REPLY_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "clinician",
-      outputTone: "clinical",
       contextSources: ["sessionMeta", "record", "insights", "ddx", "research"],
       systemInstructions:
         "Write as a specialist replying to a referring clinician. Summarize the impression, what was completed, what changed in treatment, and what the referring team should monitor next.",
@@ -1065,8 +1055,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 64,
     schema: KR_REFERRAL_REQUEST_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "의료진",
-      outputTone: "임상적",
       contextSources: [
         "sessionMeta",
         "transcript",
@@ -1128,8 +1116,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 52,
     schema: KR_REFERRAL_REPLY_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "의료진",
-      outputTone: "임상적",
       contextSources: ["sessionMeta", "record", "insights", "ddx", "research"],
       systemInstructions: `한국 의료기관 간 회송 문서 형식으로 작성하세요. 평가 결과, 시행한 조치, 공동 관리 요청, 재의뢰 기준을 명확히 적으세요. ${KR_EXTERNAL_METADATA_GUARDRAIL}`,
       emptyValuePolicy: "BLANK",
@@ -1187,8 +1173,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 71,
     schema: KR_MEDICAL_CERTIFICATE_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "외부 제출기관",
-      outputTone: "격식체",
       contextSources: [
         "sessionMeta",
         "transcript",
@@ -1241,8 +1225,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 68,
     schema: KR_VISIT_CONFIRMATION_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "외부 제출기관",
-      outputTone: "격식체",
       contextSources: [
         "sessionMeta",
         "transcript",
@@ -1295,8 +1277,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 59,
     schema: KR_OUTPATIENT_CONFIRMATION_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "외부 제출기관",
-      outputTone: "격식체",
       contextSources: [
         "sessionMeta",
         "transcript",
@@ -1343,8 +1323,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 57,
     schema: KR_ADMISSION_DISCHARGE_CONFIRMATION_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "외부 제출기관",
-      outputTone: "격식체",
       contextSources: [
         "sessionMeta",
         "doctorNotes",
@@ -1394,8 +1372,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 128,
     schema: MEDICAL_NECESSITY_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "reviewer",
-      outputTone: "formal",
       contextSources: ["sessionMeta", "record", "insights", "ddx", "research"],
       systemInstructions:
         "Write for a payer or utilization reviewer. Use objective findings, prior management, and evidence-based rationale when available. Never invent payer metadata or service codes.",
@@ -1456,8 +1432,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 154,
     schema: MEDICAL_CERTIFICATE_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "employer-or-agency",
-      outputTone: "formal",
       contextSources: [
         "sessionMeta",
         "transcript",
@@ -1519,8 +1493,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 167,
     schema: MEDICAL_LEAVE_CERTIFICATE_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "employer-or-school",
-      outputTone: "formal",
       contextSources: [
         "sessionMeta",
         "transcript",
@@ -1576,8 +1548,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 142,
     schema: TREATMENT_CONFIRMATION_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "third-party reviewer",
-      outputTone: "formal",
       contextSources: [
         "sessionMeta",
         "transcript",
@@ -1631,8 +1601,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 119,
     schema: HOSPITALIZATION_CONFIRMATION_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "third-party reviewer",
-      outputTone: "formal",
       contextSources: [
         "sessionMeta",
         "transcript",
@@ -1687,8 +1655,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 173,
     schema: INSURANCE_CLAIM_CERTIFICATE_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "reviewer",
-      outputTone: "formal",
       contextSources: [
         "sessionMeta",
         "transcript",
@@ -1755,8 +1721,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 88,
     schema: RETURN_TO_ACTIVITY_CLEARANCE_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "employer-or-school",
-      outputTone: "formal",
       contextSources: [
         "sessionMeta",
         "transcript",
@@ -1810,8 +1774,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 74,
     schema: LONGITUDINAL_CARE_PLAN_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "care-team",
-      outputTone: "clinical",
       contextSources: [
         "sessionMeta",
         "record",
@@ -1892,8 +1854,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 111,
     schema: PROCEDURE_NOTE_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "clinician",
-      outputTone: "clinical",
       contextSources: ["sessionMeta", "transcript", "doctorNotes", "record", "insights"],
       systemInstructions:
         "Document office procedure details precisely. If a critical procedural detail is absent, leave it not provided rather than inferring technique, medications, consent, or complications.",
@@ -1946,8 +1906,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 133,
     schema: WORK_STATUS_SCHEMA,
     generationConfig: createGenerationConfig({
-      audience: "employer-or-school",
-      outputTone: "plain-language",
       contextSources: ["sessionMeta", "record", "insights"],
       systemInstructions:
         "Use this note for modified duty or partial attendance, not full leave. Keep the note focused on functional restrictions, duration, and reevaluation. Do not disclose diagnosis details unless the consultation explicitly supports disclosure or the clinician later fills the optional diagnosis field.",

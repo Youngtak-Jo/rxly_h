@@ -85,8 +85,6 @@ export type DocumentEmptyValuePolicy =
   (typeof DOCUMENT_EMPTY_VALUE_POLICIES)[number]
 
 export interface DocumentGenerationConfig {
-  audience: string
-  outputTone: string
   contextSources: DocumentGenerationContextSource[]
   systemInstructions: string
   emptyValuePolicy: DocumentEmptyValuePolicy
@@ -255,7 +253,6 @@ export interface DocumentBuilderDraft {
   category: string
   language: DocumentTemplateLanguage
   region: DocumentTemplateRegion
-  visibility: DocumentTemplateVisibility
   schema: DocumentTemplateSchema
   generationConfig: DocumentGenerationConfig
 }

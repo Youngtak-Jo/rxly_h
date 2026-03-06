@@ -300,12 +300,9 @@ export function buildFallbackDocumentDraft(
         : "clinical-documentation",
     language,
     region,
-    visibility: "PRIVATE",
     renderer: "GENERIC_STRUCTURED",
     schema: normalizeDocumentTemplateSchema(schema),
     generationConfig: normalizeDocumentGenerationConfig({
-      audience: korean ? "의료진" : "clinician",
-      outputTone: korean ? "임상적" : "clinical",
       contextSources: ["insights", "doctorNotes"],
       systemInstructions: korean
         ? `원본 프롬프트를 반영해 수동으로 다듬어 주세요: ${summarizePrompt(prompt, 200)}`
@@ -341,12 +338,6 @@ export function buildFallbackRevisedDocumentDraft(
   }
 
   const lower = prompt.toLowerCase()
-  if (/public|publish|share/.test(lower) || /공개|공유/.test(prompt)) {
-    nextDraft.visibility = "PUBLIC"
-  }
-  if (/private|draft only/.test(lower) || /비공개|초안/.test(prompt)) {
-    nextDraft.visibility = "PRIVATE"
-  }
   if (/\b(?:english|영어)\b/i.test(prompt)) {
     nextDraft.language = "en"
   }

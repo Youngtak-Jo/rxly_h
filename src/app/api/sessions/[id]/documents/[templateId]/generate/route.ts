@@ -10,6 +10,7 @@ import { buildGenerationOptions } from "@/lib/ai-request-options"
 import { withAiTelemetry } from "@/lib/telemetry/ai"
 import {
   buildDocumentContentSchema,
+  normalizeDocumentGenerationConfig,
   normalizeDocumentContentForStorage,
 } from "@/lib/documents/schema"
 import { getSessionDocumentForUser, upsertSessionDocument } from "@/lib/documents/server"
@@ -37,8 +38,6 @@ function buildContextPrompt(args: {
     region: string
   }
   generationConfig: {
-    audience: string
-    outputTone: string
     contextSources: string[]
     systemInstructions: string
     emptyValuePolicy: string
@@ -49,8 +48,6 @@ function buildContextPrompt(args: {
     `Description: ${args.sessionDocumentTemplate.description}`,
     `Document language: ${args.sessionDocumentTemplate.language}`,
     `Document region: ${args.sessionDocumentTemplate.region}`,
-    `Audience: ${args.generationConfig.audience}`,
-    `Tone: ${args.generationConfig.outputTone}`,
     `Empty value policy: ${args.generationConfig.emptyValuePolicy}`,
   ]
 
@@ -184,13 +181,9 @@ export async function POST(
     const schemaJson = activeVersion.schemaJson as {
       nodes: Array<Record<string, unknown>>
     }
-    const generationConfig = activeVersion.generationConfigJson as {
-      audience: string
-      outputTone: string
-      contextSources: string[]
-      systemInstructions: string
-      emptyValuePolicy: string
-    }
+    const generationConfig = normalizeDocumentGenerationConfig(
+      activeVersion.generationConfigJson
+    )
 
     const model = getModel(modelId)
     const prompt = buildContextPrompt({
@@ -223,6 +216,7 @@ export async function POST(
             "Generate a structured medical document matching the supplied schema.",
             "Return only valid structured output.",
             "Honor the requested document language and region.",
+            "Use the template title, description, category, schema, and custom instructions to infer the document's intended purpose and writing style.",
             generationConfig.systemInstructions || "",
           ]
             .filter(Boolean)

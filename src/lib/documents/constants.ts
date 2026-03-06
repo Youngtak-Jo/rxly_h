@@ -50,8 +50,6 @@ const EMPTY_SCHEMA: DocumentTemplateSchema = {
 }
 
 const EMPTY_GENERATION_CONFIG: DocumentGenerationConfig = {
-  audience: "clinician",
-  outputTone: "clinical",
   contextSources: ["transcript", "doctorNotes", "insights"],
   systemInstructions: "",
   emptyValuePolicy: "NOT_PROVIDED",
@@ -86,8 +84,6 @@ export const BUILT_IN_DOCUMENTS: BuiltInDocumentDefinition[] = [
     schema: EMPTY_SCHEMA,
     generationConfig: {
       ...EMPTY_GENERATION_CONFIG,
-      audience: "patient",
-      outputTone: "plain-language",
       contextSources: ["transcript", "doctorNotes", "insights", "ddx"],
     },
   },

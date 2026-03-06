@@ -862,17 +862,12 @@
     "templateSettings": {
       "title": "Template settings",
       "basicTitle": "Document basics",
-      "basicDescription": "Set the document name, description, category, and visibility before editing the structure.",
+      "basicDescription": "Set the document name, description, and category before editing the structure. You can publish it during review.",
       "titleLabel": "Title",
       "categoryLabel": "Category",
       "languageLabel": "Language",
       "regionLabel": "Region",
-      "visibilityLabel": "Visibility",
-      "descriptionLabel": "Description",
-      "visibility": {
-        "private": "Private draft",
-        "public": "Public"
-      }
+      "descriptionLabel": "Description"
     },
     "schemaEditor": {
       "title": "Schema editor",
@@ -891,8 +886,6 @@
       "title": "Generation settings",
       "advancedTitle": "Advanced generation settings",
       "advancedDescription": "Tune how AI should produce this document when users generate it from session context.",
-      "audienceLabel": "Audience",
-      "outputToneLabel": "Output tone",
       "systemInstructionsLabel": "System instructions",
       "contextSourcesLabel": "Context sources"
     },
@@ -1012,7 +1005,6 @@
         "category": "Category",
         "language": "Language",
         "region": "Region",
-        "visibility": "Visibility",
         "schemaNodes": "Schema fields",
         "schemaNodesValue": "{count} fields",
         "contextSources": "Context sources",

@@ -185,27 +185,6 @@ export function DocumentBuilderStepSettings({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>{t("templateSettings.visibilityLabel")}</Label>
-              <Select
-                value={draft.visibility}
-                onValueChange={(value: "PRIVATE" | "PUBLIC") =>
-                  setDraft((d) => ({ ...d, visibility: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PRIVATE">
-                    {t("templateSettings.visibility.private")}
-                  </SelectItem>
-                  <SelectItem value="PUBLIC">
-                    {t("templateSettings.visibility.public")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </CardContent>
         </Card>
 
@@ -234,40 +213,6 @@ export function DocumentBuilderStepSettings({
               >
                 {t("model.changeInSettings")}
               </Button>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>{t("generationSettings.audienceLabel")}</Label>
-                <Input
-                  value={draft.generationConfig.audience}
-                  onChange={(event) =>
-                    setDraft((d) => ({
-                      ...d,
-                      generationConfig: {
-                        ...d.generationConfig,
-                        audience: event.target.value,
-                      },
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>{t("generationSettings.outputToneLabel")}</Label>
-                <Input
-                  value={draft.generationConfig.outputTone}
-                  onChange={(event) =>
-                    setDraft((d) => ({
-                      ...d,
-                      generationConfig: {
-                        ...d.generationConfig,
-                        outputTone: event.target.value,
-                      },
-                    }))
-                  }
-                />
-              </div>
             </div>
 
             <div className="space-y-2">

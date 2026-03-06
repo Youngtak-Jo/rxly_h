@@ -28,7 +28,7 @@ function buildPreviewSystemPrompt(args: {
 
   return [
     "You generate synthetic but realistic medical document previews.",
-    "Imagine a plausible post-consultation scenario and fill the document as if it had just been generated for clinician review.",
+    "Imagine a plausible post-consultation scenario and fill the document as if it had just been generated for its intended document purpose.",
     "Return only valid structured output matching the supplied schema.",
     "Populate every field with specific, non-placeholder values whenever a realistic synthetic value can be inferred.",
     "For long-text fields, write complete concise content rather than fragments.",
@@ -36,6 +36,7 @@ function buildPreviewSystemPrompt(args: {
     "Do not use real PHI, real phone numbers, or real addresses.",
     "Keep the case clinically coherent.",
     "If the document is regulatory, billing, or administrative, produce values that look ready for that workflow.",
+    "Use the title, description, category, schema, and system instructions to infer the document's intended use and writing style.",
     "If the document is patient-facing, use plain language.",
     "If the document is clinician-facing, use concise clinical wording.",
     `Document language: ${args.draft.language}`,
@@ -44,8 +45,6 @@ function buildPreviewSystemPrompt(args: {
     `Title: ${args.draft.title}`,
     `Description: ${args.draft.description}`,
     `Category: ${args.draft.category}`,
-    `Audience: ${args.draft.generationConfig.audience}`,
-    `Output tone: ${args.draft.generationConfig.outputTone}`,
     `Context sources: ${args.draft.generationConfig.contextSources.join(", ")}`,
     regionInstruction,
     args.draft.generationConfig.systemInstructions

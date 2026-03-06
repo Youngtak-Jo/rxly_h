@@ -63,7 +63,6 @@ export function DocumentBuilderStepReview({
   category,
   language,
   region,
-  visibility,
   schemaNodeCount,
   contextSources,
   publishedVersionNumber,
@@ -80,7 +79,6 @@ export function DocumentBuilderStepReview({
   category: string
   language: "en" | "ko"
   region: "global" | "kr" | "us"
-  visibility: "PRIVATE" | "PUBLIC"
   schemaNodeCount: number
   contextSources: string[]
   publishedVersionNumber: number | null
@@ -147,14 +145,6 @@ export function DocumentBuilderStepReview({
               <SummaryRow
                 label={t("review.summary.region")}
                 value={regionLabel}
-              />
-              <SummaryRow
-                label={t("review.summary.visibility")}
-                value={
-                  visibility === "PUBLIC"
-                    ? t("templateSettings.visibility.public")
-                    : t("templateSettings.visibility.private")
-                }
               />
               <SummaryRow
                 label={t("review.summary.schemaNodes")}
