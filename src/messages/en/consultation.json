@@ -872,13 +872,28 @@
     "schemaEditor": {
       "title": "Schema editor",
       "description": "Add fields and groups that define the document structure.",
+      "paletteTitle": "Block library",
+      "paletteDescription": "Start with building blocks, then arrange them into the final document structure.",
       "canvasDescription": "Define the schema and field properties for the final document structure in this step.",
       "empty": "No fields yet. Start from AI or add fields manually.",
       "emptyDescription": "Add at least one field or group to define the document shape before review.",
+      "insertHere": "Insert block",
+      "dropHere": "Drop block here",
+      "emptyGroupTitle": "This group is empty",
+      "emptyGroupDescription": "Insert a block here or drag one into this group.",
       "nodeUntitled": "Untitled field",
       "inspectorTitle": "Field Properties",
       "inspectorEmptyTitle": "Select a field",
       "inspectorEmptyDescription": "Click any block in the schema canvas to edit its properties here.",
+      "mobileInspectorTitle": "Block properties",
+      "mobileInspectorDescription": "Select a block to edit its type, key, labels, and guidance.",
+      "typeDescriptions": {
+        "shortText": "Single-line values such as names, codes, or short findings.",
+        "longText": "Paragraph-style notes, explanations, or narrative sections.",
+        "stringList": "One field that expands into a list of line-by-line items.",
+        "group": "A fixed set of related child fields shown together.",
+        "repeatableGroup": "A child block set that can repeat for multiple entries."
+      },
       "addField": "Add field",
       "addGroup": "Add group"
     },
@@ -937,6 +952,8 @@
       "actions": {
         "expand": "Expand details",
         "collapse": "Collapse details",
+        "insert": "Insert block",
+        "drag": "Drag to move",
         "moveUp": "Move up",
         "moveDown": "Move down",
         "delete": "Delete node",

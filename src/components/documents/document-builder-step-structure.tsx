@@ -8,18 +8,39 @@ import {
   type SetStateAction,
 } from "react"
 import {
-  IconArrowDown,
-  IconArrowUp,
-  IconLoader2,
-  IconPlus,
-  IconSparkles,
-  IconTrash,
-} from "@tabler/icons-react"
+  MouseSensor,
+  TouchSensor,
+  DndContext,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core"
+import { CSS } from "@dnd-kit/utilities"
+import type { LucideIcon } from "lucide-react"
+import {
+  AlignLeft,
+  ArrowDown,
+  ArrowUp,
+  FolderClosed,
+  GripVertical,
+  List,
+  Loader2,
+  Plus,
+  Repeat2,
+  Sparkles,
+  Trash2,
+  Type,
+} from "lucide-react"
 import { useTranslations } from "next-intl"
 import {
-  appendChildAtPath,
   createNode,
+  getNodeAtPath,
+  insertNodeAtPath,
   moveNodeAtPath,
+  moveNodeToTarget,
   removeNodeAtPath,
   updateNodeAtPath,
 } from "@/components/documents/document-builder-utils"
@@ -32,6 +53,19 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -41,14 +75,57 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
+import { useMobileViewport } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import type {
   DocumentBuilderDraft,
   DocumentSchemaNode,
   DocumentSchemaNodeType,
 } from "@/types/document"
+
+const BLOCK_TYPE_ORDER: DocumentSchemaNodeType[] = [
+  "shortText",
+  "longText",
+  "stringList",
+  "group",
+  "repeatableGroup",
+]
+
+const BLOCK_TYPE_META: Record<
+  DocumentSchemaNodeType,
+  {
+    icon: LucideIcon
+    iconClassName: string
+    surfaceClassName: string
+  }
+> = {
+  shortText: {
+    icon: Type,
+    iconClassName: "text-sky-700",
+    surfaceClassName: "bg-sky-100",
+  },
+  longText: {
+    icon: AlignLeft,
+    iconClassName: "text-cyan-700",
+    surfaceClassName: "bg-cyan-100",
+  },
+  stringList: {
+    icon: List,
+    iconClassName: "text-amber-700",
+    surfaceClassName: "bg-amber-100",
+  },
+  group: {
+    icon: FolderClosed,
+    iconClassName: "text-emerald-700",
+    surfaceClassName: "bg-emerald-100",
+  },
+  repeatableGroup: {
+    icon: Repeat2,
+    iconClassName: "text-violet-700",
+    surfaceClassName: "bg-violet-100",
+  },
+}
 
 function humanizeKey(key: string) {
   return key
@@ -61,6 +138,80 @@ function humanizeKey(key: string) {
 
 function toNodePathId(path: number[]) {
   return path.join(".")
+}
+
+function buildNodeDragId(path: number[]) {
+  return `node:${toNodePathId(path)}`
+}
+
+function parseNodeDragId(value: string) {
+  if (!value.startsWith("node:")) return null
+
+  const rawPath = value.slice("node:".length)
+  if (!rawPath) return null
+  return rawPath.split(".").map(Number)
+}
+
+function buildSlotDropId(parentPath: number[], index: number) {
+  const parentPathId = parentPath.length > 0 ? parentPath.join(".") : "root"
+  return `slot:${parentPathId}:${index}`
+}
+
+function parseSlotDropId(value: string): { parentPath: number[]; index: number } | null {
+  if (!value.startsWith("slot:")) return null
+
+  const [, parentPathId, rawIndex] = value.split(":")
+  const index = Number(rawIndex)
+  if (Number.isNaN(index)) return null
+
+  return {
+    parentPath:
+      parentPathId === "root" || !parentPathId
+        ? []
+        : parentPathId.split(".").map(Number),
+    index,
+  }
+}
+
+function isPathWithinPath(path: number[], ancestorPath: number[]) {
+  if (ancestorPath.length > path.length) return false
+  return ancestorPath.every((segment, index) => path[index] === segment)
+}
+
+function isGroupNode(
+  node: DocumentSchemaNode
+): node is Extract<DocumentSchemaNode, { children: DocumentSchemaNode[] }> {
+  return node.type === "group" || node.type === "repeatableGroup"
+}
+
+function getActiveNodeByPath(
+  nodes: DocumentSchemaNode[],
+  pathId: string | null
+): { node: DocumentSchemaNode; path: number[] } | null {
+  if (!pathId) return null
+  const path = pathId.split(".").map(Number)
+  const node = getNodeAtPath(nodes, path)
+  return node ? { node, path } : null
+}
+
+function findNodePathByReference(
+  nodes: DocumentSchemaNode[],
+  targetNode: DocumentSchemaNode
+): number[] | null {
+  for (let index = 0; index < nodes.length; index += 1) {
+    const node = nodes[index]
+    if (node === targetNode) {
+      return [index]
+    }
+
+    if (!isGroupNode(node)) continue
+    const childPath = findNodePathByReference(node.children, targetNode)
+    if (childPath) {
+      return [index, ...childPath]
+    }
+  }
+
+  return null
 }
 
 function coerceNodeType(
@@ -110,12 +261,178 @@ function CompactActionButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "size-7 rounded-md text-muted-foreground hover:text-foreground",
+        "size-8 rounded-xl text-muted-foreground hover:text-foreground",
         destructive && "text-destructive hover:text-destructive"
       )}
     >
       {children}
     </Button>
+  )
+}
+
+function BlockTypeMenu({
+  onSelect,
+  compact = false,
+}: {
+  onSelect: (type: DocumentSchemaNodeType) => void
+  compact?: boolean
+}) {
+  const t = useTranslations("DocumentBuilder")
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant={compact ? "outline" : "secondary"}
+          size={compact ? "icon" : "sm"}
+          className={cn(
+            compact
+              ? "size-8 rounded-full border-dashed bg-background shadow-none"
+              : "gap-2 rounded-full border border-border/60 bg-background shadow-none"
+          )}
+          aria-label={t("schemaNode.actions.insert")}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Plus className="size-4" />
+          {!compact ? <span>{t("schemaEditor.insertHere")}</span> : null}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="center" className="w-64">
+        {BLOCK_TYPE_ORDER.map((type) => {
+          const meta = BLOCK_TYPE_META[type]
+          const Icon = meta.icon
+
+          return (
+            <DropdownMenuItem
+              key={type}
+              className="items-start gap-3 py-2"
+              onSelect={() => onSelect(type)}
+            >
+              <div
+                className={cn(
+                  "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl",
+                  meta.surfaceClassName
+                )}
+              >
+                <Icon className={cn("size-4", meta.iconClassName)} />
+              </div>
+              <div className="min-w-0 space-y-0.5">
+                <p className="text-sm font-medium">
+                  {t(`schemaNode.types.${type}`)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t(`schemaEditor.typeDescriptions.${type}`)}
+                </p>
+              </div>
+            </DropdownMenuItem>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function InsertionSlot({
+  parentPath,
+  index,
+  onInsertNode,
+  emptyState = false,
+}: {
+  parentPath: number[]
+  index: number
+  onInsertNode: (parentPath: number[], index: number, type: DocumentSchemaNodeType) => void
+  emptyState?: false | "root" | "group"
+}) {
+  const t = useTranslations("DocumentBuilder")
+  const { setNodeRef, isOver } = useDroppable({
+    id: buildSlotDropId(parentPath, index),
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "relative"
+      )}
+      onClick={(event) => event.stopPropagation()}
+    >
+      {emptyState ? (
+        <div
+          className={cn(
+            "rounded-2xl border border-dashed px-4 py-5 text-center transition-colors",
+            isOver
+              ? "border-primary bg-primary/5"
+              : "border-border/60 bg-background/70"
+          )}
+        >
+          <div className="mx-auto flex max-w-md flex-col items-center gap-3">
+            <div className="flex items-center gap-3 self-stretch">
+              <div
+                className={cn(
+                  "h-px flex-1",
+                  isOver ? "bg-primary/50" : "bg-border/60"
+                )}
+              />
+              <BlockTypeMenu
+                onSelect={(type) => onInsertNode(parentPath, index, type)}
+                compact={false}
+              />
+              <div
+                className={cn(
+                  "h-px flex-1",
+                  isOver ? "bg-primary/50" : "bg-border/60"
+                )}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">
+                {emptyState === "root"
+                  ? t("schemaEditor.empty")
+                  : t("schemaEditor.emptyGroupTitle")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isOver
+                  ? t("schemaEditor.dropHere")
+                  : emptyState === "root"
+                    ? t("schemaEditor.emptyDescription")
+                    : t("schemaEditor.emptyGroupDescription")}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          className={cn(
+            "flex items-center gap-3 rounded-full px-2 py-1 transition-colors",
+            isOver && "bg-primary/5"
+          )}
+        >
+          <div
+            className={cn(
+              "h-px flex-1",
+              isOver ? "bg-primary/50" : "bg-border/60"
+            )}
+          />
+          <BlockTypeMenu
+            onSelect={(type) => onInsertNode(parentPath, index, type)}
+            compact
+          />
+          <div
+            className={cn(
+              "h-px flex-1",
+              isOver ? "bg-primary/50" : "bg-border/60"
+            )}
+          />
+        </div>
+      )}
+
+      {!emptyState && isOver ? (
+        <p className="mt-1 text-center text-[11px] font-medium text-primary">
+          {t("schemaEditor.dropHere")}
+        </p>
+      ) : null}
+    </div>
   )
 }
 
@@ -149,19 +466,11 @@ function NodeDetailsPanel({
             <SelectValue placeholder={t("schemaNode.selectType")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="shortText">
-              {t("schemaNode.types.shortText")}
-            </SelectItem>
-            <SelectItem value="longText">
-              {t("schemaNode.types.longText")}
-            </SelectItem>
-            <SelectItem value="stringList">
-              {t("schemaNode.types.stringList")}
-            </SelectItem>
-            <SelectItem value="group">{t("schemaNode.types.group")}</SelectItem>
-            <SelectItem value="repeatableGroup">
-              {t("schemaNode.types.repeatableGroup")}
-            </SelectItem>
+            {BLOCK_TYPE_ORDER.map((type) => (
+              <SelectItem key={type} value={type}>
+                {t(`schemaNode.types.${type}`)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -218,7 +527,7 @@ function NodeDetailsPanel({
               helpText: event.target.value,
             }))
           }
-          className="min-h-20 resize-y"
+          className="min-h-24 resize-y"
           placeholder={t("schemaNode.helpTextPlaceholder")}
         />
       </div>
@@ -239,71 +548,119 @@ function NodeDetailsPanel({
   )
 }
 
-function getActiveNodeByPath(
-  nodes: DocumentSchemaNode[],
-  pathId: string | null
-): { node: DocumentSchemaNode; path: number[] } | null {
-  if (!pathId) return null
-
-  const path = pathId.split(".").map(Number)
-  let currentNodes = nodes
-  let targetNode: DocumentSchemaNode | null = null
-
-  for (let index = 0; index < path.length; index += 1) {
-    const nodeIndex = path[index]
-    if (!currentNodes[nodeIndex]) return null
-
-    targetNode = currentNodes[nodeIndex]
-    if (index < path.length - 1 && "children" in targetNode) {
-      if (!Array.isArray(targetNode.children)) return null
-      currentNodes = targetNode.children
-    } else if (index < path.length - 1) {
-      return null
-    }
+function SchemaCanvasLevel({
+  nodes,
+  parentPath,
+  activeNodePathId,
+  draggingNodePathId,
+  onSetActiveNode,
+  onMoveNode,
+  onRemoveNode,
+  onInsertNode,
+}: {
+  nodes: DocumentSchemaNode[]
+  parentPath: number[]
+  activeNodePathId: string | null
+  draggingNodePathId: string | null
+  onSetActiveNode: (pathId: string) => void
+  onMoveNode: (path: number[], direction: "up" | "down") => void
+  onRemoveNode: (path: number[]) => void
+  onInsertNode: (parentPath: number[], index: number, type: DocumentSchemaNodeType) => void
+}) {
+  if (nodes.length === 0) {
+    return (
+      <InsertionSlot
+        parentPath={parentPath}
+        index={0}
+        onInsertNode={onInsertNode}
+        emptyState={parentPath.length === 0 ? "root" : "group"}
+      />
+    )
   }
 
-  if (!targetNode) return null
-  return { node: targetNode, path }
+  return (
+    <div className="space-y-3">
+      {nodes.map((node, index) => (
+        <div key={`${parentPath.join(".")}-${node.key}-${index}`} className="space-y-3">
+          <InsertionSlot
+            parentPath={parentPath}
+            index={index}
+            onInsertNode={onInsertNode}
+          />
+          <SchemaBlockCard
+            node={node}
+            path={[...parentPath, index]}
+            siblingCount={nodes.length}
+            activeNodePathId={activeNodePathId}
+            draggingNodePathId={draggingNodePathId}
+            onSetActiveNode={onSetActiveNode}
+            onMoveNode={onMoveNode}
+            onRemoveNode={onRemoveNode}
+            onInsertNode={onInsertNode}
+          />
+        </div>
+      ))}
+      <InsertionSlot
+        parentPath={parentPath}
+        index={nodes.length}
+        onInsertNode={onInsertNode}
+      />
+    </div>
+  )
 }
 
-function CanvasBlockEditor({
+function SchemaBlockCard({
   node,
   path,
   siblingCount,
   activeNodePathId,
+  draggingNodePathId,
   onSetActiveNode,
-  onUpdateNode,
-  onRemoveNode,
   onMoveNode,
-  onAddChild,
+  onRemoveNode,
+  onInsertNode,
 }: {
   node: DocumentSchemaNode
   path: number[]
   siblingCount: number
   activeNodePathId: string | null
+  draggingNodePathId: string | null
   onSetActiveNode: (pathId: string) => void
-  onUpdateNode: (
-    path: number[],
-    updater: (node: DocumentSchemaNode) => DocumentSchemaNode
-  ) => void
-  onRemoveNode: (path: number[]) => void
   onMoveNode: (path: number[], direction: "up" | "down") => void
-  onAddChild: (path: number[], type: DocumentSchemaNodeType) => void
+  onRemoveNode: (path: number[]) => void
+  onInsertNode: (parentPath: number[], index: number, type: DocumentSchemaNodeType) => void
 }) {
   const t = useTranslations("DocumentBuilder")
   const pathId = toNodePathId(path)
   const isActive = activeNodePathId === pathId
-  const isGroup = node.type === "group" || node.type === "repeatableGroup"
-  const nodeTitle =
-    node.label || humanizeKey(node.key) || t("schemaEditor.nodeUntitled")
+  const isDraggingSelf = draggingNodePathId === pathId
+  const meta = BLOCK_TYPE_META[node.type]
+  const Icon = meta.icon
+  const title = node.label || humanizeKey(node.key) || t("schemaEditor.nodeUntitled")
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: buildNodeDragId(path),
+    })
+
+  const childSummary =
+    isGroupNode(node) && node.children.length > 0
+      ? node.type === "repeatableGroup"
+        ? t("schemaNode.itemCount", { count: node.children.length })
+        : t("schemaNode.childCount", { count: node.children.length })
+      : null
 
   return (
     <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Translate.toString(transform),
+      }}
       className={cn(
-        "group/block relative rounded-lg border bg-background transition-colors",
+        "group/block relative rounded-3xl border bg-card shadow-sm transition-all",
         isActive
-          ? "border-primary/40 ring-1 ring-primary/20"
-          : "border-border/60 hover:border-border"
+          ? "border-primary/50 ring-4 ring-primary/10"
+          : "border-border/60 hover:border-border",
+        (isDragging || isDraggingSelf) && "z-20 opacity-75 shadow-xl"
       )}
       onClick={(event) => {
         event.stopPropagation()
@@ -312,7 +669,7 @@ function CanvasBlockEditor({
     >
       <div
         className={cn(
-          "absolute -right-2 -top-2 z-20 flex items-center gap-0.5 rounded-md border border-border/80 bg-background px-0.5 py-0.5 shadow-sm transition-opacity",
+          "absolute right-3 top-3 z-20 flex items-center gap-1 rounded-full border border-border/70 bg-background/95 p-1 shadow-sm transition-opacity",
           isActive
             ? "opacity-100"
             : "opacity-0 group-hover/block:opacity-100 group-focus-within/block:opacity-100"
@@ -326,7 +683,7 @@ function CanvasBlockEditor({
             onMoveNode(path, "up")
           }}
         >
-          <IconArrowUp className="size-3" />
+          <ArrowUp className="size-4" />
         </CompactActionButton>
         <CompactActionButton
           label={t("schemaNode.actions.moveDown")}
@@ -336,7 +693,7 @@ function CanvasBlockEditor({
             onMoveNode(path, "down")
           }}
         >
-          <IconArrowDown className="size-3" />
+          <ArrowDown className="size-4" />
         </CompactActionButton>
         <CompactActionButton
           label={t("schemaNode.actions.delete")}
@@ -346,129 +703,172 @@ function CanvasBlockEditor({
             onRemoveNode(path)
           }}
         >
-          <IconTrash className="size-3" />
+          <Trash2 className="size-4" />
         </CompactActionButton>
       </div>
 
-      <div className="space-y-3 p-3.5 sm:p-4">
-        {isGroup ? (
-          <>
-            <div className="space-y-0.5">
-              <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
-                <span>{nodeTitle}</span>
-                {node.type === "repeatableGroup" ? (
-                  <span className="rounded border border-border/60 bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    {t("schemaNode.types.repeatableGroup")}
-                  </span>
-                ) : null}
-                {node.required ? (
-                  <span className="font-bold text-destructive">*</span>
-                ) : null}
-              </div>
-              {node.helpText ? (
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  {node.helpText}
-                </p>
-              ) : null}
-            </div>
+      <div className="space-y-4 p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="mt-0.5 size-9 shrink-0 rounded-2xl text-muted-foreground"
+            aria-label={t("schemaNode.actions.drag")}
+            onClick={(event) => event.stopPropagation()}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="size-4" />
+          </Button>
 
-            <div className="space-y-2.5 rounded-md border border-dashed border-border/50 bg-muted/10 p-3">
-              {node.children.length === 0 ? (
-                <div className="py-3 text-center text-xs text-muted-foreground">
-                  {t("schemaNode.noChildren")}
-                </div>
-              ) : (
-                node.children.map((child, index) => (
-                  <CanvasBlockEditor
-                    key={`${pathId}-${child.key}-${index}`}
-                    node={child}
-                    path={[...path, index]}
-                    siblingCount={node.children.length}
-                    activeNodePathId={activeNodePathId}
-                    onSetActiveNode={onSetActiveNode}
-                    onUpdateNode={onUpdateNode}
-                    onRemoveNode={onRemoveNode}
-                    onMoveNode={onMoveNode}
-                    onAddChild={onAddChild}
-                  />
-                ))
-              )}
-
-              <div
-                className="flex flex-wrap justify-center gap-1.5"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 gap-1 text-xs"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onAddChild(path, "shortText")
-                    onSetActiveNode(toNodePathId([...path, node.children.length]))
-                  }}
-                >
-                  <IconPlus className="size-3" />
-                  {t("schemaEditor.addField")}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 gap-1 text-xs"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onAddChild(path, "group")
-                    onSetActiveNode(toNodePathId([...path, node.children.length]))
-                  }}
-                >
-                  <IconPlus className="size-3" />
-                  {t("schemaEditor.addGroup")}
-                </Button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="pointer-events-none space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
-              <span>{nodeTitle}</span>
-              {node.required ? (
-                <span className="font-bold text-destructive">*</span>
-              ) : null}
-              <span className="rounded border border-border/50 bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {node.type === "shortText"
-                  ? t("schemaNode.types.shortText")
-                  : node.type === "longText"
-                    ? t("schemaNode.types.longText")
-                    : t("schemaNode.types.stringList")}
-              </span>
-            </div>
-            {node.helpText ? (
-              <p className="text-xs text-muted-foreground">{node.helpText}</p>
-            ) : null}
-            {node.type === "shortText" ? (
-              <Input
-                readOnly
-                tabIndex={-1}
-                placeholder={node.placeholder || "..."}
-                className="h-9 border-border/50 bg-muted/20 shadow-none"
-              />
-            ) : (
-              <Textarea
-                readOnly
-                tabIndex={-1}
-                placeholder={
-                  node.placeholder ||
-                  (node.type === "stringList" ? "Item 1\nItem 2..." : "...")
-                }
-                className="min-h-[80px] resize-none border-border/50 bg-muted/20 shadow-none"
-              />
+          <div
+            className={cn(
+              "mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-2xl",
+              meta.surfaceClassName
             )}
+          >
+            <Icon className={cn("size-5", meta.iconClassName)} />
           </div>
-        )}
+
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex flex-wrap items-center gap-2 pr-24">
+              <p className="min-w-0 truncate text-sm font-semibold text-foreground sm:text-base">
+                {title}
+              </p>
+              <span className="rounded-full border border-border/70 bg-muted/50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {t(`schemaNode.types.${node.type}`)}
+              </span>
+              {node.required ? (
+                <span className="rounded-full bg-destructive/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+                  {t("schemaNode.required")}
+                </span>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="rounded-full bg-muted px-2.5 py-1 font-mono text-[11px] text-foreground/75">
+                {node.key}
+              </span>
+              {childSummary ? <span>{childSummary}</span> : null}
+            </div>
+
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {node.helpText || t(`schemaEditor.typeDescriptions.${node.type}`)}
+            </p>
+          </div>
+        </div>
+
+        {isGroupNode(node) ? (
+          <div className="rounded-2xl border border-dashed border-border/60 bg-muted/15 p-3 sm:p-4">
+            <SchemaCanvasLevel
+              nodes={node.children}
+              parentPath={path}
+              activeNodePathId={activeNodePathId}
+              draggingNodePathId={draggingNodePathId}
+              onSetActiveNode={onSetActiveNode}
+              onMoveNode={onMoveNode}
+              onRemoveNode={onRemoveNode}
+              onInsertNode={onInsertNode}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
+  )
+}
+
+function SchemaPalette({
+  onAppend,
+}: {
+  onAppend: (type: DocumentSchemaNodeType) => void
+}) {
+  const t = useTranslations("DocumentBuilder")
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <h2 className="text-sm font-semibold">{t("schemaEditor.paletteTitle")}</h2>
+        <p className="text-xs text-muted-foreground">
+          {t("schemaEditor.paletteDescription")}
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {BLOCK_TYPE_ORDER.map((type) => {
+          const meta = BLOCK_TYPE_META[type]
+          const Icon = meta.icon
+
+          return (
+            <Button
+              key={type}
+              type="button"
+              variant="outline"
+              className="h-auto items-start justify-start rounded-3xl border-border/60 px-4 py-4 text-left shadow-none"
+              onClick={() => onAppend(type)}
+            >
+              <div className="flex w-full items-start gap-3">
+                <div
+                  className={cn(
+                    "flex size-10 shrink-0 items-center justify-center rounded-2xl",
+                    meta.surfaceClassName
+                  )}
+                >
+                  <Icon className={cn("size-5", meta.iconClassName)} />
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    {t(`schemaNode.types.${type}`)}
+                  </p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {t(`schemaEditor.typeDescriptions.${type}`)}
+                  </p>
+                </div>
+              </div>
+            </Button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function SchemaInspector({
+  activeNodeData,
+  onUpdateNode,
+}: {
+  activeNodeData: { node: DocumentSchemaNode; path: number[] } | null
+  onUpdateNode: (
+    path: number[],
+    updater: (node: DocumentSchemaNode) => DocumentSchemaNode
+  ) => void
+}) {
+  const t = useTranslations("DocumentBuilder")
+
+  if (!activeNodeData) {
+    return (
+      <div className="flex h-[260px] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+        <div className="rounded-full bg-muted/50 p-3">
+          <Sparkles className="size-5 text-muted-foreground/40" />
+        </div>
+        <div className="space-y-0.5">
+          <p className="text-xs font-medium text-foreground/70">
+            {t("schemaEditor.inspectorEmptyTitle")}
+          </p>
+          <p className="mx-auto max-w-[220px] text-[11px] text-muted-foreground">
+            {t("schemaEditor.inspectorEmptyDescription")}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <NodeDetailsPanel
+      node={activeNodeData.node}
+      path={activeNodeData.path}
+      onUpdate={onUpdateNode}
+    />
   )
 }
 
@@ -496,18 +896,110 @@ export function DocumentBuilderStepSchema({
   validationError: string | null
 }) {
   const t = useTranslations("DocumentBuilder")
+  const { isMobile } = useMobileViewport()
   const [activeNodePathId, setActiveNodePathId] = useState<string | null>(null)
+  const [draggingNodePathId, setDraggingNodePathId] = useState<string | null>(null)
   const activeNodeData = getActiveNodeByPath(draft.schema.nodes, activeNodePathId)
+  const resolvedActiveNodePathId = activeNodeData ? activeNodePathId : null
 
-  const updateNodes = (
-    updater: (nodes: DocumentSchemaNode[]) => DocumentSchemaNode[]
-  ) => {
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 6,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 150,
+        tolerance: 6,
+      },
+    })
+  )
+
+  const commitNodes = (nextNodes: DocumentSchemaNode[]) => {
     setDraft((currentDraft) => ({
       ...currentDraft,
       schema: {
-        nodes: updater(currentDraft.schema.nodes),
+        nodes: nextNodes,
       },
     }))
+  }
+
+  const focusNode = (nextNodes: DocumentSchemaNode[], node: DocumentSchemaNode | null) => {
+    if (!node) {
+      setActiveNodePathId(null)
+      return
+    }
+
+    const nextPath = findNodePathByReference(nextNodes, node)
+    setActiveNodePathId(nextPath ? toNodePathId(nextPath) : null)
+  }
+
+  const handleInsertNode = (
+    parentPath: number[],
+    index: number,
+    type: DocumentSchemaNodeType
+  ) => {
+    const node = createNode(type)
+    const nextNodes = insertNodeAtPath(draft.schema.nodes, parentPath, index, node)
+    commitNodes(nextNodes)
+    focusNode(nextNodes, node)
+  }
+
+  const handleRemoveNode = (path: number[]) => {
+    const selectedNode = activeNodeData?.node ?? null
+    const nextNodes = removeNodeAtPath(draft.schema.nodes, path)
+    commitNodes(nextNodes)
+    focusNode(nextNodes, selectedNode)
+  }
+
+  const handleMoveByDirection = (path: number[], direction: "up" | "down") => {
+    const selectedNode = activeNodeData?.node ?? null
+    const nextNodes = moveNodeAtPath(draft.schema.nodes, path, direction)
+    commitNodes(nextNodes)
+    focusNode(nextNodes, selectedNode)
+  }
+
+  const handleDragStart = (event: DragStartEvent) => {
+    if (typeof event.active.id !== "string") return
+    const path = parseNodeDragId(event.active.id)
+    setDraggingNodePathId(path ? toNodePathId(path) : null)
+  }
+
+  const resetDragState = () => {
+    setDraggingNodePathId(null)
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    resetDragState()
+
+    if (typeof event.active.id !== "string" || typeof event.over?.id !== "string") {
+      return
+    }
+
+    const sourcePath = parseNodeDragId(event.active.id)
+    const target = parseSlotDropId(event.over.id)
+    if (!sourcePath || !target) return
+
+    const movedNode = getNodeAtPath(draft.schema.nodes, sourcePath)
+    if (!movedNode) return
+
+    const selectedNode =
+      activeNodeData && isPathWithinPath(activeNodeData.path, sourcePath)
+        ? activeNodeData.node
+        : movedNode
+
+    const result = moveNodeToTarget(
+      draft.schema.nodes,
+      sourcePath,
+      target.parentPath,
+      target.index
+    )
+
+    if (!result) return
+
+    commitNodes(result.nodes)
+    focusNode(result.nodes, selectedNode)
   }
 
   return (
@@ -517,7 +1009,7 @@ export function DocumentBuilderStepSchema({
         onClick={() => setActiveNodePathId(null)}
       >
         <div
-          className="mx-auto flex w-full max-w-3xl flex-col gap-6"
+          className="mx-auto flex w-full max-w-5xl flex-col gap-6"
           onClick={(event) => event.stopPropagation()}
         >
           {validationError ? (
@@ -565,9 +1057,9 @@ export function DocumentBuilderStepSchema({
                       onClick={() => void onAiRevise()}
                     >
                       {aiLoading ? (
-                        <IconLoader2 className="size-3.5 animate-spin" />
+                        <Loader2 className="size-3.5 animate-spin" />
                       ) : (
-                        <IconSparkles className="size-3.5" />
+                        <Sparkles className="size-3.5" />
                       )}
                       {t("aiDraft.revise")}
                     </Button>
@@ -577,139 +1069,44 @@ export function DocumentBuilderStepSchema({
             </Card>
           ) : null}
 
+          <SchemaPalette
+            onAppend={(type) =>
+              handleInsertNode([], draft.schema.nodes.length, type)
+            }
+          />
+
           <div className="space-y-3">
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               <h2 className="text-sm font-semibold">{t("schemaEditor.title")}</h2>
               <p className="text-xs text-muted-foreground">
                 {t("schemaEditor.canvasDescription")}
               </p>
             </div>
 
-            <div className="space-y-3 rounded-lg border border-border/50 bg-muted/5 p-4">
-              {draft.schema.nodes.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border/50 bg-background px-4 py-12 text-center">
-                  <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-muted">
-                    <IconPlus className="size-5 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-sm font-semibold">
-                    {t("schemaEditor.empty")}
-                  </h3>
-                  <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">
-                    {t("schemaEditor.emptyDescription")}
-                  </p>
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={() => {
-                        updateNodes((nodes) => [...nodes, createNode("shortText")])
-                        setActiveNodePathId(
-                          toNodePathId([draft.schema.nodes.length])
-                        )
-                      }}
-                    >
-                      <IconPlus className="size-3.5" />
-                      {t("schemaEditor.addField")}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={() => {
-                        updateNodes((nodes) => [...nodes, createNode("group")])
-                        setActiveNodePathId(
-                          toNodePathId([draft.schema.nodes.length])
-                        )
-                      }}
-                    >
-                      <IconPlus className="size-3.5" />
-                      {t("schemaEditor.addGroup")}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-3">
-                    {draft.schema.nodes.map((node, index) => (
-                      <CanvasBlockEditor
-                        key={`${node.key}-${index}`}
-                        node={node}
-                        path={[index]}
-                        siblingCount={draft.schema.nodes.length}
-                        activeNodePathId={activeNodePathId}
-                        onSetActiveNode={setActiveNodePathId}
-                        onUpdateNode={(nodePath, updater) =>
-                          updateNodes((nodes) =>
-                            updateNodeAtPath(nodes, nodePath, updater)
-                          )
-                        }
-                        onRemoveNode={(nodePath) => {
-                          updateNodes((nodes) => removeNodeAtPath(nodes, nodePath))
-                          const removedPathId = toNodePathId(nodePath)
-                          if (
-                            activeNodePathId === removedPathId ||
-                            activeNodePathId?.startsWith(`${removedPathId}.`)
-                          ) {
-                            setActiveNodePathId(null)
-                          }
-                        }}
-                        onMoveNode={(nodePath, direction) =>
-                          updateNodes((nodes) =>
-                            moveNodeAtPath(nodes, nodePath, direction)
-                          )
-                        }
-                        onAddChild={(nodePath, type) =>
-                          updateNodes((nodes) =>
-                            appendChildAtPath(nodes, nodePath, createNode(type))
-                          )
-                        }
-                      />
-                    ))}
-                  </div>
-
-                  <div className="flex justify-center gap-2 pt-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={() => {
-                        updateNodes((nodes) => [...nodes, createNode("shortText")])
-                        setActiveNodePathId(
-                          toNodePathId([draft.schema.nodes.length])
-                        )
-                      }}
-                    >
-                      <IconPlus className="size-3.5" />
-                      {t("schemaEditor.addField")}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={() => {
-                        updateNodes((nodes) => [...nodes, createNode("group")])
-                        setActiveNodePathId(
-                          toNodePathId([draft.schema.nodes.length])
-                        )
-                      }}
-                    >
-                      <IconPlus className="size-3.5" />
-                      {t("schemaEditor.addGroup")}
-                    </Button>
-                  </div>
-                </>
-              )}
+            <div className="rounded-[28px] border border-border/60 bg-muted/10 p-4 sm:p-5">
+              <DndContext
+                sensors={sensors}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragCancel={resetDragState}
+              >
+                <SchemaCanvasLevel
+                  nodes={draft.schema.nodes}
+                  parentPath={[]}
+                  activeNodePathId={resolvedActiveNodePathId}
+                  draggingNodePathId={draggingNodePathId}
+                  onSetActiveNode={setActiveNodePathId}
+                  onMoveNode={handleMoveByDirection}
+                  onRemoveNode={handleRemoveNode}
+                  onInsertNode={handleInsertNode}
+                />
+              </DndContext>
             </div>
           </div>
         </div>
       </div>
 
-      <aside className="hidden w-[320px] shrink-0 border-l bg-card md:block xl:w-[360px]">
+      <aside className="hidden w-[340px] shrink-0 border-l bg-card md:block xl:w-[380px]">
         <div className="border-b px-4 py-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {t("schemaEditor.inspectorTitle")}
@@ -717,31 +1114,49 @@ export function DocumentBuilderStepSchema({
         </div>
 
         <div className="min-h-0 overflow-y-auto p-4">
-          {activeNodeData ? (
-            <NodeDetailsPanel
-              node={activeNodeData.node}
-              path={activeNodeData.path}
-              onUpdate={(nodePath, updater) => {
-                updateNodes((nodes) => updateNodeAtPath(nodes, nodePath, updater))
-              }}
-            />
-          ) : (
-            <div className="flex h-[260px] flex-col items-center justify-center gap-2 text-center text-muted-foreground">
-              <div className="rounded-full bg-muted/50 p-3">
-                <IconSparkles className="size-5 text-muted-foreground/40" />
-              </div>
-              <div className="space-y-0.5">
-                <p className="text-xs font-medium text-foreground/70">
-                  {t("schemaEditor.inspectorEmptyTitle")}
-                </p>
-                <p className="mx-auto max-w-[200px] text-[11px] text-muted-foreground">
-                  {t("schemaEditor.inspectorEmptyDescription")}
-                </p>
-              </div>
-            </div>
-          )}
+          <SchemaInspector
+            activeNodeData={activeNodeData}
+            onUpdateNode={(nodePath, updater) => {
+              commitNodes(updateNodeAtPath(draft.schema.nodes, nodePath, updater))
+            }}
+          />
         </div>
       </aside>
+
+      {isMobile ? (
+        <Drawer
+          open={!!activeNodeData}
+          onOpenChange={(open) => {
+            if (!open) {
+              setActiveNodePathId(null)
+            }
+          }}
+          direction="bottom"
+        >
+          <DrawerContent>
+            <DrawerHeader className="gap-1">
+              <DrawerTitle>{t("schemaEditor.mobileInspectorTitle")}</DrawerTitle>
+              <DrawerDescription>
+                {activeNodeData
+                  ? activeNodeData.node.label ||
+                    humanizeKey(activeNodeData.node.key) ||
+                    t("schemaEditor.nodeUntitled")
+                  : t("schemaEditor.mobileInspectorDescription")}
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="overflow-y-auto px-4 pb-6">
+              <SchemaInspector
+                activeNodeData={activeNodeData}
+                onUpdateNode={(nodePath, updater) => {
+                  commitNodes(
+                    updateNodeAtPath(draft.schema.nodes, nodePath, updater)
+                  )
+                }}
+              />
+            </div>
+          </DrawerContent>
+        </Drawer>
+      ) : null}
     </div>
   )
 }

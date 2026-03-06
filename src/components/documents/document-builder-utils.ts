@@ -80,6 +80,28 @@ export function updateNodeAtPath(
   })
 }
 
+export function getNodeAtPath(
+  nodes: DocumentSchemaNode[],
+  path: number[]
+): DocumentSchemaNode | null {
+  if (path.length === 0) return null
+
+  let currentNodes = nodes
+  let currentNode: DocumentSchemaNode | null = null
+
+  for (const index of path) {
+    const nextNode = currentNodes[index]
+    if (!nextNode) return null
+    currentNode = nextNode
+    currentNodes =
+      nextNode.type === "group" || nextNode.type === "repeatableGroup"
+        ? nextNode.children
+        : []
+  }
+
+  return currentNode
+}
+
 export function removeNodeAtPath(
   nodes: DocumentSchemaNode[],
   path: number[]
@@ -95,6 +117,35 @@ export function removeNodeAtPath(
     return {
       ...node,
       children: removeNodeAtPath(node.children, rest),
+    }
+  })
+}
+
+export function insertNodeAtPath(
+  nodes: DocumentSchemaNode[],
+  parentPath: number[],
+  index: number,
+  child: DocumentSchemaNode
+): DocumentSchemaNode[] {
+  if (parentPath.length === 0) {
+    const next = [...nodes]
+    next.splice(Math.max(0, Math.min(index, next.length)), 0, child)
+    return next
+  }
+
+  return updateNodeAtPath(nodes, parentPath, (node) => {
+    if (node.type !== "group" && node.type !== "repeatableGroup") return node
+
+    const nextChildren = [...node.children]
+    nextChildren.splice(
+      Math.max(0, Math.min(index, nextChildren.length)),
+      0,
+      child
+    )
+
+    return {
+      ...node,
+      children: nextChildren,
     }
   })
 }
@@ -115,6 +166,102 @@ export function appendChildAtPath(
       children: [...node.children, child],
     }
   })
+}
+
+export function getNodeSubtreeDepth(node: DocumentSchemaNode): number {
+  if (node.type !== "group" && node.type !== "repeatableGroup") {
+    return 1
+  }
+
+  return (
+    1 +
+    node.children.reduce((maxDepth, child) => {
+      return Math.max(maxDepth, getNodeSubtreeDepth(child))
+    }, 0)
+  )
+}
+
+function isPathWithinPath(path: number[], ancestorPath: number[]): boolean {
+  if (ancestorPath.length > path.length) return false
+
+  return ancestorPath.every((segment, index) => path[index] === segment)
+}
+
+function rebasePathAfterRemoval(
+  path: number[],
+  removedPath: number[]
+): number[] | null {
+  const limit = Math.min(path.length, removedPath.length)
+
+  for (let index = 0; index < limit; index += 1) {
+    if (path[index] === removedPath[index]) continue
+
+    if (path[index] > removedPath[index]) {
+      return [
+        ...path.slice(0, index),
+        path[index] - 1,
+        ...path.slice(index + 1),
+      ]
+    }
+
+    return path
+  }
+
+  if (removedPath.length <= path.length && isPathWithinPath(path, removedPath)) {
+    return null
+  }
+
+  return path
+}
+
+export function moveNodeToTarget(
+  nodes: DocumentSchemaNode[],
+  sourcePath: number[],
+  targetParentPath: number[],
+  targetIndex: number
+):
+  | {
+      nodes: DocumentSchemaNode[]
+      insertedPath: number[]
+    }
+  | null {
+  const sourceNode = getNodeAtPath(nodes, sourcePath)
+  if (!sourceNode) return null
+
+  if (isPathWithinPath(targetParentPath, sourcePath)) {
+    return null
+  }
+
+  if (targetParentPath.length + getNodeSubtreeDepth(sourceNode) > 3) {
+    return null
+  }
+
+  const rebasedTargetParentPath = rebasePathAfterRemoval(
+    targetParentPath,
+    sourcePath
+  )
+  if (!rebasedTargetParentPath) return null
+
+  const sourceParentPath = sourcePath.slice(0, -1)
+  const sourceIndex = sourcePath[sourcePath.length - 1]
+  const sameParent =
+    sourceParentPath.length === targetParentPath.length &&
+    sourceParentPath.every((segment, index) => targetParentPath[index] === segment)
+
+  const adjustedTargetIndex =
+    sameParent && targetIndex > sourceIndex ? targetIndex - 1 : targetIndex
+
+  const nextNodes = insertNodeAtPath(
+    removeNodeAtPath(nodes, sourcePath),
+    rebasedTargetParentPath,
+    adjustedTargetIndex,
+    sourceNode
+  )
+
+  return {
+    nodes: nextNodes,
+    insertedPath: [...rebasedTargetParentPath, adjustedTargetIndex],
+  }
 }
 
 export function moveNodeAtPath(

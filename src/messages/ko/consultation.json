@@ -872,13 +872,28 @@
     "schemaEditor": {
       "title": "스키마 편집기",
       "description": "문서 구조를 정의하는 필드와 그룹을 추가하세요.",
+      "paletteTitle": "블록 라이브러리",
+      "paletteDescription": "블록을 먼저 추가한 뒤, 최종 문서 구조에 맞게 배치하고 조합하세요.",
       "canvasDescription": "이 단계에서는 최종 문서 구조를 위한 스키마와 필드 속성만 집중해서 편집합니다.",
       "empty": "아직 필드가 없습니다. AI로 시작하거나 직접 추가하세요.",
       "emptyDescription": "검토 단계로 넘어가기 전에 문서 구조를 정의할 필드나 그룹을 하나 이상 추가하세요.",
+      "insertHere": "블록 삽입",
+      "dropHere": "여기에 블록 놓기",
+      "emptyGroupTitle": "이 그룹은 아직 비어 있습니다",
+      "emptyGroupDescription": "여기에 새 블록을 넣거나 다른 블록을 드래그해 넣으세요.",
       "nodeUntitled": "이름 없는 필드",
       "inspectorTitle": "필드 속성",
       "inspectorEmptyTitle": "필드를 선택하세요",
       "inspectorEmptyDescription": "스키마 캔버스의 블록을 클릭하면 여기서 속성을 편집할 수 있습니다.",
+      "mobileInspectorTitle": "블록 속성",
+      "mobileInspectorDescription": "블록을 선택하면 유형, 키, 라벨, 안내 문구를 편집할 수 있습니다.",
+      "typeDescriptions": {
+        "shortText": "이름, 코드, 짧은 소견처럼 한 줄 값에 적합합니다.",
+        "longText": "설명, 서술형 기록, 긴 메모에 적합합니다.",
+        "stringList": "한 필드 안에 여러 줄 항목을 목록으로 받습니다.",
+        "group": "관련된 하위 필드를 하나의 묶음으로 고정 구성합니다.",
+        "repeatableGroup": "동일한 하위 필드 묶음을 여러 항목으로 반복합니다."
+      },
       "addField": "필드 추가",
       "addGroup": "그룹 추가"
     },
@@ -937,6 +952,8 @@
       "actions": {
         "expand": "세부 편집 열기",
         "collapse": "세부 편집 닫기",
+        "insert": "블록 삽입",
+        "drag": "드래그하여 이동",
         "moveUp": "위로 이동",
         "moveDown": "아래로 이동",
         "delete": "삭제",
