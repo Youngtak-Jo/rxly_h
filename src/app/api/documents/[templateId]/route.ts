@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth"
 import { logger } from "@/lib/logger"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import {
+  deleteDocumentTemplate,
   getDocumentTemplateForUser,
   patchDocumentTemplateDraft,
 } from "@/lib/documents/server"
@@ -90,6 +91,42 @@ export async function PATCH(
     logger.error("Failed to patch document template", error)
     return NextResponse.json(
       { error: "Failed to patch document template" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ templateId: string }> }
+) {
+  const { templateId } = await params
+  try {
+    const user = await requireAuth()
+    const { allowed } = checkRateLimit(user.id, "data")
+    if (!allowed) return rateLimitResponse()
+
+    await deleteDocumentTemplate({
+      userId: user.id,
+      templateId,
+    })
+
+    logAudit({
+      userId: user.id,
+      action: "DELETE",
+      resource: "document_template",
+      resourceId: templateId,
+    })
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    if (error instanceof NextResponse) return error
+    if (error instanceof Error && error.message === "Template not found") {
+      return NextResponse.json({ error: "Template not found" }, { status: 404 })
+    }
+    logger.error("Failed to delete document template", error)
+    return NextResponse.json(
+      { error: "Failed to delete document template" },
       { status: 500 }
     )
   }

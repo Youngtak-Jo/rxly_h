@@ -729,6 +729,7 @@
       "publish": "Publish",
       "fork": "Fork",
       "unpublish": "Unpublish",
+      "delete": "Delete",
       "showInWorkspace": "Visible in workspace",
       "hideFromWorkspace": "Hidden from workspace"
     },
@@ -738,7 +739,7 @@
       "catalogTitle": "Available to Install",
       "catalogDescription": "Install public and built-in documents that are not installed yet.",
       "mineTitle": "Manage My Documents",
-      "mineDescription": "Review your documents (public/private) and publish or unpublish them."
+      "mineDescription": "Review your documents (public/private) and publish, unpublish, or delete them."
     },
     "preview": {
       "dialogTitle": "Document preview",
@@ -774,12 +775,14 @@
       "updated": "{title} updated",
       "published": "{title} published",
       "unpublished": "{title} is now private",
+      "deleted": "{title} deleted",
       "copied": "{title} copied to your drafts",
       "actionFailed": "Document action failed",
       "loadFailed": "Failed to load document catalog",
       "workspaceLoadFailed": "Failed to load document workspace",
       "publishFailed": "Failed to publish document",
       "unpublishFailed": "Failed to unpublish document",
+      "deleteFailed": "Failed to delete document",
       "forkFailed": "Failed to fork document",
       "tabEnabled": "{title} is now visible in workspace",
       "tabDisabled": "{title} is now hidden from workspace"
@@ -788,7 +791,10 @@
       "unpublishTitle": "Unpublish this document?",
       "unpublishDescription": "{title} will be removed from the public catalog and switched to private.",
       "cancel": "Cancel",
-      "unpublishAction": "Unpublish"
+      "unpublishAction": "Unpublish",
+      "deleteTitle": "Delete this document?",
+      "deleteDescription": "{title} and its related document data will be permanently deleted.",
+      "deleteAction": "Delete"
     }
   },
   "DocumentBuilder": {

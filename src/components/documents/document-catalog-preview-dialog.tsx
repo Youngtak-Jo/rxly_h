@@ -5,13 +5,9 @@ import { IconLoader2 } from "@tabler/icons-react"
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 
-import { GenericDocumentPreview } from "@/components/documents/generic-document-preview"
+import { DocumentPreviewContent } from "@/components/documents/document-preview-content"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  asBuiltInPatientHandoutPreviewContent,
-  asBuiltInRecordPreviewContent,
-} from "@/lib/documents/built-in-preview"
 import {
   Dialog,
   DialogContent,
@@ -20,11 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { getDocumentCategoryLabelKey } from "@/lib/documents/categories"
-import { buildGenericDocumentSections } from "@/lib/documents/preview"
 import type { DocumentCatalogItem, DocumentPreviewResponse } from "@/types/document"
-import {
-  PATIENT_HANDOUT_SECTION_KEYS,
-} from "@/types/patient-handout"
 
 async function readErrorMessage(
   response: Response,
@@ -42,118 +34,6 @@ async function readErrorMessage(
   return `${fallback} (${response.status})`
 }
 
-function BuiltInRecordPreview({
-  content,
-}: {
-  content: Record<string, unknown>
-}) {
-  const tRecord = useTranslations("Record")
-  const locale = useLocale()
-  const record = asBuiltInRecordPreviewContent(content)
-  if (!record) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        {locale === "ko"
-          ? "기본 제공 문서 미리보기를 렌더링할 수 없습니다."
-          : "Unable to render built-in preview."}
-      </p>
-    )
-  }
-
-  const patientLabel = locale === "ko" ? "환자" : "Patient"
-  const sections = [
-    [tRecord("sections.chiefComplaint"), record.chiefComplaint],
-    [tRecord("sections.hpiText"), record.hpiText],
-    [tRecord("sections.medications"), record.medications],
-    [tRecord("sections.rosText"), record.rosText],
-    [tRecord("sections.physicalExam"), record.physicalExam],
-    [tRecord("sections.labsStudies"), record.labsStudies],
-    [tRecord("sections.assessment"), record.assessment],
-    [tRecord("sections.plan"), record.plan],
-  ] as const
-
-  return (
-    <div className="space-y-5">
-      {record.patientName ? (
-        <div className="border-b border-border/60 pb-3">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            {patientLabel}
-          </p>
-          <p className="mt-1 text-sm text-foreground">{record.patientName}</p>
-        </div>
-      ) : null}
-      {sections.map(([label, value]) =>
-        value ? (
-          <section key={label} className="space-y-1.5">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              {label}
-            </p>
-            <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/90">
-              {value}
-            </p>
-          </section>
-        ) : null
-      )}
-    </div>
-  )
-}
-
-function BuiltInHandoutPreview({
-  content,
-}: {
-  content: Record<string, unknown>
-}) {
-  const tHandout = useTranslations("PatientHandout")
-  const locale = useLocale()
-  const handout = asBuiltInPatientHandoutPreviewContent(content)
-  if (!handout) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        {locale === "ko"
-          ? "기본 제공 문서 미리보기를 렌더링할 수 없습니다."
-          : "Unable to render built-in preview."}
-      </p>
-    )
-  }
-
-  const condition = handout.conditions[0] ?? null
-  const entry = condition
-    ? handout.entries.find((candidate) => candidate.conditionId === condition.id) ??
-      handout.entries[0]
-    : handout.entries[0]
-
-  return (
-    <div className="space-y-5">
-      {condition ? (
-        <div className="border-b border-border/60 pb-3">
-          <h3 className="text-base font-semibold text-foreground">
-            {condition.diseaseName} ({condition.icdCode})
-          </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {tHandout("source")}:{" "}
-            {condition.source === "ddx"
-              ? tHandout("sourceDdx")
-              : tHandout("sourceIcd11")}{" "}
-            · {locale === "ko" ? "언어" : "Language"}: {handout.language}
-          </p>
-        </div>
-      ) : null}
-      {entry
-        ? PATIENT_HANDOUT_SECTION_KEYS.map((sectionKey) => (
-            <section key={sectionKey} className="space-y-1.5">
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                {tHandout(`sections.${sectionKey}`)}
-              </p>
-              <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/90">
-                {entry.sections[sectionKey] || "[Not provided]"}
-              </p>
-            </section>
-          ))
-        : null}
-    </div>
-  )
-}
-
 export function DocumentCatalogPreviewDialog({
   item,
   open,
@@ -166,6 +46,7 @@ export function DocumentCatalogPreviewDialog({
   onPublish,
   onFork,
   onUnpublish,
+  onDelete,
 }: {
   item: DocumentCatalogItem | null
   open: boolean
@@ -178,6 +59,7 @@ export function DocumentCatalogPreviewDialog({
   onPublish: (item: DocumentCatalogItem) => void
   onFork: (item: DocumentCatalogItem) => void
   onUnpublish: (item: DocumentCatalogItem) => void
+  onDelete: (item: DocumentCatalogItem) => void
 }) {
   const t = useTranslations("DocumentStore")
   const tBuilder = useTranslations("DocumentBuilder")
@@ -187,7 +69,19 @@ export function DocumentCatalogPreviewDialog({
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!open || !item) return
+    if (!open || !item) {
+      setPreview(null)
+      setError(null)
+      setLoading(false)
+      return
+    }
+
+    if (item.preview.previewContent) {
+      setPreview(null)
+      setError(null)
+      setLoading(false)
+      return
+    }
 
     let cancelled = false
 
@@ -229,16 +123,13 @@ export function DocumentCatalogPreviewDialog({
     }
   }, [item, locale, open, t])
 
-  const genericSections = useMemo(() => {
-    if (!preview?.previewContent || preview.previewKind !== "AI_GENERATED") {
-      return []
-    }
+  const effectivePreview = useMemo(() => preview ?? item?.preview ?? null, [
+    item,
+    preview,
+  ])
 
-    return buildGenericDocumentSections(preview.previewContent)
-  }, [preview])
-
-  const categoryLabel = preview
-    ? tBuilder(getDocumentCategoryLabelKey(preview.category) as never)
+  const categoryLabel = item
+    ? tBuilder(getDocumentCategoryLabelKey(item.category) as never)
     : null
 
   const isBusy = item
@@ -253,28 +144,30 @@ export function DocumentCatalogPreviewDialog({
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <DialogTitle className="text-left">
-                  {preview?.title || item?.title || t("preview.dialogTitle")}
+                  {item?.title || preview?.title || t("preview.dialogTitle")}
                 </DialogTitle>
-                <Badge variant="outline">
-                  {preview?.previewKind === "BUILT_IN_STATIC"
-                    ? t("preview.staticBadge")
-                    : t("preview.syntheticBadge")}
-                </Badge>
-                {preview?.versionNumber ? (
+                {effectivePreview ? (
+                  <Badge variant="outline">
+                    {effectivePreview.previewKind === "BUILT_IN_STATIC"
+                      ? t("preview.staticBadge")
+                      : t("preview.syntheticBadge")}
+                  </Badge>
+                ) : null}
+                {effectivePreview?.versionNumber ? (
                   <Badge variant="secondary">
                     {t("badges.publishedVersion", {
-                      version: preview.versionNumber,
+                      version: effectivePreview.versionNumber,
                     })}
                   </Badge>
                 ) : null}
                 {categoryLabel ? <Badge variant="outline">{categoryLabel}</Badge> : null}
               </div>
               <DialogDescription className="text-left">
-                {preview?.description || item?.description || ""}
+                {item?.description || preview?.description || ""}
               </DialogDescription>
-              {preview?.previewCaseSummary ? (
+              {effectivePreview?.previewCaseSummary ? (
                 <p className="max-w-3xl text-sm text-muted-foreground">
-                  {preview.previewCaseSummary}
+                  {effectivePreview.previewCaseSummary}
                 </p>
               ) : null}
             </div>
@@ -291,15 +184,11 @@ export function DocumentCatalogPreviewDialog({
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-8 text-sm text-destructive">
               {error}
             </div>
-          ) : preview?.previewKind === "BUILT_IN_STATIC" &&
-            preview.previewContent ? (
-            preview.builtInPreviewKey === "record" ? (
-              <BuiltInRecordPreview content={preview.previewContent} />
-            ) : (
-              <BuiltInHandoutPreview content={preview.previewContent} />
-            )
           ) : (
-            <GenericDocumentPreview sections={genericSections} variant="catalog" />
+            <DocumentPreviewContent
+              preview={effectivePreview}
+              placeholder={t("preview.cardPlaceholder")}
+            />
           )}
         </div>
 
@@ -347,6 +236,16 @@ export function DocumentCatalogPreviewDialog({
                     onClick={() => onUnpublish(item)}
                   >
                     {t("actions.unpublish")}
+                  </Button>
+                ) : null}
+
+                {mode === "mine" && item.isEditable ? (
+                  <Button
+                    variant="destructive"
+                    disabled={isBusy}
+                    onClick={() => onDelete(item)}
+                  >
+                    {t("actions.delete")}
                   </Button>
                 ) : null}
 

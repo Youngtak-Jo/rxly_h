@@ -13,6 +13,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 
 import { DocumentCatalogPreviewDialog } from "@/components/documents/document-catalog-preview-dialog"
+import { DocumentPreviewContent } from "@/components/documents/document-preview-content"
 import { DocumentsHeader } from "@/components/documents/documents-header"
 import {
   AlertDialog,
@@ -93,40 +94,15 @@ function buildFallbackCatalogItem(
     canInstall: !!installed.latestPublishedVersionId,
     canUninstall: false,
     preview: {
-      hasPreview: false,
-      caseSummary: null,
-      cardPreviewLines: [],
-      cardPreviewKind: "EMPTY",
-      locale: null,
+      versionNumber: installed.latestPublishedVersionNumber,
+      previewKind:
+        installed.sourceKind === "BUILT_IN" ? "BUILT_IN_STATIC" : "AI_GENERATED",
+      previewCaseSummary: null,
+      previewLocale: null,
+      previewContent: null,
       generatedAt: null,
     },
   }
-}
-
-function buildSummaryFallbackLines(summary: string): string[] {
-  const normalized = summary.replace(/\s+/g, " ").trim()
-  if (!normalized) return []
-
-  return normalized
-    .split(/(?<=[.!?])\s+/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .slice(0, 2)
-}
-
-function getCardPreviewLines(item: DocumentCatalogItem, fallback: string): string[] {
-  if (item.preview.cardPreviewLines.length > 0) {
-    return item.preview.cardPreviewLines
-  }
-
-  if (item.preview.caseSummary) {
-    const summaryLines = buildSummaryFallbackLines(item.preview.caseSummary)
-    if (summaryLines.length > 0) {
-      return summaryLines
-    }
-  }
-
-  return [fallback]
 }
 
 function DocumentPreviewCard({
@@ -137,8 +113,6 @@ function DocumentPreviewCard({
   publishedVersionLabel,
   categoryLabel,
   previewFallbackText,
-  summaryPreviewLabel,
-  cardHeaderLabel,
   workspaceVisible,
   workspaceToggleBusy,
   workspaceShownLabel,
@@ -153,8 +127,6 @@ function DocumentPreviewCard({
   publishedVersionLabel: string | null
   categoryLabel: string
   previewFallbackText: string
-  summaryPreviewLabel: string
-  cardHeaderLabel: string
   workspaceVisible?: boolean
   workspaceToggleBusy?: boolean
   workspaceShownLabel?: string
@@ -162,63 +134,36 @@ function DocumentPreviewCard({
   onWorkspaceVisibilityChange?: (next: boolean) => void
   onOpen: (item: DocumentCatalogItem) => void
 }) {
-  const previewLines = getCardPreviewLines(item, previewFallbackText)
-  const previewKind = item.preview.cardPreviewKind
   const description = item.description.trim()
-
-  const renderPreviewLine = (line: string, index: number) => {
-    const separatorIndex = line.indexOf(": ")
-    if (separatorIndex <= 0) {
-      return (
-        <p
-          key={`${item.templateId}-preview-${index}`}
-          className="line-clamp-1 border-b border-border/30 pb-1 text-[10px] leading-4 text-foreground/80 last:border-b-0"
-        >
-          {line}
-        </p>
-      )
-    }
-
-    const label = line.slice(0, separatorIndex)
-    const value = line.slice(separatorIndex + 2)
-    return (
-      <p
-        key={`${item.templateId}-preview-${index}`}
-        className="line-clamp-1 border-b border-border/30 pb-1 text-[10px] leading-4 text-foreground/80 last:border-b-0"
-      >
-        <span className="font-semibold text-foreground/90">{label}:</span>{" "}
-        {value}
-      </p>
-    )
-  }
+  const workspaceSwitchLabel = workspaceVisible
+    ? workspaceShownLabel ?? "Shown in workspace"
+    : workspaceHiddenLabel ?? "Hidden from workspace"
+  const previewHeightClass = "h-[16.25rem]"
 
   return (
-    <div className="group w-full">
+    <div className="group relative w-full">
       <button
         type="button"
         className="w-full cursor-pointer rounded-2xl text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onClick={() => onOpen(item)}
       >
-        <div className="relative h-[14.5rem] overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-b from-muted/40 to-muted/20 transition group-hover:border-border group-hover:from-muted/55 group-hover:to-muted/35">
-        <div className="absolute inset-x-6 top-6 h-px bg-border/35" />
-        <div className="absolute inset-x-0 bottom-0 flex justify-center px-5">
-          <div className="w-full max-w-[66%] rounded-t-xl rounded-b-none border border-b-0 border-border/70 bg-card shadow-[0_-8px_20px_rgba(0,0,0,0.04)]">
-            <div className="border-b border-border/50 px-3 py-2">
-              <p className="line-clamp-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                {cardHeaderLabel}
-              </p>
-            </div>
-
-            <div className="space-y-1 px-3 py-2.5">
-              {previewKind === "SUMMARY" ? (
-                <p className="line-clamp-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/90">
-                  {summaryPreviewLabel}
-                </p>
-              ) : null}
-              {previewLines.map((line, index) => renderPreviewLine(line, index))}
+        <div
+          className={`relative ${previewHeightClass} overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-b from-muted/40 to-muted/20 transition group-hover:border-border group-hover:from-muted/55 group-hover:to-muted/35`}
+        >
+          <div className="absolute inset-x-0 bottom-1 flex justify-center px-5">
+            <div className="w-full max-w-[72%] rounded-t-xl rounded-b-none border border-b-0 border-border/70 bg-card shadow-[0_-8px_20px_rgba(0,0,0,0.04)]">
+              <div className="relative h-[14rem] overflow-hidden px-3 py-2">
+                <DocumentPreviewContent
+                  preview={item.preview}
+                  variant="card"
+                  placeholder={previewFallbackText}
+                />
+                {item.preview.previewContent ? (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-card via-card/90 to-transparent" />
+                ) : null}
+              </div>
             </div>
           </div>
-        </div>
         </div>
 
         <div className="space-y-1.5 px-1 pt-3">
@@ -261,16 +206,17 @@ function DocumentPreviewCard({
       </button>
 
       {typeof workspaceVisible === "boolean" && onWorkspaceVisibilityChange ? (
-        <div className="mt-2 flex items-center justify-between rounded-xl border border-border/70 bg-muted/40 px-3 py-2">
-          <span className="text-xs text-muted-foreground">
-            {workspaceVisible ? workspaceShownLabel : workspaceHiddenLabel}
-          </span>
-          <Switch
-            checked={workspaceVisible}
-            disabled={workspaceToggleBusy}
-            onCheckedChange={onWorkspaceVisibilityChange}
-          />
-        </div>
+        <Switch
+          checked={workspaceVisible}
+          disabled={workspaceToggleBusy}
+          size="sm"
+          className="absolute bottom-[calc(100%-16.25rem+0.75rem)] right-3 z-10 scale-110 shadow-sm"
+          aria-label={workspaceSwitchLabel}
+          title={workspaceSwitchLabel}
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+          onCheckedChange={onWorkspaceVisibilityChange}
+        />
       ) : null}
     </div>
   )
@@ -320,6 +266,8 @@ export function DocumentStorePage({
   const [actionKey, setActionKey] = useState<string | null>(null)
   const [previewItem, setPreviewItem] = useState<DocumentCatalogItem | null>(null)
   const [unpublishTarget, setUnpublishTarget] =
+    useState<DocumentCatalogItem | null>(null)
+  const [deleteTarget, setDeleteTarget] =
     useState<DocumentCatalogItem | null>(null)
   const initialIntentAppliedRef = useRef(false)
 
@@ -476,8 +424,6 @@ export function DocumentStorePage({
   const builtInLabel = t("badges.builtIn")
   const draftLabel = t("badges.draft")
   const updateLabel = t("badges.updateAvailable")
-  const summaryPreviewLabel = t("preview.cardSummaryFallback")
-  const cardHeaderLabel = t("preview.cardHeader")
 
   const runAction = async (key: string, action: () => Promise<void>) => {
     try {
@@ -534,6 +480,25 @@ export function DocumentStorePage({
       toast.success(t("toasts.unpublished", { title: item.title }))
     })
 
+  const handleDelete = (item: DocumentCatalogItem) =>
+    void runAction(item.templateId, async () => {
+      const response = await fetch(`/api/documents/${item.templateId}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(response, t("toasts.deleteFailed"))
+        )
+      }
+
+      // Keep workspace tabs/install list in sync after template deletion.
+      await loadWorkspaceSnapshot({ force: true }).catch((error) => {
+        console.error("Failed to refresh workspace after deleting template", error)
+      })
+
+      toast.success(t("toasts.deleted", { title: item.title }))
+    })
+
   const handleFork = (item: DocumentCatalogItem) =>
     void runAction(item.templateId, async () => {
       const response = await fetch(`/api/documents/${item.templateId}/fork`, {
@@ -564,6 +529,13 @@ export function DocumentStorePage({
     const target = unpublishTarget
     setUnpublishTarget(null)
     handleUnpublish(target)
+  }
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return
+    const target = deleteTarget
+    setDeleteTarget(null)
+    handleDelete(target)
   }
 
   const handleViewChange = (nextMode: string) => {
@@ -688,8 +660,6 @@ export function DocumentStorePage({
                                   : null
                               }
                               onOpen={setPreviewItem}
-                              summaryPreviewLabel={summaryPreviewLabel}
-                              cardHeaderLabel={cardHeaderLabel}
                               workspaceVisible={visibleTabs.has(
                                 buildDocumentTabId(item.templateId)
                               )}
@@ -750,8 +720,6 @@ export function DocumentStorePage({
                                 : null
                             }
                             onOpen={setPreviewItem}
-                            summaryPreviewLabel={summaryPreviewLabel}
-                            cardHeaderLabel={cardHeaderLabel}
                           />
                         )
                       })}
@@ -794,6 +762,10 @@ export function DocumentStorePage({
             setPreviewItem(null)
             setUnpublishTarget(item)
           }}
+          onDelete={(item) => {
+            setPreviewItem(null)
+            setDeleteTarget(item)
+          }}
         />
       </div>
 
@@ -816,6 +788,30 @@ export function DocumentStorePage({
             <AlertDialogCancel>{t("confirm.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmUnpublish}>
               {t("confirm.unpublishAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("confirm.deleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("confirm.deleteDescription", {
+                title: deleteTarget?.title ?? "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("confirm.cancel")}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={confirmDelete}>
+              {t("confirm.deleteAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

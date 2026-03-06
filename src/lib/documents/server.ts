@@ -10,13 +10,12 @@ import {
   isSystemWorkspaceTabId,
 } from "@/lib/documents/constants"
 import {
-  getBuiltInDocumentCardPreviewLines,
   getBuiltInDocumentPreviewAsset,
 } from "@/lib/documents/built-in-preview"
 import type {
   DocumentCatalogItem,
-  DocumentCatalogPreviewSummary,
   DocumentGenerationConfig,
+  DocumentPreviewPayload,
   DocumentPreviewResponse,
   DocumentTemplateSchema,
   DocumentTemplateVersionPreview,
@@ -31,7 +30,6 @@ import {
   normalizeDocumentContentForStorage,
 } from "@/lib/documents/schema"
 import { normalizeDocumentCategory } from "@/lib/documents/categories"
-import { buildGenericDocumentSections } from "@/lib/documents/preview"
 import type { UiLocale } from "@/i18n/config"
 
 type TemplateWithVersions = Prisma.DocumentTemplateGetPayload<{
@@ -142,231 +140,59 @@ function toVersionPreview(
   }
 }
 
-function hasStoredPreview(
-  version: {
-    previewContentJson: unknown | null
-    previewCaseSummary: string | null
-  } | null
-): boolean {
-  return !!version?.previewContentJson || !!version?.previewCaseSummary
-}
-
-const CARD_PREVIEW_MAX_LINES = 6
-const CARD_PREVIEW_LINE_CHAR_LIMIT = 92
-const CARD_PREVIEW_SUMMARY_MAX_LINES = 2
-
-function truncateCardPreviewLine(value: string): string {
-  const compact = value.replace(/\s+/g, " ").trim()
-  if (!compact) return ""
-  if (compact.length <= CARD_PREVIEW_LINE_CHAR_LIMIT) {
-    return compact
-  }
-  return `${compact.slice(0, CARD_PREVIEW_LINE_CHAR_LIMIT - 1)}…`
-}
-
-function ensureRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null
-  }
-
-  return value as Record<string, unknown>
-}
-
-function appendCardPreviewLine(
-  lines: string[],
-  label: string | null,
-  value: string
-): void {
-  if (lines.length >= CARD_PREVIEW_MAX_LINES) return
-  const normalizedValue = truncateCardPreviewLine(value)
-  if (!normalizedValue) return
-
-  const normalizedLabel = label?.trim()
-  if (normalizedLabel) {
-    lines.push(truncateCardPreviewLine(`${normalizedLabel}: ${normalizedValue}`))
-    return
-  }
-
-  lines.push(normalizedValue)
-}
-
-function collectCardPreviewLines(
-  sections: ReturnType<typeof buildGenericDocumentSections>,
-  lines: string[],
-  parentLabel: string | null = null
-): void {
-  for (const section of sections) {
-    if (lines.length >= CARD_PREVIEW_MAX_LINES) return
-
-    if (section.kind === "field") {
-      if (Array.isArray(section.value)) {
-        const compact = section.value
-          .map((item) => item.trim())
-          .filter(Boolean)
-          .slice(0, 2)
-          .join(", ")
-        appendCardPreviewLine(
-          lines,
-          parentLabel ? `${parentLabel} / ${section.label}` : section.label,
-          compact
-        )
-      } else {
-        appendCardPreviewLine(
-          lines,
-          parentLabel ? `${parentLabel} / ${section.label}` : section.label,
-          section.value
-        )
-      }
-      continue
-    }
-
-    if (section.kind === "group") {
-      collectCardPreviewLines(
-        section.children,
-        lines,
-        parentLabel ? `${parentLabel} / ${section.label}` : section.label
-      )
-      continue
-    }
-
-    if (section.kind === "repeatableGroup") {
-      const firstItem = section.items[0] ?? []
-      collectCardPreviewLines(
-        firstItem,
-        lines,
-        parentLabel ? `${parentLabel} / ${section.label}` : section.label
-      )
-    }
-  }
-}
-
-function buildCardPreviewLinesFromContent(
-  previewContent: Record<string, unknown> | null,
-  schemaNodes?: DocumentTemplateSchema["nodes"]
-): string[] {
-  if (!previewContent) return []
-
-  const sections = buildGenericDocumentSections(previewContent, schemaNodes)
-  if (sections.length === 0) return []
-
-  const lines: string[] = []
-  collectCardPreviewLines(sections, lines)
-  return lines.slice(0, CARD_PREVIEW_MAX_LINES)
-}
-
-function buildCardPreviewLinesFromSummary(summary: string | null): string[] {
-  if (!summary) return []
-  const normalized = summary.replace(/\s+/g, " ").trim()
-  if (!normalized) return []
-
-  const sentenceChunks = normalized
-    .split(/(?<=[.!?])\s+/)
-    .map((chunk) => chunk.trim())
-    .filter(Boolean)
-
-  const sourceChunks = sentenceChunks.length > 0 ? sentenceChunks : [normalized]
-  return sourceChunks
-    .slice(0, CARD_PREVIEW_SUMMARY_MAX_LINES)
-    .map((chunk) => truncateCardPreviewLine(chunk))
-    .filter(Boolean)
-}
-
-function extractSchemaNodes(
-  schemaJson: unknown | null | undefined
-): DocumentTemplateSchema["nodes"] | undefined {
-  if (
-    !schemaJson ||
-    typeof schemaJson !== "object" ||
-    Array.isArray(schemaJson)
-  ) {
-    return undefined
-  }
-
-  const nodes = (schemaJson as { nodes?: unknown }).nodes
-  if (!Array.isArray(nodes)) {
-    return undefined
-  }
-
-  return nodes as DocumentTemplateSchema["nodes"]
-}
-
-function toCatalogPreviewSummary(
-  templateId: string,
+function buildStoredPreviewPayload(
   version:
     | {
+        versionNumber: number
         previewContentJson: unknown | null
         previewCaseSummary: string | null
         previewLocale: string | null
         previewGeneratedAt: Date | null
-        schemaJson?: unknown
       }
-    | null,
-  isBuiltIn: boolean,
+    | null
+): DocumentPreviewPayload {
+  return {
+    versionNumber: version?.versionNumber ?? null,
+    previewKind: "AI_GENERATED",
+    previewCaseSummary: version?.previewCaseSummary ?? null,
+    previewLocale: version?.previewLocale ?? null,
+    previewContent: version?.previewContentJson
+      ? (toRecord(version.previewContentJson) as Record<string, unknown>)
+      : null,
+    generatedAt: version?.previewGeneratedAt?.toISOString() ?? null,
+  }
+}
+
+function resolvePreviewVersion(
+  template: TemplateWithVersions,
+  userId: string
+) {
+  if (template.ownerUserId === userId && template.latestDraftVersion) {
+    return template.latestDraftVersion
+  }
+
+  return template.latestPublishedVersion ?? template.latestDraftVersion
+}
+
+function resolveTemplatePreviewPayload(
+  template: TemplateWithVersions,
+  userId: string,
   locale: UiLocale
-): DocumentCatalogPreviewSummary {
-  if (isBuiltIn) {
-    const builtInPreview = getBuiltInDocumentPreviewAsset(templateId, locale)
-    if (!builtInPreview) {
-      return {
-        hasPreview: false,
-        caseSummary: null,
-        cardPreviewLines: [],
-        cardPreviewKind: "EMPTY",
-        locale: null,
-        generatedAt: null,
-      }
-    }
-
-    const contentLines = getBuiltInDocumentCardPreviewLines(templateId, locale)
-    if (contentLines.length > 0) {
-      return {
-        hasPreview: true,
-        caseSummary: builtInPreview.summary,
-        cardPreviewLines: contentLines,
-        cardPreviewKind: "CONTENT",
-        locale: builtInPreview.locale,
-        generatedAt: null,
-      }
-    }
-
-    const summaryLines = buildCardPreviewLinesFromSummary(builtInPreview.summary)
-
+): DocumentPreviewPayload {
+  if (template.sourceKind === "BUILT_IN") {
+    const asset = getBuiltInDocumentPreviewAsset(template.id, locale)
     return {
-      hasPreview: true,
-      caseSummary: builtInPreview.summary,
-      cardPreviewLines: summaryLines,
-      cardPreviewKind: summaryLines.length > 0 ? "SUMMARY" : "EMPTY",
-      locale: builtInPreview.locale,
+      versionNumber: template.latestPublishedVersion?.versionNumber ?? 1,
+      previewKind: "BUILT_IN_STATIC",
+      previewCaseSummary: asset?.summary ?? null,
+      previewLocale: asset?.locale ?? null,
+      previewContent: asset?.previewContent ?? null,
+      builtInPreviewKey: asset?.key,
       generatedAt: null,
     }
   }
 
-  const previewContent = ensureRecord(version?.previewContentJson ?? null)
-  const schemaNodes = extractSchemaNodes(version?.schemaJson)
-  const contentLines = buildCardPreviewLinesFromContent(previewContent, schemaNodes)
-  if (contentLines.length > 0) {
-    return {
-      hasPreview: hasStoredPreview(version),
-      caseSummary: version?.previewCaseSummary ?? null,
-      cardPreviewLines: contentLines,
-      cardPreviewKind: "CONTENT",
-      locale: version?.previewLocale ?? null,
-      generatedAt: version?.previewGeneratedAt?.toISOString() ?? null,
-    }
-  }
-
-  const summaryLines = buildCardPreviewLinesFromSummary(
-    version?.previewCaseSummary ?? null
-  )
-
-  return {
-    hasPreview: hasStoredPreview(version),
-    caseSummary: version?.previewCaseSummary ?? null,
-    cardPreviewLines: summaryLines,
-    cardPreviewKind: summaryLines.length > 0 ? "SUMMARY" : "EMPTY",
-    locale: version?.previewLocale ?? null,
-    generatedAt: version?.previewGeneratedAt?.toISOString() ?? null,
-  }
+  return buildStoredPreviewPayload(resolvePreviewVersion(template, userId))
 }
 
 export function mapSessionDocumentRecord(document: {
@@ -773,10 +599,6 @@ export async function getDocumentCatalog(
     const publishedVersion = template.latestPublishedVersion
     const isOwner = template.ownerUserId === userId
     const isBuiltIn = template.sourceKind === "BUILT_IN"
-    const previewVersion =
-      isOwner && template.latestDraftVersion
-        ? template.latestDraftVersion
-        : template.latestPublishedVersion
     const canInstall =
       !!template.latestPublishedVersionId && (!installed || !!publishedVersion)
 
@@ -804,12 +626,7 @@ export async function getDocumentCatalog(
         template.latestDraftVersionId !== null,
       canInstall,
       canUninstall: !!installed,
-      preview: toCatalogPreviewSummary(
-        template.id,
-        previewVersion,
-        isBuiltIn,
-        locale
-      ),
+      preview: resolveTemplatePreviewPayload(template, userId, locale),
     }
   })
 }
@@ -1262,6 +1079,35 @@ export async function patchDocumentTemplateDraft(input: {
   return withNormalizedTemplateCategory(updated)
 }
 
+export async function deleteDocumentTemplate(input: {
+  userId: string
+  templateId: string
+}): Promise<void> {
+  const template = await prisma.documentTemplate.findFirst({
+    where: {
+      id: input.templateId,
+      ownerUserId: input.userId,
+      sourceKind: "USER",
+    },
+    select: { id: true },
+  })
+
+  if (!template) {
+    throw new Error("Template not found")
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Session documents keep a RESTRICT fk to versions, so remove them first.
+    await tx.sessionDocument.deleteMany({
+      where: { templateId: template.id },
+    })
+
+    await tx.documentTemplate.delete({
+      where: { id: template.id },
+    })
+  })
+}
+
 export async function publishDocumentTemplate(input: {
   userId: string
   templateId: string
@@ -1401,31 +1247,11 @@ export async function getDocumentPreviewForUser(input: {
   if (!template) {
     throw new Error("Template not found")
   }
-
-  if (template.sourceKind === "BUILT_IN") {
-    const asset = getBuiltInDocumentPreviewAsset(template.id, input.locale)
-    return {
-      templateId: template.id,
-      title: template.title,
-      description: template.description,
-      renderer: template.renderer,
-      sourceKind: template.sourceKind,
-      visibility: template.visibility,
-      versionNumber: template.latestPublishedVersion?.versionNumber ?? 1,
-      previewKind: "BUILT_IN_STATIC",
-      previewCaseSummary: asset?.summary ?? null,
-      previewLocale: asset?.locale ?? null,
-      previewContent: asset?.previewContent ?? null,
-      builtInPreviewKey: asset?.key,
-      authorName: getAuthorName(template, input.userId),
-      category: normalizeDocumentCategory(template.category),
-    }
-  }
-
-  const preferredVersion =
-    template.ownerUserId === input.userId && template.latestDraftVersion
-      ? template.latestDraftVersion
-      : template.latestPublishedVersion ?? template.latestDraftVersion
+  const preview = resolveTemplatePreviewPayload(
+    template,
+    input.userId,
+    input.locale
+  )
 
   return {
     templateId: template.id,
@@ -1434,15 +1260,9 @@ export async function getDocumentPreviewForUser(input: {
     renderer: template.renderer,
     sourceKind: template.sourceKind,
     visibility: template.visibility,
-    versionNumber: preferredVersion?.versionNumber ?? null,
-    previewKind: "AI_GENERATED",
-    previewCaseSummary: preferredVersion?.previewCaseSummary ?? null,
-    previewLocale: preferredVersion?.previewLocale ?? null,
-    previewContent: preferredVersion?.previewContentJson
-      ? (toRecord(preferredVersion.previewContentJson) as Record<string, unknown>)
-      : null,
     authorName: getAuthorName(template, input.userId),
     category: normalizeDocumentCategory(template.category),
+    ...preview,
   }
 }
 

@@ -29,9 +29,7 @@ import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
 import { cn } from "@/lib/utils"
 import {
   ConsultationTopRail,
-  ConsultationTopRailAction,
   TOP_RAIL_SCROLL_CLASS,
-  consultationSegmentClassName,
 } from "./consultation-top-chrome"
 import {
   BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID,
@@ -97,6 +95,19 @@ type WorkspaceTabViewModel = {
   templateId: string | null
 }
 
+const WORKSPACE_TAB_BUTTON_CLASS_NAME = cn(
+  "inline-flex h-9 items-center rounded-xl border-0 px-4 text-[15px] font-medium shadow-none outline-none transition-colors",
+  "bg-transparent text-foreground/68 hover:bg-transparent hover:text-foreground",
+  "focus-visible:ring-2 focus-visible:ring-ring/40",
+  "aria-[current=page]:bg-muted aria-[current=page]:text-foreground"
+)
+
+const WORKSPACE_ACTION_BUTTON_CLASS_NAME = cn(
+  "inline-flex h-9 items-center rounded-xl border-0 px-4 text-[15px] font-medium shadow-none outline-none transition-colors",
+  "bg-transparent text-foreground/68 hover:bg-transparent hover:text-foreground",
+  "focus-visible:ring-2 focus-visible:ring-ring/40"
+)
+
 function WorkspaceTabChip({
   tab,
   onSelect,
@@ -118,7 +129,7 @@ function WorkspaceTabChip({
         transform: CSS.Transform.toString(transform),
         transition,
       }}
-      className={cn("relative flex flex-none items-stretch", isDragging && "z-10")}
+      className={cn("relative flex h-9 flex-none items-center", isDragging && "z-10")}
     >
       <button
         type="button"
@@ -131,15 +142,12 @@ function WorkspaceTabChip({
             onSelect(tab.id)
           }
         }}
-        className={consultationSegmentClassName({
-          active: tab.isActive,
-          className: cn(
-            "w-full",
-            "pr-3",
-            tab.closable && "pr-9",
-            isDragging && "opacity-80 shadow-lg"
-          ),
-        })}
+        className={cn(
+          WORKSPACE_TAB_BUTTON_CLASS_NAME,
+          "w-full",
+          tab.closable ? "pr-9" : "pr-4",
+          isDragging && "opacity-80 shadow-lg"
+        )}
         {...attributes}
         {...listeners}
       >
@@ -177,7 +185,7 @@ function WorkspaceTabChip({
           type="button"
           aria-label={`Close ${tab.label}`}
           className={cn(
-            "absolute right-1 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition hover:bg-background/80 hover:text-foreground",
+            "absolute right-2 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition hover:bg-black/5 hover:text-foreground",
             tab.isActive && "text-foreground/70"
           )}
           onPointerDown={(event) => event.stopPropagation()}
@@ -368,9 +376,9 @@ export function ConsultationWorkspaceTabs() {
   }
 
   return (
-    <ConsultationTopRail>
+    <ConsultationTopRail className="h-auto min-h-0 items-center overflow-visible border-0 bg-transparent px-2 py-2">
       <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        <div className={TOP_RAIL_SCROLL_CLASS}>
+        <div className={cn(TOP_RAIL_SCROLL_CLASS, "h-auto min-h-0 items-center gap-1.5")}>
           <DndContext
             collisionDetection={closestCenter}
             sensors={sensors}
@@ -392,28 +400,33 @@ export function ConsultationWorkspaceTabs() {
           </DndContext>
 
           {showTranscriptToggle ? (
-            <ConsultationTopRailAction
+            <button
+              type="button"
               onClick={toggleTranscript ?? undefined}
               aria-label={tHeader("showTranscript")}
               title={tHeader("showTranscript")}
-              className="2xl:hidden"
+              className={cn("2xl:hidden", WORKSPACE_ACTION_BUTTON_CLASS_NAME)}
             >
               <span className="truncate">{tTranscript("headerTranscript")}</span>
-            </ConsultationTopRailAction>
+            </button>
           ) : null}
         </div>
       </div>
 
       {showTranscriptToggle ? (
-        <ConsultationTopRailAction
+        <button
+          type="button"
           onClick={toggleTranscript ?? undefined}
           aria-label={tHeader("showTranscript")}
           title={tHeader("showTranscript")}
-          className="hidden 2xl:inline-flex"
+          className={cn(
+            "hidden 2xl:inline-flex",
+            WORKSPACE_ACTION_BUTTON_CLASS_NAME
+          )}
         >
           <IconLayoutSidebarRightExpand className="size-4" />
           <span className="truncate">{tTranscript("headerTranscript")}</span>
-        </ConsultationTopRailAction>
+        </button>
       ) : null}
     </ConsultationTopRail>
   )

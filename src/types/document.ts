@@ -111,12 +111,15 @@ export interface DocumentTemplateVersionPreview {
   inputChecksum: string | null
 }
 
-export interface DocumentCatalogPreviewSummary {
-  hasPreview: boolean
-  caseSummary: string | null
-  cardPreviewLines: string[]
-  cardPreviewKind: "CONTENT" | "SUMMARY" | "EMPTY"
-  locale: string | null
+export type DocumentPreviewKind = "AI_GENERATED" | "BUILT_IN_STATIC"
+
+export interface DocumentPreviewPayload {
+  versionNumber: number | null
+  previewKind: DocumentPreviewKind
+  previewCaseSummary: string | null
+  previewLocale: string | null
+  previewContent: Record<string, unknown> | null
+  builtInPreviewKey?: "record" | "patient-handout"
   generatedAt: string | null
 }
 
@@ -158,22 +161,16 @@ export interface DocumentCatalogItem {
   canPublish: boolean
   canInstall: boolean
   canUninstall: boolean
-  preview: DocumentCatalogPreviewSummary
+  preview: DocumentPreviewPayload
 }
 
-export interface DocumentPreviewResponse {
+export interface DocumentPreviewResponse extends DocumentPreviewPayload {
   templateId: string
   title: string
   description: string
   renderer: DocumentTemplateRenderer
   sourceKind: DocumentTemplateSourceKind
   visibility: DocumentTemplateVisibility
-  versionNumber: number | null
-  previewKind: "AI_GENERATED" | "BUILT_IN_STATIC"
-  previewCaseSummary: string | null
-  previewLocale: string | null
-  previewContent: Record<string, unknown> | null
-  builtInPreviewKey?: "record" | "patient-handout"
   authorName: string
   category: string
 }
