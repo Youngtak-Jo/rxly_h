@@ -493,6 +493,22 @@ function NodeDetailsPanel({
         />
       </div>
 
+      {node.type !== "group" && node.type !== "repeatableGroup" ? (
+        <div className="space-y-2">
+          <Label className="text-xs">{t("schemaNode.placeholderLabel")}</Label>
+          <Input
+            value={node.placeholder}
+            onChange={(event) =>
+              onUpdate(path, (currentNode) => ({
+                ...currentNode,
+                placeholder: event.target.value,
+              }))
+            }
+            placeholder={t("schemaNode.inputPlaceholder")}
+          />
+        </div>
+      ) : null}
+
       <div className="space-y-2">
         <Label className="text-xs">{t("schemaNode.helpTextLabel")}</Label>
         <Textarea
@@ -779,10 +795,8 @@ export function DocumentBuilderStepSchema({
   aiLoading,
   aiPrompt,
   showAiRevisePanel,
-  documentModelLabel,
   onAiPromptChange,
   onAiRevise,
-  onOpenModelSettings,
   validationError,
 }: {
   draft: DocumentBuilderDraft
@@ -790,10 +804,8 @@ export function DocumentBuilderStepSchema({
   aiLoading: boolean
   aiPrompt: string
   showAiRevisePanel: boolean
-  documentModelLabel: string
   onAiPromptChange: (value: string) => void
   onAiRevise: () => Promise<void>
-  onOpenModelSettings: () => void
   validationError: string | null
 }) {
   const t = useTranslations("DocumentBuilder")
@@ -906,7 +918,7 @@ export function DocumentBuilderStepSchema({
   return (
     <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background">
       <div
-        className="min-h-0 flex-1 overflow-y-auto px-5 py-4"
+        className="min-h-0 flex-1 overflow-y-auto p-4"
         onClick={() => setActiveNodePathId(null)}
       >
         <div
@@ -919,7 +931,7 @@ export function DocumentBuilderStepSchema({
 
           {showAiRevisePanel ? (
             <Card>
-              <CardHeader>
+              <CardHeader className="p-4 pb-3">
                 <CardTitle className="text-sm">
                   {t("aiDraft.revisePanelTitle")}
                 </CardTitle>
@@ -928,7 +940,7 @@ export function DocumentBuilderStepSchema({
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 p-4 pt-0">
                 <Textarea
                   value={aiPrompt}
                   onChange={(event) => onAiPromptChange(event.target.value)}
@@ -936,35 +948,21 @@ export function DocumentBuilderStepSchema({
                   placeholder={t("aiDraft.revisePlaceholder")}
                 />
 
-                <div className="flex items-center justify-between rounded-md border border-border/50 bg-muted/30 px-3 py-2">
-                  <p className="text-[11px] text-muted-foreground">
-                    {t("model.currentLabel", { model: documentModelLabel })}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="link"
-                      size="sm"
-                      className="h-auto p-0 text-[11px]"
-                      onClick={onOpenModelSettings}
-                    >
-                      {t("model.changeInSettings")}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="gap-1.5"
-                      disabled={aiLoading}
-                      onClick={() => void onAiRevise()}
-                    >
-                      {aiLoading ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <Sparkles className="size-3.5" />
-                      )}
-                      {t("aiDraft.revise")}
-                    </Button>
-                  </div>
+                <div className="flex justify-end rounded-md border border-border/50 bg-muted/30 px-3 py-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={aiLoading}
+                    onClick={() => void onAiRevise()}
+                  >
+                    {aiLoading ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="size-3.5" />
+                    )}
+                    {t("aiDraft.revise")}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

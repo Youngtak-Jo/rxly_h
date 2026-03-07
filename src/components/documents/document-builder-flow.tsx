@@ -346,9 +346,6 @@ export const DocumentBuilderFlow = forwardRef<
   })
   const effectiveMode: DocumentBuilderDialogMode =
     initialMode === "edit" || resolvedTemplateId ? "edit" : "create"
-  const documentModelLabel =
-    AI_MODELS.find((model) => model.value === documentModel)?.label ??
-    documentModel
 
   const comparableState = useMemo(
     () =>
@@ -1233,9 +1230,7 @@ export const DocumentBuilderFlow = forwardRef<
         <DocumentBuilderStepStart
           aiLoading={aiLoading}
           aiPrompt={aiPrompt}
-          documentModelLabel={documentModelLabel}
           onAiPromptChange={setAiPrompt}
-          onOpenModelSettings={() => openSettings("models")}
           onGenerateDraft={handleAiDraft}
           onStartBlank={goToSettingsStep}
         />
@@ -1243,8 +1238,6 @@ export const DocumentBuilderFlow = forwardRef<
         <DocumentBuilderStepSettings
           draft={draft}
           setDraft={setDraft}
-          documentModelLabel={documentModelLabel}
-          onOpenModelSettings={() => openSettings("models")}
           onResetToServerVersion={
             restoredLocalChanges && serverComparableState
               ? handleResetToServerVersion
@@ -1260,10 +1253,8 @@ export const DocumentBuilderFlow = forwardRef<
           aiLoading={aiLoading}
           aiPrompt={aiPrompt}
           showAiRevisePanel={effectiveMode === "edit"}
-          documentModelLabel={documentModelLabel}
           onAiPromptChange={setAiPrompt}
           onAiRevise={handleAiDraft}
-          onOpenModelSettings={() => openSettings("models")}
           validationError={hasAttemptedNext ? schemaValidationMessage : null}
         />
       ) : (

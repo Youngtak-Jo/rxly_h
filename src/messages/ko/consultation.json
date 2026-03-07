@@ -867,7 +867,9 @@
       "categoryLabel": "카테고리",
       "languageLabel": "언어",
       "regionLabel": "지역",
-      "descriptionLabel": "설명"
+      "descriptionLabel": "설명",
+      "titlePlaceholder": "예: 소아과 초진 기록지",
+      "descriptionPlaceholder": "이 문서 템플릿의 목적과 주요 사용처를 설명해주세요..."
     },
     "schemaEditor": {
       "title": "스키마 편집기",
@@ -902,6 +904,7 @@
       "advancedTitle": "고급 생성 설정",
       "advancedDescription": "세션 컨텍스트에서 문서를 생성할 때 AI가 어떤 방식으로 작성할지 조정합니다.",
       "systemInstructionsLabel": "시스템 지침",
+      "systemInstructionsPlaceholder": "여기에 문서를 생성하는 AI 모델의 동작 방식 및 규칙을 작성하세요...",
       "contextSourcesLabel": "컨텍스트 소스"
     },
     "preview": {

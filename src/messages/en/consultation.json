@@ -867,7 +867,9 @@
       "categoryLabel": "Category",
       "languageLabel": "Language",
       "regionLabel": "Region",
-      "descriptionLabel": "Description"
+      "descriptionLabel": "Description",
+      "titlePlaceholder": "e.g., Pediatric Initial Evaluation",
+      "descriptionPlaceholder": "Describe the purpose and main use cases for this document template..."
     },
     "schemaEditor": {
       "title": "Schema editor",
@@ -902,6 +904,7 @@
       "advancedTitle": "Advanced generation settings",
       "advancedDescription": "Tune how AI should produce this document when users generate it from session context.",
       "systemInstructionsLabel": "System instructions",
+      "systemInstructionsPlaceholder": "Enter instructions and rules for the AI model generating this document...",
       "contextSourcesLabel": "Context sources"
     },
     "preview": {

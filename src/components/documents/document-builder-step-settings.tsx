@@ -1,6 +1,7 @@
 "use client"
 
-import type { Dispatch, SetStateAction } from "react"
+import { useState, type Dispatch, SetStateAction } from "react"
+import { IconChevronDown, IconChevronRight } from "@tabler/icons-react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import {
@@ -41,26 +42,23 @@ const DOCUMENT_REGION_OPTIONS = getDocumentRegionOptions()
 export function DocumentBuilderStepSettings({
   draft,
   setDraft,
-  documentModelLabel,
-  onOpenModelSettings,
   onResetToServerVersion,
   restoredLocalChanges,
   validationError,
 }: {
   draft: DocumentBuilderDraft
   setDraft: Dispatch<SetStateAction<DocumentBuilderDraft>>
-  documentModelLabel: string
-  onOpenModelSettings: () => void
   onResetToServerVersion: (() => void) | null
   restoredLocalChanges: boolean
   validationError: string | null
 }) {
   const t = useTranslations("DocumentBuilder")
   const tMeta = useTranslations("DocumentMetadata")
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false)
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-5">
+    <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
         {restoredLocalChanges ? (
           <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
             <div className="min-w-0">
@@ -88,8 +86,8 @@ export function DocumentBuilderStepSettings({
         ) : null}
 
         {/* ── Basic info ── */}
-        <Card>
-          <CardHeader>
+        <Card className="gap-4 py-4">
+          <CardHeader className="px-4">
             <CardTitle className="text-sm">
               {t("templateSettings.basicTitle")}
             </CardTitle>
@@ -98,10 +96,11 @@ export function DocumentBuilderStepSettings({
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
+          <CardContent className="space-y-4 px-4">
+            <div className="space-y-1.5">
               <Label>{t("templateSettings.titleLabel")}</Label>
               <Input
+                placeholder={t("templateSettings.titlePlaceholder")}
                 value={draft.title}
                 onChange={(event) =>
                   setDraft((d) => ({ ...d, title: event.target.value }))
@@ -109,9 +108,10 @@ export function DocumentBuilderStepSettings({
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>{t("templateSettings.descriptionLabel")}</Label>
               <Textarea
+                placeholder={t("templateSettings.descriptionPlaceholder")}
                 value={draft.description}
                 onChange={(event) =>
                   setDraft((d) => ({ ...d, description: event.target.value }))
@@ -121,7 +121,7 @@ export function DocumentBuilderStepSettings({
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="min-w-0 space-y-2">
+              <div className="min-w-0 space-y-1.5">
                 <Label>{t("templateSettings.categoryLabel")}</Label>
                 <Select
                   value={normalizeDocumentCategory(draft.category)}
@@ -142,7 +142,7 @@ export function DocumentBuilderStepSettings({
                 </Select>
               </div>
 
-              <div className="min-w-0 space-y-2">
+              <div className="min-w-0 space-y-1.5">
                 <Label>{t("templateSettings.languageLabel")}</Label>
                 <Select
                   value={draft.language}
@@ -163,7 +163,7 @@ export function DocumentBuilderStepSettings({
                 </Select>
               </div>
 
-              <div className="min-w-0 space-y-2">
+              <div className="min-w-0 space-y-1.5">
                 <Label>{t("templateSettings.regionLabel")}</Label>
                 <Select
                   value={draft.region}
@@ -189,89 +189,95 @@ export function DocumentBuilderStepSettings({
         </Card>
 
         {/* ── Advanced generation settings ── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">
-              {t("generationSettings.advancedTitle")}
-            </CardTitle>
-            <CardDescription className="text-xs">
-              {t("generationSettings.advancedDescription")}
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between rounded-md border border-border/50 bg-muted/30 px-3 py-2">
-              <p className="text-[11px] text-muted-foreground">
-                {t("model.currentLabel", { model: documentModelLabel })}
-              </p>
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-[11px]"
-                onClick={onOpenModelSettings}
-              >
-                {t("model.changeInSettings")}
+        <Card className="gap-4 py-4">
+          <CardHeader
+            className="cursor-pointer select-none px-4"
+            onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-1.5">
+                <CardTitle className="text-sm">
+                  {t("generationSettings.advancedTitle")}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {t("generationSettings.advancedDescription")}
+                </CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                <div>
+                  {isAdvancedOpen ? (
+                    <IconChevronDown className="h-4 w-4" />
+                  ) : (
+                    <IconChevronRight className="h-4 w-4" />
+                  )}
+                </div>
               </Button>
             </div>
+          </CardHeader>
 
-            <div className="space-y-2">
-              <Label>{t("generationSettings.systemInstructionsLabel")}</Label>
-              <Textarea
-                value={draft.generationConfig.systemInstructions}
-                onChange={(event) =>
-                  setDraft((d) => ({
-                    ...d,
-                    generationConfig: {
-                      ...d.generationConfig,
-                      systemInstructions: event.target.value,
-                    },
-                  }))
-                }
-                className="min-h-28 resize-y"
-              />
-            </div>
+          {isAdvancedOpen && (
+            <CardContent className="space-y-4 px-4">
 
-            <div className="space-y-2.5">
-              <Label>{t("generationSettings.contextSourcesLabel")}</Label>
-              <div className="grid gap-2.5 sm:grid-cols-2">
-                {DOCUMENT_CONTEXT_SOURCES.map((source) => {
-                  const checked =
-                    draft.generationConfig.contextSources.includes(source)
-                  return (
-                    <label
-                      key={source}
-                      className="flex items-center gap-2 text-sm text-foreground/90"
-                    >
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(nextChecked) =>
-                          setDraft((d) => ({
-                            ...d,
-                            generationConfig: {
-                              ...d.generationConfig,
-                              contextSources:
-                                nextChecked === true
-                                  ? Array.from(
-                                    new Set([
-                                      ...d.generationConfig.contextSources,
-                                      source,
-                                    ])
-                                  )
-                                  : d.generationConfig.contextSources.filter(
-                                    (item) => item !== source
-                                  ),
-                            },
-                          }))
-                        }
-                      />
-                      {t(`contextSources.${source}` as never)}
-                    </label>
-                  )
-                })}
+
+              <div className="space-y-1.5">
+                <Label>{t("generationSettings.systemInstructionsLabel")}</Label>
+                <Textarea
+                  placeholder={t("generationSettings.systemInstructionsPlaceholder")}
+                  value={draft.generationConfig.systemInstructions}
+                  onChange={(event) =>
+                    setDraft((d) => ({
+                      ...d,
+                      generationConfig: {
+                        ...d.generationConfig,
+                        systemInstructions: event.target.value,
+                      },
+                    }))
+                  }
+                  className="min-h-28 resize-y"
+                />
               </div>
-            </div>
-          </CardContent>
+
+              <div className="space-y-2">
+                <Label>{t("generationSettings.contextSourcesLabel")}</Label>
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  {DOCUMENT_CONTEXT_SOURCES.map((source) => {
+                    const checked =
+                      draft.generationConfig.contextSources.includes(source)
+                    return (
+                      <label
+                        key={source}
+                        className="flex items-center gap-2 text-sm text-foreground/90"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(nextChecked) =>
+                            setDraft((d) => ({
+                              ...d,
+                              generationConfig: {
+                                ...d.generationConfig,
+                                contextSources:
+                                  nextChecked === true
+                                    ? Array.from(
+                                      new Set([
+                                        ...d.generationConfig.contextSources,
+                                        source,
+                                      ])
+                                    )
+                                    : d.generationConfig.contextSources.filter(
+                                      (item) => item !== source
+                                    ),
+                              },
+                            }))
+                          }
+                        />
+                        {t(`contextSources.${source}` as never)}
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          )}
         </Card>
       </div>
     </div>

@@ -101,11 +101,11 @@ export function DocumentBuilderStepReview({
   )
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-5">
+    <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
         {/* ── Summary card ── */}
-        <Card>
-          <CardHeader>
+        <Card className="gap-4 py-4">
+          <CardHeader className="px-4">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
                 <CardTitle className="text-sm">{t("review.title")}</CardTitle>
@@ -128,7 +128,7 @@ export function DocumentBuilderStepReview({
             </div>
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="px-4">
             <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
               <SummaryRow
                 label={t("review.summary.title")}
@@ -185,11 +185,11 @@ export function DocumentBuilderStepReview({
         </Card>
 
         {/* ── Preview card ── */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
+        <Card className="gap-4 py-4">
+          <CardHeader className="px-4">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-2 mt-0.5">
                   <CardTitle className="text-sm">
                     {t("preview.renderedTitle")}
                   </CardTitle>
@@ -203,7 +203,23 @@ export function DocumentBuilderStepReview({
                     </Badge>
                   ) : null}
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5"
+                  onClick={onRegeneratePreview}
+                >
+                  {previewStatus === "generating" ? (
+                    <IconLoader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <IconRefresh className="size-3.5" />
+                  )}
+                  {t("preview.regenerate")}
+                </Button>
+              </div>
 
+              <div className="space-y-1">
                 <CardDescription className="text-xs">
                   {t("preview.renderedDescription")}
                 </CardDescription>
@@ -222,21 +238,6 @@ export function DocumentBuilderStepReview({
                   </p>
                 ) : null}
               </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5 self-start"
-                onClick={onRegeneratePreview}
-              >
-                {previewStatus === "generating" ? (
-                  <IconLoader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <IconRefresh className="size-3.5" />
-                )}
-                {t("preview.regenerate")}
-              </Button>
             </div>
 
             {previewError ? (
@@ -244,7 +245,7 @@ export function DocumentBuilderStepReview({
             ) : null}
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="px-4">
             <GenericDocumentPreview sections={previewSections} />
           </CardContent>
         </Card>

@@ -172,11 +172,17 @@ export function NavSessions() {
     pathname && pathname.startsWith("/consultation/")
       ? pathname.slice("/consultation/".length)
       : null
-  const visualActiveSessionId = routeSessionId || activeSession?.id || null
+
+  // Only provide a visual active state if we're actually on the consultation pages
+  const isConsultationRoute = pathname?.startsWith("/consultation")
+  const visualActiveSessionId = isConsultationRoute
+    ? (routeSessionId || activeSession?.id || null)
+    : null
 
   const loadSession = (sessionId: string) => {
     if (editingId || deletingId === sessionId) return
-    if (activeSession?.id === sessionId) return
+    if (pathname === `/consultation/${sessionId}`) return
+
     navigationRequestSeqRef.current += 1
     useSessionStore.getState().setSwitching(true)
     router.push(`/consultation/${sessionId}`)
