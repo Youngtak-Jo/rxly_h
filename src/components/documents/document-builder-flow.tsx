@@ -1289,7 +1289,7 @@ export const DocumentBuilderFlow = forwardRef<
       )}
 
       {step === "start" ? null : (
-        <div className="border-t px-5 py-3 sm:px-6">
+        <div className="border-t px-5 py-2.5">
           {step === "settings" ? (
             <div className="flex items-center justify-between">
               {effectiveMode === "create" ? (

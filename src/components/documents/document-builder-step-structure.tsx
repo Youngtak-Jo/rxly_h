@@ -261,7 +261,7 @@ function CompactActionButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "size-7 rounded-lg text-muted-foreground hover:text-foreground",
+        "size-5 rounded text-muted-foreground hover:text-foreground",
         destructive && "text-destructive hover:bg-destructive/10 hover:text-destructive"
       )}
     >
@@ -352,60 +352,37 @@ function InsertionSlot({
   return (
     <div
       ref={setNodeRef}
-      className={cn(
-        "relative"
-      )}
+      className="relative"
       onClick={(event) => event.stopPropagation()}
     >
       {emptyState ? (
         <div
           className={cn(
-            "rounded-2xl border border-dashed px-4 py-5 text-center transition-colors",
+            "rounded-xl border border-dashed px-3 py-3 text-center transition-colors",
             isOver
               ? "border-primary bg-primary/5"
               : "border-border/60 bg-background/70"
           )}
         >
-          <div className="mx-auto flex max-w-md flex-col items-center gap-3">
-            <div className="flex items-center gap-3 self-stretch">
-              <div
-                className={cn(
-                  "h-px flex-1",
-                  isOver ? "bg-primary/50" : "bg-border/60"
-                )}
-              />
-              <BlockTypeMenu
-                onSelect={(type) => onInsertNode(parentPath, index, type)}
-                compact={false}
-              />
-              <div
-                className={cn(
-                  "h-px flex-1",
-                  isOver ? "bg-primary/50" : "bg-border/60"
-                )}
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">
-                {emptyState === "root"
-                  ? t("schemaEditor.empty")
-                  : t("schemaEditor.emptyGroupTitle")}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {isOver
-                  ? t("schemaEditor.dropHere")
-                  : emptyState === "root"
-                    ? t("schemaEditor.emptyDescription")
-                    : t("schemaEditor.emptyGroupDescription")}
-              </p>
-            </div>
+          <div className="mx-auto flex flex-col items-center gap-2">
+            <BlockTypeMenu
+              onSelect={(type) => onInsertNode(parentPath, index, type)}
+              compact={false}
+            />
+            <p className="text-xs text-muted-foreground">
+              {isOver
+                ? t("schemaEditor.dropHere")
+                : emptyState === "root"
+                  ? t("schemaEditor.emptyDescription")
+                  : t("schemaEditor.emptyGroupDescription")}
+            </p>
           </div>
         </div>
       ) : (
         <div
           className={cn(
             "flex transition-all",
-            isOver ? "bg-primary/5 h-8 items-center" : "h-2"
+            isOver ? "bg-primary/5 h-5 items-center" : "h-0.5"
           )}
         >
           <div
@@ -578,7 +555,7 @@ function SchemaCanvasLevel({
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col">
       {nodes.map((node, index) => (
         <div key={`${parentPath.join(".")}-${node.key}-${index}`} className="flex flex-col">
           <InsertionSlot
@@ -586,7 +563,7 @@ function SchemaCanvasLevel({
             index={index}
             onInsertNode={onInsertNode}
           />
-          <SchemaBlockCard
+          <SchemaBlockChip
             node={node}
             path={[...parentPath, index]}
             siblingCount={nodes.length}
@@ -604,17 +581,17 @@ function SchemaCanvasLevel({
         index={nodes.length}
         onInsertNode={onInsertNode}
       />
-      <div className="mt-1 pb-4 flex items-center justify-center">
+      <div className="mt-0.5 flex items-center justify-center">
         <BlockTypeMenu
           onSelect={(type) => onInsertNode(parentPath, nodes.length, type)}
-          compact={false}
+          compact={true}
         />
       </div>
     </div>
   )
 }
 
-function SchemaBlockCard({
+function SchemaBlockChip({
   node,
   path,
   siblingCount,
@@ -647,68 +624,52 @@ function SchemaBlockCard({
       id: buildNodeDragId(path),
     })
 
-  const childSummary =
-    isGroupNode(node) && node.children.length > 0
-      ? node.type === "repeatableGroup"
-        ? t("schemaNode.itemCount", { count: node.children.length })
-        : t("schemaNode.childCount", { count: node.children.length })
-      : null
-
   return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Translate.toString(transform),
-      }}
-      className={cn(
-        "group/block relative rounded-xl border bg-card shadow-sm transition-all flex flex-col",
-        isActive
-          ? "border-primary ring-1 ring-primary"
-          : "border-border/60 hover:border-border",
-        (isDragging || isDraggingSelf) && "z-20 opacity-75 shadow-xl"
-      )}
-      onClick={(event) => {
-        event.stopPropagation()
-        onSetActiveNode(pathId)
-      }}
-    >
-      <div className={cn("flex items-center gap-2 p-1.5", isGroupNode(node) && "border-b border-border/40")}>
+    <div className="flex flex-col">
+      <div
+        ref={setNodeRef}
+        style={{
+          transform: CSS.Translate.toString(transform),
+        }}
+        className={cn(
+          "group/block relative flex items-center gap-1 rounded-lg border bg-card px-1 py-0.5 transition-all",
+          isActive
+            ? "border-primary ring-1 ring-primary"
+            : "border-border/50 hover:border-border",
+          (isDragging || isDraggingSelf) && "z-20 opacity-75 shadow-lg"
+        )}
+        onClick={(event) => {
+          event.stopPropagation()
+          onSetActiveNode(pathId)
+        }}
+      >
         <div
           {...attributes}
           {...listeners}
           onClick={(event) => event.stopPropagation()}
-          className="flex cursor-grab items-center justify-center rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing"
+          className="flex cursor-grab items-center justify-center rounded p-0.5 text-muted-foreground/50 hover:text-muted-foreground active:cursor-grabbing"
         >
-          <GripVertical className="size-4" />
-        </div>
-
-        <div className="flex flex-1 items-center gap-2 pr-2 overflow-hidden">
-          <div
-            className={cn(
-              "flex size-6 shrink-0 items-center justify-center rounded-md",
-              meta.surfaceClassName
-            )}
-          >
-            <Icon className={cn("size-3.5", meta.iconClassName)} />
-          </div>
-
-          <span className="truncate text-sm font-medium">{title}</span>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              {t(`schemaNode.types.${node.type}`)}
-            </span>
-            {node.required ? (
-              <span className="rounded-md bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-destructive">
-                *
-              </span>
-            ) : null}
-          </div>
+          <GripVertical className="size-3" />
         </div>
 
         <div
           className={cn(
-            "flex shrink-0 items-center gap-0.5 transition-opacity",
+            "flex size-5 shrink-0 items-center justify-center rounded",
+            meta.surfaceClassName
+          )}
+        >
+          <Icon className={cn("size-3", meta.iconClassName)} />
+        </div>
+
+        <span className="min-w-0 flex-1 truncate text-xs font-medium pl-0.5">{title}</span>
+
+        {node.required ? (
+          <span className="text-[10px] font-bold text-destructive">*</span>
+        ) : null}
+
+        <div
+          className={cn(
+            "flex shrink-0 items-center transition-opacity",
             isActive
               ? "opacity-100"
               : "opacity-0 group-hover/block:opacity-100 group-focus-within/block:opacity-100"
@@ -722,7 +683,7 @@ function SchemaBlockCard({
               onMoveNode(path, "up")
             }}
           >
-            <ArrowUp className="size-3.5" />
+            <ArrowUp className="size-3" />
           </CompactActionButton>
           <CompactActionButton
             label={t("schemaNode.actions.moveDown")}
@@ -732,7 +693,7 @@ function SchemaBlockCard({
               onMoveNode(path, "down")
             }}
           >
-            <ArrowDown className="size-3.5" />
+            <ArrowDown className="size-3" />
           </CompactActionButton>
           <CompactActionButton
             label={t("schemaNode.actions.delete")}
@@ -742,13 +703,20 @@ function SchemaBlockCard({
               onRemoveNode(path)
             }}
           >
-            <Trash2 className="size-3.5" />
+            <Trash2 className="size-3" />
           </CompactActionButton>
         </div>
       </div>
 
       {isGroupNode(node) ? (
-        <div className="rounded-b-xl bg-muted/10 p-2 pl-9 border-t border-transparent">
+        <div
+          className={cn(
+            "ml-3.5 border-l-2 pl-3 pt-0.5",
+            meta.iconClassName === "text-emerald-700"
+              ? "border-emerald-300 dark:border-emerald-700"
+              : "border-violet-300 dark:border-violet-700"
+          )}
+        >
           <SchemaCanvasLevel
             nodes={node.children}
             parentPath={path}
@@ -938,11 +906,11 @@ export function DocumentBuilderStepSchema({
   return (
     <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background">
       <div
-        className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6"
+        className="min-h-0 flex-1 overflow-y-auto px-5 py-4"
         onClick={() => setActiveNodePathId(null)}
       >
         <div
-          className="mx-auto flex w-full max-w-5xl flex-col gap-6"
+          className="mx-auto flex w-full max-w-2xl flex-col gap-4"
           onClick={(event) => event.stopPropagation()}
         >
           {validationError ? (
@@ -952,10 +920,10 @@ export function DocumentBuilderStepSchema({
           {showAiRevisePanel ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">
+                <CardTitle className="text-sm">
                   {t("aiDraft.revisePanelTitle")}
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   {t("aiDraft.revisePanelDescription")}
                 </CardDescription>
               </CardHeader>
@@ -968,8 +936,8 @@ export function DocumentBuilderStepSchema({
                   placeholder={t("aiDraft.revisePlaceholder")}
                 />
 
-                <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 px-3.5 py-2.5">
-                  <p className="text-xs text-muted-foreground">
+                <div className="flex items-center justify-between rounded-md border border-border/50 bg-muted/30 px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground">
                     {t("model.currentLabel", { model: documentModelLabel })}
                   </p>
                   <div className="flex items-center gap-2">
@@ -977,7 +945,7 @@ export function DocumentBuilderStepSchema({
                       type="button"
                       variant="link"
                       size="sm"
-                      className="h-auto p-0 text-xs"
+                      className="h-auto p-0 text-[11px]"
                       onClick={onOpenModelSettings}
                     >
                       {t("model.changeInSettings")}
@@ -1003,15 +971,15 @@ export function DocumentBuilderStepSchema({
           ) : null}
 
 
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <h2 className="text-sm font-semibold">{t("schemaEditor.title")}</h2>
-              <p className="text-xs text-muted-foreground">
+          <div className="space-y-2">
+            <div className="space-y-0.5">
+              <h2 className="text-xs font-semibold">{t("schemaEditor.title")}</h2>
+              <p className="text-[11px] text-muted-foreground">
                 {t("schemaEditor.canvasDescription")}
               </p>
             </div>
 
-            <div className="rounded-[28px] border border-border/60 bg-muted/10 p-4 sm:p-5">
+            <div className="rounded-lg border border-border/50 bg-muted/5 p-2.5">
               <DndContext
                 sensors={sensors}
                 onDragStart={handleDragStart}
@@ -1034,7 +1002,7 @@ export function DocumentBuilderStepSchema({
         </div>
       </div>
 
-      <aside className="hidden w-[340px] shrink-0 border-l bg-card md:block xl:w-[380px]">
+      <aside className="hidden w-[260px] shrink-0 border-l bg-card md:block xl:w-[280px]">
         <div className="border-b px-4 py-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {t("schemaEditor.inspectorTitle")}

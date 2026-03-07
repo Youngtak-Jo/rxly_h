@@ -101,14 +101,14 @@ export function DocumentBuilderStepReview({
   )
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-5">
         {/* ── Summary card ── */}
         <Card>
           <CardHeader>
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
-                <CardTitle className="text-base">{t("review.title")}</CardTitle>
+                <CardTitle className="text-sm">{t("review.title")}</CardTitle>
                 <CardDescription className="text-xs">
                   {t("review.description")}
                 </CardDescription>
@@ -190,7 +190,7 @@ export function DocumentBuilderStepReview({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <CardTitle className="text-base">
+                  <CardTitle className="text-sm">
                     {t("preview.renderedTitle")}
                   </CardTitle>
                   <Badge variant="outline" className="text-[11px] font-normal">

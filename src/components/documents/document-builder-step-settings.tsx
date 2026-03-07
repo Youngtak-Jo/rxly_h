@@ -59,8 +59,8 @@ export function DocumentBuilderStepSettings({
   const tMeta = useTranslations("DocumentMetadata")
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-5">
         {restoredLocalChanges ? (
           <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
             <div className="min-w-0">
@@ -90,10 +90,10 @@ export function DocumentBuilderStepSettings({
         {/* ── Basic info ── */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">
+            <CardTitle className="text-sm">
               {t("templateSettings.basicTitle")}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs">
               {t("templateSettings.basicDescription")}
             </CardDescription>
           </CardHeader>
@@ -191,24 +191,24 @@ export function DocumentBuilderStepSettings({
         {/* ── Advanced generation settings ── */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">
+            <CardTitle className="text-sm">
               {t("generationSettings.advancedTitle")}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs">
               {t("generationSettings.advancedDescription")}
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 px-3.5 py-2.5">
-              <p className="text-xs text-muted-foreground">
+            <div className="flex items-center justify-between rounded-md border border-border/50 bg-muted/30 px-3 py-2">
+              <p className="text-[11px] text-muted-foreground">
                 {t("model.currentLabel", { model: documentModelLabel })}
               </p>
               <Button
                 type="button"
                 variant="link"
                 size="sm"
-                className="h-auto p-0 text-xs"
+                className="h-auto p-0 text-[11px]"
                 onClick={onOpenModelSettings}
               >
                 {t("model.changeInSettings")}

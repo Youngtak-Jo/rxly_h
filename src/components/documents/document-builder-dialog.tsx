@@ -77,18 +77,18 @@ export function DocumentBuilderDialog() {
       >
         <DialogContent
           showCloseButton={false}
-          className="h-[100dvh] w-screen max-w-none gap-0 overflow-hidden rounded-none p-0 sm:h-[min(90dvh,880px)] sm:w-[min(96vw,1280px)] sm:max-w-[1280px] sm:rounded-lg"
+          className="h-[100dvh] w-screen max-w-none gap-0 overflow-hidden rounded-none p-0 sm:h-[min(90dvh,880px)] sm:w-[min(96vw,700px)] sm:max-w-[700px] sm:rounded-lg"
           onEscapeKeyDown={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
           <div className="flex min-h-0 flex-1 flex-col">
-            <DialogHeader className="border-b px-5 py-3.5 text-left sm:px-6">
+            <DialogHeader className="border-b px-5 py-2.5 text-left">
               <div className="flex items-center justify-between gap-4">
-                <div className="space-y-0.5">
-                  <DialogTitle className="text-base">
+                <div className="space-y-0">
+                  <DialogTitle className="text-sm">
                     {mode === "create" ? t("titleNew") : t("titleEdit")}
                   </DialogTitle>
-                  <DialogDescription className="text-xs">
+                  <DialogDescription className="text-[11px]">
                     {t("subtitle")}
                   </DialogDescription>
                 </div>
