@@ -379,6 +379,7 @@ export const DocumentBuilderFlow = forwardRef<
   )
   const isDirty = comparableState !== baselineComparableState
   const localSnapshotRef = useRef<DocumentBuilderLocalSnapshot | null>(null)
+  const [hasAttemptedNext, setHasAttemptedNext] = useState(false)
   const previewSections = useMemo(
     () => buildGenericDocumentSections(previewContent, draft.schema.nodes),
     [draft.schema.nodes, previewContent]
@@ -713,6 +714,7 @@ export const DocumentBuilderFlow = forwardRef<
       buildSampleDocumentContent(nextDraft.schema, nextDraft.language)
     )
     resetPreviewState(nextDraft.language)
+    setHasAttemptedNext(false)
     setStep("settings")
   }, [locale, resetPreviewState, userRegion])
 
@@ -1191,10 +1193,10 @@ export const DocumentBuilderFlow = forwardRef<
                 <div className="flex items-center gap-2">
                   <div
                     className={`flex size-6 items-center justify-center rounded-full text-xs font-medium transition-colors ${isActive
-                        ? "bg-primary text-primary-foreground"
-                        : isComplete
-                          ? "bg-primary/15 text-primary"
-                          : "bg-muted text-muted-foreground"
+                      ? "bg-primary text-primary-foreground"
+                      : isComplete
+                        ? "bg-primary/15 text-primary"
+                        : "bg-muted text-muted-foreground"
                       }`}
                   >
                     {isComplete ? (
@@ -1249,7 +1251,7 @@ export const DocumentBuilderFlow = forwardRef<
               : null
           }
           restoredLocalChanges={restoredLocalChanges}
-          validationError={settingsValidationMessage}
+          validationError={hasAttemptedNext ? settingsValidationMessage : null}
         />
       ) : step === "schema" ? (
         <DocumentBuilderStepSchema
@@ -1262,7 +1264,7 @@ export const DocumentBuilderFlow = forwardRef<
           onAiPromptChange={setAiPrompt}
           onAiRevise={handleAiDraft}
           onOpenModelSettings={() => openSettings("models")}
-          validationError={schemaValidationMessage}
+          validationError={hasAttemptedNext ? schemaValidationMessage : null}
         />
       ) : (
         <DocumentBuilderStepReview
@@ -1295,7 +1297,10 @@ export const DocumentBuilderFlow = forwardRef<
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setStep("start")}
+                  onClick={() => {
+                    setHasAttemptedNext(false)
+                    setStep("start")
+                  }}
                 >
                   <IconChevronLeft className="size-4" />
                   {t("navigation.back")}
@@ -1307,8 +1312,14 @@ export const DocumentBuilderFlow = forwardRef<
               <Button
                 type="button"
                 size="sm"
-                disabled={!canGoSettingsNext}
-                onClick={() => setStep("schema")}
+                onClick={() => {
+                  if (!canGoSettingsNext) {
+                    setHasAttemptedNext(true)
+                    return
+                  }
+                  setHasAttemptedNext(false)
+                  setStep("schema")
+                }}
               >
                 {t("navigation.next")}
                 <IconChevronRight className="size-4" />
@@ -1320,7 +1331,10 @@ export const DocumentBuilderFlow = forwardRef<
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setStep("settings")}
+                onClick={() => {
+                  setHasAttemptedNext(false)
+                  setStep("settings")
+                }}
               >
                 <IconChevronLeft className="size-4" />
                 {t("navigation.back")}
@@ -1329,8 +1343,14 @@ export const DocumentBuilderFlow = forwardRef<
               <Button
                 type="button"
                 size="sm"
-                disabled={!canGoSchemaNext}
-                onClick={() => setStep("review")}
+                onClick={() => {
+                  if (!canGoSchemaNext) {
+                    setHasAttemptedNext(true)
+                    return
+                  }
+                  setHasAttemptedNext(false)
+                  setStep("review")
+                }}
               >
                 {t("navigation.next")}
                 <IconChevronRight className="size-4" />
@@ -1343,7 +1363,10 @@ export const DocumentBuilderFlow = forwardRef<
                 variant="ghost"
                 size="sm"
                 className="self-start"
-                onClick={() => setStep("schema")}
+                onClick={() => {
+                  setHasAttemptedNext(false)
+                  setStep("schema")
+                }}
               >
                 <IconChevronLeft className="size-4" />
                 {t("navigation.back")}

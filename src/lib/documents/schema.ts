@@ -300,10 +300,16 @@ export function buildDocumentContentSchema(schema: DocumentTemplateSchema): z.Zo
     for (const node of nodes) {
       if ("children" in node) {
         const childSchema = z.object(buildShape(node.children))
-        shape[node.key] =
+        let arrayOrObjectSchema: z.ZodTypeAny =
           node.type === "repeatableGroup"
             ? z.array(childSchema)
             : childSchema
+
+        if (node.helpText?.trim()) {
+          arrayOrObjectSchema = arrayOrObjectSchema.describe(node.helpText)
+        }
+
+        shape[node.key] = arrayOrObjectSchema
         continue
       }
 
@@ -312,6 +318,10 @@ export function buildDocumentContentSchema(schema: DocumentTemplateSchema): z.Zo
         fieldSchema = z.array(z.string())
       } else {
         fieldSchema = z.string()
+      }
+
+      if (node.helpText?.trim()) {
+        fieldSchema = fieldSchema.describe(node.helpText)
       }
 
       shape[node.key] = node.required ? fieldSchema : fieldSchema.optional()
