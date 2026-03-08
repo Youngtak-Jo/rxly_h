@@ -411,6 +411,7 @@ function hydrateHeavyStores(fullSession: FullSessionResponse) {
   const researchStore = useResearchStore.getState()
   const recordingSegmentStore = useRecordingSegmentStore.getState()
   const consultationModeStore = useConsultationModeStore.getState()
+  const sessionDocumentStore = useSessionDocumentStore.getState()
 
   transcriptStore.reset()
   if (transcriptEntries.length > 0) {
@@ -442,6 +443,10 @@ function hydrateHeavyStores(fullSession: FullSessionResponse) {
   )
   researchStore.loadFromDB(mergedResearch)
   recordingSegmentStore.hydrateSegments(recordingSegments)
+  sessionDocumentStore.hydrateSessionDocuments(
+    session.id,
+    session.sessionDocuments ?? []
+  )
 }
 
 async function fetchCoreSessionById(sessionId: string): Promise<CoreSessionResponse> {

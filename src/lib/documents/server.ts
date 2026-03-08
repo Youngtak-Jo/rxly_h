@@ -203,26 +203,55 @@ function buildPublishedTemplateWhere(): Prisma.DocumentTemplateWhereInput {
   }
 }
 
-function buildAccessibleTemplateWhere(
+function buildCatalogTemplateAccessClauses(
+  userId: string
+): Prisma.DocumentTemplateWhereInput[] {
+  return [
+    { ownerUserId: userId },
+    { sourceKind: "BUILT_IN" },
+    buildPublishedTemplateWhere(),
+  ]
+}
+
+function buildCatalogTemplateWhere(
+  userId: string
+): Prisma.DocumentTemplateWhereInput {
+  return {
+    OR: buildCatalogTemplateAccessClauses(userId),
+  }
+}
+
+function buildRetainedTemplateWhere(
   userId: string
 ): Prisma.DocumentTemplateWhereInput {
   return {
     OR: [
-      { ownerUserId: userId },
-      { sourceKind: "BUILT_IN" },
-      buildPublishedTemplateWhere(),
+      ...buildCatalogTemplateAccessClauses(userId),
+      {
+        installedBy: {
+          some: {
+            userId,
+          },
+        },
+      },
+      {
+        sessionDocuments: {
+          some: {
+            session: {
+              userId,
+            },
+          },
+        },
+      },
     ],
   }
 }
 
-function buildAccessibleInstalledDocumentWhere(
+function buildInstalledDocumentWhere(
   userId: string
 ): Prisma.UserInstalledDocumentWhereInput {
   return {
     userId,
-    template: {
-      is: buildAccessibleTemplateWhere(userId),
-    },
   }
 }
 
@@ -619,7 +648,7 @@ async function ensureDefaultInstalledDocumentsInternal(
       where: { userId },
     }),
     prisma.userInstalledDocument.findMany({
-      where: buildAccessibleInstalledDocumentWhere(userId),
+      where: buildInstalledDocumentWhere(userId),
       include: {
         template: {
           include: {
@@ -817,7 +846,7 @@ export async function getDocumentCatalog(
 ): Promise<DocumentCatalogItem[]> {
   await ensureDefaultInstalledDocumentsExist(userId)
   const installedDocuments = await prisma.userInstalledDocument.findMany({
-    where: buildAccessibleInstalledDocumentWhere(userId),
+    where: buildInstalledDocumentWhere(userId),
     include: {
       template: {
         include: {
@@ -843,7 +872,7 @@ export async function getDocumentCatalog(
 
   const q = query?.trim() ?? ""
   const templates = await prisma.documentTemplate.findMany({
-    where: buildAccessibleTemplateWhere(userId),
+    where: buildCatalogTemplateWhere(userId),
     include: {
       latestDraftVersion: true,
       latestPublishedVersion: true,
@@ -965,7 +994,7 @@ export async function installDocumentForUser(
   const template = await prisma.documentTemplate.findFirst({
     where: {
       id: templateId,
-      ...buildAccessibleTemplateWhere(userId),
+      ...buildCatalogTemplateWhere(userId),
     },
     include: {
       latestPublishedVersion: true,
@@ -1049,7 +1078,7 @@ async function ensureBuiltInSafeWorkspaceAfterUninstall(
   locale: UiLocale
 ): Promise<DocumentWorkspaceSnapshot> {
   const installedDocuments = await prisma.userInstalledDocument.findMany({
-    where: buildAccessibleInstalledDocumentWhere(userId),
+    where: buildInstalledDocumentWhere(userId),
     include: {
       template: {
         include: {
@@ -1223,7 +1252,7 @@ export async function getDocumentTemplateForUser(
   const template = await prisma.documentTemplate.findFirst({
     where: {
       id: templateId,
-      ...buildAccessibleTemplateWhere(userId),
+      ...buildRetainedTemplateWhere(userId),
     },
     include: {
       latestDraftVersion: true,
@@ -1509,6 +1538,7 @@ export async function publishDocumentTemplate(input: {
     where: { id: template.id },
     data: {
       visibility: "PUBLIC",
+      latestDraftVersionId: null,
       latestPublishedVersionId: published.id,
     },
     include: {
@@ -1576,7 +1606,7 @@ export async function getDocumentPreviewForUser(input: {
   const template = await prisma.documentTemplate.findFirst({
     where: {
       id: input.templateId,
-      ...buildAccessibleTemplateWhere(input.userId),
+      ...buildRetainedTemplateWhere(input.userId),
     },
     include: {
       latestDraftVersion: true,
@@ -1622,7 +1652,7 @@ export async function getSessionDocumentForUser(input: {
   const template = await prisma.documentTemplate.findFirst({
     where: {
       id: input.templateId,
-      ...buildAccessibleTemplateWhere(input.userId),
+      ...buildRetainedTemplateWhere(input.userId),
     },
     include: {
       latestDraftVersion: true,
@@ -1642,16 +1672,21 @@ export async function getSessionDocumentForUser(input: {
       templateId: input.templateId,
     },
   })
+  const installedDocument =
+    workspace.installedDocuments.find(
+      (document) => document.templateId === input.templateId
+    ) ?? null
+
+  if (!installedDocument && !sessionDocument) {
+    throw new Error("Document not installed")
+  }
 
   return {
     sessionDocument: sessionDocument
       ? mapSessionDocumentRecord(sessionDocument)
       : null,
     template: normalizedTemplate,
-    installedDocument:
-      workspace.installedDocuments.find(
-        (document) => document.templateId === input.templateId
-      ) ?? null,
+    installedDocument,
   }
 }
 

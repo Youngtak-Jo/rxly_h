@@ -3,9 +3,11 @@ import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
 import { requireAuth, requireSessionOwnership } from "@/lib/auth"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
-import { sessionDocumentSaveSchema } from "@/lib/documents/schema"
 import {
-  createInitialSessionDocumentIfMissing,
+  createEmptyDocumentContent,
+  sessionDocumentSaveSchema,
+} from "@/lib/documents/schema"
+import {
   getSessionDocumentForUser,
   normalizeGenericSessionDocumentContent,
   upsertSessionDocument,
@@ -28,9 +30,8 @@ async function getGenericTemplateContext(
   }
 
   const activeVersionId =
-    result.installedDocument?.installedVersionId ??
-    result.template.latestPublishedVersionId ??
-    result.template.latestDraftVersionId
+    result.sessionDocument?.templateVersionId ??
+    result.installedDocument?.installedVersionId
   if (!activeVersionId) {
     throw new Error("Document version not found")
   }
@@ -38,7 +39,7 @@ async function getGenericTemplateContext(
   const activeVersion = await prisma.documentTemplateVersion.findUnique({
     where: { id: activeVersionId },
   })
-  if (!activeVersion) {
+  if (!activeVersion || activeVersion.templateId !== templateId) {
     throw new Error("Document version not found")
   }
 
@@ -60,32 +61,33 @@ export async function GET(
     if (!allowed) return rateLimitResponse()
 
     const context = await getGenericTemplateContext(user.id, id, templateId)
-    const sessionDocument =
-      context.sessionDocument ??
-      (await createInitialSessionDocumentIfMissing({
-        sessionId: id,
-        templateId,
-        templateVersionId: context.activeVersion.id,
-        schema: context.activeVersion.schemaJson as never,
-      }))
+    const initialContentJson = createEmptyDocumentContent(
+      context.activeVersion.schemaJson as never
+    )
 
-    logAudit({
-      userId: user.id,
-      action: "READ",
-      resource: "session_document",
-      resourceId: sessionDocument.id,
-      sessionId: id,
-    })
+    if (context.sessionDocument) {
+      logAudit({
+        userId: user.id,
+        action: "READ",
+        resource: "session_document",
+        resourceId: context.sessionDocument.id,
+        sessionId: id,
+      })
+    }
 
     return NextResponse.json({
-      sessionDocument,
+      sessionDocument: context.sessionDocument,
+      initialContentJson,
       template: context.template,
       installedDocument: context.installedDocument,
       activeVersion: context.activeVersion,
     })
   } catch (error) {
     if (error instanceof NextResponse) return error
-    if (error instanceof Error && /not found|supported/i.test(error.message)) {
+    if (
+      error instanceof Error &&
+      /not found|supported|installed/i.test(error.message)
+    ) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
     logger.error("Failed to fetch session document", error)
@@ -113,18 +115,30 @@ export async function PUT(
     }
 
     const context = await getGenericTemplateContext(user.id, id, templateId)
-    const templateVersionId =
-      parsed.data.templateVersionId ?? context.activeVersion.id
+    const targetVersion = parsed.data.templateVersionId
+      ? await prisma.documentTemplateVersion.findFirst({
+          where: {
+            id: parsed.data.templateVersionId,
+            templateId,
+          },
+        })
+      : context.activeVersion
+    if (!targetVersion) {
+      return NextResponse.json(
+        { error: "Document version not found" },
+        { status: 404 }
+      )
+    }
 
     const contentJson = normalizeGenericSessionDocumentContent({
-      schema: context.activeVersion.schemaJson as never,
+      schema: targetVersion.schemaJson as never,
       contentJson: parsed.data.contentJson,
     })
 
     const sessionDocument = await upsertSessionDocument({
       sessionId: id,
       templateId,
-      templateVersionId,
+      templateVersionId: targetVersion.id,
       contentJson,
       generatedAt: parsed.data.generatedAt ?? null,
     })
@@ -137,10 +151,16 @@ export async function PUT(
       sessionId: id,
     })
 
-    return NextResponse.json(sessionDocument)
+    return NextResponse.json({
+      sessionDocument,
+      activeVersion: targetVersion,
+    })
   } catch (error) {
     if (error instanceof NextResponse) return error
-    if (error instanceof Error && /not found|supported/i.test(error.message)) {
+    if (
+      error instanceof Error &&
+      /not found|supported|installed/i.test(error.message)
+    ) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
     logger.error("Failed to save session document", error)

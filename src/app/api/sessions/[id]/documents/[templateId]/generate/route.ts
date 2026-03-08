@@ -133,17 +133,15 @@ export async function POST(
     }
 
     const activeVersionId =
-      sessionDocumentContext.installedDocument?.installedVersionId ??
-      sessionDocumentContext.template.latestPublishedVersionId ??
-      sessionDocumentContext.template.latestDraftVersionId
+      sessionDocumentContext.installedDocument?.installedVersionId ?? null
     if (!activeVersionId) {
-      return NextResponse.json({ error: "Document version not found" }, { status: 404 })
+      return NextResponse.json({ error: "Document not installed" }, { status: 400 })
     }
 
     const activeVersion = await prisma.documentTemplateVersion.findUnique({
       where: { id: activeVersionId },
     })
-    if (!activeVersion) {
+    if (!activeVersion || activeVersion.templateId !== templateId) {
       return NextResponse.json({ error: "Document version not found" }, { status: 404 })
     }
 
@@ -271,6 +269,7 @@ export async function POST(
     return NextResponse.json({
       sessionDocument,
       templateVersionId: activeVersion.id,
+      activeVersion,
     })
   } catch (error) {
     if (error instanceof NextResponse) return error

@@ -21,9 +21,11 @@ import type {
   SessionDocumentRecord,
 } from "@/types/document"
 import { useSettingsStore } from "@/stores/settings-store"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
 
 interface SessionDocumentRouteResponse {
-  sessionDocument: SessionDocumentRecord
+  sessionDocument: SessionDocumentRecord | null
+  initialContentJson: Record<string, unknown>
   template: {
     id: string
     title: string
@@ -43,6 +45,11 @@ interface SessionDocumentRouteResponse {
     versionNumber: number
     schemaJson: DocumentTemplateSchema
   }
+}
+
+interface SessionDocumentSaveResponse {
+  sessionDocument: SessionDocumentRecord
+  activeVersion: SessionDocumentRouteResponse["activeVersion"]
 }
 
 type PathSegment = string | number
@@ -356,11 +363,6 @@ export function StructuredDocumentContainer({
   const cacheSessionDocumentSchema = useSessionDocumentStore(
     (state) => state.cacheSessionDocumentSchema
   )
-  const cachedSessionDocument = useSessionDocumentStore((state) =>
-    activeSession
-      ? state.documentsBySessionId[activeSession.id]?.[templateId] ?? null
-      : null
-  )
   const documentModel = useSettingsStore((state) => state.aiModel.documentModel)
 
   const [routeState, setRouteState] =
@@ -376,8 +378,11 @@ export function StructuredDocumentContainer({
 
   useEffect(() => {
     if (!activeSession) {
+      hydratedSessionKeyRef.current = null
+      lastSavedFingerprintRef.current = null
       setRouteState(null)
       setDraftContent(null)
+      setError(null)
       return
     }
 
@@ -399,11 +404,14 @@ export function StructuredDocumentContainer({
       })
       .then((payload) => {
         setRouteState(payload)
-        setDraftContent(payload.sessionDocument.contentJson)
-        lastSavedFingerprintRef.current = JSON.stringify(
-          payload.sessionDocument.contentJson
-        )
-        upsertSessionDocument(payload.sessionDocument)
+        const initialContent =
+          payload.sessionDocument?.contentJson ?? payload.initialContentJson
+        setDraftContent(initialContent)
+        lastSavedFingerprintRef.current = JSON.stringify(initialContent)
+        if (payload.sessionDocument) {
+          upsertSessionDocument(payload.sessionDocument)
+        }
+        setError(null)
       })
       .catch((fetchError) => {
         console.error("Failed to load structured document", fetchError)
@@ -413,6 +421,8 @@ export function StructuredDocumentContainer({
         setIsLoading(false)
       })
   }, [activeSession, routeState, templateId, upsertSessionDocument])
+
+  const currentSessionDocument = routeState?.sessionDocument ?? null
 
   useEffect(() => {
     if (!activeSession || !routeState || !draftContent) return
@@ -431,10 +441,9 @@ export function StructuredDocumentContainer({
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              templateVersionId:
-                cachedSessionDocument?.templateVersionId ?? routeState.activeVersion.id,
+              templateVersionId: routeState.activeVersion.id,
               contentJson: draftContent,
-              generatedAt: cachedSessionDocument?.generatedAt ?? null,
+              generatedAt: currentSessionDocument?.generatedAt ?? null,
             }),
           }
         )
@@ -443,9 +452,22 @@ export function StructuredDocumentContainer({
           throw new Error("Failed to save document")
         }
 
-        const savedDocument = (await response.json()) as SessionDocumentRecord
-        lastSavedFingerprintRef.current = JSON.stringify(savedDocument.contentJson)
-        upsertSessionDocument(savedDocument)
+        const payload = (await response.json()) as SessionDocumentSaveResponse
+        lastSavedFingerprintRef.current = JSON.stringify(
+          payload.sessionDocument.contentJson
+        )
+        setRouteState((current) =>
+          current
+            ? {
+                ...current,
+                sessionDocument: payload.sessionDocument,
+                activeVersion: payload.activeVersion,
+              }
+            : current
+        )
+        upsertSessionDocument(payload.sessionDocument)
+        deleteCachedSession(activeSession.id)
+        setError(null)
       } catch (saveError) {
         console.error("Failed to autosave structured document", saveError)
       } finally {
@@ -456,9 +478,8 @@ export function StructuredDocumentContainer({
     return () => clearTimeout(saveTimer)
   }, [
     activeSession,
-    cachedSessionDocument?.generatedAt,
-    cachedSessionDocument?.templateVersionId,
     draftContent,
+    currentSessionDocument?.generatedAt,
     routeState,
     templateId,
     upsertSessionDocument,
@@ -477,8 +498,8 @@ export function StructuredDocumentContainer({
   const schema = routeState?.activeVersion.schemaJson ?? { nodes: [] }
   const hasUpdateAvailable =
     !!installedDocument &&
-    !!cachedSessionDocument &&
-    cachedSessionDocument.templateVersionId !== installedDocument.installedVersionId
+    !!currentSessionDocument &&
+    currentSessionDocument.templateVersionId !== installedDocument.installedVersionId
   const renderedSections = useMemo(
     () =>
       draftContent
@@ -488,14 +509,11 @@ export function StructuredDocumentContainer({
   )
 
   const versionLabel = useMemo(() => {
-    if (installedDocument?.installedVersionNumber) {
-      return `v${installedDocument.installedVersionNumber}`
-    }
     if (routeState?.activeVersion.versionNumber) {
       return `v${routeState.activeVersion.versionNumber}`
     }
     return "Draft"
-  }, [installedDocument?.installedVersionNumber, routeState?.activeVersion.versionNumber])
+  }, [routeState?.activeVersion.versionNumber])
 
   if (!activeSession) {
     return (
@@ -550,7 +568,7 @@ export function StructuredDocumentContainer({
             type="button"
             size="sm"
             className="gap-1.5"
-            disabled={isGenerating}
+            disabled={isGenerating || !installedDocument}
             onClick={async () => {
               try {
                 setIsGenerating(true)
@@ -571,12 +589,24 @@ export function StructuredDocumentContainer({
                 const payload = (await response.json()) as {
                   sessionDocument: SessionDocumentRecord
                   templateVersionId: string
+                  activeVersion: SessionDocumentRouteResponse["activeVersion"]
                 }
+                setRouteState((current) =>
+                  current
+                    ? {
+                        ...current,
+                        sessionDocument: payload.sessionDocument,
+                        activeVersion: payload.activeVersion,
+                      }
+                    : current
+                )
                 upsertSessionDocument(payload.sessionDocument)
                 lastSavedFingerprintRef.current = JSON.stringify(
                   payload.sessionDocument.contentJson
                 )
                 setDraftContent(payload.sessionDocument.contentJson)
+                deleteCachedSession(activeSession.id)
+                setError(null)
               } catch (generateError) {
                 console.error("Failed to generate structured document", generateError)
                 setError("Failed to generate document")
@@ -590,7 +620,7 @@ export function StructuredDocumentContainer({
             ) : (
               <IconRefresh className="size-3.5" />
             )}
-            {cachedSessionDocument?.generatedAt ? "Regenerate" : "Generate"}
+            {currentSessionDocument?.generatedAt ? "Regenerate" : "Generate"}
           </Button>
         </div>
       </div>
