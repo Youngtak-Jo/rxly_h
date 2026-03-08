@@ -185,6 +185,12 @@ export async function POST(
       activeVersion.generationConfigJson
     )
 
+    // Ensure transcript is always available as a fallback context source
+    // to prevent complete hallucinations due to empty insights on newly seeded templates
+    if (!generationConfig.contextSources.includes("transcript")) {
+      generationConfig.contextSources.push("transcript")
+    }
+
     const model = getModel(modelId)
     const prompt = buildContextPrompt({
       session,
@@ -217,6 +223,7 @@ export async function POST(
             "Return only valid structured output.",
             "Honor the requested document language and region.",
             "Use the template title, description, category, schema, and custom instructions to infer the document's intended purpose and writing style.",
+            "INSTRUCTION: Base your extraction on the provided context (transcript, insights, notes). If specific medical conditions or treatments are not mentioned in the context, do not invent them. However, do your best to infer and summarize the available information into the requested schema fields.",
             generationConfig.systemInstructions || "",
           ]
             .filter(Boolean)
@@ -229,9 +236,9 @@ export async function POST(
           result: result.object,
           usage: result.usage
             ? {
-                inputTokens: result.usage.inputTokens,
-                outputTokens: result.usage.outputTokens,
-              }
+              inputTokens: result.usage.inputTokens,
+              outputTokens: result.usage.outputTokens,
+            }
             : undefined,
         }
       }

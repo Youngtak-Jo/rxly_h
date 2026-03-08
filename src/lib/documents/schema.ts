@@ -171,7 +171,7 @@ const documentBuilderStoredDraftSchema = z.object({
     .transform((value) => resolveDocumentRegion(value)),
   schema: documentTemplateSchemaSchema.catch({ nodes: [] }),
   generationConfig: documentGenerationConfigSchema.catch({
-    contextSources: ["insights", "doctorNotes"],
+    contextSources: ["insights", "doctorNotes", "transcript"],
     systemInstructions: "",
     emptyValuePolicy: "BLANK",
   }),

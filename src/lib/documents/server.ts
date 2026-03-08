@@ -396,6 +396,22 @@ export async function ensureBuiltInDocumentTemplates(): Promise<void> {
 
   if (!builtInTemplateEnsurePromise) {
     builtInTemplateEnsurePromise = (async () => {
+      const expectedCount = BUILT_IN_DOCUMENTS.length + SEEDED_PUBLIC_DOCUMENTS.length
+      const existingCount = await prisma.documentTemplate.count({
+        where: {
+          id: {
+            in: [
+              ...BUILT_IN_DOCUMENTS.map((d) => d.id),
+              ...SEEDED_PUBLIC_DOCUMENTS.map((d) => d.id),
+            ],
+          },
+        },
+      })
+      if (existingCount >= expectedCount) {
+        hasEnsuredBuiltInTemplates = true
+        return
+      }
+
       for (const builtIn of BUILT_IN_DOCUMENTS) {
         await prisma.documentTemplate.upsert({
           where: { id: builtIn.id },
