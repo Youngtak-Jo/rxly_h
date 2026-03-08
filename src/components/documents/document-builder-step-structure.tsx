@@ -77,6 +77,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useMobileViewport } from "@/hooks/use-mobile"
+import { deriveRepeatableItemLabel } from "@/lib/documents/repeatable-item-label"
 import { cn } from "@/lib/utils"
 import type {
   DocumentBuilderDraft,
@@ -218,10 +219,23 @@ function coerceNodeType(
   currentNode: DocumentSchemaNode,
   nextType: DocumentSchemaNodeType
 ): DocumentSchemaNode {
+  const baseNode = {
+    key: currentNode.key,
+    label: currentNode.label,
+    helpText: currentNode.helpText,
+    required: currentNode.required,
+    placeholder: currentNode.placeholder,
+  }
+
   if (nextType === "group" || nextType === "repeatableGroup") {
     return {
-      ...currentNode,
+      ...baseNode,
       type: nextType,
+      ...(nextType === "repeatableGroup" &&
+      "itemLabel" in currentNode &&
+      currentNode.itemLabel
+        ? { itemLabel: currentNode.itemLabel }
+        : {}),
       children:
         "children" in currentNode && Array.isArray(currentNode.children)
           ? currentNode.children
@@ -230,11 +244,7 @@ function coerceNodeType(
   }
 
   return {
-    key: currentNode.key,
-    label: currentNode.label,
-    helpText: currentNode.helpText,
-    required: currentNode.required,
-    placeholder: currentNode.placeholder,
+    ...baseNode,
     type: nextType,
   }
 }
@@ -410,6 +420,10 @@ function NodeDetailsPanel({
   ) => void
 }) {
   const t = useTranslations("DocumentBuilder")
+  const itemLabelExample =
+    node.type === "repeatableGroup"
+      ? deriveRepeatableItemLabel(node)
+      : ""
 
   return (
     <div className="flex flex-col gap-4">
@@ -492,6 +506,40 @@ function NodeDetailsPanel({
           placeholder={t("schemaNode.labelPlaceholder")}
         />
       </div>
+
+      {node.type === "repeatableGroup" ? (
+        <div className="space-y-2">
+          <Label className="text-xs">{t("schemaNode.itemLabelLabel")}</Label>
+          <Input
+            value={node.itemLabel ?? ""}
+            onChange={(event) => {
+              const nextValue = event.target.value
+              const nextItemLabel = nextValue.trim()
+
+              onUpdate(path, (currentNode) => {
+                if (currentNode.type !== "repeatableGroup") {
+                  return currentNode
+                }
+
+                if (!nextItemLabel) {
+                  return {
+                    ...currentNode,
+                    itemLabel: undefined,
+                  }
+                }
+
+                return {
+                  ...currentNode,
+                  itemLabel: nextValue,
+                }
+              })
+            }}
+            placeholder={t("schemaNode.itemLabelPlaceholder", {
+              example: itemLabelExample,
+            })}
+          />
+        </div>
+      ) : null}
 
       {node.type !== "group" && node.type !== "repeatableGroup" ? (
         <div className="space-y-2">

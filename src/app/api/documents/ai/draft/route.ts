@@ -9,6 +9,7 @@ import {
 } from "@/lib/documents/schema"
 import { buildFallbackDocumentDraft } from "@/lib/documents/fallback-draft"
 import { DOCUMENT_CATEGORIES } from "@/lib/documents/categories"
+import { ensureRepeatableItemLabels } from "@/lib/documents/repeatable-item-label"
 import { getModel, isSupportedModel } from "@/lib/ai-provider"
 import { DEFAULT_MODEL } from "@/lib/xai"
 import { buildGenerationOptions } from "@/lib/ai-request-options"
@@ -24,6 +25,8 @@ function buildBuilderSystemPrompt() {
     "Language must be one of: en, ko.",
     "Region must be one of: global, kr, us.",
     "Use only field types shortText, longText, stringList and group types group, repeatableGroup.",
+    "For repeatableGroup nodes, label names the whole repeating section and itemLabel names one repeated entry such as Claim item, Service line, or Problem.",
+    "Whenever you use repeatableGroup, include itemLabel.",
     "Keys must be snake_case and unique across the whole schema.",
     "Keep schema depth <= 3 and total leaf fields <= 60.",
     "Favor structured sections that are practical for real-world clinical workflows, including region-specific regulations if requested.",
@@ -75,7 +78,10 @@ export async function POST(req: Request) {
           })
 
           return {
-            result: generated.object,
+            result: {
+              ...generated.object,
+              schema: ensureRepeatableItemLabels(generated.object.schema),
+            },
             usage: generated.usage
               ? {
                   inputTokens: generated.usage.inputTokens,

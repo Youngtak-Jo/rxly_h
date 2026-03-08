@@ -924,6 +924,7 @@
       "staleDescription": "이 프리뷰를 만든 뒤 템플릿 구조가 바뀌었습니다. 최신 구조를 반영하려면 다시 생성하세요.",
       "syntheticBadge": "합성 프리뷰",
       "generatedAt": "생성 시각 {value}",
+      "addNamedItem": "{itemLabel} 추가",
       "status": {
         "idle": "프리뷰 대기 중",
         "generating": "프리뷰 생성 중",
@@ -950,6 +951,8 @@
       "selectType": "유형 선택",
       "keyPlaceholder": "snake_case_key",
       "labelPlaceholder": "표시 라벨",
+      "itemLabelLabel": "반복 항목명",
+      "itemLabelPlaceholder": "예: {example}",
       "inputPlaceholder": "선택 입력 힌트",
       "helpTextPlaceholder": "선택 필드 안내",
       "actions": {

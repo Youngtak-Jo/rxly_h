@@ -17,6 +17,7 @@ import {
   DEFAULT_DOCUMENT_REGION,
   inferDocumentRegionFromText,
 } from "@/lib/documents/language-region"
+import { ensureRepeatableItemLabels } from "@/lib/documents/repeatable-item-label"
 
 function isKorean(text: string) {
   return /[가-힣]/.test(text)
@@ -57,15 +58,21 @@ function createGroup(
   key: string,
   label: string,
   children: DocumentSchemaNode[],
-  repeatable = false
+  options?: {
+    repeatable?: boolean
+    itemLabel?: string
+  }
 ): DocumentSchemaNode {
   return {
     key,
     label,
-    type: repeatable ? "repeatableGroup" : "group",
+    type: options?.repeatable ? "repeatableGroup" : "group",
     helpText: "",
     required: false,
     placeholder: "",
+    ...(options?.repeatable && options.itemLabel
+      ? { itemLabel: options.itemLabel }
+      : {}),
     children,
   }
 }
@@ -123,7 +130,10 @@ function buildClaimReviewSchema(korean: boolean): DocumentTemplateSchema {
             "longText"
           ),
         ],
-        true
+        {
+          repeatable: true,
+          itemLabel: korean ? "청구항" : "Service line",
+        }
       ),
       createGroup(
         "submission_checklist",
@@ -271,6 +281,9 @@ export function buildFallbackDocumentDraft(
   const schema = preset.claimReview
     ? buildClaimReviewSchema(korean)
     : buildGenericSchema(korean)
+  const normalizedSchema = normalizeDocumentTemplateSchema(
+    ensureRepeatableItemLabels(schema)
+  )
 
   const title = preset.claimReview
     ? korean
@@ -301,7 +314,7 @@ export function buildFallbackDocumentDraft(
     language,
     region,
     renderer: "GENERIC_STRUCTURED",
-    schema: normalizeDocumentTemplateSchema(schema),
+    schema: normalizedSchema,
     generationConfig: normalizeDocumentGenerationConfig({
       contextSources: ["insights", "doctorNotes"],
       systemInstructions: korean
@@ -363,6 +376,8 @@ export function buildFallbackRevisedDocumentDraft(
       ],
     })
   }
+
+  nextDraft.schema = ensureRepeatableItemLabels(nextDraft.schema, draft.schema)
 
   return documentTemplateCreateSchema.parse({
     ...nextDraft,

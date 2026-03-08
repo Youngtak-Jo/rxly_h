@@ -924,6 +924,7 @@
       "staleDescription": "The template changed after this preview was generated. Regenerate it if you want the latest structure reflected here.",
       "syntheticBadge": "Synthetic preview",
       "generatedAt": "Generated at {value}",
+      "addNamedItem": "Add {itemLabel}",
       "status": {
         "idle": "Preview pending",
         "generating": "Generating preview",
@@ -950,6 +951,8 @@
       "selectType": "Select type",
       "keyPlaceholder": "snake_case_key",
       "labelPlaceholder": "Display label",
+      "itemLabelLabel": "Item label",
+      "itemLabelPlaceholder": "Example: {example}",
       "inputPlaceholder": "Optional input hint",
       "helpTextPlaceholder": "Optional field guidance",
       "actions": {

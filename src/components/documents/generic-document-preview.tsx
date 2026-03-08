@@ -88,6 +88,8 @@ function SectionView({
     )
   }
 
+  const repeatableItemLabel = section.itemLabel || itemLabel
+
   return (
     <section className={compact ? "space-y-2 pt-2.5 first:pt-0" : "space-y-3 pt-5 first:pt-0"}>
       <div
@@ -122,7 +124,7 @@ function SectionView({
                   : "text-xs tracking-[0.18em]"
               )}
             >
-              {itemLabel} {index + 1}
+              {repeatableItemLabel} {index + 1}
             </p>
             <div className={compact ? "mt-1 space-y-0" : "mt-2 space-y-1"}>
               {itemSections.map((child) => (

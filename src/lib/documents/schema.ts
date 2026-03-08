@@ -12,7 +12,6 @@ import {
   DOCUMENT_CONTEXT_SOURCES,
   DOCUMENT_EMPTY_VALUE_POLICIES,
   DOCUMENT_FIELD_TYPES,
-  DOCUMENT_GROUP_TYPES,
   DOCUMENT_TEMPLATE_LANGUAGES,
   DOCUMENT_TEMPLATE_REGIONS,
   DOCUMENT_TEMPLATE_RENDERERS,
@@ -53,6 +52,7 @@ const documentNodeBaseSchema = z.object({
   required: z.boolean().default(false),
   placeholder: z.string().max(200).default(""),
 })
+const documentRepeatableItemLabelSchema = z.string().trim().min(1).max(120)
 
 const documentFieldNodeSchema = documentNodeBaseSchema.extend({
   type: z.enum(DOCUMENT_FIELD_TYPES),
@@ -70,7 +70,12 @@ const documentSchemaNodeSchema: z.ZodType<DocumentSchemaNodeInput> = z.lazy(() =
   z.union([
     documentFieldNodeSchema,
     documentNodeBaseSchema.extend({
-      type: z.enum(DOCUMENT_GROUP_TYPES),
+      type: z.literal("group"),
+      children: z.array(documentSchemaNodeSchema).max(30),
+    }),
+    documentNodeBaseSchema.extend({
+      type: z.literal("repeatableGroup"),
+      itemLabel: documentRepeatableItemLabelSchema.optional(),
       children: z.array(documentSchemaNodeSchema).max(30),
     }),
   ])
@@ -400,6 +405,9 @@ export function cloneDocumentGroupNode(
     required: node.required,
     placeholder: node.placeholder,
     type: node.type,
+    ...(node.type === "repeatableGroup" && node.itemLabel
+      ? { itemLabel: node.itemLabel }
+      : {}),
     children: node.children.map((child) =>
       "children" in child
         ? cloneDocumentGroupNode(child)

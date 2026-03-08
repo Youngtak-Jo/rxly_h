@@ -55,6 +55,7 @@ export interface DocumentFieldNode extends DocumentSchemaNodeBase {
 
 export interface DocumentGroupNode extends DocumentSchemaNodeBase {
   type: DocumentGroupType
+  itemLabel?: string
   children: DocumentSchemaNode[]
 }
 
@@ -238,6 +239,7 @@ export interface GenericDocumentGroupSection {
 export interface GenericDocumentRepeatableGroupSection {
   kind: "repeatableGroup"
   label: string
+  itemLabel?: string
   items: GenericDocumentSection[][]
 }
 

@@ -9,6 +9,7 @@ import {
 } from "@/lib/documents/schema"
 import { buildFallbackRevisedDocumentDraft } from "@/lib/documents/fallback-draft"
 import { DOCUMENT_CATEGORIES } from "@/lib/documents/categories"
+import { ensureRepeatableItemLabels } from "@/lib/documents/repeatable-item-label"
 import { getModel, isSupportedModel } from "@/lib/ai-provider"
 import { DEFAULT_MODEL } from "@/lib/xai"
 import { buildGenerationOptions } from "@/lib/ai-request-options"
@@ -20,6 +21,8 @@ const systemPrompt = [
   "Preserve valid existing structure when possible and only change what the user asks.",
   "Return JSON only.",
   "Preserve language and region unless the revision request clearly changes them.",
+  "For repeatableGroup nodes, label names the overall repeating section and itemLabel names one repeated entry.",
+  "Preserve existing itemLabel values unless the user asks to change them, and include itemLabel on every repeatableGroup.",
   "Language must be one of: en, ko.",
   "Region must be one of: global, kr, us.",
   "Keep description focused on document purpose and workflow context.",
@@ -70,7 +73,13 @@ export async function POST(
           })
 
           return {
-            result: generated.object,
+            result: {
+              ...generated.object,
+              schema: ensureRepeatableItemLabels(
+                generated.object.schema,
+                parsed.data.draft.schema
+              ),
+            },
             usage: generated.usage
               ? {
                   inputTokens: generated.usage.inputTokens,

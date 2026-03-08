@@ -37,15 +37,47 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid event payload" }, { status: 400 })
     }
 
-    await prisma.clientEvent.create({
-      data: {
+    const baseData = {
+      userId: user.id,
+      sessionId: parsed.data.sessionId ?? null,
+      eventType: parsed.data.eventType,
+      feature: parsed.data.feature,
+      metadata: parsed.data.metadata as Prisma.InputJsonValue,
+    }
+
+    try {
+      await prisma.clientEvent.create({
+        data: baseData,
+      })
+    } catch (error) {
+      const isMissingSessionForeignKey =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2003" &&
+        parsed.data.sessionId
+
+      if (!isMissingSessionForeignKey) {
+        throw error
+      }
+
+      logger.warn("Client event arrived before session persisted; storing without session id", {
         userId: user.id,
-        sessionId: parsed.data.sessionId ?? null,
+        sessionId: parsed.data.sessionId,
         eventType: parsed.data.eventType,
         feature: parsed.data.feature,
-        metadata: parsed.data.metadata as Prisma.InputJsonValue,
-      },
-    })
+      })
+
+      await prisma.clientEvent.create({
+        data: {
+          ...baseData,
+          sessionId: null,
+          metadata: {
+            ...(parsed.data.metadata ?? {}),
+            droppedSessionId: parsed.data.sessionId,
+            sessionIdFallbackReason: "session_not_persisted",
+          } as Prisma.InputJsonValue,
+        },
+      })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -656,6 +656,12 @@ export function useSessionLoader(sessionId: string | null) {
     if (!sessionId) return
 
     if (activeSessionId === sessionId) {
+      const store = useSessionStore.getState()
+      // Re-entering the current session from another route should clear any stale
+      // transition flags left behind by a previous navigation attempt.
+      store.setLoading(false)
+      store.setSwitching(false)
+      store.setHydratingSessionId(null)
       loadedRef.current = sessionId
       return
     }

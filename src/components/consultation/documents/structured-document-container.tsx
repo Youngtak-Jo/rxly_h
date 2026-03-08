@@ -210,11 +210,14 @@ function StructuredNodeEditor({
   path: PathSegment[]
   onChange: (nextContent: Record<string, unknown>) => void
 }) {
+  const tBuilder = useTranslations("DocumentBuilder")
+
   if (node.type === "group" || node.type === "repeatableGroup") {
     const value = getGroupValue(content, node)
 
     if (node.type === "repeatableGroup") {
       const items = value as Array<Record<string, unknown>>
+      const itemLabel = node.itemLabel?.trim() || tBuilder("preview.sampleItem")
       return (
         <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
           <div className="flex items-center justify-between gap-3">
@@ -240,13 +243,13 @@ function StructuredNodeEditor({
               }
             >
               <IconPlus className="size-3.5" />
-              Add item
+              {tBuilder("preview.addNamedItem", { itemLabel })}
             </Button>
           </div>
 
           {items.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border/70 px-3 py-4 text-sm text-muted-foreground">
-              No items yet.
+              {tBuilder("preview.noSampleItems")}
             </p>
           ) : (
             items.map((item, itemIndex) => (
@@ -256,7 +259,7 @@ function StructuredNodeEditor({
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                    Item {itemIndex + 1}
+                    {itemLabel} {itemIndex + 1}
                   </span>
                   <Button
                     type="button"
@@ -273,7 +276,7 @@ function StructuredNodeEditor({
                       )
                     }
                   >
-                    Remove
+                    {tBuilder("preview.removeItem")}
                   </Button>
                 </div>
 
@@ -349,6 +352,9 @@ export function StructuredDocumentContainer({
   )
   const upsertSessionDocument = useSessionDocumentStore(
     (state) => state.upsertSessionDocument
+  )
+  const cacheSessionDocumentSchema = useSessionDocumentStore(
+    (state) => state.cacheSessionDocumentSchema
   )
   const cachedSessionDocument = useSessionDocumentStore((state) =>
     activeSession
@@ -457,6 +463,16 @@ export function StructuredDocumentContainer({
     templateId,
     upsertSessionDocument,
   ])
+
+  useEffect(() => {
+    if (!activeSession || !routeState) return
+
+    cacheSessionDocumentSchema(
+      activeSession.id,
+      templateId,
+      routeState.activeVersion.schemaJson.nodes
+    )
+  }, [activeSession, cacheSessionDocumentSchema, routeState, templateId])
 
   const schema = routeState?.activeVersion.schemaJson ?? { nodes: [] }
   const hasUpdateAvailable =

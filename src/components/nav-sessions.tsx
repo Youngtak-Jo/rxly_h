@@ -184,7 +184,9 @@ export function NavSessions() {
     if (pathname === `/consultation/${sessionId}`) return
 
     navigationRequestSeqRef.current += 1
-    useSessionStore.getState().setSwitching(true)
+    if (activeSession?.id !== sessionId) {
+      useSessionStore.getState().setSwitching(true)
+    }
     router.push(`/consultation/${sessionId}`)
   }
 

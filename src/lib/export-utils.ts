@@ -365,11 +365,12 @@ function formatGenericSections(sections: GenericDocumentSection[]): string {
         )
       }
 
+      const itemLabel = section.itemLabel || "Item"
       return [
         sectionTitle(section.label),
         ...section.items.map(
           (itemSections, index) => `<div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
-          <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 8px;">Item ${index + 1}</div>
+          <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 8px;">${escapeHtml(itemLabel)} ${index + 1}</div>
           ${formatGenericSections(itemSections)}
         </div>`
         ),
@@ -448,8 +449,15 @@ export function getActiveTabExportHtml(): { html: string; tabLabel: string } {
           session.id,
           templateId
         )
+        const schemaNodes = sessionDocuments.getSessionDocumentSchema(
+          session.id,
+          templateId
+        )
         bodyHtml = formatGenericSections(
-          buildGenericDocumentSections(sessionDocument?.contentJson ?? {})
+          buildGenericDocumentSections(
+            sessionDocument?.contentJson ?? {},
+            schemaNodes ?? undefined
+          )
         )
         break
       }

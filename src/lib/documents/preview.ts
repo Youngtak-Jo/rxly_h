@@ -396,6 +396,7 @@ function buildGroupSection(
     return {
       kind: "repeatableGroup",
       label: node.label || humanizeDocumentKey(node.key),
+      itemLabel: node.itemLabel?.trim() || undefined,
       items,
     }
   }
