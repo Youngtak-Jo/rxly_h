@@ -2,9 +2,10 @@ import {
   documentTemplateCreateSchema,
   documentTemplateLanguageSchema,
   documentTemplateRegionSchema,
-  normalizeDocumentGenerationConfig,
   normalizeDocumentTemplateSchema,
 } from "@/lib/documents/schema"
+import { ensureDocumentGenerationRequirements } from "@/lib/documents/generation-requirements"
+import { createDocumentGenerationConfig } from "@/lib/documents/generation-config"
 import type {
   DocumentBuilderDraft,
   DocumentFieldNode,
@@ -302,27 +303,36 @@ export function buildFallbackDocumentDraft(
     claimReview: preset.claimReview,
     patientFacing: preset.patientFacing,
   })
+  const category = preset.claimReview
+    ? "claims-review"
+    : preset.patientFacing
+      ? "patient-education"
+      : "clinical-documentation"
 
-  return documentTemplateCreateSchema.parse({
+  const draft = documentTemplateCreateSchema.parse({
     title,
     description,
-    category: preset.claimReview
-      ? "claims-review"
-      : preset.patientFacing
-        ? "patient-education"
-        : "clinical-documentation",
+    category,
     language,
     region,
     renderer: "GENERIC_STRUCTURED",
     schema: normalizedSchema,
-    generationConfig: normalizeDocumentGenerationConfig({
-      contextSources: ["insights", "doctorNotes"],
+    generationConfig: createDocumentGenerationConfig({
       systemInstructions: korean
         ? `원본 프롬프트를 반영해 수동으로 다듬어 주세요: ${summarizePrompt(prompt, 200)}`
         : `Refine this fallback draft manually to match the original request: ${summarizePrompt(prompt, 200)}`,
       emptyValuePolicy: "BLANK",
     }),
   })
+
+  return {
+    ...draft,
+    generationConfig: ensureDocumentGenerationRequirements({
+      category: draft.category,
+      schema: draft.schema,
+      generationConfig: draft.generationConfig,
+    }),
+  }
 }
 
 export function buildFallbackRevisedDocumentDraft(
@@ -379,8 +389,17 @@ export function buildFallbackRevisedDocumentDraft(
 
   nextDraft.schema = ensureRepeatableItemLabels(nextDraft.schema, draft.schema)
 
-  return documentTemplateCreateSchema.parse({
+  const normalizedDraft = documentTemplateCreateSchema.parse({
     ...nextDraft,
     renderer: "GENERIC_STRUCTURED",
   })
+
+  return {
+    ...normalizedDraft,
+    generationConfig: ensureDocumentGenerationRequirements({
+      category: normalizedDraft.category,
+      schema: normalizedDraft.schema,
+      generationConfig: normalizedDraft.generationConfig,
+    }),
+  }
 }

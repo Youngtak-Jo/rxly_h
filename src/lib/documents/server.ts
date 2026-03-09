@@ -37,9 +37,12 @@ import {
   createEmptyDocumentContent,
   normalizeDocumentGenerationConfig,
   normalizeDocumentContentForStorage,
+  normalizeStoredDocumentGenerationConfig,
+  sessionDocumentGenerationInputsSchema,
 } from "@/lib/documents/schema"
 import { normalizeDocumentCategory } from "@/lib/documents/categories"
 import type { UiLocale } from "@/i18n/config"
+import { createDocumentGenerationConfig } from "@/lib/documents/generation-config"
 
 type TemplateWithVersions = Prisma.DocumentTemplateGetPayload<{
   include: {
@@ -191,7 +194,7 @@ function toRecord<T>(value: T): T {
 function normalizeStoredGenerationConfig(
   value: unknown
 ): DocumentGenerationConfig {
-  return normalizeDocumentGenerationConfig(toRecord(value))
+  return normalizeStoredDocumentGenerationConfig(toRecord(value))
 }
 
 function buildPublishedTemplateWhere(): Prisma.DocumentTemplateWhereInput {
@@ -406,6 +409,7 @@ export function mapSessionDocumentRecord(document: {
   templateId: string
   templateVersionId: string
   contentJson: unknown
+  generationInputsJson?: unknown
   templateVersion?: {
     versionNumber: number
     schemaJson: unknown
@@ -419,6 +423,14 @@ export function mapSessionDocumentRecord(document: {
     templateId: document.templateId,
     templateVersionId: document.templateVersionId,
     contentJson: toRecord(document.contentJson) as Record<string, unknown>,
+    generationInputs: (() => {
+      if (!document.generationInputsJson) return null
+
+      const parsed = sessionDocumentGenerationInputsSchema.safeParse(
+        toRecord(document.generationInputsJson)
+      )
+      return parsed.success ? parsed.data : null
+    })(),
     templateSchemaNodes: document.templateVersion?.schemaJson
       ? (toRecord(document.templateVersion.schemaJson) as DocumentTemplateSchema).nodes
       : undefined,
@@ -433,22 +445,6 @@ export async function ensureBuiltInDocumentTemplates(): Promise<void> {
 
   if (!builtInTemplateEnsurePromise) {
     builtInTemplateEnsurePromise = (async () => {
-      const expectedCount = BUILT_IN_DOCUMENTS.length + SEEDED_PUBLIC_DOCUMENTS.length
-      const existingCount = await prisma.documentTemplate.count({
-        where: {
-          id: {
-            in: [
-              ...BUILT_IN_DOCUMENTS.map((d) => d.id),
-              ...SEEDED_PUBLIC_DOCUMENTS.map((d) => d.id),
-            ],
-          },
-        },
-      })
-      if (existingCount >= expectedCount) {
-        hasEnsuredBuiltInTemplates = true
-        return
-      }
-
       for (const builtIn of BUILT_IN_DOCUMENTS) {
         await prisma.documentTemplate.upsert({
           where: { id: builtIn.id },
@@ -793,6 +789,9 @@ function mapInstalledDocument(
     installedVersionSchemaNodes: (
       toRecord(record.installedVersion.schemaJson) as unknown as DocumentTemplateSchema
     ).nodes,
+    installedVersionGenerationConfig: normalizeStoredGenerationConfig(
+      record.installedVersion.generationConfigJson
+    ),
     latestPublishedVersionId: latestPublishedVersion?.id ?? null,
     latestPublishedVersionNumber: latestPublishedVersion?.versionNumber ?? null,
     hasUpdate:
@@ -1354,9 +1353,7 @@ export async function patchDocumentTemplateDraft(input: {
   if (!draftVersionId) {
     const normalizedGenerationConfig = normalizeStoredGenerationConfig(
       input.generationConfig ?? template.latestPublishedVersion?.generationConfigJson ?? {
-        contextSources: ["transcript"],
-        systemInstructions: "",
-        emptyValuePolicy: "BLANK",
+        ...createDocumentGenerationConfig(),
       }
     )
     const nextVersion = await prisma.documentTemplateVersion.create({
@@ -1706,6 +1703,7 @@ export async function upsertSessionDocument(input: {
   templateId: string
   templateVersionId: string
   contentJson: Record<string, unknown>
+  generationInputs?: SessionDocumentRecord["generationInputs"]
   generatedAt?: string | null
 }): Promise<SessionDocumentRecord> {
   const record = await prisma.sessionDocument.upsert({
@@ -1718,6 +1716,12 @@ export async function upsertSessionDocument(input: {
     update: {
       templateVersionId: input.templateVersionId,
       contentJson: input.contentJson as unknown as Prisma.InputJsonValue,
+      generationInputsJson:
+        input.generationInputs === undefined
+          ? undefined
+          : input.generationInputs === null
+            ? Prisma.JsonNull
+            : (input.generationInputs as unknown as Prisma.InputJsonValue),
       generatedAt: input.generatedAt ? new Date(input.generatedAt) : null,
     },
     create: {
@@ -1725,6 +1729,12 @@ export async function upsertSessionDocument(input: {
       templateId: input.templateId,
       templateVersionId: input.templateVersionId,
       contentJson: input.contentJson as unknown as Prisma.InputJsonValue,
+      generationInputsJson:
+        input.generationInputs === undefined
+          ? Prisma.JsonNull
+          : input.generationInputs === null
+            ? Prisma.JsonNull
+            : (input.generationInputs as unknown as Prisma.InputJsonValue),
       generatedAt: input.generatedAt ? new Date(input.generatedAt) : null,
     },
   })

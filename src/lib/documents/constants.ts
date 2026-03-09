@@ -12,6 +12,7 @@ import {
   DEFAULT_DOCUMENT_REGION,
 } from "@/lib/documents/language-region"
 import type { UiLocale } from "@/i18n/config"
+import { createDocumentGenerationConfig } from "@/lib/documents/generation-config"
 
 export const BUILT_IN_RECORD_TEMPLATE_ID = "record"
 export const BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID = "patient-handout"
@@ -50,8 +51,7 @@ const EMPTY_SCHEMA: DocumentTemplateSchema = {
 }
 
 const EMPTY_GENERATION_CONFIG: DocumentGenerationConfig = {
-  contextSources: ["transcript", "doctorNotes", "insights"],
-  systemInstructions: "",
+  ...createDocumentGenerationConfig(),
   emptyValuePolicy: "NOT_PROVIDED",
 }
 
@@ -82,10 +82,7 @@ export const BUILT_IN_DOCUMENTS: BuiltInDocumentDefinition[] = [
     authorName: "Rxly",
     featuredInstallCount: 982,
     schema: EMPTY_SCHEMA,
-    generationConfig: {
-      ...EMPTY_GENERATION_CONFIG,
-      contextSources: ["transcript", "doctorNotes", "insights", "ddx"],
-    },
+    generationConfig: EMPTY_GENERATION_CONFIG,
   },
 ]
 

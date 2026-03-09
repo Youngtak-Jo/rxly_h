@@ -37,7 +37,7 @@ interface InsightsState {
     checklistItems: ChecklistItem[] | unknown
     diagnoses?: DiagnosisItem[] | unknown
   }) => void
-  toggleChecklistItem: (id: string) => void
+  setChecklistItemChecked: (id: string, checked: boolean) => void
   addChecklistItem: (label: string, sessionId: string) => void
   removeChecklistItem: (id: string) => void
   updateChecklistNote: (id: string, note: string) => void
@@ -148,12 +148,11 @@ export const useInsightsStore = create<InsightsState>((set) => ({
       diagnoses: Array.isArray(data.diagnoses) ? data.diagnoses : [],
     }),
 
-  toggleChecklistItem: (id) =>
+  setChecklistItemChecked: (id, checked) =>
     set((state) => ({
       checklistItems: state.checklistItems.map((item) =>
-        item.id === id ? { ...item, isChecked: !item.isChecked } : item
+        item.id === id ? { ...item, isChecked: checked } : item
       ),
-      lastUpdated: new Date(),
     })),
 
   addChecklistItem: (label, sessionId) =>

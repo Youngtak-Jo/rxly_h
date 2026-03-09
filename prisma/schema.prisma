@@ -487,6 +487,7 @@ model SessionDocument {
   templateId        String   @map("template_id")
   templateVersionId String   @map("template_version_id")
   contentJson       Json     @default("{}") @map("content_json")
+  generationInputsJson Json? @map("generation_inputs_json")
   generatedAt       DateTime? @map("generated_at")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")

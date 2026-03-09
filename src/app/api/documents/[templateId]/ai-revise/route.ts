@@ -7,8 +7,10 @@ import {
   documentAiReviseSchema,
   documentTemplateCreateSchema,
 } from "@/lib/documents/schema"
+import { ensureDocumentGenerationRequirements } from "@/lib/documents/generation-requirements"
 import { buildFallbackRevisedDocumentDraft } from "@/lib/documents/fallback-draft"
 import { DOCUMENT_CATEGORIES } from "@/lib/documents/categories"
+import { createDocumentGenerationConfig } from "@/lib/documents/generation-config"
 import { ensureRepeatableItemLabels } from "@/lib/documents/repeatable-item-label"
 import { getModel, isSupportedModel } from "@/lib/ai-provider"
 import { DEFAULT_MODEL } from "@/lib/xai"
@@ -26,6 +28,9 @@ const systemPrompt = [
   "Language must be one of: en, ko.",
   "Region must be one of: global, kr, us.",
   "Keep description focused on document purpose and workflow context.",
+  "generationConfig.clinicalContextDefault must be either insights or transcript.",
+  "generationConfig.includeSourceImages controls whether uploaded source images are attached during generation.",
+  "generationConfig.generationRequirements should only be changed when the revision clearly changes pre-generation clinician input requirements.",
   "Do not mention prompts, generation process, or fallback behavior in description.",
   `Category must be one of: ${DOCUMENT_CATEGORIES.join(", ")}.`,
 ].join("\n")
@@ -72,13 +77,27 @@ export async function POST(
             ...buildGenerationOptions(modelId, { temperature: 0.15 }),
           })
 
+          const revisedDraft = {
+            ...generated.object,
+            schema: ensureRepeatableItemLabels(
+              generated.object.schema,
+              parsed.data.draft.schema
+            ),
+            generationConfig: createDocumentGenerationConfig(
+              generated.object.generationConfig
+            ),
+          }
+
+          const nextDraft = revisedDraft
+
           return {
             result: {
-              ...generated.object,
-              schema: ensureRepeatableItemLabels(
-                generated.object.schema,
-                parsed.data.draft.schema
-              ),
+              ...nextDraft,
+              generationConfig: ensureDocumentGenerationRequirements({
+                category: nextDraft.category,
+                schema: nextDraft.schema,
+                generationConfig: nextDraft.generationConfig,
+              }),
             },
             usage: generated.usage
               ? {

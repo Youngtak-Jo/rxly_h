@@ -1,3 +1,5 @@
+import type { SelectedDiagnosisCondition } from "@/types/diagnosis-selection"
+
 export const DOCUMENT_TEMPLATE_SOURCE_KINDS = ["BUILT_IN", "USER"] as const
 export type DocumentTemplateSourceKind =
   (typeof DOCUMENT_TEMPLATE_SOURCE_KINDS)[number]
@@ -65,18 +67,12 @@ export interface DocumentTemplateSchema {
   nodes: DocumentSchemaNode[]
 }
 
-export const DOCUMENT_CONTEXT_SOURCES = [
-  "sessionMeta",
-  "transcript",
-  "doctorNotes",
+export const DOCUMENT_CLINICAL_CONTEXT_MODES = [
   "insights",
-  "ddx",
-  "research",
-  "record",
-  "patientHandout",
+  "transcript",
 ] as const
-export type DocumentGenerationContextSource =
-  (typeof DOCUMENT_CONTEXT_SOURCES)[number]
+export type DocumentClinicalContextMode =
+  (typeof DOCUMENT_CLINICAL_CONTEXT_MODES)[number]
 
 export const DOCUMENT_EMPTY_VALUE_POLICIES = [
   "BLANK",
@@ -85,10 +81,40 @@ export const DOCUMENT_EMPTY_VALUE_POLICIES = [
 export type DocumentEmptyValuePolicy =
   (typeof DOCUMENT_EMPTY_VALUE_POLICIES)[number]
 
+export const DOCUMENT_GENERATION_REQUIREMENT_TYPES = [
+  "confirmedDiagnosis",
+] as const
+export type DocumentGenerationRequirementType =
+  (typeof DOCUMENT_GENERATION_REQUIREMENT_TYPES)[number]
+
+export const DOCUMENT_CONFIRMED_DIAGNOSIS_SELECTION_MODES = [
+  "single",
+  "multiple",
+] as const
+export type DocumentConfirmedDiagnosisSelectionMode =
+  (typeof DOCUMENT_CONFIRMED_DIAGNOSIS_SELECTION_MODES)[number]
+
+export interface DocumentConfirmedDiagnosisRequirement {
+  type: "confirmedDiagnosis"
+  required: boolean
+  selectionMode: DocumentConfirmedDiagnosisSelectionMode
+  allowIcd11Search: boolean
+}
+
+export type DocumentGenerationRequirement =
+  DocumentConfirmedDiagnosisRequirement
+
 export interface DocumentGenerationConfig {
-  contextSources: DocumentGenerationContextSource[]
+  clinicalContextDefault: DocumentClinicalContextMode
+  includeSourceImages: boolean
   systemInstructions: string
   emptyValuePolicy: DocumentEmptyValuePolicy
+  generationRequirements: DocumentGenerationRequirement[]
+}
+
+export interface SessionDocumentGenerationInputs {
+  clinicalContextMode: DocumentClinicalContextMode | null
+  confirmedDiagnoses: SelectedDiagnosisCondition[]
 }
 
 export interface DocumentTemplateVersionRecord {
@@ -201,6 +227,7 @@ export interface InstalledDocumentSummary {
   installedVersionId: string
   installedVersionNumber: number
   installedVersionSchemaNodes?: DocumentSchemaNode[]
+  installedVersionGenerationConfig?: DocumentGenerationConfig
   latestPublishedVersionId: string | null
   latestPublishedVersionNumber: number | null
   hasUpdate: boolean
@@ -221,6 +248,7 @@ export interface SessionDocumentRecord {
   templateId: string
   templateVersionId: string
   contentJson: Record<string, unknown>
+  generationInputs: SessionDocumentGenerationInputs | null
   templateSchemaNodes?: DocumentSchemaNode[]
   templateVersionNumber?: number | null
   generatedAt: string | null

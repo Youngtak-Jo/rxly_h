@@ -1,6 +1,7 @@
+import { buildConfirmedDiagnosisRequirement } from "@/lib/documents/generation-requirements"
+import { createDocumentGenerationConfig } from "@/lib/documents/generation-config"
 import type {
   DocumentGenerationConfig,
-  DocumentGenerationContextSource,
   DocumentTemplateLanguage,
   DocumentTemplateRegion,
   DocumentSchemaNode,
@@ -62,20 +63,25 @@ function createGroup(
 }
 
 function createGenerationConfig(input: {
-  contextSources: DocumentGenerationContextSource[]
+  clinicalContextDefault?: DocumentGenerationConfig["clinicalContextDefault"]
+  includeSourceImages?: boolean
   systemInstructions: string
   emptyValuePolicy: DocumentGenerationConfig["emptyValuePolicy"]
+  generationRequirements?: DocumentGenerationConfig["generationRequirements"]
 }): DocumentGenerationConfig {
-  return {
-    contextSources: input.contextSources,
+  return createDocumentGenerationConfig({
+    clinicalContextDefault: input.clinicalContextDefault ?? "insights",
+    includeSourceImages: input.includeSourceImages ?? false,
     systemInstructions: input.systemInstructions,
     emptyValuePolicy: input.emptyValuePolicy,
-  }
+    generationRequirements: input.generationRequirements ?? [],
+  })
 }
 
 const KR_MANUAL_FIELD_PLACEHOLDER = "수동 입력"
 const KR_EXTERNAL_METADATA_GUARDRAIL =
   "제출처, 수신기관, 기관코드, 연락처, 주민등록번호, 병원 식별자, 법정 문구, 보험사 메타데이터는 기록에 명시된 경우만 사용하고, 근거가 없으면 비워 두세요. 임의로 생성하지 마세요."
+const CONFIRMED_DIAGNOSIS_REQUIRED = [buildConfirmedDiagnosisRequirement()]
 
 const AFTER_VISIT_SUMMARY_SCHEMA: DocumentTemplateSchema = {
   nodes: [
@@ -879,13 +885,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 184,
     schema: AFTER_VISIT_SUMMARY_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: [
-        "sessionMeta",
-        "record",
-        "insights",
-        "ddx",
-        "patientHandout",
-      ],
       systemInstructions:
         "Write visit-specific instructions only. Do not repeat generic disease encyclopedia text already covered by patient education handouts. Keep action items concrete and easy to scan.",
       emptyValuePolicy: "BLANK",
@@ -939,14 +938,7 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 137,
     schema: REFERRAL_REQUEST_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: [
-        "sessionMeta",
-        "transcript",
-        "doctorNotes",
-        "record",
-        "insights",
-        "ddx",
-      ],
+      clinicalContextDefault: "transcript",
       systemInstructions:
         "Write concise referral communication for transfer or specialist input. Focus on the referral question, urgency, suspected diagnosis or concern, pertinent findings, workup already completed, and what the receiving service is being asked to do.",
       emptyValuePolicy: "NOT_PROVIDED",
@@ -997,7 +989,7 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 96,
     schema: CONSULTATION_REPLY_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: ["sessionMeta", "record", "insights", "ddx", "research"],
+      clinicalContextDefault: "transcript",
       systemInstructions:
         "Write as a specialist replying to a referring clinician. Summarize the impression, what was completed, what changed in treatment, and what the referring team should monitor next.",
       emptyValuePolicy: "NOT_PROVIDED",
@@ -1055,14 +1047,7 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 64,
     schema: KR_REFERRAL_REQUEST_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: [
-        "sessionMeta",
-        "transcript",
-        "doctorNotes",
-        "record",
-        "insights",
-        "ddx",
-      ],
+      clinicalContextDefault: "transcript",
       systemInstructions: `한국 의료기관 간 의뢰 문서 형식으로 작성하세요. 의뢰 목적, 주요 소견, 시행한 검사, 요청사항을 간결하게 정리하세요. ${KR_EXTERNAL_METADATA_GUARDRAIL}`,
       emptyValuePolicy: "BLANK",
     }),
@@ -1116,7 +1101,7 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 52,
     schema: KR_REFERRAL_REPLY_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: ["sessionMeta", "record", "insights", "ddx", "research"],
+      clinicalContextDefault: "transcript",
       systemInstructions: `한국 의료기관 간 회송 문서 형식으로 작성하세요. 평가 결과, 시행한 조치, 공동 관리 요청, 재의뢰 기준을 명확히 적으세요. ${KR_EXTERNAL_METADATA_GUARDRAIL}`,
       emptyValuePolicy: "BLANK",
     }),
@@ -1173,15 +1158,9 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 71,
     schema: KR_MEDICAL_CERTIFICATE_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: [
-        "sessionMeta",
-        "transcript",
-        "doctorNotes",
-        "record",
-        "insights",
-      ],
       systemInstructions: `한국 의료기관의 일반진단서 형식에 맞춰 진단명, 진단 근거, 현재 상태를 명확히 작성하세요. 진단되지 않은 내용이나 법정 고정 문구를 임의로 추가하지 마세요. ${KR_EXTERNAL_METADATA_GUARDRAIL}`,
       emptyValuePolicy: "BLANK",
+      generationRequirements: CONFIRMED_DIAGNOSIS_REQUIRED,
     }),
     previewLocale: "ko",
     previewContent: {
@@ -1225,13 +1204,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 68,
     schema: KR_VISIT_CONFIRMATION_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: [
-        "sessionMeta",
-        "transcript",
-        "doctorNotes",
-        "record",
-        "insights",
-      ],
       systemInstructions: `진료확인서는 실제 진료 사실, 진료 일자, 검사/처치 사실만 근거 기반으로 정리하세요. 진단 확정이 없는 내용은 단정적으로 쓰지 말고, 행정 식별 정보는 수동 입력 항목으로 남기세요. ${KR_EXTERNAL_METADATA_GUARDRAIL}`,
       emptyValuePolicy: "BLANK",
     }),
@@ -1277,15 +1249,9 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 59,
     schema: KR_OUTPATIENT_CONFIRMATION_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: [
-        "sessionMeta",
-        "transcript",
-        "doctorNotes",
-        "record",
-        "insights",
-      ],
       systemInstructions: `통원 사실 확인용 문서로서 통원 일자와 진료 사실 위주로 간결하게 작성하세요. 진단 확정이 불충분하면 진료 내용 요약 수준으로 유지하세요. ${KR_EXTERNAL_METADATA_GUARDRAIL}`,
       emptyValuePolicy: "BLANK",
+      generationRequirements: CONFIRMED_DIAGNOSIS_REQUIRED,
     }),
     previewLocale: "ko",
     previewContent: {
@@ -1323,14 +1289,9 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 57,
     schema: KR_ADMISSION_DISCHARGE_CONFIRMATION_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: [
-        "sessionMeta",
-        "doctorNotes",
-        "record",
-        "insights",
-      ],
       systemInstructions: `입퇴원 사실과 입원 기간 중 진료 경과를 제출용 문서 형식으로 정리하세요. 기록에 없는 수술명, 법정 문구, 기관 식별 정보는 추가하지 마세요. ${KR_EXTERNAL_METADATA_GUARDRAIL}`,
       emptyValuePolicy: "BLANK",
+      generationRequirements: CONFIRMED_DIAGNOSIS_REQUIRED,
     }),
     previewLocale: "ko",
     previewContent: {
@@ -1372,7 +1333,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 128,
     schema: MEDICAL_NECESSITY_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: ["sessionMeta", "record", "insights", "ddx", "research"],
       systemInstructions:
         "Write for a payer or utilization reviewer. Use objective findings, prior management, and evidence-based rationale when available. Never invent payer metadata or service codes.",
       emptyValuePolicy: "NOT_PROVIDED",
@@ -1432,17 +1392,10 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 154,
     schema: MEDICAL_CERTIFICATE_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: [
-        "sessionMeta",
-        "transcript",
-        "doctorNotes",
-        "record",
-        "insights",
-        "ddx",
-      ],
       systemInstructions:
         "Draft a formal medical certificate for external submission. Include only clinically supported diagnoses, dates, and limitations. Do not invent identifiers, agencies, or mandatory legal phrases that are not present in the record.",
       emptyValuePolicy: "BLANK",
+      generationRequirements: CONFIRMED_DIAGNOSIS_REQUIRED,
     }),
     previewLocale: "en",
     previewContent: {
@@ -1493,16 +1446,10 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 167,
     schema: MEDICAL_LEAVE_CERTIFICATE_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: [
-        "sessionMeta",
-        "transcript",
-        "doctorNotes",
-        "record",
-        "insights",
-      ],
       systemInstructions:
         "Write a medical leave certificate when the patient should be fully excused from work or school. State the supported reason for incapacity, the recommended rest period, and the follow-up plan without adding unsupported diagnosis details.",
       emptyValuePolicy: "BLANK",
+      generationRequirements: CONFIRMED_DIAGNOSIS_REQUIRED,
     }),
     previewLocale: "en",
     previewContent: {
@@ -1548,16 +1495,10 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 142,
     schema: TREATMENT_CONFIRMATION_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: [
-        "sessionMeta",
-        "transcript",
-        "doctorNotes",
-        "record",
-        "insights",
-      ],
       systemInstructions:
         "Confirm attendance or ongoing treatment using encounter dates and clinically supported care details. Keep the wording suitable for third-party submission and avoid unnecessary disclosure beyond what the record supports.",
       emptyValuePolicy: "BLANK",
+      generationRequirements: CONFIRMED_DIAGNOSIS_REQUIRED,
     }),
     previewLocale: "en",
     previewContent: {
@@ -1601,17 +1542,10 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 119,
     schema: HOSPITALIZATION_CONFIRMATION_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: [
-        "sessionMeta",
-        "transcript",
-        "doctorNotes",
-        "record",
-        "insights",
-        "ddx",
-      ],
       systemInstructions:
         "Summarize a documented admission, observation stay, or surgery for external confirmation. Include dates, the principal diagnosis, the major hospital course, and recovery guidance only when supported by the record.",
       emptyValuePolicy: "BLANK",
+      generationRequirements: CONFIRMED_DIAGNOSIS_REQUIRED,
     }),
     previewLocale: "en",
     previewContent: {
@@ -1655,14 +1589,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 173,
     schema: INSURANCE_CLAIM_CERTIFICATE_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: [
-        "sessionMeta",
-        "transcript",
-        "doctorNotes",
-        "record",
-        "insights",
-        "ddx",
-      ],
       systemInstructions:
         "Prepare an insurance claim support certificate that confirms medically necessary encounters and treatments from the chart. Do not invent insurer metadata, claim identifiers, billing codes, or covered benefits.",
       emptyValuePolicy: "NOT_PROVIDED",
@@ -1721,16 +1647,10 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 88,
     schema: RETURN_TO_ACTIVITY_CLEARANCE_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: [
-        "sessionMeta",
-        "transcript",
-        "doctorNotes",
-        "record",
-        "insights",
-      ],
       systemInstructions:
         "Draft a return-to-activity clearance only when the chart supports that the patient can resume work, school, sport, or travel. State the clearance status, any restrictions, and when reassessment is needed.",
       emptyValuePolicy: "BLANK",
+      generationRequirements: CONFIRMED_DIAGNOSIS_REQUIRED,
     }),
     previewLocale: "en",
     previewContent: {
@@ -1774,14 +1694,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 74,
     schema: LONGITUDINAL_CARE_PLAN_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: [
-        "sessionMeta",
-        "record",
-        "insights",
-        "ddx",
-        "research",
-        "patientHandout",
-      ],
       systemInstructions:
         "Write a longitudinal management plan rather than a single-visit note. Organize by problems, measurable goals, interventions, monitoring, and escalation triggers.",
       emptyValuePolicy: "NOT_PROVIDED",
@@ -1854,7 +1766,7 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 111,
     schema: PROCEDURE_NOTE_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: ["sessionMeta", "transcript", "doctorNotes", "record", "insights"],
+      includeSourceImages: true,
       systemInstructions:
         "Document office procedure details precisely. If a critical procedural detail is absent, leave it not provided rather than inferring technique, medications, consent, or complications.",
       emptyValuePolicy: "NOT_PROVIDED",
@@ -1906,7 +1818,6 @@ export const SEEDED_PUBLIC_DOCUMENTS: SeededPublicDocumentDefinition[] = [
     featuredInstallCount: 133,
     schema: WORK_STATUS_SCHEMA,
     generationConfig: createGenerationConfig({
-      contextSources: ["sessionMeta", "record", "insights"],
       systemInstructions:
         "Use this note for modified duty or partial attendance, not full leave. Keep the note focused on functional restrictions, duration, and reevaluation. Do not disclose diagnosis details unless the consultation explicitly supports disclosure or the clinician later fills the optional diagnosis field.",
       emptyValuePolicy: "BLANK",

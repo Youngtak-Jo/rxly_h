@@ -10,7 +10,6 @@ import {
   TableHeader,
   TableRow,
 } from "@tiptap/extension-table"
-import TaskItem from "@tiptap/extension-task-item"
 import TaskList from "@tiptap/extension-task-list"
 import TextAlign from "@tiptap/extension-text-align"
 import Underline from "@tiptap/extension-underline"
@@ -18,6 +17,7 @@ import StarterKit from "@tiptap/starter-kit"
 import { buildGenericDocumentSections } from "@/lib/documents/preview"
 import { RichHeading } from "@/lib/documents/extensions/rich-heading"
 import { CalloutNode } from "@/lib/documents/extensions/callout-node"
+import { RichTaskItem } from "@/lib/documents/extensions/rich-task-item"
 import type {
   DocumentSchemaNode,
   GenericDocumentSection,
@@ -255,6 +255,7 @@ export const DOCUMENT_HTML_STYLE = `
 export function createRichTextExtensions(options?: {
   placeholder?: string
   includePlaceholder?: boolean
+  onReadOnlyChecklistToggle?: (itemId: string, checked: boolean) => boolean
 }) {
   const extensions: AnyExtension[] = [
     StarterKit.configure({
@@ -267,7 +268,17 @@ export function createRichTextExtensions(options?: {
     Underline,
     Highlight,
     TaskList,
-    TaskItem.configure({ nested: true }),
+    RichTaskItem.configure({
+      nested: true,
+      onReadOnlyChecked: options?.onReadOnlyChecklistToggle
+        ? (node, checked) => {
+            const itemId =
+              typeof node.attrs.itemId === "string" ? node.attrs.itemId : ""
+            if (!itemId) return false
+            return options.onReadOnlyChecklistToggle?.(itemId, checked) ?? false
+          }
+        : undefined,
+    }),
     Table.configure({
       resizable: true,
       HTMLAttributes: { class: "rxly-document-table" },
@@ -411,7 +422,12 @@ export function createOrderedListNode(items: string[]): JSONContent | null {
 }
 
 export function createTaskListNode(
-  items: Array<{ label: string; checked?: boolean; note?: string | null }>
+  items: Array<{
+    itemId?: string | null
+    label: string
+    checked?: boolean
+    note?: string | null
+  }>
 ): JSONContent | null {
   const normalized = items.filter((item) => item.label.trim())
   if (normalized.length === 0) return null
@@ -420,7 +436,10 @@ export function createTaskListNode(
     type: "taskList",
     content: normalized.map((item) => ({
       type: "taskItem",
-      attrs: { checked: !!item.checked },
+      attrs: {
+        checked: !!item.checked,
+        itemId: item.itemId ?? null,
+      },
       content: [
         createParagraphNode(item.label),
         ...(item.note?.trim()
@@ -831,6 +850,7 @@ export function insightsToRichTextDocument(input: {
     content.push(
       createTaskListNode(
         input.checklistItems.map((item) => ({
+          itemId: item.id,
           label: item.label,
           checked: item.isChecked,
           note: item.doctorNote || "",

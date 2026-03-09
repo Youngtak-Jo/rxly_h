@@ -1,6 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react"
 import { useEditor, EditorContent, type Editor } from "@tiptap/react"
 import {
   IconBlockquote,
@@ -45,6 +51,7 @@ interface SlashMenuState {
 interface DocumentEditorProps {
   value: RichTextDocument | null | undefined
   onChange?: (value: RichTextDocument) => void
+  onReadOnlyChecklistToggle?: (itemId: string, checked: boolean) => boolean
   placeholder?: string
   readOnly?: boolean
   embedded?: boolean
@@ -399,6 +406,7 @@ function EditorToolbar({
 export function DocumentEditor({
   value,
   onChange,
+  onReadOnlyChecklistToggle,
   placeholder,
   readOnly = false,
   embedded = false,
@@ -414,15 +422,22 @@ export function DocumentEditor({
     () => normalizeRichTextDocument(value, emptyRichTextDocument()),
     [value]
   )
+  const extensions = useMemo(
+    () =>
+      createRichTextExtensions({
+        placeholder: placeholder || "",
+        includePlaceholder: !readOnly,
+        onReadOnlyChecklistToggle: (itemId, checked) =>
+          onReadOnlyChecklistToggle?.(itemId, checked) ?? false,
+      }),
+    [onReadOnlyChecklistToggle, placeholder, readOnly]
+  )
 
   const editor = useEditor({
     immediatelyRender: false,
     autofocus: autoFocus,
     editable: !readOnly,
-    extensions: createRichTextExtensions({
-      placeholder: placeholder || "",
-      includePlaceholder: !readOnly,
-    }),
+    extensions,
     editorProps: {
       attributes: {
         class: cn(
@@ -544,11 +559,13 @@ export function DocumentEditor({
 
 export function DocumentRenderer({
   value,
+  onReadOnlyChecklistToggle,
   embedded = true,
   className,
   canvasClassName,
 }: {
   value: RichTextDocument | null | undefined
+  onReadOnlyChecklistToggle?: (itemId: string, checked: boolean) => boolean
   embedded?: boolean
   className?: string
   canvasClassName?: string
@@ -557,6 +574,7 @@ export function DocumentRenderer({
     <DocumentEditor
       value={value}
       readOnly
+      onReadOnlyChecklistToggle={onReadOnlyChecklistToggle}
       embedded={embedded}
       className={className}
       canvasClassName={canvasClassName}

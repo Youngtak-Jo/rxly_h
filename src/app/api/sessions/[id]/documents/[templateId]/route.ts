@@ -151,6 +151,7 @@ export async function PUT(
       templateId,
       templateVersionId: targetVersion.id,
       contentJson: normalizedDocument as Record<string, unknown>,
+      generationInputs: parsed.data.generationInputs ?? context.sessionDocument?.generationInputs,
       generatedAt: parsed.data.generatedAt ?? null,
     })
 

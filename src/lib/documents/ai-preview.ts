@@ -45,7 +45,15 @@ function buildPreviewSystemPrompt(args: {
     `Title: ${args.draft.title}`,
     `Description: ${args.draft.description}`,
     `Category: ${args.draft.category}`,
-    `Context sources: ${args.draft.generationConfig.contextSources.join(", ")}`,
+    `Clinical basis default: ${args.draft.generationConfig.clinicalContextDefault}`,
+    `Attach uploaded source images: ${args.draft.generationConfig.includeSourceImages ? "yes" : "no"}`,
+    `Require clinician diagnosis selection: ${
+      args.draft.generationConfig.generationRequirements.some(
+        (requirement) => requirement.type === "confirmedDiagnosis" && requirement.required
+      )
+        ? "yes"
+        : "no"
+    }`,
     regionInstruction,
     args.draft.generationConfig.systemInstructions
       ? `Template-specific instructions:\n${args.draft.generationConfig.systemInstructions}`

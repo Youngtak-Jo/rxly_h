@@ -30,6 +30,7 @@ import {
   reconcileSampleDocumentContent,
 } from "@/lib/documents/preview"
 import { normalizeDocumentCategory } from "@/lib/documents/categories"
+import { ensureDocumentGenerationRequirements } from "@/lib/documents/generation-requirements"
 import {
   documentLanguageToUiLocale,
   resolveDocumentLanguage,
@@ -42,11 +43,7 @@ import { useDocumentBuilderLocalDraft } from "@/hooks/use-document-builder-local
 import { useDocumentBuilderDialogStore } from "@/stores/document-builder-dialog-store"
 import { useDocumentCatalogStore } from "@/stores/document-catalog-store"
 import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
-import {
-  AI_MODELS,
-  useSettingsDialogStore,
-  useSettingsStore,
-} from "@/stores/settings-store"
+import { useSettingsStore } from "@/stores/settings-store"
 import type {
   DocumentBuilderDialogMode,
   DocumentBuilderDraft,
@@ -166,7 +163,7 @@ function createEmptyComparableState(
 function withNormalizedDraft(
   draft: DocumentBuilderDraft
 ): DocumentBuilderDraft {
-  return {
+  const normalizedDraft = {
     title: draft.title,
     description: draft.description,
     category: normalizeDocumentCategory(draft.category),
@@ -174,6 +171,15 @@ function withNormalizedDraft(
     region: resolveDocumentRegion(draft.region),
     schema: draft.schema,
     generationConfig: normalizeDocumentGenerationConfig(draft.generationConfig),
+  }
+
+  return {
+    ...normalizedDraft,
+    generationConfig: ensureDocumentGenerationRequirements({
+      category: normalizedDraft.category,
+      schema: normalizedDraft.schema,
+      generationConfig: normalizedDraft.generationConfig,
+    }),
   }
 }
 
@@ -281,7 +287,6 @@ export const DocumentBuilderFlow = forwardRef<
   const documentModel = useSettingsStore((state) => state.aiModel.documentModel)
   const storedUserRegion = useSettingsStore((state) => state.regional.userRegion)
   const userRegion = resolveUserRegion(storedUserRegion, locale)
-  const openSettings = useSettingsDialogStore((state) => state.openSettings)
   const refreshWorkspaceSnapshot = useDocumentWorkspaceStore(
     (state) => state.refreshWorkspaceSnapshot
   )
@@ -1177,6 +1182,41 @@ export const DocumentBuilderFlow = forwardRef<
   const canGoSettingsNext = !settingsValidationMessage
   const canGoSchemaNext = !schemaValidationMessage
 
+  useEffect(() => {
+    const nextGenerationConfig = ensureDocumentGenerationRequirements({
+      category: draft.category,
+      schema: draft.schema,
+      generationConfig: draft.generationConfig,
+    })
+
+    if (
+      JSON.stringify(nextGenerationConfig) ===
+      JSON.stringify(draft.generationConfig)
+    ) {
+      return
+    }
+
+    setDraft((currentDraft) => {
+      const ensuredGenerationConfig = ensureDocumentGenerationRequirements({
+        category: currentDraft.category,
+        schema: currentDraft.schema,
+        generationConfig: currentDraft.generationConfig,
+      })
+
+      if (
+        JSON.stringify(ensuredGenerationConfig) ===
+        JSON.stringify(currentDraft.generationConfig)
+      ) {
+        return currentDraft
+      }
+
+      return {
+        ...currentDraft,
+        generationConfig: ensuredGenerationConfig,
+      }
+    })
+  }, [draft.category, draft.generationConfig, draft.schema, setDraft])
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="border-b px-5 py-3 sm:px-6">
@@ -1265,7 +1305,7 @@ export const DocumentBuilderFlow = forwardRef<
           language={draft.language}
           region={draft.region}
           schemaNodeCount={schemaNodeCount}
-          contextSources={draft.generationConfig.contextSources}
+          generationConfig={draft.generationConfig}
           publishedVersionNumber={publishedVersionNumber}
           installedVersionNumber={installedVersionNumber}
           previewSections={previewSections}

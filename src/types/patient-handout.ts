@@ -1,11 +1,7 @@
 import type { RichTextDocument } from "@/lib/documents/rich-text"
+import type { SelectedDiagnosisCondition } from "@/types/diagnosis-selection"
 
-export interface PatientHandoutCondition {
-  id: string
-  icdCode: string
-  diseaseName: string
-  source: "ddx" | "icd11"
-}
+export type PatientHandoutCondition = SelectedDiagnosisCondition
 
 export type PatientHandoutSectionKey =
   | "conditionOverview"

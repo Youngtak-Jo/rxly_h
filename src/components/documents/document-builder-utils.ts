@@ -7,6 +7,7 @@ import type {
   DocumentSchemaNode,
   DocumentSchemaNodeType,
 } from "@/types/document"
+import { createDocumentGenerationConfig } from "@/lib/documents/generation-config"
 
 export function createEmptyDraft(
   locale: UiLocale,
@@ -21,11 +22,7 @@ export function createEmptyDraft(
     schema: {
       nodes: [],
     },
-    generationConfig: {
-      contextSources: ["insights", "doctorNotes"],
-      systemInstructions: "",
-      emptyValuePolicy: "BLANK",
-    },
+    generationConfig: createDocumentGenerationConfig(),
   }
 }
 

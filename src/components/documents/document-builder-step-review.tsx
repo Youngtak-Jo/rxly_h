@@ -14,12 +14,16 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { getConfirmedDiagnosisRequirement } from "@/lib/documents/generation-requirements"
 import { getDocumentCategoryLabelKey } from "@/lib/documents/categories"
 import {
   getDocumentLanguageOptions,
   getDocumentRegionOptions,
 } from "@/lib/documents/language-region"
-import type { GenericDocumentSection } from "@/types/document"
+import type {
+  DocumentGenerationConfig,
+  GenericDocumentSection,
+} from "@/types/document"
 
 const DOCUMENT_LANGUAGE_LABELS = new Map(
   getDocumentLanguageOptions().map((option) => [option.value, option.labelKey])
@@ -64,7 +68,7 @@ export function DocumentBuilderStepReview({
   language,
   region,
   schemaNodeCount,
-  contextSources,
+  generationConfig,
   publishedVersionNumber,
   installedVersionNumber,
   previewSections,
@@ -80,7 +84,7 @@ export function DocumentBuilderStepReview({
   language: "en" | "ko"
   region: "global" | "kr" | "us"
   schemaNodeCount: number
-  contextSources: string[]
+  generationConfig: DocumentGenerationConfig
   publishedVersionNumber: number | null
   installedVersionNumber: number | null
   previewSections: GenericDocumentSection[]
@@ -99,11 +103,13 @@ export function DocumentBuilderStepReview({
   const regionLabel = tMeta(
     (DOCUMENT_REGION_LABELS.get(region) ?? "regions.global") as never
   )
+  const confirmedDiagnosisRequirement = getConfirmedDiagnosisRequirement(
+    generationConfig
+  )
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-4">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
-        {/* ── Summary card ── */}
         <Card className="gap-4 py-4">
           <CardHeader className="px-4">
             <div className="flex items-start justify-between gap-3">
@@ -116,12 +122,16 @@ export function DocumentBuilderStepReview({
               <div className="flex shrink-0 flex-wrap gap-1.5">
                 {publishedVersionNumber ? (
                   <Badge variant="secondary" className="text-[11px]">
-                    {t("badges.publishedVersion", { version: publishedVersionNumber })}
+                    {t("badges.publishedVersion", {
+                      version: publishedVersionNumber,
+                    })}
                   </Badge>
                 ) : null}
                 {installedVersionNumber ? (
                   <Badge variant="outline" className="text-[11px]">
-                    {t("badges.installedVersion", { version: installedVersionNumber })}
+                    {t("badges.installedVersion", {
+                      version: installedVersionNumber,
+                    })}
                   </Badge>
                 ) : null}
               </div>
@@ -130,10 +140,7 @@ export function DocumentBuilderStepReview({
 
           <CardContent className="px-4">
             <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
-              <SummaryRow
-                label={t("review.summary.title")}
-                value={title || "-"}
-              />
+              <SummaryRow label={t("review.summary.title")} value={title || "-"} />
               <SummaryRow
                 label={t("review.summary.category")}
                 value={categoryLabel}
@@ -152,6 +159,30 @@ export function DocumentBuilderStepReview({
                   count: schemaNodeCount,
                 })}
               />
+              <SummaryRow
+                label={t("review.summary.clinicalBasis")}
+                value={t(
+                  generationConfig.clinicalContextDefault === "transcript"
+                    ? "generationSettings.clinicalBasisTranscript"
+                    : "generationSettings.clinicalBasisInsights"
+                )}
+              />
+              <SummaryRow
+                label={t("review.summary.includeSourceImages")}
+                value={t(
+                  generationConfig.includeSourceImages
+                    ? "review.summary.enabled"
+                    : "review.summary.disabled"
+                )}
+              />
+              <SummaryRow
+                label={t("review.summary.requireDiagnosisSelection")}
+                value={t(
+                  confirmedDiagnosisRequirement?.required
+                    ? "review.summary.enabled"
+                    : "review.summary.disabled"
+                )}
+              />
             </dl>
 
             <Separator className="my-4" />
@@ -162,34 +193,15 @@ export function DocumentBuilderStepReview({
                 value={description || t("review.summary.none")}
                 block
               />
-              <div className="space-y-1">
-                <dt className="text-xs text-muted-foreground">
-                  {t("review.summary.contextSources")}
-                </dt>
-                <dd className="flex flex-wrap gap-1.5">
-                  {contextSources.length > 0 ? (
-                    contextSources.map((source) => (
-                      <Badge key={source} variant="outline" className="text-[11px] font-normal">
-                        {t(`contextSources.${source}` as never)}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-sm text-muted-foreground">
-                      {t("review.summary.none")}
-                    </span>
-                  )}
-                </dd>
-              </div>
             </dl>
           </CardContent>
         </Card>
 
-        {/* ── Preview card ── */}
         <Card className="gap-4 py-4">
           <CardHeader className="px-4">
             <div className="flex flex-col gap-3">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                <div className="mt-0.5 flex flex-wrap items-center gap-2">
                   <CardTitle className="text-sm">
                     {t("preview.renderedTitle")}
                   </CardTitle>
@@ -239,14 +251,18 @@ export function DocumentBuilderStepReview({
                 ) : null}
               </div>
             </div>
-
-            {previewError ? (
-              <p className="mt-2 text-sm text-destructive">{previewError}</p>
-            ) : null}
           </CardHeader>
 
           <CardContent className="px-4">
-            <GenericDocumentPreview sections={previewSections} />
+            {previewSections.length > 0 ? (
+              <GenericDocumentPreview sections={previewSections} />
+            ) : previewError ? (
+              <p className="text-sm text-destructive">{previewError}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {t("preview.emptyRendered")}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -264,9 +280,9 @@ function SummaryRow({
   block?: boolean
 }) {
   return (
-    <div className={`space-y-0.5 ${block ? "sm:col-span-2" : ""}`}>
+    <div className={block ? "space-y-1" : ""}>
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="font-medium leading-snug">{value}</dd>
+      <dd className={block ? "text-sm" : "text-sm font-medium"}>{value}</dd>
     </div>
   )
 }

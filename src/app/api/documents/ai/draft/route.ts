@@ -7,8 +7,10 @@ import {
   documentAiDraftSchema,
   documentTemplateCreateSchema,
 } from "@/lib/documents/schema"
+import { ensureDocumentGenerationRequirements } from "@/lib/documents/generation-requirements"
 import { buildFallbackDocumentDraft } from "@/lib/documents/fallback-draft"
 import { DOCUMENT_CATEGORIES } from "@/lib/documents/categories"
+import { createDocumentGenerationConfig } from "@/lib/documents/generation-config"
 import { ensureRepeatableItemLabels } from "@/lib/documents/repeatable-item-label"
 import { getModel, isSupportedModel } from "@/lib/ai-provider"
 import { DEFAULT_MODEL } from "@/lib/xai"
@@ -31,6 +33,9 @@ function buildBuilderSystemPrompt() {
     "Keep schema depth <= 3 and total leaf fields <= 60.",
     "Favor structured sections that are practical for real-world clinical workflows, including region-specific regulations if requested.",
     "For publishability, description must explain the document purpose and usage context in 1-2 sentences.",
+    "generationConfig.clinicalContextDefault must be either insights or transcript.",
+    "generationConfig.includeSourceImages must be true only when the template needs original uploaded images as multimodal input.",
+    "generationConfig.generationRequirements may be omitted unless the template explicitly requires a clinician confirmation step before generation.",
     "Do not mention prompts, generation process, or fallback behavior in description.",
     `Category must be one of: ${DOCUMENT_CATEGORIES.join(", ")}.`,
   ].join("\n")
@@ -78,10 +83,24 @@ export async function POST(req: Request) {
           })
 
           return {
-            result: {
-              ...generated.object,
-              schema: ensureRepeatableItemLabels(generated.object.schema),
-            },
+            result: (() => {
+              const drafted = {
+                ...generated.object,
+                schema: ensureRepeatableItemLabels(generated.object.schema),
+                generationConfig: createDocumentGenerationConfig(
+                  generated.object.generationConfig
+                ),
+              }
+
+              return {
+                ...drafted,
+                generationConfig: ensureDocumentGenerationRequirements({
+                  category: drafted.category,
+                  schema: drafted.schema,
+                  generationConfig: drafted.generationConfig,
+                }),
+              }
+            })(),
             usage: generated.usage
               ? {
                   inputTokens: generated.usage.inputTokens,

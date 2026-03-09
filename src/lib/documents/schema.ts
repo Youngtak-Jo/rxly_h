@@ -9,9 +9,11 @@ import type {
   DocumentTemplateSchema,
 } from "@/types/document"
 import {
-  DOCUMENT_CONTEXT_SOURCES,
+  DOCUMENT_CLINICAL_CONTEXT_MODES,
+  DOCUMENT_CONFIRMED_DIAGNOSIS_SELECTION_MODES,
   DOCUMENT_EMPTY_VALUE_POLICIES,
   DOCUMENT_FIELD_TYPES,
+  DOCUMENT_GENERATION_REQUIREMENT_TYPES,
   DOCUMENT_TEMPLATE_LANGUAGES,
   DOCUMENT_TEMPLATE_REGIONS,
   DOCUMENT_TEMPLATE_RENDERERS,
@@ -27,6 +29,11 @@ import {
   resolveDocumentLanguage,
   resolveDocumentRegion,
 } from "@/lib/documents/language-region"
+import {
+  DEFAULT_DOCUMENT_GENERATION_CONFIG,
+  createDocumentGenerationConfig,
+  createEmptySessionDocumentGenerationInputs,
+} from "@/lib/documents/generation-config"
 
 const MAX_SCHEMA_DEPTH = 3
 const MAX_SCHEMA_FIELDS = 60
@@ -53,6 +60,12 @@ const documentNodeBaseSchema = z.object({
   placeholder: z.string().max(200).default(""),
 })
 const documentRepeatableItemLabelSchema = z.string().trim().min(1).max(120)
+const documentClinicalContextModeSchema = z.enum(
+  DOCUMENT_CLINICAL_CONTEXT_MODES
+)
+const documentConfirmedDiagnosisSelectionModeSchema = z.enum(
+  DOCUMENT_CONFIRMED_DIAGNOSIS_SELECTION_MODES
+)
 
 const documentFieldNodeSchema = documentNodeBaseSchema.extend({
   type: z.enum(DOCUMENT_FIELD_TYPES),
@@ -129,14 +142,72 @@ export const documentTemplateSchemaSchema = z
     }
   })
 
-export const documentGenerationConfigSchema = z.object({
-  contextSources: z
-    .array(z.enum(DOCUMENT_CONTEXT_SOURCES))
-    .min(1)
-    .max(DOCUMENT_CONTEXT_SOURCES.length),
+const documentGenerationRequirementSchema = z
+  .array(
+    z.discriminatedUnion("type", [
+      z.object({
+        type: z.literal(DOCUMENT_GENERATION_REQUIREMENT_TYPES[0]),
+        required: z.boolean().default(true),
+        selectionMode: documentConfirmedDiagnosisSelectionModeSchema,
+        allowIcd11Search: z.boolean().default(true),
+      }),
+    ])
+  )
+  .default([])
+
+function adaptLegacyDocumentGenerationConfig(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value
+  }
+
+  const record = value as Record<string, unknown>
+  if (!("contextSources" in record)) {
+    return value
+  }
+
+  const contextSources = Array.isArray(record.contextSources)
+    ? record.contextSources.filter(
+        (source): source is string => typeof source === "string"
+      )
+    : []
+
+  const clinicalContextDefault =
+    contextSources.includes("transcript") && !contextSources.includes("insights")
+      ? "transcript"
+      : "insights"
+
+  return {
+    clinicalContextDefault,
+    includeSourceImages: contextSources.includes("uploadedImages"),
+    systemInstructions:
+      typeof record.systemInstructions === "string"
+        ? record.systemInstructions
+        : DEFAULT_DOCUMENT_GENERATION_CONFIG.systemInstructions,
+    emptyValuePolicy:
+      record.emptyValuePolicy === "NOT_PROVIDED"
+        ? "NOT_PROVIDED"
+        : DEFAULT_DOCUMENT_GENERATION_CONFIG.emptyValuePolicy,
+    generationRequirements: record.generationRequirements,
+  }
+}
+
+const documentGenerationConfigObjectSchema = z.object({
+  clinicalContextDefault: documentClinicalContextModeSchema.default("insights"),
+  includeSourceImages: z.boolean().default(false),
   systemInstructions: z.string().max(4000).default(""),
   emptyValuePolicy: z.enum(DOCUMENT_EMPTY_VALUE_POLICIES).default("BLANK"),
+  generationRequirements: documentGenerationRequirementSchema,
 })
+
+export const documentGenerationConfigSchema = z.preprocess(
+  adaptLegacyDocumentGenerationConfig,
+  documentGenerationConfigObjectSchema
+)
+
+export const storedDocumentGenerationConfigSchema = z.preprocess(
+  adaptLegacyDocumentGenerationConfig,
+  documentGenerationConfigObjectSchema
+)
 
 export const documentTemplatePreviewPayloadSchema = z.object({
   previewContent: z.record(z.string(), z.unknown()).optional(),
@@ -175,11 +246,9 @@ const documentBuilderStoredDraftSchema = z.object({
     .default("global")
     .transform((value) => resolveDocumentRegion(value)),
   schema: documentTemplateSchemaSchema.catch({ nodes: [] }),
-  generationConfig: documentGenerationConfigSchema.catch({
-    contextSources: ["insights", "doctorNotes", "transcript"],
-    systemInstructions: "",
-    emptyValuePolicy: "BLANK",
-  }),
+  generationConfig: storedDocumentGenerationConfigSchema.catch(
+    createDocumentGenerationConfig()
+  ),
 })
 
 const documentBuilderStoredStepSchema = z
@@ -230,9 +299,24 @@ export const documentWorkspaceLayoutPatchSchema = z.object({
   tabOrder: z.array(z.string().min(1)).max(100),
 })
 
+export const sessionDocumentGenerationInputsSchema = z.object({
+  clinicalContextMode: documentClinicalContextModeSchema.nullable().default(null),
+  confirmedDiagnoses: z
+    .array(
+      z.object({
+        id: z.string().trim().min(1).max(200),
+        icdCode: z.string().trim().min(1).max(200),
+        diseaseName: z.string().trim().min(1).max(300),
+        source: z.enum(["ddx", "icd11"]),
+      })
+    )
+    .default([]),
+}).default(createEmptySessionDocumentGenerationInputs())
+
 export const sessionDocumentSaveSchema = z.object({
   templateVersionId: z.string().min(1).optional(),
   contentJson: z.record(z.string(), z.unknown()),
+  generationInputs: sessionDocumentGenerationInputsSchema.nullable().optional(),
   generatedAt: z.string().datetime().nullable().optional(),
 })
 
@@ -282,6 +366,12 @@ export function normalizeDocumentGenerationConfig(
   config: unknown
 ): DocumentGenerationConfig {
   return documentGenerationConfigSchema.parse(config)
+}
+
+export function normalizeStoredDocumentGenerationConfig(
+  config: unknown
+): DocumentGenerationConfig {
+  return storedDocumentGenerationConfigSchema.parse(config)
 }
 
 export function sanitizeDocumentBuilderDraft(
