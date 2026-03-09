@@ -496,6 +496,7 @@ function clientEventCategory(eventType: string): AdminTimelineCategory {
   if (eventType === "image_uploaded") return "image"
   if (eventType === "export_clicked") return "export"
   if (
+    eventType === "document_feedback_submitted" ||
     eventType === "analysis_triggered" ||
     eventType === "analysis_completed" ||
     eventType === "analysis_failed"
@@ -508,6 +509,7 @@ function clientEventCategory(eventType: string): AdminTimelineCategory {
 function clientEventStatus(eventType: string): "success" | "failed" | "info" {
   if (eventType === "analysis_completed") return "success"
   if (eventType === "analysis_failed") return "failed"
+  if (eventType === "document_feedback_submitted") return "success"
   return "info"
 }
 
@@ -526,6 +528,27 @@ function clientEventLabel(
   if (eventType === "export_clicked") {
     const channel = typeof record?.channel === "string" ? record.channel : feature
     return `Clicked export (${channel})`
+  }
+  if (eventType === "document_feedback_submitted") {
+    const vote = typeof record?.vote === "string" ? record.vote : null
+    const templateTitle =
+      typeof record?.templateTitle === "string" ? record.templateTitle : null
+    if (templateTitle && vote === "up") return `Gave thumbs up to ${templateTitle}`
+    if (templateTitle && vote === "down") return `Gave thumbs down to ${templateTitle}`
+    return "Submitted document feedback"
+  }
+  if (feature === "custom_document") {
+    const templateTitle =
+      typeof record?.templateTitle === "string" ? record.templateTitle : "custom document"
+    if (eventType === "analysis_triggered") {
+      return `Started ${templateTitle} generation`
+    }
+    if (eventType === "analysis_completed") {
+      return `Completed ${templateTitle} generation`
+    }
+    if (eventType === "analysis_failed") {
+      return `Failed ${templateTitle} generation`
+    }
   }
   if (eventType === "analysis_triggered") return `Started ${feature} analysis`
   if (eventType === "analysis_completed") return `Completed ${feature} analysis`
@@ -572,6 +595,7 @@ function clientEventDetail(eventType: string, metadata: unknown): string | undef
   }
 
   if (
+    eventType === "document_feedback_submitted" ||
     eventType === "analysis_triggered" ||
     eventType === "analysis_completed" ||
     eventType === "analysis_failed"
@@ -579,7 +603,14 @@ function clientEventDetail(eventType: string, metadata: unknown): string | undef
     const reason = typeof record.reason === "string" ? record.reason : undefined
     const mode = typeof record.mode === "string" ? record.mode : undefined
     const forceRun = typeof record.forceRun === "boolean" ? record.forceRun : undefined
+    const trigger = typeof record.trigger === "string" ? record.trigger : undefined
+    const vote = typeof record.vote === "string" ? record.vote : undefined
+    const templateTitle =
+      typeof record.templateTitle === "string" ? record.templateTitle : undefined
     const parts: string[] = []
+    if (templateTitle) parts.push(`document=${templateTitle}`)
+    if (trigger) parts.push(`trigger=${trigger}`)
+    if (vote) parts.push(`vote=${vote}`)
     if (mode) parts.push(`mode=${mode}`)
     if (reason) parts.push(`reason=${reason}`)
     if (forceRun === true) parts.push("forced")

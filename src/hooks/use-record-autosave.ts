@@ -70,6 +70,7 @@ export function useRecordAutoSave() {
             labsStudies: record.labsStudies,
             assessment: record.assessment,
             plan: record.plan,
+            documentJson: record.documentJson ?? null,
           }),
         })
           .then((res) => {

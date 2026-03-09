@@ -3,16 +3,18 @@ import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
 import { requireAuth, requireSessionOwnership } from "@/lib/auth"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
-import {
-  createEmptyDocumentContent,
-  sessionDocumentSaveSchema,
-} from "@/lib/documents/schema"
+import { sessionDocumentSaveSchema } from "@/lib/documents/schema"
 import {
   getSessionDocumentForUser,
   normalizeGenericSessionDocumentContent,
   upsertSessionDocument,
 } from "@/lib/documents/server"
 import { logAudit } from "@/lib/audit"
+import {
+  buildStarterRichTextDocument,
+  genericStructuredContentToRichTextDocument,
+  isRichTextDocument,
+} from "@/lib/documents/rich-text"
 
 async function getGenericTemplateContext(
   userId: string,
@@ -61,8 +63,8 @@ export async function GET(
     if (!allowed) return rateLimitResponse()
 
     const context = await getGenericTemplateContext(user.id, id, templateId)
-    const initialContentJson = createEmptyDocumentContent(
-      context.activeVersion.schemaJson as never
+    const initialContentJson = buildStarterRichTextDocument(
+      (context.activeVersion.schemaJson as { nodes?: never[] }).nodes ?? []
     )
 
     if (context.sessionDocument) {
@@ -130,16 +132,25 @@ export async function PUT(
       )
     }
 
-    const contentJson = normalizeGenericSessionDocumentContent({
-      schema: targetVersion.schemaJson as never,
-      contentJson: parsed.data.contentJson,
-    })
+    const contentJson = isRichTextDocument(parsed.data.contentJson)
+      ? parsed.data.contentJson
+      : normalizeGenericSessionDocumentContent({
+          schema: targetVersion.schemaJson as never,
+          contentJson: parsed.data.contentJson,
+        })
+
+    const normalizedDocument = isRichTextDocument(contentJson)
+      ? contentJson
+      : genericStructuredContentToRichTextDocument({
+          contentJson,
+          schemaNodes: (targetVersion.schemaJson as { nodes?: never[] }).nodes ?? [],
+        })
 
     const sessionDocument = await upsertSessionDocument({
       sessionId: id,
       templateId,
       templateVersionId: targetVersion.id,
-      contentJson,
+      contentJson: normalizedDocument as Record<string, unknown>,
       generatedAt: parsed.data.generatedAt ?? null,
     })
 

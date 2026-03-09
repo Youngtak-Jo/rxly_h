@@ -18,21 +18,9 @@ import {
   type WorkspaceTabDefinition,
 } from "@/lib/documents/workspace"
 import { StructuredDocumentContainer } from "./documents/structured-document-container"
-import {
-  BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID,
-  BUILT_IN_RECORD_TEMPLATE_ID,
-  buildDocumentTabId,
-} from "@/lib/documents/constants"
 import type { WorkspaceTabId } from "@/types/document"
 
 const TAB_CONTENT_CLASS_NAME = "mt-0 min-h-0 overflow-hidden"
-const PRELOADED_WORKSPACE_TAB_IDS = new Set<WorkspaceTabId>([
-  "insights",
-  "ddx",
-  "research",
-  buildDocumentTabId(BUILT_IN_RECORD_TEMPLATE_ID),
-  buildDocumentTabId(BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID),
-])
 
 function DocumentTabContent({ children }: { children: ReactNode }) {
   return (
@@ -111,12 +99,6 @@ export function CenterPanel() {
       tabDefinitions.map((definition) => definition.id)
     )
     const selectedTabIds = new Set<WorkspaceTabId>()
-
-    for (const tabId of PRELOADED_WORKSPACE_TAB_IDS) {
-      if (availableTabIds.has(tabId)) {
-        selectedTabIds.add(tabId)
-      }
-    }
 
     for (const tabId of tabOrder) {
       if (availableTabIds.has(tabId) && visitedTabs[tabId]) {

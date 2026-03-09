@@ -16,6 +16,7 @@ function toPersistableRecord(record: ConsultationRecord) {
     labsStudies: record.labsStudies,
     assessment: record.assessment,
     plan: record.plan,
+    documentJson: record.documentJson ?? null,
   }
 }
 
@@ -34,6 +35,7 @@ interface RecordState {
   setRecord: (record: ConsultationRecord) => void
   loadFromDB: (record: ConsultationRecord) => void
   updateField: (field: keyof ConsultationRecord, value: string) => void
+  updateDocumentJson: (documentJson: ConsultationRecord["documentJson"]) => void
   setGenerating: (generating: boolean) => void
   setLastPersistedFingerprint: (fingerprint: string | null) => void
   reset: () => void
@@ -57,6 +59,18 @@ export const useRecordStore = create<RecordState>((set) => ({
     set((state) => {
       if (!state.record) return state
       return { record: { ...state.record, [field]: value }, lastUpdated: new Date() }
+    }),
+
+  updateDocumentJson: (documentJson) =>
+    set((state) => {
+      if (!state.record) return state
+      return {
+        record: {
+          ...state.record,
+          documentJson,
+        },
+        lastUpdated: new Date(),
+      }
     }),
 
   setGenerating: (isGenerating) => set({ isGenerating }),

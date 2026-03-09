@@ -34,7 +34,14 @@ export async function GET(
       return adminJson({ error: "Session not found" }, 404)
     }
 
-    const [transcriptEntries, notes, researchMessages, auditTimeline, exportLinks] =
+    const [
+      transcriptEntries,
+      notes,
+      researchMessages,
+      auditTimeline,
+      clientEvents,
+      exportLinks,
+    ] =
       await Promise.all([
         prisma.transcriptEntry.findMany({
           where: { sessionId: id, isFinal: true },
@@ -49,6 +56,11 @@ export async function GET(
           orderBy: { createdAt: "asc" },
         }),
         prisma.auditLog.findMany({
+          where: { sessionId: id },
+          orderBy: { createdAt: "desc" },
+          take: 200,
+        }),
+        prisma.clientEvent.findMany({
           where: { sessionId: id },
           orderBy: { createdAt: "desc" },
           take: 200,
@@ -79,6 +91,7 @@ export async function GET(
       patientHandout: session.patientHandout,
       sessionDocuments: session.sessionDocuments.map(mapSessionDocumentRecord),
       checklistItems: session.checklistItems,
+      clientEvents,
       auditTimeline,
     }
 

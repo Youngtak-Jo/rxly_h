@@ -9,10 +9,29 @@ type SessionDocumentSchemaMap = Record<
   string,
   Record<string, DocumentSchemaNode[]>
 >
+type SessionDocumentUiStateMap = Record<
+  string,
+  Record<string, SessionDocumentUiState>
+>
+
+export interface SessionDocumentUiState {
+  isGenerating: boolean
+  isSaving: boolean
+  lastGenerationError: string | null
+  feedbackForGeneratedAt: string | null
+}
+
+const DEFAULT_UI_STATE: SessionDocumentUiState = {
+  isGenerating: false,
+  isSaving: false,
+  lastGenerationError: null,
+  feedbackForGeneratedAt: null,
+}
 
 interface SessionDocumentState {
   documentsBySessionId: SessionDocumentMap
   documentSchemasBySessionId: SessionDocumentSchemaMap
+  uiStateBySessionId: SessionDocumentUiStateMap
   hydrateSessionDocuments: (
     sessionId: string,
     documents: SessionDocumentRecord[]
@@ -31,6 +50,15 @@ interface SessionDocumentState {
     sessionId: string,
     templateId: string
   ) => DocumentSchemaNode[] | null
+  getSessionDocumentUiState: (
+    sessionId: string,
+    templateId: string
+  ) => SessionDocumentUiState
+  setSessionDocumentUiState: (
+    sessionId: string,
+    templateId: string,
+    patch: Partial<SessionDocumentUiState>
+  ) => void
   resetSessionDocuments: (sessionId?: string) => void
   reset: () => void
 }
@@ -39,6 +67,7 @@ export const useSessionDocumentStore = create<SessionDocumentState>(
   (set, get) => ({
     documentsBySessionId: {},
     documentSchemasBySessionId: {},
+    uiStateBySessionId: {},
 
     hydrateSessionDocuments: (sessionId, documents) =>
       set((state) => ({
@@ -50,7 +79,45 @@ export const useSessionDocumentStore = create<SessionDocumentState>(
         },
         documentSchemasBySessionId: {
           ...state.documentSchemasBySessionId,
-          [sessionId]: state.documentSchemasBySessionId[sessionId] ?? {},
+          [sessionId]: {
+            ...(state.documentSchemasBySessionId[sessionId] ?? {}),
+            ...Object.fromEntries(
+              documents
+                .filter(
+                  (document) =>
+                    Array.isArray(document.templateSchemaNodes) &&
+                    document.templateSchemaNodes.length > 0
+                )
+                .map((document) => [
+                  document.templateId,
+                  document.templateSchemaNodes!,
+                ])
+            ),
+          },
+        },
+        uiStateBySessionId: {
+          ...state.uiStateBySessionId,
+          [sessionId]: {
+            ...(state.uiStateBySessionId[sessionId] ?? {}),
+            ...Object.fromEntries(
+              documents.map((document) => {
+                const existing =
+                  state.uiStateBySessionId[sessionId]?.[document.templateId]
+                return [
+                  document.templateId,
+                  {
+                    ...DEFAULT_UI_STATE,
+                    ...(existing ?? {}),
+                    feedbackForGeneratedAt:
+                      existing?.feedbackForGeneratedAt &&
+                      existing.feedbackForGeneratedAt === document.generatedAt
+                        ? existing.feedbackForGeneratedAt
+                        : null,
+                  } satisfies SessionDocumentUiState,
+                ]
+              })
+            ),
+          },
         },
       })),
 
@@ -82,23 +149,52 @@ export const useSessionDocumentStore = create<SessionDocumentState>(
     getSessionDocumentSchema: (sessionId, templateId) =>
       get().documentSchemasBySessionId[sessionId]?.[templateId] ?? null,
 
+    getSessionDocumentUiState: (sessionId, templateId) =>
+      get().uiStateBySessionId[sessionId]?.[templateId] ?? DEFAULT_UI_STATE,
+
+    setSessionDocumentUiState: (sessionId, templateId, patch) =>
+      set((state) => ({
+        uiStateBySessionId: {
+          ...state.uiStateBySessionId,
+          [sessionId]: {
+            ...(state.uiStateBySessionId[sessionId] ?? {}),
+            [templateId]: {
+              ...DEFAULT_UI_STATE,
+              ...(state.uiStateBySessionId[sessionId]?.[templateId] ?? {}),
+              ...patch,
+            },
+          },
+        },
+      })),
+
     resetSessionDocuments: (sessionId) =>
       set((state) => {
         if (!sessionId) {
-          return { documentsBySessionId: {}, documentSchemasBySessionId: {} }
+          return {
+            documentsBySessionId: {},
+            documentSchemasBySessionId: {},
+            uiStateBySessionId: {},
+          }
         }
 
         const nextDocuments = { ...state.documentsBySessionId }
         const nextSchemas = { ...state.documentSchemasBySessionId }
+        const nextUiState = { ...state.uiStateBySessionId }
         delete nextDocuments[sessionId]
         delete nextSchemas[sessionId]
+        delete nextUiState[sessionId]
         return {
           documentsBySessionId: nextDocuments,
           documentSchemasBySessionId: nextSchemas,
+          uiStateBySessionId: nextUiState,
         }
       }),
 
     reset: () =>
-      set({ documentsBySessionId: {}, documentSchemasBySessionId: {} }),
+      set({
+        documentsBySessionId: {},
+        documentSchemasBySessionId: {},
+        uiStateBySessionId: {},
+      }),
   })
 )

@@ -1,14 +1,15 @@
 "use client"
 
-import { useState } from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
-import { IconPencil } from "@tabler/icons-react"
+import { cn } from "@/lib/utils"
 
 interface RecordSectionProps {
   title: string
   value: string
   onChange: (value: string) => void
+  mode: "preview" | "edit"
+  placeholder: string
   isLoading?: boolean
 }
 
@@ -16,54 +17,42 @@ export function RecordSection({
   title,
   value,
   onChange,
+  mode,
+  placeholder,
   isLoading,
 }: RecordSectionProps) {
-  const [isEditing, setIsEditing] = useState(false)
-
   if (isLoading) {
     return (
-      <div className="space-y-1.5">
-        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+      <div className="space-y-2">
+        <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.18em]">
           {title}
         </h4>
-        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-24 w-full rounded-lg" />
       </div>
     )
   }
 
   return (
-    <div className="group space-y-1.5">
-      <div className="flex items-center justify-between">
-        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          {title}
-        </h4>
-        {!isEditing && value && (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <IconPencil className="size-3 text-muted-foreground" />
-          </button>
-        )}
-      </div>
-      {isEditing ? (
+    <div className="space-y-2">
+      <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.18em]">
+        {title}
+      </h4>
+      {mode === "edit" ? (
         <Textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          onBlur={() => setIsEditing(false)}
-          className="text-sm min-h-[60px]"
-          autoFocus
+          className="min-h-28 resize-y text-sm leading-6"
         />
       ) : (
         <p
-          className={`text-sm rounded-md px-3 py-2 ${
+          className={cn(
+            "rounded-lg border border-border/60 px-4 py-3 text-sm leading-6 whitespace-pre-wrap",
             value
-              ? "text-foreground bg-muted/50 cursor-pointer hover:bg-muted"
-              : "text-muted-foreground/50 italic"
-          }`}
-          onClick={() => setIsEditing(true)}
+              ? "bg-muted/20 text-foreground"
+              : "bg-muted/10 text-muted-foreground italic"
+          )}
         >
-          {value || "[Not discussed]"}
+          {value || placeholder}
         </p>
       )}
     </div>

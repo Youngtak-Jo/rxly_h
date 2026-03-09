@@ -93,6 +93,9 @@ export async function GET(
             record: true,
             patientHandout: true,
             sessionDocuments: {
+              include: {
+                templateVersion: true,
+              },
               orderBy: { updatedAt: "desc" },
             },
             checklistItems: { orderBy: { sortOrder: "asc" } },

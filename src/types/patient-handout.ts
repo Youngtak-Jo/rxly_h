@@ -1,3 +1,5 @@
+import type { RichTextDocument } from "@/lib/documents/rich-text"
+
 export interface PatientHandoutCondition {
   id: string
   icdCode: string
@@ -38,6 +40,7 @@ export interface PatientHandoutDocument {
   conditions: PatientHandoutCondition[]
   entries: PatientHandoutEntry[]
   generatedAt: string
+  documentJson?: RichTextDocument | null
 }
 
 export const PATIENT_HANDOUT_SECTION_KEYS: PatientHandoutSectionKey[] = [

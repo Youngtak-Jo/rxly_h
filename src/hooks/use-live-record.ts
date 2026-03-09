@@ -16,6 +16,7 @@ import { trackClientEvent } from "@/lib/telemetry/client-events"
 import { deleteCachedSession } from "@/hooks/use-session-loader"
 import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
 import { BUILT_IN_RECORD_TEMPLATE_ID } from "@/lib/documents/constants"
+import { recordToRichTextDocument } from "@/lib/documents/rich-text"
 
 const WAIT_TIMEOUT_MS = 60000
 
@@ -34,6 +35,7 @@ function toPersistableRecordPayload(record: ConsultationRecord) {
     labsStudies: record.labsStudies,
     assessment: record.assessment,
     plan: record.plan,
+    documentJson: record.documentJson ?? null,
   }
 }
 
@@ -116,7 +118,7 @@ export async function generateRecord(
       const currentSessionId = useSessionStore.getState().activeSession?.id
       if (currentSessionId !== sessionId) return
 
-      const newRecord = {
+      const newRecord: ConsultationRecord = {
         id: existingRecordId || "temp",
         sessionId,
         date: new Date().toISOString(),
@@ -134,6 +136,22 @@ export async function generateRecord(
         assessment: Array.isArray(parsed.assessment) ? parsed.assessment.map((a: string, i: number) => `${i + 1}. ${a}`).join("\n") : (parsed.assessment || null),
         plan: parsed.plan || null,
       }
+      newRecord.documentJson = recordToRichTextDocument(newRecord, {
+        vitals: "Vitals",
+        sections: {
+          chiefComplaint: "Chief Complaint",
+          hpiText: "History of Present Illness",
+          medications: "Medications",
+          rosText: "Review of Systems",
+          pmh: "Past Medical History",
+          socialHistory: "Social History",
+          familyHistory: "Family History",
+          physicalExam: "Physical Examination",
+          labsStudies: "Labs and Studies",
+          assessment: "Assessment",
+          plan: "Plan",
+        },
+      })
       setRecord(newRecord)
       trackClientEvent({
         eventType: "analysis_completed",

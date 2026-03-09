@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
 import { requireAuth, requireSessionOwnership } from "@/lib/auth"
@@ -63,6 +64,12 @@ export async function PUT(
         language,
         conditions: body.conditions,
         entries: body.entries,
+        documentJson:
+          body.documentJson === null
+            ? Prisma.JsonNull
+            : body.documentJson !== undefined
+              ? (body.documentJson as Prisma.InputJsonValue)
+              : undefined,
         generatedAt,
       },
       create: {
@@ -70,6 +77,12 @@ export async function PUT(
         language,
         conditions: body.conditions,
         entries: body.entries,
+        documentJson:
+          body.documentJson === null
+            ? Prisma.JsonNull
+            : body.documentJson !== undefined
+              ? (body.documentJson as Prisma.InputJsonValue)
+              : undefined,
         generatedAt,
       },
     })

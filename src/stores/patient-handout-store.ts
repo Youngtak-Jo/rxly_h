@@ -19,6 +19,7 @@ interface PatientHandoutState {
   setSelectedConditions: (conditions: PatientHandoutCondition[]) => void
   addCondition: (condition: PatientHandoutCondition) => void
   removeCondition: (conditionId: string) => void
+  updateDocumentJson: (documentJson: PatientHandoutDocument["documentJson"]) => void
   updateSection: (
     conditionId: string,
     field: PatientHandoutSectionKey,
@@ -121,6 +122,19 @@ export const usePatientHandoutStore = create<PatientHandoutState>((set, get) => 
           ...state.document,
           conditions: filteredConditions,
           entries: filteredEntries,
+        },
+        lastUpdated: new Date(),
+      }
+    }),
+
+  updateDocumentJson: (documentJson) =>
+    set((state) => {
+      if (!state.document) return state
+
+      return {
+        document: {
+          ...state.document,
+          documentJson,
         },
         lastUpdated: new Date(),
       }

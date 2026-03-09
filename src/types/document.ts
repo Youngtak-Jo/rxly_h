@@ -200,6 +200,7 @@ export interface InstalledDocumentSummary {
   installCount: number
   installedVersionId: string
   installedVersionNumber: number
+  installedVersionSchemaNodes?: DocumentSchemaNode[]
   latestPublishedVersionId: string | null
   latestPublishedVersionNumber: number | null
   hasUpdate: boolean
@@ -220,6 +221,8 @@ export interface SessionDocumentRecord {
   templateId: string
   templateVersionId: string
   contentJson: Record<string, unknown>
+  templateSchemaNodes?: DocumentSchemaNode[]
+  templateVersionNumber?: number | null
   generatedAt: string | null
   updatedAt: string
 }

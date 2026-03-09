@@ -406,6 +406,10 @@ export function mapSessionDocumentRecord(document: {
   templateId: string
   templateVersionId: string
   contentJson: unknown
+  templateVersion?: {
+    versionNumber: number
+    schemaJson: unknown
+  } | null
   generatedAt: Date | null
   updatedAt: Date
 }): SessionDocumentRecord {
@@ -415,6 +419,10 @@ export function mapSessionDocumentRecord(document: {
     templateId: document.templateId,
     templateVersionId: document.templateVersionId,
     contentJson: toRecord(document.contentJson) as Record<string, unknown>,
+    templateSchemaNodes: document.templateVersion?.schemaJson
+      ? (toRecord(document.templateVersion.schemaJson) as DocumentTemplateSchema).nodes
+      : undefined,
+    templateVersionNumber: document.templateVersion?.versionNumber ?? null,
     generatedAt: document.generatedAt?.toISOString() ?? null,
     updatedAt: document.updatedAt.toISOString(),
   }
@@ -782,6 +790,9 @@ function mapInstalledDocument(
     ),
     installedVersionId: record.installedVersionId,
     installedVersionNumber: record.installedVersion.versionNumber,
+    installedVersionSchemaNodes: (
+      toRecord(record.installedVersion.schemaJson) as unknown as DocumentTemplateSchema
+    ).nodes,
     latestPublishedVersionId: latestPublishedVersion?.id ?? null,
     latestPublishedVersionNumber: latestPublishedVersion?.versionNumber ?? null,
     hasUpdate:
@@ -1718,7 +1729,14 @@ export async function upsertSessionDocument(input: {
     },
   })
 
-  return mapSessionDocumentRecord(record)
+  const recordWithVersion = await prisma.sessionDocument.findUniqueOrThrow({
+    where: { id: record.id },
+    include: {
+      templateVersion: true,
+    },
+  })
+
+  return mapSessionDocumentRecord(recordWithVersion)
 }
 
 export async function createInitialSessionDocumentIfMissing(input: {

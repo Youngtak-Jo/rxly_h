@@ -67,6 +67,12 @@ export async function PUT(
       labsStudies: parsed.data.labsStudies,
       assessment: parsed.data.assessment,
       plan: parsed.data.plan,
+      documentJson:
+        parsed.data.documentJson === null
+          ? Prisma.JsonNull
+          : parsed.data.documentJson !== undefined
+            ? (parsed.data.documentJson as Prisma.InputJsonValue)
+            : undefined,
     }
 
     const record = await prisma.consultationRecord.upsert({
@@ -86,4 +92,3 @@ export async function PUT(
     )
   }
 }
-

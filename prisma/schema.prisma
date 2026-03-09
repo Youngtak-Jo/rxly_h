@@ -126,6 +126,7 @@ model ConsultationRecord {
   labsStudies    String?  @map("labs_studies")
   assessment     String?
   plan           String?
+  documentJson   Json?    @map("document_json")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -140,6 +141,7 @@ model PatientHandout {
   language    String
   conditions  Json
   entries     Json
+  documentJson Json?   @map("document_json")
   generatedAt DateTime @map("generated_at")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")

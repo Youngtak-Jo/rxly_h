@@ -472,6 +472,7 @@ export interface AdminSessionDetail {
   patientHandout: Record<string, unknown> | null
   sessionDocuments: SessionDocumentRecord[]
   checklistItems: Record<string, unknown>[]
+  clientEvents: Record<string, unknown>[]
   auditTimeline: Record<string, unknown>[]
 }
 

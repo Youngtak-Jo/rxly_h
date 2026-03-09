@@ -350,9 +350,24 @@ export function AdminSessionDetailView({ sessionId }: { sessionId: string }) {
               </TabsContent>
 
               <TabsContent value="audit" className="mt-3">
-                <pre className="max-h-96 overflow-auto rounded-md border p-2 text-xs">
-                  {JSON.stringify(data.auditTimeline, null, 2)}
-                </pre>
+                <div className="space-y-3">
+                  <div>
+                    <div className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                      {t("clientEventsTitle")}
+                    </div>
+                    <pre className="max-h-72 overflow-auto rounded-md border p-2 text-xs">
+                      {JSON.stringify(data.clientEvents ?? [], null, 2)}
+                    </pre>
+                  </div>
+                  <div>
+                    <div className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                      {t("auditTitle")}
+                    </div>
+                    <pre className="max-h-72 overflow-auto rounded-md border p-2 text-xs">
+                      {JSON.stringify(data.auditTimeline, null, 2)}
+                    </pre>
+                  </div>
+                </div>
               </TabsContent>
               </Tabs>
             </div>

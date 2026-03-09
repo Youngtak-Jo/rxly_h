@@ -1,129 +1,162 @@
 "use client"
 
+import { useMemo } from "react"
 import { useLocale, useTimeZone, useTranslations } from "next-intl"
+import { IconLoader2 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
-import { RecordSection } from "./record-section"
+import { DocumentEditor } from "@/components/consultation/documents/document-editor"
+import { DocumentShell } from "@/components/consultation/documents/document-shell"
+import { generateRecord } from "@/hooks/use-live-record"
+import {
+  deriveRecordFromRichTextDocument,
+  normalizeRichTextDocument,
+  recordToRichTextDocument,
+} from "@/lib/documents/rich-text"
+import { DEFAULT_UI_TIME_ZONE, type UiLocale } from "@/i18n/config"
+import { formatDate, formatDateTime } from "@/i18n/format"
 import { useRecordStore } from "@/stores/record-store"
 import { useSessionStore } from "@/stores/session-store"
-import { generateRecord } from "@/hooks/use-live-record"
-
-import { IconLoader2 } from "@tabler/icons-react"
-import { DEFAULT_UI_TIME_ZONE, type UiLocale } from "@/i18n/config"
-import { formatDate } from "@/i18n/format"
 
 export function RecordContainer() {
   const t = useTranslations("Record")
+  const tDocument = useTranslations("ConsultationDocument")
   const locale = useLocale() as UiLocale
   const timeZone = useTimeZone() ?? DEFAULT_UI_TIME_ZONE
-  const { record, isGenerating, updateField } = useRecordStore()
-  const activeSession = useSessionStore((s) => s.activeSession)
+  const activeSession = useSessionStore((state) => state.activeSession)
+  const record = useRecordStore((state) => state.record)
+  const setRecord = useRecordStore((state) => state.setRecord)
+  const isGenerating = useRecordStore((state) => state.isGenerating)
 
-  const handleGenerate = () => {
-    if (!activeSession || isGenerating) return
-    generateRecord(
-      activeSession.id,
-      activeSession.patientName,
-      record?.id
+  const recordLabels = useMemo(
+    () => ({
+      vitals: t("vitals"),
+      sections: {
+        chiefComplaint: t("sections.chiefComplaint"),
+        hpiText: t("sections.hpiText"),
+        medications: t("sections.medications"),
+        rosText: t("sections.rosText"),
+        pmh: t("sections.pmh"),
+        socialHistory: t("sections.socialHistory"),
+        familyHistory: t("sections.familyHistory"),
+        physicalExam: t("sections.physicalExam"),
+        labsStudies: t("sections.labsStudies"),
+        assessment: t("sections.assessment"),
+        plan: t("sections.plan"),
+      },
+    }),
+    [t]
+  )
+
+  const documentValue = useMemo(() => {
+    if (!record) return null
+    return normalizeRichTextDocument(
+      record.documentJson,
+      recordToRichTextDocument(record, recordLabels)
     )
-  }
+  }, [record, recordLabels])
 
-  const toStr = (val: unknown): string => {
-    if (val == null) return ""
-    if (typeof val === "string") return val
-    if (Array.isArray(val)) return val.map((v) => (typeof v === "string" ? v : JSON.stringify(v))).join("\n")
-    if (typeof val === "object") return JSON.stringify(val, null, 2)
-    return String(val)
-  }
-
-  const sections = [
-    { key: "chiefComplaint", titleKey: "chiefComplaint" },
-    { key: "hpiText", titleKey: "hpiText" },
-    { key: "medications", titleKey: "medications" },
-    { key: "rosText", titleKey: "rosText" },
-    { key: "pmh", titleKey: "pmh" },
-    { key: "socialHistory", titleKey: "socialHistory" },
-    { key: "familyHistory", titleKey: "familyHistory" },
-    { key: "physicalExam", titleKey: "physicalExam" },
-    { key: "labsStudies", titleKey: "labsStudies" },
-    { key: "assessment", titleKey: "assessment" },
-    { key: "plan", titleKey: "plan" },
-  ] as const
+  const metadata = activeSession ? (
+    <>
+      <span>{activeSession.patientName || t("unknownPatient")}</span>
+      {record && (record.date || activeSession.startedAt) ? (
+        <span>
+          {formatDate(record?.date || activeSession.startedAt, locale, timeZone)}
+        </span>
+      ) : null}
+      {record?.date ? (
+        <span>
+          {tDocument("generatedAt", {
+            value: formatDateTime(record.date, locale, timeZone),
+          })}
+        </span>
+      ) : null}
+    </>
+  ) : null
 
   return (
-    <div data-tour="record-panel" className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="min-h-4">
-          {activeSession && (
-            <p className="text-xs text-muted-foreground">
-              {activeSession.patientName || t("unknownPatient")}
-              {(record?.date || activeSession.startedAt) && (
-                <>
-                  {" "}
-                  &middot;{" "}
-                  {formatDate(
-                    record?.date || activeSession.startedAt,
-                    locale,
-                    timeZone
-                  )}
-                </>
-              )}
-            </p>
-          )}
-        </div>
-        <Button
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          size="sm"
-          className="gap-1.5"
-        >
-          {isGenerating ? (
-            <IconLoader2 key="loader" className="size-3.5 animate-spin" />
-          ) : (
-            ''
-          )}
-          {isGenerating ? t("generating") : record ? t("regenerate") : t("generate")}
-        </Button>
-      </div>
-
-      {!record && !isGenerating && (
-        <p className="text-sm text-muted-foreground/50 italic text-center py-8">
-          {t("emptyState")}
-        </p>
-      )}
-
-      {(record || isGenerating) && (
-        <div className="space-y-3">
-          {record?.vitals && (
-            <div className="rounded-lg border p-3">
-              <h4 className="text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wide">
-                {t("vitals")}
-              </h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-sm">
-                {Object.entries(record.vitals).map(([key, value]) => (
-                  <div key={key} className="text-center">
-                    <p className="text-[10px] text-muted-foreground uppercase">
-                      {key}
-                    </p>
-                    <p className="font-mono text-xs">
-                      {(value as string) || "—"}
-                    </p>
-                  </div>
-                ))}
-              </div>
+    <div data-tour="record-panel">
+      <DocumentShell
+        ambientState={
+          isGenerating ? (record ? "updating" : "generating") : "idle"
+        }
+        loading={!record && isGenerating}
+        loadingLabel={t("generating")}
+        topActions={
+          !record ? (
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Button
+                onClick={() => {
+                  if (!activeSession || isGenerating) return
+                  generateRecord(
+                    activeSession.id,
+                    activeSession.patientName
+                  )
+                }}
+                disabled={!activeSession || isGenerating}
+                size="sm"
+                className="min-w-[136px]"
+              >
+                {isGenerating ? (
+                  <span className="inline-flex items-center gap-2">
+                    <IconLoader2 className="size-3.5 animate-spin" />
+                    {t("generating")}
+                  </span>
+                ) : (
+                  t("generate")
+                )}
+              </Button>
             </div>
-          )}
-
-          {sections.map(({ key, titleKey }) => (
-            <RecordSection
-              key={key}
-              title={t(`sections.${titleKey}`)}
-              value={toStr(record?.[key])}
-              onChange={(value) => updateField(key, value)}
-              isLoading={isGenerating && !record}
-            />
-          ))}
-        </div>
-      )}
+          ) : undefined
+        }
+        footerMeta={record ? metadata : null}
+        footerActions={
+          record ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (!activeSession || isGenerating) return
+                generateRecord(
+                  activeSession.id,
+                  activeSession.patientName,
+                  record.id
+                )
+              }}
+              disabled={!activeSession || isGenerating}
+            >
+              {isGenerating ? (
+                <span className="inline-flex items-center gap-2">
+                  <IconLoader2 className="size-3.5 animate-spin" />
+                  {t("generating")}
+                </span>
+              ) : (
+                t("regenerate")
+              )}
+            </Button>
+          ) : null
+        }
+        empty={!record && !isGenerating}
+        emptyMessage={t("emptyState")}
+      >
+        {record ? (
+          <DocumentEditor
+            value={documentValue}
+            placeholder={tDocument("slashHint")}
+            embedded
+            toolbarMode="sticky"
+            onChange={(nextValue) => {
+              if (!record) return
+              setRecord(
+                deriveRecordFromRichTextDocument(
+                  normalizeRichTextDocument(nextValue, documentValue ?? undefined),
+                  record
+                )
+              )
+            }}
+          />
+        ) : null}
+      </DocumentShell>
     </div>
   )
 }

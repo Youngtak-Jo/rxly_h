@@ -18,6 +18,24 @@
       "updating": "Updating"
     }
   },
+  "ConsultationDocument": {
+    "edit": "Edit",
+    "feedbackNegative": "Thumbs down",
+    "feedbackPositive": "Thumbs up",
+    "generate": "Generate",
+    "generatedAt": "Generated {value}",
+    "loading": "Loading document",
+    "noContent": "No content yet.",
+    "noFields": "This document has no fields yet.",
+    "preview": "Preview",
+    "regenerate": "Regenerate",
+    "saved": "Saved",
+    "saving": "Saving",
+    "slashHint": "Type / for headings, lists, tables, images, and callouts.",
+    "startConsultation": "Start a consultation to use this document.",
+    "updateAvailable": "A newer template version is installed. Regenerate this document to apply it.",
+    "updating": "Updating"
+  },
   "ExportDropdown": {
     "consultationFallback": "Consultation",
     "downloadPdf": "Download as PDF",
@@ -477,8 +495,10 @@
     "removeItem": "Remove item",
     "send": "Send",
     "shortcut": "{modifier}+Enter to send",
+    "subtitle": "A live summary of the consultation will appear here.",
     "summary": "Summary",
-    "summaryEmpty": "Summary will appear here as the conversation progresses..."
+    "summaryEmpty": "Summary will appear here as the conversation progresses...",
+    "emptyState": "Insights will appear as the conversation progresses."
   },
   "TranscriptBubble": {
     "keywordCategories": {
@@ -500,6 +520,7 @@
     "generate": "Generate Record",
     "generating": "Generating...",
     "generatingRecord": "Generating consultation record...",
+    "notDiscussed": "[Not discussed]",
     "regenerate": "Regenerate",
     "unknownPatient": "Unknown Patient",
     "updatingRecord": "Updating consultation record...",
@@ -531,6 +552,7 @@
     "languageHint": "Handout language is automatically detected from the patient conversation.",
     "noCode": "No code",
     "regenerate": "Regenerate Handout",
+    "backToConditions": "Back to conditions",
     "searchDescription": "Add a condition that is not currently in DDx.",
     "searchIcd11Condition": "Search ICD-11 Condition",
     "searchPlaceholder": "Search ICD-11 condition...",
@@ -654,6 +676,7 @@
   "DiagnosisSupport": {
     "title": "Differential Diagnosis",
     "emptyState": "Diagnosis suggestions will appear as the AI identifies possible conditions...",
+    "subtitle": "Possible diagnoses are ranked and refined automatically.",
     "references": "References",
     "moreSources": "+{count, plural, one {# more source} other {# more sources}}",
     "confidence": "Confidence",

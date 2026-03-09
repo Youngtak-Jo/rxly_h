@@ -72,6 +72,7 @@ export const recordUpdateSchema = z.object({
   labsStudies: z.string().max(50000).nullable().optional(),
   assessment: z.string().max(50000).nullable().optional(),
   plan: z.string().max(50000).nullable().optional(),
+  documentJson: z.record(z.string(), z.unknown()).nullable().optional(),
 })
 
 export const diagnosesUpdateSchema = z.object({

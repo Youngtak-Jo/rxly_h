@@ -618,6 +618,7 @@
   },
   "AdminSessionDetail": {
     "backToSessions": "Back to sessions",
+    "auditTitle": "Audit timeline",
     "cards": {
       "redFlags": {
         "description": "Derived from insights payload in this session.",
@@ -637,6 +638,7 @@
         "title": "Workflow Progress"
       }
     },
+    "clientEventsTitle": "Client events",
     "failed": "Failed to load session detail",
     "loading": "Loading session detail...",
     "openTriage": "Open triage",

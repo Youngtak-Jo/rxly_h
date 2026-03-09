@@ -15,6 +15,7 @@ import {
 } from "@/lib/documents/schema"
 import { getSessionDocumentForUser, upsertSessionDocument } from "@/lib/documents/server"
 import { logAudit } from "@/lib/audit"
+import { genericStructuredContentToRichTextDocument } from "@/lib/documents/rich-text"
 
 function buildContextPrompt(args: {
   session: {
@@ -245,12 +246,16 @@ export async function POST(
     const normalizedContent = normalizeDocumentContentForStorage({
       nodes: schemaJson.nodes as never,
     }, generated)
+    const richTextDocument = genericStructuredContentToRichTextDocument({
+      contentJson: normalizedContent,
+      schemaNodes: schemaJson.nodes as never,
+    })
 
     const sessionDocument = await upsertSessionDocument({
       sessionId: id,
       templateId,
       templateVersionId: activeVersion.id,
-      contentJson: normalizedContent,
+      contentJson: richTextDocument as Record<string, unknown>,
       generatedAt: new Date().toISOString(),
     })
 

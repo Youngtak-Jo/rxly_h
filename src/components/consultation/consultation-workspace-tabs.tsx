@@ -46,6 +46,8 @@ import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 import { useRecordStore } from "@/stores/record-store"
 import { useResearchStore } from "@/stores/research-store"
 import { resolveWorkspaceTabDefinition } from "@/lib/documents/workspace"
+import { useSessionDocumentStore } from "@/stores/session-document-store"
+import { useSessionStore } from "@/stores/session-store"
 import type { WorkspaceTabId } from "@/types/document"
 
 type Translator = (...args: never[]) => string
@@ -224,6 +226,7 @@ export function ConsultationWorkspaceTabs() {
   )
   const installDocument = useDocumentWorkspaceStore((state) => state.installDocument)
   const persistTabOrder = useDocumentWorkspaceStore((state) => state.persistTabOrder)
+  const activeSessionId = useSessionStore((state) => state.activeSession?.id ?? null)
 
   const diagnosisCount = useDdxStore((state) => state.diagnoses.length)
   const isDdxProcessing = useDdxStore((state) => state.isProcessing)
@@ -232,6 +235,9 @@ export function ConsultationWorkspaceTabs() {
   const isResearchStreaming = useResearchStore((state) => state.isStreaming)
   const isPatientHandoutGenerating = usePatientHandoutStore(
     (state) => state.isGenerating
+  )
+  const documentUiState = useSessionDocumentStore((state) =>
+    activeSessionId ? state.uiStateBySessionId[activeSessionId] ?? {} : {}
   )
   const justDraggedRef = useRef<{ tabId: WorkspaceTabId; at: number } | null>(null)
 
@@ -262,6 +268,14 @@ export function ConsultationWorkspaceTabs() {
     [buildDocumentTabId(BUILT_IN_RECORD_TEMPLATE_ID)]: isRecordGenerating,
     [buildDocumentTabId(BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID)]:
       isPatientHandoutGenerating,
+    ...Object.fromEntries(
+      installedDocuments
+        .filter((document) => document.renderer === "GENERIC_STRUCTURED")
+        .map((document) => [
+          buildDocumentTabId(document.templateId),
+          !!documentUiState[document.templateId]?.isGenerating,
+        ])
+    ),
   } satisfies Partial<Record<WorkspaceTabId, boolean>>
 
   const tabViewModels = tabOrder

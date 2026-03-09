@@ -18,6 +18,7 @@ const eventSchema = z.object({
     "analysis_triggered",
     "analysis_completed",
     "analysis_failed",
+    "document_feedback_submitted",
   ]),
   feature: z.string().min(1).max(64),
   sessionId: z.string().uuid().nullable().optional(),

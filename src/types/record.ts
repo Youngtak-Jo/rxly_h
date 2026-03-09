@@ -1,3 +1,5 @@
+import type { RichTextDocument } from "@/lib/documents/rich-text"
+
 export interface Vitals {
   bp: string
   hr: string
@@ -23,6 +25,7 @@ export interface ConsultationRecord {
   labsStudies: string | null
   assessment: string | null
   plan: string | null
+  documentJson?: RichTextDocument | null
 }
 
 export interface ConsultationRecordUpdate {
@@ -38,4 +41,5 @@ export interface ConsultationRecordUpdate {
   labsStudies?: string
   assessment?: string
   plan?: string
+  documentJson?: RichTextDocument | null
 }

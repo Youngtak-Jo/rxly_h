@@ -1,350 +1,87 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { IconLoader2, IconPlus, IconRefresh } from "@tabler/icons-react"
-import { useTranslations } from "next-intl"
-
-import { GenericDocumentPreview } from "@/components/documents/generic-document-preview"
-import { Badge } from "@/components/ui/badge"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  IconLoader2,
+  IconThumbDown,
+  IconThumbUp,
+} from "@tabler/icons-react"
+import { useLocale, useTimeZone, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { buildGenericDocumentSections } from "@/lib/documents/preview"
+import { DocumentEditor } from "@/components/consultation/documents/document-editor"
+import { DocumentShell } from "@/components/consultation/documents/document-shell"
+import { deleteCachedSession } from "@/hooks/use-session-loader"
+import {
+  buildStarterRichTextDocument,
+  genericStructuredContentToRichTextDocument,
+  isRichTextDocument,
+  normalizeRichTextDocument,
+  type RichTextDocument,
+} from "@/lib/documents/rich-text"
+import { trackClientEvent } from "@/lib/telemetry/client-events"
+import { DEFAULT_UI_TIME_ZONE, type UiLocale } from "@/i18n/config"
+import { formatDateTime } from "@/i18n/format"
+import { buildDocumentTabId } from "@/lib/documents/constants"
+import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
 import { useSessionDocumentStore } from "@/stores/session-document-store"
 import { useSessionStore } from "@/stores/session-store"
-import { createEmptyDocumentContent } from "@/lib/documents/schema"
-import type {
-  DocumentGroupNode,
-  DocumentSchemaNode,
-  DocumentTemplateSchema,
-  SessionDocumentRecord,
-} from "@/types/document"
 import { useSettingsStore } from "@/stores/settings-store"
-import { deleteCachedSession } from "@/hooks/use-session-loader"
-
-interface SessionDocumentRouteResponse {
-  sessionDocument: SessionDocumentRecord | null
-  initialContentJson: Record<string, unknown>
-  template: {
-    id: string
-    title: string
-    description: string
-    latestPublishedVersionId: string | null
-    latestDraftVersionId: string | null
-  }
-  installedDocument: {
-    installedVersionId: string
-    installedVersionNumber: number
-    latestPublishedVersionId: string | null
-    latestPublishedVersionNumber: number | null
-    hasUpdate: boolean
-  } | null
-  activeVersion: {
-    id: string
-    versionNumber: number
-    schemaJson: DocumentTemplateSchema
-  }
-}
+import type { SessionDocumentRecord } from "@/types/document"
 
 interface SessionDocumentSaveResponse {
   sessionDocument: SessionDocumentRecord
-  activeVersion: SessionDocumentRouteResponse["activeVersion"]
+  activeVersion: {
+    id: string
+    versionNumber: number
+  }
 }
 
-type PathSegment = string | number
-type MutableCursor = Record<string, unknown> | unknown[]
+function nodeHasMeaningfulContent(node: RichTextDocument | Record<string, unknown> | null | undefined): boolean {
+  if (!node) return false
 
-function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T
-}
-
-function humanizeKey(key: string) {
-  return key
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ")
-}
-
-function updateValueAtPath(
-  content: Record<string, unknown>,
-  path: PathSegment[],
-  value: unknown
-) {
-  const next = deepClone(content)
-  let cursor: MutableCursor = next
-
-  for (let index = 0; index < path.length - 1; index += 1) {
-    const segment = path[index]
-    const nextCursor = Array.isArray(cursor)
-      ? cursor[segment as number]
-      : cursor[segment as string]
-    if (!nextCursor || typeof nextCursor !== "object") {
-      return next
-    }
-    cursor = nextCursor as MutableCursor
+  if ("type" in node && node.type === "text") {
+    return typeof node.text === "string" && node.text.trim().length > 0
   }
 
-  const finalSegment = path[path.length - 1]
-  if (Array.isArray(cursor) && typeof finalSegment === "number") {
-    cursor[finalSegment] = value
-  } else if (!Array.isArray(cursor) && typeof finalSegment === "string") {
-    cursor[finalSegment] = value
-  }
-  return next
-}
-
-function removeArrayItemAtPath(
-  content: Record<string, unknown>,
-  path: PathSegment[],
-  indexToRemove: number
-) {
-  const next = deepClone(content)
-  let cursor: MutableCursor = next
-
-  for (const segment of path) {
-    const nextCursor = Array.isArray(cursor)
-      ? cursor[segment as number]
-      : cursor[segment as string]
-    if (!nextCursor || typeof nextCursor !== "object") {
-      return next
-    }
-    cursor = nextCursor as MutableCursor
-  }
-
-  if (Array.isArray(cursor)) {
-    cursor.splice(indexToRemove, 1)
-  }
-
-  return next
-}
-
-function appendArrayItemAtPath(
-  content: Record<string, unknown>,
-  path: PathSegment[],
-  value: unknown
-) {
-  const next = deepClone(content)
-  let cursor: MutableCursor = next
-
-  for (const segment of path) {
-    const nextCursor = Array.isArray(cursor)
-      ? cursor[segment as number]
-      : cursor[segment as string]
-    if (!nextCursor || typeof nextCursor !== "object") {
-      return next
-    }
-    cursor = nextCursor as MutableCursor
-  }
-
-  if (Array.isArray(cursor)) {
-    cursor.push(value)
-  }
-
-  return next
-}
-
-function getGroupValue(
-  parentValue: Record<string, unknown>,
-  node: DocumentGroupNode
-): Record<string, unknown> | Array<Record<string, unknown>> {
-  const value = parentValue[node.key]
-  if (node.type === "repeatableGroup") {
-    return Array.isArray(value) ? value : []
-  }
-
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : createEmptyDocumentContent({ nodes: node.children })
-}
-
-function FieldEditor({
-  node,
-  value,
-  onChange,
-}: {
-  node: DocumentSchemaNode
-  value: unknown
-  onChange: (value: unknown) => void
-}) {
-  if (node.type === "shortText") {
+  if ("type" in node && node.type === "image") {
     return (
-      <Input
-        value={typeof value === "string" ? value : ""}
-        placeholder={node.placeholder || node.label}
-        onChange={(event) => onChange(event.target.value)}
-      />
+      !!node.attrs &&
+      typeof node.attrs === "object" &&
+      typeof (node.attrs as { src?: unknown }).src === "string" &&
+      !!(node.attrs as { src: string }).src.trim()
     )
   }
 
-  if (node.type === "longText") {
-    return (
-      <Textarea
-        value={typeof value === "string" ? value : ""}
-        placeholder={node.placeholder || node.label}
-        onChange={(event) => onChange(event.target.value)}
-        className="min-h-28 resize-y"
-      />
-    )
-  }
+  const content =
+    "content" in node && Array.isArray(node.content)
+      ? (node.content as Array<RichTextDocument | Record<string, unknown>>)
+      : []
 
-  return (
-    <Textarea
-      value={Array.isArray(value) ? value.join("\n") : ""}
-      placeholder={node.placeholder || `${node.label} (one item per line)`}
-      onChange={(event) =>
-        onChange(
-          event.target.value
-            .split("\n")
-            .map((item) => item.trim())
-            .filter(Boolean)
-        )
-      }
-      className="min-h-24 resize-y"
-    />
-  )
+  return content.some((child) => nodeHasMeaningfulContent(child))
 }
 
-function StructuredNodeEditor({
-  node,
-  content,
-  path,
-  onChange,
-}: {
-  node: DocumentSchemaNode
-  content: Record<string, unknown>
-  path: PathSegment[]
-  onChange: (nextContent: Record<string, unknown>) => void
-}) {
-  const tBuilder = useTranslations("DocumentBuilder")
+function documentHasMeaningfulContent(document: RichTextDocument | null | undefined): boolean {
+  if (!document) return false
+  return Array.isArray(document.content) && document.content.some((node) => nodeHasMeaningfulContent(node))
+}
 
-  if (node.type === "group" || node.type === "repeatableGroup") {
-    const value = getGroupValue(content, node)
-
-    if (node.type === "repeatableGroup") {
-      const items = value as Array<Record<string, unknown>>
-      const itemLabel = node.itemLabel?.trim() || tBuilder("preview.sampleItem")
-      return (
-        <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-medium">{node.label || humanizeKey(node.key)}</h3>
-              {node.helpText ? (
-                <p className="mt-1 text-xs text-muted-foreground">{node.helpText}</p>
-              ) : null}
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="gap-1.5"
-              onClick={() =>
-                onChange(
-                  appendArrayItemAtPath(
-                    content,
-                    [...path, node.key],
-                    createEmptyDocumentContent({ nodes: node.children })
-                  )
-                )
-              }
-            >
-              <IconPlus className="size-3.5" />
-              {tBuilder("preview.addNamedItem", { itemLabel })}
-            </Button>
-          </div>
-
-          {items.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-border/70 px-3 py-4 text-sm text-muted-foreground">
-              {tBuilder("preview.noSampleItems")}
-            </p>
-          ) : (
-            items.map((item, itemIndex) => (
-              <div
-                key={`${node.key}-${itemIndex}`}
-                className="space-y-3 rounded-lg border border-border/70 bg-background p-3"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                    {itemLabel} {itemIndex + 1}
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-xs text-muted-foreground"
-                    onClick={() =>
-                      onChange(
-                        removeArrayItemAtPath(
-                          content,
-                          [...path, node.key],
-                          itemIndex
-                        )
-                      )
-                    }
-                  >
-                    {tBuilder("preview.removeItem")}
-                  </Button>
-                </div>
-
-                {node.children.map((child) => (
-                  <StructuredNodeEditor
-                    key={`${node.key}-${itemIndex}-${child.key}`}
-                    node={child}
-                    content={item}
-                    path={[...path, node.key, itemIndex]}
-                    onChange={onChange}
-                  />
-                ))}
-              </div>
-            ))
-          )}
-        </div>
-      )
+function toRichTextDocument(
+  sessionDocument: SessionDocumentRecord | null,
+  schemaNodes: SessionDocumentRecord["templateSchemaNodes"]
+): RichTextDocument {
+  if (sessionDocument?.contentJson) {
+    if (isRichTextDocument(sessionDocument.contentJson)) {
+      return normalizeRichTextDocument(sessionDocument.contentJson)
     }
 
-    const groupValue = value as Record<string, unknown>
-    return (
-      <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
-        <div>
-          <h3 className="text-sm font-medium">{node.label || humanizeKey(node.key)}</h3>
-          {node.helpText ? (
-            <p className="mt-1 text-xs text-muted-foreground">{node.helpText}</p>
-          ) : null}
-        </div>
-        {node.children.map((child) => (
-          <StructuredNodeEditor
-            key={`${node.key}-${child.key}`}
-            node={child}
-            content={groupValue}
-            path={[...path, node.key]}
-            onChange={onChange}
-          />
-        ))}
-      </div>
-    )
+    return genericStructuredContentToRichTextDocument({
+      contentJson: sessionDocument.contentJson,
+      schemaNodes,
+    })
   }
 
-  return (
-    <div className="space-y-2">
-      <div className="space-y-1">
-        <label className="text-sm font-medium" htmlFor={`${path.join("-")}-${node.key}`}>
-          {node.label || humanizeKey(node.key)}
-          {node.required ? <span className="ml-1 text-destructive">*</span> : null}
-        </label>
-        {node.helpText ? (
-          <p className="text-xs text-muted-foreground">{node.helpText}</p>
-        ) : null}
-      </div>
-      <FieldEditor
-        node={node}
-        value={content[node.key]}
-        onChange={(value) =>
-          onChange(updateValueAtPath(content, [...path, node.key], value))
-        }
-      />
-    </div>
-  )
+  return buildStarterRichTextDocument(schemaNodes ?? [])
 }
 
 export function StructuredDocumentContainer({
@@ -352,98 +89,140 @@ export function StructuredDocumentContainer({
 }: {
   templateId: string
 }) {
-  const tBuilder = useTranslations("DocumentBuilder")
+  const tDocument = useTranslations("ConsultationDocument")
+  const locale = useLocale() as UiLocale
+  const timeZone = useTimeZone() ?? DEFAULT_UI_TIME_ZONE
+  const activeTab = useConsultationTabStore((state) => state.activeTab)
   const activeSession = useSessionStore((state) => state.activeSession)
   const installedDocument = useDocumentWorkspaceStore((state) =>
-    state.installedDocuments.find((document) => document.templateId === templateId)
+    state.installedDocuments.find((document) => document.templateId === templateId) ??
+    null
   )
+  const activeSessionId = activeSession?.id ?? null
   const upsertSessionDocument = useSessionDocumentStore(
     (state) => state.upsertSessionDocument
   )
-  const cacheSessionDocumentSchema = useSessionDocumentStore(
-    (state) => state.cacheSessionDocumentSchema
+  const setSessionDocumentUiState = useSessionDocumentStore(
+    (state) => state.setSessionDocumentUiState
+  )
+  const sessionDocument = useSessionDocumentStore((state) =>
+    activeSessionId
+      ? state.documentsBySessionId[activeSessionId]?.[templateId] ?? null
+      : null
+  )
+  const documentUiState = useSessionDocumentStore((state) =>
+    activeSessionId
+      ? state.getSessionDocumentUiState(activeSessionId, templateId)
+      : {
+          isGenerating: false,
+          isSaving: false,
+          lastGenerationError: null,
+          feedbackForGeneratedAt: null,
+        }
   )
   const documentModel = useSettingsStore((state) => state.aiModel.documentModel)
 
-  const [routeState, setRouteState] =
-    useState<SessionDocumentRouteResponse | null>(null)
-  const [draftContent, setDraftContent] = useState<Record<string, unknown> | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<"preview" | "edit">("preview")
-  const hydratedSessionKeyRef = useRef<string | null>(null)
+  const [draftDocument, setDraftDocument] = useState<RichTextDocument | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const hydrationSignatureRef = useRef<string | null>(null)
   const lastSavedFingerprintRef = useRef<string | null>(null)
+  const autoGenerateAttemptRef = useRef<string | null>(null)
+
+  const schemaNodes = useMemo(
+    () =>
+      sessionDocument?.templateSchemaNodes ??
+      installedDocument?.installedVersionSchemaNodes ??
+      [],
+    [
+      installedDocument?.installedVersionSchemaNodes,
+      sessionDocument?.templateSchemaNodes,
+    ]
+  )
+
+  const starterDocument = useMemo(
+    () => buildStarterRichTextDocument(schemaNodes),
+    [schemaNodes]
+  )
+
+  const currentDocument = useMemo(
+    () => toRichTextDocument(sessionDocument, schemaNodes),
+    [schemaNodes, sessionDocument]
+  )
+
+  const currentFingerprint = useMemo(
+    () => JSON.stringify(currentDocument),
+    [currentDocument]
+  )
+  const starterFingerprint = useMemo(
+    () => JSON.stringify(starterDocument),
+    [starterDocument]
+  )
+  const isStarterDocument = currentFingerprint === starterFingerprint
+  const hasMeaningfulCurrentContent = documentHasMeaningfulContent(currentDocument)
+  const isActiveDocumentTab =
+    activeTab === buildDocumentTabId(templateId)
 
   useEffect(() => {
-    if (!activeSession) {
-      hydratedSessionKeyRef.current = null
+    if (!activeSessionId) {
+      hydrationSignatureRef.current = null
       lastSavedFingerprintRef.current = null
-      setRouteState(null)
-      setDraftContent(null)
-      setError(null)
+      autoGenerateAttemptRef.current = null
+      setDraftDocument(null)
+      setSaveError(null)
       return
     }
 
-    const sessionKey = `${activeSession.id}:${templateId}`
-    if (hydratedSessionKeyRef.current === sessionKey && routeState) {
+    const signature = [
+      activeSessionId,
+      templateId,
+      sessionDocument?.updatedAt ?? "new",
+      sessionDocument?.templateVersionId ?? installedDocument?.installedVersionId ?? "none",
+    ].join(":")
+
+    if (hydrationSignatureRef.current === signature) {
       return
     }
 
-    hydratedSessionKeyRef.current = sessionKey
-    setIsLoading(true)
-    setError(null)
-
-    fetch(`/api/sessions/${activeSession.id}/documents/${templateId}`)
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error("Failed to load document")
-        }
-        return (await response.json()) as SessionDocumentRouteResponse
-      })
-      .then((payload) => {
-        setRouteState(payload)
-        const initialContent =
-          payload.sessionDocument?.contentJson ?? payload.initialContentJson
-        setDraftContent(initialContent)
-        lastSavedFingerprintRef.current = JSON.stringify(initialContent)
-        if (payload.sessionDocument) {
-          upsertSessionDocument(payload.sessionDocument)
-        }
-        setError(null)
-      })
-      .catch((fetchError) => {
-        console.error("Failed to load structured document", fetchError)
-        setError("Failed to load document")
-      })
-      .finally(() => {
-        setIsLoading(false)
-      })
-  }, [activeSession, routeState, templateId, upsertSessionDocument])
-
-  const currentSessionDocument = routeState?.sessionDocument ?? null
+    hydrationSignatureRef.current = signature
+    setDraftDocument(currentDocument)
+    lastSavedFingerprintRef.current = JSON.stringify(currentDocument)
+    setSaveError(null)
+    if (sessionDocument?.generatedAt) {
+      autoGenerateAttemptRef.current = null
+    }
+  }, [
+    activeSessionId,
+    currentDocument,
+    installedDocument?.installedVersionId,
+    sessionDocument?.generatedAt,
+    sessionDocument?.templateVersionId,
+    sessionDocument?.updatedAt,
+    templateId,
+  ])
 
   useEffect(() => {
-    if (!activeSession || !routeState || !draftContent) return
+    if (!activeSessionId || !draftDocument || !installedDocument) return
 
-    const fingerprint = JSON.stringify(draftContent)
+    const fingerprint = JSON.stringify(draftDocument)
     if (lastSavedFingerprintRef.current === fingerprint) {
       return
     }
 
-    const saveTimer = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
-        setIsSaving(true)
+        setSessionDocumentUiState(activeSessionId, templateId, {
+          isSaving: true,
+        })
         const response = await fetch(
-          `/api/sessions/${activeSession.id}/documents/${templateId}`,
+          `/api/sessions/${activeSessionId}/documents/${templateId}`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              templateVersionId: routeState.activeVersion.id,
-              contentJson: draftContent,
-              generatedAt: currentSessionDocument?.generatedAt ?? null,
+              templateVersionId:
+                sessionDocument?.templateVersionId ?? installedDocument.installedVersionId,
+              contentJson: draftDocument,
+              generatedAt: sessionDocument?.generatedAt ?? null,
             }),
           }
         )
@@ -456,208 +235,356 @@ export function StructuredDocumentContainer({
         lastSavedFingerprintRef.current = JSON.stringify(
           payload.sessionDocument.contentJson
         )
-        setRouteState((current) =>
-          current
-            ? {
-                ...current,
-                sessionDocument: payload.sessionDocument,
-                activeVersion: payload.activeVersion,
-              }
-            : current
-        )
         upsertSessionDocument(payload.sessionDocument)
-        deleteCachedSession(activeSession.id)
-        setError(null)
-      } catch (saveError) {
-        console.error("Failed to autosave structured document", saveError)
+        deleteCachedSession(activeSessionId)
+        setSaveError(null)
+      } catch (error) {
+        console.error("Failed to autosave document", error)
+        setSaveError("Failed to save document")
       } finally {
-        setIsSaving(false)
+        setSessionDocumentUiState(activeSessionId, templateId, {
+          isSaving: false,
+        })
       }
     }, 900)
 
-    return () => clearTimeout(saveTimer)
+    return () => clearTimeout(timer)
   }, [
-    activeSession,
-    draftContent,
-    currentSessionDocument?.generatedAt,
-    routeState,
+    activeSessionId,
+    draftDocument,
+    installedDocument,
+    sessionDocument?.generatedAt,
+    sessionDocument?.templateVersionId,
+    setSessionDocumentUiState,
     templateId,
     upsertSessionDocument,
   ])
 
-  useEffect(() => {
-    if (!activeSession || !routeState) return
+  const handleGenerate = useCallback(
+    async (trigger: "auto_open" | "regenerate") => {
+      if (!activeSessionId || !installedDocument || documentUiState.isGenerating) {
+        return
+      }
 
-    cacheSessionDocumentSchema(
-      activeSession.id,
+      setSessionDocumentUiState(activeSessionId, templateId, {
+        isGenerating: true,
+        lastGenerationError: null,
+      })
+
+      trackClientEvent({
+        eventType: "analysis_triggered",
+        feature: "custom_document",
+        sessionId: activeSessionId,
+        metadata: {
+          templateId,
+          templateTitle: installedDocument.title,
+          templateVersionId:
+            sessionDocument?.templateVersionId ?? installedDocument.installedVersionId,
+          generatedAt: sessionDocument?.generatedAt ?? null,
+          trigger,
+        },
+      })
+
+      try {
+        const response = await fetch(
+          `/api/sessions/${activeSessionId}/documents/${templateId}/generate`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: documentModel,
+            }),
+          }
+        )
+        if (!response.ok) {
+          throw new Error("Failed to generate document")
+        }
+
+        const payload = (await response.json()) as {
+          sessionDocument: SessionDocumentRecord
+        }
+
+        const nextDocument = isRichTextDocument(payload.sessionDocument.contentJson)
+          ? normalizeRichTextDocument(payload.sessionDocument.contentJson)
+          : genericStructuredContentToRichTextDocument({
+              contentJson: payload.sessionDocument.contentJson,
+              schemaNodes:
+                payload.sessionDocument.templateSchemaNodes ?? schemaNodes,
+            })
+
+        if (!documentHasMeaningfulContent(nextDocument)) {
+          throw new Error("Generated document is empty")
+        }
+
+        upsertSessionDocument(payload.sessionDocument)
+        setDraftDocument(nextDocument)
+        lastSavedFingerprintRef.current = JSON.stringify(nextDocument)
+        deleteCachedSession(activeSessionId)
+        setSaveError(null)
+        autoGenerateAttemptRef.current = null
+        setSessionDocumentUiState(activeSessionId, templateId, {
+          lastGenerationError: null,
+          feedbackForGeneratedAt: null,
+        })
+
+        trackClientEvent({
+          eventType: "analysis_completed",
+          feature: "custom_document",
+          sessionId: activeSessionId,
+          metadata: {
+            templateId,
+            templateTitle: installedDocument.title,
+            templateVersionId: payload.sessionDocument.templateVersionId,
+            generatedAt: payload.sessionDocument.generatedAt,
+            trigger,
+          },
+        })
+      } catch (error) {
+        console.error("Failed to generate document", error)
+        const reason =
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : "request_error"
+        setSessionDocumentUiState(activeSessionId, templateId, {
+          lastGenerationError: "Failed to generate document",
+        })
+        trackClientEvent({
+          eventType: "analysis_failed",
+          feature: "custom_document",
+          sessionId: activeSessionId,
+          metadata: {
+            templateId,
+            templateTitle: installedDocument.title,
+            templateVersionId:
+              sessionDocument?.templateVersionId ?? installedDocument.installedVersionId,
+            generatedAt: sessionDocument?.generatedAt ?? null,
+            trigger,
+            reason,
+          },
+        })
+      } finally {
+        setSessionDocumentUiState(activeSessionId, templateId, {
+          isGenerating: false,
+        })
+      }
+    },
+    [
+      activeSessionId,
+      documentModel,
+      documentUiState.isGenerating,
+      installedDocument,
+      schemaNodes,
+      sessionDocument?.generatedAt,
+      sessionDocument?.templateVersionId,
+      setSessionDocumentUiState,
       templateId,
-      routeState.activeVersion.schemaJson.nodes
-    )
-  }, [activeSession, cacheSessionDocumentSchema, routeState, templateId])
-
-  const schema = routeState?.activeVersion.schemaJson ?? { nodes: [] }
-  const hasUpdateAvailable =
-    !!installedDocument &&
-    !!currentSessionDocument &&
-    currentSessionDocument.templateVersionId !== installedDocument.installedVersionId
-  const renderedSections = useMemo(
-    () =>
-      draftContent
-        ? buildGenericDocumentSections(draftContent, schema.nodes)
-        : [],
-    [draftContent, schema.nodes]
+      upsertSessionDocument,
+    ]
   )
 
-  const versionLabel = useMemo(() => {
-    if (routeState?.activeVersion.versionNumber) {
-      return `v${routeState.activeVersion.versionNumber}`
-    }
-    return "Draft"
-  }, [routeState?.activeVersion.versionNumber])
+  useEffect(() => {
+    if (!activeSessionId || !installedDocument || !isActiveDocumentTab) return
+    if (documentUiState.isGenerating) return
 
-  if (!activeSession) {
-    return (
-      <div className="rounded-xl border border-dashed border-border/70 px-4 py-10 text-center text-sm text-muted-foreground">
-        Start a consultation to use this document.
-      </div>
-    )
+    const hasManualDraft =
+      !!sessionDocument &&
+      !sessionDocument.generatedAt &&
+      hasMeaningfulCurrentContent &&
+      !isStarterDocument
+
+    const shouldAutoGenerate =
+      !sessionDocument ||
+      (!sessionDocument.generatedAt &&
+        (!hasManualDraft || !hasMeaningfulCurrentContent || isStarterDocument))
+
+    if (!shouldAutoGenerate) return
+
+    const attemptKey = `${activeSessionId}:${templateId}`
+    if (autoGenerateAttemptRef.current === attemptKey) return
+
+    autoGenerateAttemptRef.current = attemptKey
+    void handleGenerate("auto_open")
+  }, [
+    activeSessionId,
+    documentUiState.isGenerating,
+    handleGenerate,
+    hasMeaningfulCurrentContent,
+    installedDocument,
+    isActiveDocumentTab,
+    isStarterDocument,
+    sessionDocument,
+    templateId,
+  ])
+
+  const footerMeta = installedDocument ? (
+    <>
+      <span>
+        v{sessionDocument?.templateVersionNumber ?? installedDocument.installedVersionNumber}
+      </span>
+      {sessionDocument?.generatedAt ? (
+        <span>
+          {tDocument("generatedAt", {
+            value: formatDateTime(sessionDocument.generatedAt, locale, timeZone),
+          })}
+        </span>
+      ) : null}
+      {sessionDocument &&
+      sessionDocument.templateVersionId !== installedDocument.installedVersionId ? (
+        <span>{tDocument("updateAvailable")}</span>
+      ) : null}
+      {documentUiState.isSaving && !documentUiState.isGenerating ? (
+        <span>{tDocument("saving")}</span>
+      ) : null}
+    </>
+  ) : null
+
+  const feedbackDisabled =
+    !activeSessionId ||
+    !sessionDocument?.generatedAt ||
+    documentUiState.feedbackForGeneratedAt === sessionDocument.generatedAt
+
+  const submitFeedback = (vote: "up" | "down") => {
+    if (!activeSessionId || !installedDocument || !sessionDocument?.generatedAt) return
+
+    trackClientEvent({
+      eventType: "document_feedback_submitted",
+      feature: "custom_document",
+      sessionId: activeSessionId,
+      metadata: {
+        templateId,
+        templateTitle: installedDocument.title,
+        templateVersionId:
+          sessionDocument.templateVersionId ?? installedDocument.installedVersionId,
+        generatedAt: sessionDocument.generatedAt,
+        vote,
+      },
+    })
+
+    setSessionDocumentUiState(activeSessionId, templateId, {
+      feedbackForGeneratedAt: sessionDocument.generatedAt,
+    })
   }
 
-  if (isLoading || !routeState || !draftContent) {
-    return (
-      <div className="flex min-h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
-        <IconLoader2 className="size-4 animate-spin" />
-        Loading document
-      </div>
-    )
+  if (!activeSessionId) {
+    return <DocumentShell empty emptyMessage={tDocument("startConsultation")} />
   }
+
+  if (!installedDocument) {
+    return <DocumentShell empty emptyMessage={tDocument("loading")} />
+  }
+
+  const hasVisibleDocument =
+    !!draftDocument &&
+    (!!sessionDocument?.generatedAt ||
+      (documentHasMeaningfulContent(draftDocument) &&
+        JSON.stringify(draftDocument) !== starterFingerprint))
+  const ambientState = documentUiState.isGenerating
+    ? sessionDocument?.generatedAt
+      ? "updating"
+      : "generating"
+    : documentUiState.isSaving
+      ? "saving"
+      : "idle"
+  const showFooterActions = hasVisibleDocument || !!documentUiState.lastGenerationError
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
+    <DocumentShell
+      ambientState={ambientState}
+      loading={documentUiState.isGenerating && !hasVisibleDocument}
+      loadingLabel={tDocument("updating")}
+      error={documentUiState.lastGenerationError ?? saveError}
+      empty={!hasVisibleDocument && !documentUiState.isGenerating}
+      emptyMessage={tDocument("noContent")}
+      footerMeta={footerMeta}
+      footerActions={
+        showFooterActions ? (
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-semibold">{routeState.template.title}</h2>
-            <Badge variant="secondary">{versionLabel}</Badge>
-            {isSaving ? <Badge variant="outline">Saving</Badge> : null}
-          </div>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            {routeState.template.description}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="rounded-lg border border-border/70 bg-muted/20 p-1">
-            <button
+            <Button
               type="button"
-              className={`rounded-md px-2.5 py-1 text-xs ${viewMode === "preview" ? "bg-background font-medium text-foreground shadow-sm" : "text-muted-foreground"}`}
-              onClick={() => setViewMode("preview")}
+              size="sm"
+              variant="outline"
+              disabled={documentUiState.isGenerating}
+              onClick={() => {
+                void handleGenerate(
+                  sessionDocument?.generatedAt ? "regenerate" : "auto_open"
+                )
+              }}
             >
-              {tBuilder("workspace.previewTab")}
-            </button>
-            <button
-              type="button"
-              className={`rounded-md px-2.5 py-1 text-xs ${viewMode === "edit" ? "bg-background font-medium text-foreground shadow-sm" : "text-muted-foreground"}`}
-              onClick={() => setViewMode("edit")}
-            >
-              {tBuilder("workspace.editTab")}
-            </button>
+              {documentUiState.isGenerating ? (
+                <span className="inline-flex items-center gap-2">
+                  <IconLoader2 className="size-3.5 animate-spin" />
+                  {tDocument("updating")}
+                </span>
+              ) : sessionDocument?.generatedAt ? (
+                tDocument("regenerate")
+              ) : (
+                tDocument("generate")
+              )}
+            </Button>
+            {sessionDocument?.generatedAt ? (
+              <>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  disabled={feedbackDisabled}
+                  aria-label={tDocument("feedbackPositive")}
+                  title={tDocument("feedbackPositive")}
+                  onClick={() => submitFeedback("up")}
+                >
+                  <IconThumbUp className="size-4" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  disabled={feedbackDisabled}
+                  aria-label={tDocument("feedbackNegative")}
+                  title={tDocument("feedbackNegative")}
+                  onClick={() => submitFeedback("down")}
+                >
+                  <IconThumbDown className="size-4" />
+                </Button>
+              </>
+            ) : null}
           </div>
+        ) : null
+      }
+    >
+      {hasVisibleDocument && draftDocument ? (
+        <DocumentEditor
+          value={draftDocument}
+          placeholder={tDocument("slashHint")}
+          embedded
+          toolbarMode="sticky"
+          onChange={(nextValue) => {
+            if (!activeSessionId || !installedDocument) return
 
-          <Button
-            type="button"
-            size="sm"
-            className="gap-1.5"
-            disabled={isGenerating || !installedDocument}
-            onClick={async () => {
-              try {
-                setIsGenerating(true)
-                const response = await fetch(
-                  `/api/sessions/${activeSession.id}/documents/${templateId}/generate`,
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      model: documentModel,
-                    }),
-                  }
-                )
-                if (!response.ok) {
-                  throw new Error("Failed to generate document")
-                }
+            setDraftDocument(nextValue)
+            setSaveError(null)
 
-                const payload = (await response.json()) as {
-                  sessionDocument: SessionDocumentRecord
-                  templateVersionId: string
-                  activeVersion: SessionDocumentRouteResponse["activeVersion"]
-                }
-                setRouteState((current) =>
-                  current
-                    ? {
-                        ...current,
-                        sessionDocument: payload.sessionDocument,
-                        activeVersion: payload.activeVersion,
-                      }
-                    : current
-                )
-                upsertSessionDocument(payload.sessionDocument)
-                lastSavedFingerprintRef.current = JSON.stringify(
-                  payload.sessionDocument.contentJson
-                )
-                setDraftContent(payload.sessionDocument.contentJson)
-                deleteCachedSession(activeSession.id)
-                setError(null)
-              } catch (generateError) {
-                console.error("Failed to generate structured document", generateError)
-                setError("Failed to generate document")
-              } finally {
-                setIsGenerating(false)
-              }
-            }}
-          >
-            {isGenerating ? (
-              <IconLoader2 className="size-3.5 animate-spin" />
-            ) : (
-              <IconRefresh className="size-3.5" />
-            )}
-            {currentSessionDocument?.generatedAt ? "Regenerate" : "Generate"}
-          </Button>
-        </div>
-      </div>
-
-      {hasUpdateAvailable ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          A newer template version is installed. Regenerate this document to apply it.
-        </div>
+            upsertSessionDocument({
+              id:
+                sessionDocument?.id ??
+                `draft:${activeSessionId}:${templateId}`,
+              sessionId: activeSessionId,
+              templateId,
+              templateVersionId:
+                sessionDocument?.templateVersionId ??
+                installedDocument.installedVersionId,
+              templateVersionNumber:
+                sessionDocument?.templateVersionNumber ??
+                installedDocument.installedVersionNumber,
+              templateSchemaNodes:
+                sessionDocument?.templateSchemaNodes ??
+                installedDocument.installedVersionSchemaNodes,
+              contentJson: nextValue as Record<string, unknown>,
+              generatedAt: sessionDocument?.generatedAt ?? null,
+              updatedAt: new Date().toISOString(),
+            })
+          }}
+        />
       ) : null}
-
-      {error ? (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      ) : null}
-
-      <div className="space-y-4">
-        {schema.nodes.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border/70 px-4 py-10 text-center text-sm text-muted-foreground">
-            This document has no fields yet.
-          </div>
-        ) : viewMode === "preview" ? (
-          <div className="rounded-xl border border-border/70 bg-card px-4 py-4">
-            <GenericDocumentPreview sections={renderedSections} variant="session" />
-          </div>
-        ) : (
-          schema.nodes.map((node) => (
-            <StructuredNodeEditor
-              key={node.key}
-              node={node}
-              content={draftContent}
-              path={[]}
-              onChange={setDraftContent}
-            />
-          ))
-        )}
-      </div>
-    </div>
+    </DocumentShell>
   )
 }

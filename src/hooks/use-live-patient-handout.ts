@@ -13,6 +13,8 @@ import { trackClientEvent } from "@/lib/telemetry/client-events"
 import { deleteCachedSession } from "@/hooks/use-session-loader"
 import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
 import { BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID } from "@/lib/documents/constants"
+import { patientHandoutToRichTextDocument } from "@/lib/documents/rich-text"
+import type { PatientHandoutDocument } from "@/types/patient-handout"
 
 const WAIT_TIMEOUT_MS = 60000
 
@@ -199,7 +201,7 @@ export async function generatePatientHandout(
     const currentSessionId = useSessionStore.getState().activeSession?.id
     if (currentSessionId !== sessionId) return
 
-    const handout = {
+    const handout: PatientHandoutDocument = {
       id: document?.id || "temp",
       sessionId,
       language: generated.language,
@@ -207,6 +209,18 @@ export async function generatePatientHandout(
       entries: generated.entries,
       generatedAt: new Date().toISOString(),
     }
+    handout.documentJson = patientHandoutToRichTextDocument(handout, {
+      sections: {
+        conditionOverview: "Condition Overview",
+        signsSymptoms: "Signs and Symptoms",
+        causesRiskFactors: "Causes and Risk Factors",
+        complications: "Complications",
+        treatmentOptions: "Treatment Options",
+        whenToSeekHelp: "When to Seek Help",
+        additionalAdviceFollowUp: "Additional Advice and Follow-Up",
+        disclaimer: "Disclaimer",
+      },
+    })
 
     setGeneratedDocument(handout)
     trackClientEvent({

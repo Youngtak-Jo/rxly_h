@@ -48,6 +48,7 @@ export function usePatientHandoutAutoSave() {
             language: currentDocument.language,
             conditions: currentDocument.conditions,
             entries: currentDocument.entries,
+            documentJson: currentDocument.documentJson ?? null,
             generatedAt: currentDocument.generatedAt,
           }),
         })

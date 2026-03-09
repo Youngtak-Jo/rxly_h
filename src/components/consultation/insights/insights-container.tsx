@@ -1,230 +1,83 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useMemo, useRef } from "react"
 import { useTranslations } from "next-intl"
+import { DocumentRenderer } from "@/components/consultation/documents/document-editor"
+import { DocumentShell } from "@/components/consultation/documents/document-shell"
+import { InlineCommentPopover } from "./inline-comment-popover"
+import { insightsToRichTextDocument } from "@/lib/documents/rich-text"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useNoteStore } from "@/stores/note-store"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  IconFileText,
-  IconSearch,
-  IconAlertTriangle,
-  IconChecklist,
-  IconPhoto,
-} from "@tabler/icons-react"
-import { InlineCommentPopover } from "./inline-comment-popover"
 
 export function InsightsContainer() {
   const t = useTranslations("InsightsPanel")
-  const summary = useInsightsStore((s) => s.summary)
-  const rawKeyFindings = useInsightsStore((s) => s.keyFindings)
-  const rawRedFlags = useInsightsStore((s) => s.redFlags)
-  const keyFindings = Array.isArray(rawKeyFindings) ? rawKeyFindings : []
-  const redFlags = Array.isArray(rawRedFlags) ? rawRedFlags : []
-  const checklistItems = useInsightsStore((s) => s.checklistItems)
-  const isProcessing = useInsightsStore((s) => s.isProcessing)
-  const toggleChecklistItem = useInsightsStore((s) => s.toggleChecklistItem)
-  const notes = useNoteStore((s) => s.notes)
-  const [selectedImage, setSelectedImage] = useState<string | null>(null)
-
-  const pendingComments = useInsightsStore((s) => s.pendingComments)
+  const summary = useInsightsStore((state) => state.summary)
+  const rawKeyFindings = useInsightsStore((state) => state.keyFindings)
+  const rawRedFlags = useInsightsStore((state) => state.redFlags)
+  const checklistItems = useInsightsStore((state) => state.checklistItems)
+  const isProcessing = useInsightsStore((state) => state.isProcessing)
+  const pendingComments = useInsightsStore((state) => state.pendingComments)
+  const notes = useNoteStore((state) => state.notes)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const hasContent = summary || keyFindings.length > 0 || redFlags.length > 0
-  const checkedCount = checklistItems.filter((item) => item.isChecked).length
-
-  // Collect all uploaded images from notes
+  const keyFindings = useMemo(
+    () => (Array.isArray(rawKeyFindings) ? rawKeyFindings : []),
+    [rawKeyFindings]
+  )
+  const redFlags = useMemo(
+    () => (Array.isArray(rawRedFlags) ? rawRedFlags : []),
+    [rawRedFlags]
+  )
   const uploadedImages = notes.flatMap((note) =>
     (note.imageUrls || []).map((url) => ({
       url,
-      noteId: note.id,
-      noteContent: note.content,
-      createdAt: note.createdAt,
+      alt: note.content || t("medicalImage"),
     }))
   )
 
+  const hasDocumentContent =
+    !!summary ||
+    keyFindings.length > 0 ||
+    redFlags.length > 0 ||
+    checklistItems.length > 0 ||
+    uploadedImages.length > 0
+
+  const documentValue = useMemo(
+    () =>
+      insightsToRichTextDocument({
+        summary,
+        keyFindings,
+        redFlags,
+        checklistItems,
+        images: uploadedImages,
+        labels: {
+          summary: t("summary"),
+          keyFindings: t("keyFindings"),
+          redFlags: t("redFlags"),
+          checklist: t("checklist"),
+          images: t("imagingUploads"),
+        },
+      }),
+    [checklistItems, keyFindings, redFlags, summary, t, uploadedImages]
+  )
+
   return (
-    <div ref={containerRef} data-tour="insights-panel" className={`space-y-6 ${isProcessing && hasContent ? "animate-breathe insights-shimmer-overlay" : ""}`}>
-      <h1 className="sr-only">{t("liveInsights")}</h1>
-      {/* Summary */}
-      <section data-section="summary">
-        <h3 className="flex items-center gap-2 text-sm font-medium mb-2">
-          <IconFileText className="size-4 text-blue-500" />
-          {t("summary")}
-        </h3>
-        {summary ? (
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {summary}
-          </p>
-        ) : (
-          <p className="text-sm text-muted-foreground/50 italic">
-            {t("summaryEmpty")}
-          </p>
-        )}
-      </section>
-
-      {/* Key Findings */}
-      <section data-section="keyFindings">
-        <h3 className="flex items-center gap-2 text-sm font-medium mb-2">
-          <IconSearch className="size-4 text-emerald-500" />
-          {t("keyFindings")}
-          {Array.isArray(keyFindings) && keyFindings.length > 0 && (
-            <Badge variant="secondary" className="text-[10px]">
-              {keyFindings.length}
-            </Badge>
-          )}
-        </h3>
-        {Array.isArray(keyFindings) && keyFindings.length > 0 ? (
-          <ul className="space-y-1.5">
-            {keyFindings.map((finding) => (
-              <li
-                key={finding}
-                className="flex items-start gap-2 text-sm text-muted-foreground"
-              >
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                {finding}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground/50 italic">
-            {t("keyFindingsEmpty")}
-          </p>
-        )}
-      </section>
-
-      {/* Red Flags */}
-      {Array.isArray(redFlags) && redFlags.length > 0 && (
-        <section data-section="redFlags">
-          <h3 className="flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400 mb-2">
-            <IconAlertTriangle className="size-4" />
-            {t("redFlags")}
-            <Badge variant="destructive" className="text-[10px]">
-              {redFlags.length}
-            </Badge>
-          </h3>
-          <ul className="space-y-1.5">
-            {redFlags.map((flag) => (
-              <li
-                key={flag}
-                className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400"
-              >
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
-                {flag}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* Checklist */}
-      <section>
-        <h3 className="flex items-center gap-2 text-sm font-medium mb-2">
-          <IconChecklist className="size-4 text-violet-500" />
-          {t("checklist")}
-          {checklistItems.length > 0 && (
-            <Badge variant="secondary" className="text-[10px]">
-              {checkedCount}/{checklistItems.length}
-            </Badge>
-          )}
-        </h3>
-        {checklistItems.length === 0 ? (
-          <p className="text-sm text-muted-foreground/50 italic">
-            {t("checklistEmpty")}
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {checklistItems.map((item) => (
-              <div key={item.id} className="flex items-start gap-2">
-                <Checkbox
-                  id={item.id}
-                  checked={item.isChecked}
-                  onCheckedChange={() => toggleChecklistItem(item.id)}
-                  className="mt-0.5"
-                />
-                <label
-                  htmlFor={item.id}
-                  className={`text-sm cursor-pointer ${item.isChecked
-                    ? "line-through text-muted-foreground"
-                    : "text-foreground"
-                    }`}
-                >
-                  {item.label}
-                  {item.isAutoChecked && (
-                    <span className="ml-1.5 text-[10px] text-muted-foreground/60">
-                      ({t("auto")})
-                    </span>
-                  )}
-                </label>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Imaging Uploads */}
-      {uploadedImages.length > 0 && (
-        <section>
-          <h3 className="flex items-center gap-2 text-sm font-medium mb-2">
-            <IconPhoto className="size-4 text-amber-500" />
-            {t("imagingUploads")}
-            <Badge variant="secondary" className="text-[10px]">
-              {uploadedImages.length}
-            </Badge>
-          </h3>
-          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-1.5">
-            {uploadedImages.map((img, i) => (
-              <button
-                key={`${img.noteId}-${i}`}
-                onClick={() => setSelectedImage(img.url)}
-                className="group relative aspect-square rounded-md overflow-hidden border hover:ring-2 hover:ring-primary/50 transition-all max-w-16"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.url}
-                  alt={img.noteContent || t("medicalImage")}
-                  className="h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Pending Comments Indicator */}
-      {pendingComments.length > 0 && (
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-pulse">
-          <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-          {t("pendingComments", { count: pendingComments.length })}
-        </div>
-      )}
-
-      {/* Inline Comment Popover */}
-      <InlineCommentPopover containerRef={containerRef} />
-
-      {/* Image Lightbox */}
-      <Dialog
-        open={!!selectedImage}
-        onOpenChange={() => setSelectedImage(null)}
+    <div ref={containerRef} data-tour="insights-panel">
+      <DocumentShell
+        ambientState={isProcessing ? "updating" : "idle"}
+        empty={!hasDocumentContent && !isProcessing}
+        emptyMessage={t("emptyState")}
+        footerMeta={
+          pendingComments.length > 0 ? (
+            <span>
+              {t("pendingComments", { count: pendingComments.length })}
+            </span>
+          ) : null
+        }
       >
-        <DialogContent className="max-w-[95vw] md:max-w-3xl p-2">
-          <DialogTitle className="sr-only">{t("medicalImage")}</DialogTitle>
-          {selectedImage && (
-            <img // eslint-disable-line @next/next/no-img-element
-              src={selectedImage}
-              alt={t("medicalImage")}
-              className="w-full h-auto rounded-md"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+        {hasDocumentContent ? <DocumentRenderer value={documentValue} embedded /> : null}
+        <InlineCommentPopover containerRef={containerRef} />
+      </DocumentShell>
     </div>
   )
 }

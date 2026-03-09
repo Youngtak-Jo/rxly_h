@@ -1,11 +1,10 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useLocale, useTimeZone, useTranslations } from "next-intl"
+import { IconLoader2 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
@@ -13,26 +12,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useDdxStore } from "@/stores/ddx-store"
-import { useSessionStore } from "@/stores/session-store"
-import { usePatientHandoutStore } from "@/stores/patient-handout-store"
+import { Input } from "@/components/ui/input"
+import { DocumentEditor } from "@/components/consultation/documents/document-editor"
 import {
-  PATIENT_HANDOUT_SECTION_KEYS,
-  type PatientHandoutEntry,
-} from "@/types/patient-handout"
+  DocumentSection,
+  DocumentShell,
+} from "@/components/consultation/documents/document-shell"
 import { generatePatientHandout } from "@/hooks/use-live-patient-handout"
-import { IconLoader2, IconPlus, IconSearch } from "@tabler/icons-react"
-import { PatientHandoutSection } from "./patient-handout-section"
+import {
+  derivePatientHandoutFromRichTextDocument,
+  normalizeRichTextDocument,
+  patientHandoutToRichTextDocument,
+} from "@/lib/documents/rich-text"
+import { DEFAULT_UI_TIME_ZONE, type UiLocale } from "@/i18n/config"
+import { formatDateTime } from "@/i18n/format"
+import { useDdxStore } from "@/stores/ddx-store"
+import { usePatientHandoutStore } from "@/stores/patient-handout-store"
+import { useSessionStore } from "@/stores/session-store"
 
 interface Icd11SearchResult {
   theCode: string
   title: string
   uri: string
-  browserUrl: string
-  score: number
 }
 
-interface ConditionCardItem {
+interface ConditionListItem {
   id: string
   icdCode: string
   diseaseName: string
@@ -41,34 +45,32 @@ interface ConditionCardItem {
   confidence?: "high" | "moderate" | "low"
 }
 
-const confidenceColors: Record<"high" | "moderate" | "low", string> = {
-  high: "bg-emerald-100 text-emerald-800",
-  moderate: "bg-amber-100 text-amber-800",
-  low: "bg-slate-100 text-slate-700",
-}
-
 function normalizeCode(code: string): string {
   return code.trim().toUpperCase()
 }
 
 export function PatientHandoutContainer() {
   const t = useTranslations("PatientHandout")
-  const activeSession = useSessionStore((s) => s.activeSession)
-  const diagnoses = useDdxStore((s) => s.diagnoses)
-
+  const tDocument = useTranslations("ConsultationDocument")
+  const locale = useLocale() as UiLocale
+  const timeZone = useTimeZone() ?? DEFAULT_UI_TIME_ZONE
+  const activeSession = useSessionStore((state) => state.activeSession)
+  const diagnoses = useDdxStore((state) => state.diagnoses)
   const {
     document,
     selectedConditions,
     isGenerating,
     addCondition,
     removeCondition,
-    updateSection,
+    setGeneratedDocument,
   } = usePatientHandoutStore()
 
   const [isIcdSearchDialogOpen, setIsIcdSearchDialogOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<Icd11SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [view, setView] = useState<"prepare" | "document">(document ? "document" : "prepare")
+  const previousGeneratedAtRef = useRef<string | null>(document?.generatedAt ?? null)
 
   useEffect(() => {
     if (!isIcdSearchDialogOpen) return
@@ -83,11 +85,12 @@ export function PatientHandoutContainer() {
     const timer = setTimeout(async () => {
       try {
         setIsSearching(true)
-        const res = await fetch(`/api/icd11/search?q=${encodeURIComponent(trimmed)}`, {
-          signal: controller.signal,
-        })
-        if (!res.ok) throw new Error("Search failed")
-        const payload = (await res.json()) as { results: Icd11SearchResult[] }
+        const response = await fetch(
+          `/api/icd11/search?q=${encodeURIComponent(trimmed)}`,
+          { signal: controller.signal }
+        )
+        if (!response.ok) throw new Error("Search failed")
+        const payload = (await response.json()) as { results: Icd11SearchResult[] }
         setSearchResults(payload.results || [])
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return
@@ -101,7 +104,7 @@ export function PatientHandoutContainer() {
       clearTimeout(timer)
       controller.abort()
     }
-  }, [searchQuery, isIcdSearchDialogOpen])
+  }, [isIcdSearchDialogOpen, searchQuery])
 
   useEffect(() => {
     if (isIcdSearchDialogOpen) return
@@ -110,10 +113,18 @@ export function PatientHandoutContainer() {
     setIsSearching(false)
   }, [isIcdSearchDialogOpen])
 
-  const selectedCodeSet = useMemo(
-    () => new Set(selectedConditions.map((condition) => normalizeCode(condition.icdCode))),
-    [selectedConditions]
-  )
+  useEffect(() => {
+    if (!document) {
+      previousGeneratedAtRef.current = null
+      setView("prepare")
+      return
+    }
+
+    if (previousGeneratedAtRef.current !== document.generatedAt) {
+      previousGeneratedAtRef.current = document.generatedAt
+      setView("document")
+    }
+  }, [document])
 
   const diagnosisCodeSet = useMemo(
     () => new Set(diagnoses.map((diagnosis) => normalizeCode(diagnosis.icdCode))),
@@ -127,36 +138,60 @@ export function PatientHandoutContainer() {
         !diagnosisCodeSet.has(normalizeCode(condition.icdCode))
     )
 
-    if (staleDdxConditions.length === 0) return
-
     staleDdxConditions.forEach((condition) => {
       removeCondition(condition.id)
     })
   }, [diagnosisCodeSet, removeCondition, selectedConditions])
 
-  const conditionCards = useMemo(() => {
-    const byCode = new Map<string, ConditionCardItem>()
+  const selectedCodeSet = useMemo(
+    () => new Set(selectedConditions.map((condition) => normalizeCode(condition.icdCode))),
+    [selectedConditions]
+  )
 
-    for (const diagnosis of diagnoses) {
+  const handoutLabels = useMemo(
+    () => ({
+      sections: {
+        conditionOverview: t("sections.conditionOverview"),
+        signsSymptoms: t("sections.signsSymptoms"),
+        causesRiskFactors: t("sections.causesRiskFactors"),
+        complications: t("sections.complications"),
+        treatmentOptions: t("sections.treatmentOptions"),
+        whenToSeekHelp: t("sections.whenToSeekHelp"),
+        additionalAdviceFollowUp: t("sections.additionalAdviceFollowUp"),
+        disclaimer: t("sections.disclaimer"),
+      },
+    }),
+    [t]
+  )
+
+  const documentValue = useMemo(() => {
+    if (!document) return null
+    return normalizeRichTextDocument(
+      document.documentJson,
+      patientHandoutToRichTextDocument(document, handoutLabels)
+    )
+  }, [document, handoutLabels])
+
+  const conditionItems = useMemo(() => {
+    const byCode = new Map<string, ConditionListItem>()
+
+    diagnoses.forEach((diagnosis) => {
       const key = normalizeCode(diagnosis.icdCode)
-      if (byCode.has(key)) continue
-
+      if (byCode.has(key)) return
       byCode.set(key, {
         id: diagnosis.id,
         icdCode: diagnosis.icdCode,
         diseaseName: diagnosis.diseaseName,
         source: "ddx",
-        confidence: diagnosis.confidence,
         evidence: diagnosis.evidence,
+        confidence: diagnosis.confidence,
       })
-    }
+    })
 
-    for (const condition of selectedConditions) {
-      if (condition.source !== "icd11") continue
-
+    selectedConditions.forEach((condition) => {
+      if (condition.source !== "icd11") return
       const key = normalizeCode(condition.icdCode)
-      if (byCode.has(key)) continue
-
+      if (byCode.has(key)) return
       byCode.set(key, {
         id: condition.id,
         icdCode: condition.icdCode,
@@ -164,26 +199,28 @@ export function PatientHandoutContainer() {
         source: "icd11",
         evidence: t("sourceIcd11"),
       })
-    }
+    })
 
     return Array.from(byCode.values())
   }, [diagnoses, selectedConditions, t])
 
-  const entryByConditionId = useMemo(() => {
-    const map = new Map<string, PatientHandoutEntry>()
-    if (!document) return map
+  const metadata = document ? (
+    <>
+      <span className="font-medium uppercase">
+        {document.language.toUpperCase()}
+      </span>
+      <span>
+        {tDocument("generatedAt", {
+          value: formatDateTime(document.generatedAt, locale, timeZone),
+        })}
+      </span>
+    </>
+  ) : null
 
-    for (const entry of document.entries) {
-      map.set(entry.conditionId, entry)
-    }
-
-    return map
-  }, [document])
-
-  const toggleCondition = (card: ConditionCardItem) => {
-    const codeKey = normalizeCode(card.icdCode)
+  const toggleCondition = (item: ConditionListItem) => {
+    const key = normalizeCode(item.icdCode)
     const existing = selectedConditions.find(
-      (condition) => normalizeCode(condition.icdCode) === codeKey
+      (condition) => normalizeCode(condition.icdCode) === key
     )
 
     if (existing) {
@@ -191,26 +228,11 @@ export function PatientHandoutContainer() {
       return
     }
 
-    if (card.source === "ddx") {
-      const diagnosis = diagnoses.find(
-        (item) => normalizeCode(item.icdCode) === codeKey
-      )
-      if (!diagnosis) return
-
-      addCondition({
-        id: diagnosis.id,
-        icdCode: diagnosis.icdCode,
-        diseaseName: diagnosis.diseaseName,
-        source: "ddx",
-      })
-      return
-    }
-
     addCondition({
-      id: card.id,
-      icdCode: card.icdCode,
-      diseaseName: card.diseaseName,
-      source: "icd11",
+      id: item.id,
+      icdCode: item.icdCode,
+      diseaseName: item.diseaseName,
+      source: item.source,
     })
   }
 
@@ -218,10 +240,10 @@ export function PatientHandoutContainer() {
     const code = (result.theCode || result.title).trim()
     if (!code) return
 
-    const existing = selectedConditions.find(
+    const exists = selectedConditions.some(
       (condition) => normalizeCode(condition.icdCode) === normalizeCode(code)
     )
-    if (existing) return
+    if (exists) return
 
     addCondition({
       id: `icd11:${code}:${result.uri || result.title}`,
@@ -231,227 +253,197 @@ export function PatientHandoutContainer() {
     })
   }
 
-  const handoutConditions = document?.conditions || []
-
   return (
-    <div data-tour="patient-handout-panel" className="space-y-4">
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <p className="max-w-md text-xs text-muted-foreground">
-            {t("subtitle")}
-          </p>
-          <Button
-            onClick={() => {
-              if (!activeSession) return
-              void generatePatientHandout(activeSession.id)
-            }}
-            disabled={!activeSession || selectedConditions.length === 0 || isGenerating}
-            size="sm"
-            className="gap-1.5"
-          >
-            {isGenerating ? <IconLoader2 className="size-3.5 animate-spin" /> : null}
-            {isGenerating
-              ? t("generating")
-              : document
-                ? t("regenerate")
-                : t("generate")}
-          </Button>
-        </div>
-
-        {!document ? (
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {t("ddxSectionLabel")}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {t("languageHint")}
-              </p>
+    <div data-tour="patient-handout-panel">
+      <DocumentShell
+        ambientState={
+          isGenerating ? (document ? "updating" : "generating") : "idle"
+        }
+        loading={!document && isGenerating}
+        loadingLabel={t("generating")}
+        topActions={
+          document && view === "document" ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="-ml-3 text-muted-foreground hover:text-foreground"
+              onClick={() => setView("prepare")}
+            >
+              {t("backToConditions")}
+            </Button>
+          ) : (
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Button
+                onClick={() => {
+                  if (!activeSession) return
+                  void generatePatientHandout(activeSession.id)
+                }}
+                disabled={!activeSession || selectedConditions.length === 0 || isGenerating}
+                size="sm"
+                className="min-w-[152px]"
+              >
+                {isGenerating ? (
+                  <span className="inline-flex items-center gap-2">
+                    <IconLoader2 className="size-3.5 animate-spin" />
+                    {t("generating")}
+                  </span>
+                ) : document ? (
+                  t("regenerate")
+                ) : (
+                  t("generate")
+                )}
+              </Button>
             </div>
-
-            {conditionCards.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">
+          )
+        }
+        footerMeta={document && view === "document" ? metadata : null}
+        footerActions={
+          document && view === "document" ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!activeSession || isGenerating}
+              onClick={() => {
+                if (!activeSession) return
+                void generatePatientHandout(activeSession.id)
+              }}
+            >
+              {isGenerating ? (
+                <span className="inline-flex items-center gap-2">
+                  <IconLoader2 className="size-3.5 animate-spin" />
+                  {t("generating")}
+                </span>
+              ) : (
+                t("regenerate")
+              )}
+            </Button>
+          ) : null
+        }
+      >
+        {view === "prepare" || !document ? (
+          <DocumentSection
+            title={t("ddxSectionLabel")}
+            description={t("languageHint")}
+            actions={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsIcdSearchDialogOpen(true)}
+              >
+                {t("conditionNotInDdx")}
+              </Button>
+            }
+          >
+            {conditionItems.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border/70 px-4 py-8 text-sm leading-6 text-muted-foreground">
                 {t("emptyState")}
               </p>
             ) : (
-              <div className="space-y-2">
-                {conditionCards.map((card) => {
-                  const isSelected = selectedCodeSet.has(normalizeCode(card.icdCode))
+              <div className="divide-y divide-border/60 border-y border-border/60">
+                {conditionItems.map((item) => {
+                  const isSelected = selectedCodeSet.has(normalizeCode(item.icdCode))
 
                   return (
-                    <div
-                      key={`${card.source}:${card.id}`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => toggleCondition(card)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault()
-                          toggleCondition(card)
-                        }
-                      }}
-                      className={`w-full rounded-lg border p-3 text-left transition-colors ${
-                        isSelected
-                          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                          : "border-border hover:border-foreground/30 hover:bg-muted/30"
-                      }`}
+                    <label
+                      key={`${item.source}:${item.id}`}
+                      className="flex cursor-pointer items-start gap-3 px-1 py-3"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="shrink-0"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => toggleCondition(card)}
-                                aria-label={t("selectCondition", { name: card.diseaseName })}
-                              />
-                            </span>
-                            <p className="text-sm font-medium truncate">{card.diseaseName}</p>
-                          </div>
-                          <p className="text-xs text-muted-foreground font-mono mt-1">
-                            ICD-11: {card.icdCode}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {card.source === "icd11" ? (
-                            <Badge variant="secondary" className="text-[10px]">
-                              {t("sourceIcd11")}
-                            </Badge>
-                          ) : null}
-                          {card.confidence ? (
-                            <Badge
-                              variant="secondary"
-                              className={`text-[10px] ${confidenceColors[card.confidence]}`}
-                            >
-                              {t(`confidence.${card.confidence}`)}
-                            </Badge>
-                          ) : null}
-                        </div>
-                      </div>
-                      <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                        {card.evidence}
-                      </p>
-                    </div>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleCondition(item)}
+                        aria-label={t("selectCondition", { name: item.diseaseName })}
+                        className="mt-1"
+                      />
+                      <span className="min-w-0 flex-1 space-y-1">
+                        <span className="block text-sm font-medium text-foreground">
+                          {item.diseaseName}
+                        </span>
+                        <span className="block text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                          {item.icdCode}
+                        </span>
+                        <span className="block text-sm leading-6 text-muted-foreground">
+                          {item.evidence}
+                        </span>
+                      </span>
+                    </label>
                   )
                 })}
               </div>
             )}
-
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setIsIcdSearchDialogOpen(true)}
-                className="text-xs text-primary hover:underline"
-              >
-                {t("conditionNotInDdx")}
-              </button>
-
-              <Dialog open={isIcdSearchDialogOpen} onOpenChange={setIsIcdSearchDialogOpen}>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>{t("searchIcd11Condition")}</DialogTitle>
-                    <DialogDescription>{t("searchDescription")}</DialogDescription>
-                  </DialogHeader>
-
-                  <div className="space-y-2">
-                    <div className="relative">
-                      <IconSearch className="size-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
-                      <Input
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={t("searchPlaceholder")}
-                        className="pl-8 h-8 text-sm"
-                      />
-                    </div>
-
-                    {isSearching && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <IconLoader2 className="size-3 animate-spin" />
-                        {t("searching")}
-                      </div>
-                    )}
-
-                    {!isSearching && searchQuery.trim().length >= 2 && (
-                      <div className="max-h-64 overflow-y-auto space-y-1 rounded-md border p-1.5">
-                        {searchResults.length === 0 ? (
-                          <p className="px-2 py-1 text-xs text-muted-foreground">
-                            {t("searchNoResults")}
-                          </p>
-                        ) : (
-                          searchResults.map((result) => {
-                            const code = (result.theCode || result.title).trim()
-                            const alreadySelected = selectedCodeSet.has(normalizeCode(code))
-
-                            return (
-                              <div
-                                key={`${result.theCode || result.title}:${result.uri || result.browserUrl}`}
-                                className="flex items-center justify-between gap-2 rounded px-2 py-1.5 hover:bg-muted"
-                              >
-                                <div className="min-w-0">
-                                  <p className="text-xs font-medium truncate">{result.title}</p>
-                                  <p className="text-[11px] text-muted-foreground truncate">
-                                    {code || t("noCode")}
-                                  </p>
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 px-2 text-xs"
-                                  onClick={() => addIcdCondition(result)}
-                                  disabled={alreadySelected || !code}
-                                >
-                                  <IconPlus className="size-3" />
-                                  {alreadySelected ? t("added") : t("add")}
-                                </Button>
-                              </div>
-                            )
-                          })
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
+          </DocumentSection>
+        ) : document ? (
+          <DocumentEditor
+            value={documentValue}
+            placeholder={tDocument("slashHint")}
+            embedded
+            toolbarMode="sticky"
+            onChange={(nextValue) => {
+              if (!document) return
+              setGeneratedDocument(
+                derivePatientHandoutFromRichTextDocument(
+                  normalizeRichTextDocument(nextValue, documentValue ?? undefined),
+                  document
+                )
+              )
+            }}
+          />
         ) : null}
-      </div>
+      </DocumentShell>
 
-      {document && (
-        <div className="space-y-4">
-          {handoutConditions.map((condition) => {
-            const entry = entryByConditionId.get(condition.id)
-            return (
-              <div key={condition.id} className="space-y-3 border-b pb-4 last:border-b-0">
-                <div>
-                  <h4 className="text-sm font-medium">
-                    {condition.diseaseName} ({condition.icdCode})
-                  </h4>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {t("source")}: {condition.source === "ddx" ? t("sourceDdx") : t("sourceIcd11")}
-                  </p>
-                </div>
+      <Dialog open={isIcdSearchDialogOpen} onOpenChange={setIsIcdSearchDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("searchIcd11Condition")}</DialogTitle>
+            <DialogDescription>{t("searchDescription")}</DialogDescription>
+          </DialogHeader>
 
-                <div className="space-y-3">
-                  {PATIENT_HANDOUT_SECTION_KEYS.map((sectionKey) => (
-                    <PatientHandoutSection
-                      key={`${condition.id}:${sectionKey}`}
-                      title={t(`sections.${sectionKey}`)}
-                      value={entry?.sections[sectionKey] || ""}
-                      onChange={(value) => updateSection(condition.id, sectionKey, value)}
-                    />
+          <div className="space-y-4">
+            <Input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder={t("searchPlaceholder")}
+              autoFocus
+            />
+
+            <div className="max-h-80 overflow-y-auto">
+              {isSearching ? (
+                <p className="text-sm text-muted-foreground">{t("searching")}</p>
+              ) : searchResults.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("searchNoResults")}</p>
+              ) : (
+                <div className="divide-y divide-border/60">
+                  {searchResults.map((result) => (
+                    <button
+                      key={`${result.uri}:${result.theCode}`}
+                      type="button"
+                      className="flex w-full items-start justify-between gap-3 py-3 text-left"
+                      onClick={() => {
+                        addIcdCondition(result)
+                        setIsIcdSearchDialogOpen(false)
+                      }}
+                    >
+                      <span className="min-w-0 space-y-1">
+                        <span className="block text-sm font-medium text-foreground">
+                          {result.title}
+                        </span>
+                        <span className="block text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                          {result.theCode}
+                        </span>
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {t("icd11Search")}
+                      </span>
+                    </button>
                   ))}
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

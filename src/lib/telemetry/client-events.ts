@@ -9,6 +9,7 @@ export type ClientEventType =
   | "analysis_triggered"
   | "analysis_completed"
   | "analysis_failed"
+  | "document_feedback_submitted"
 
 interface TrackClientEventInput {
   eventType: ClientEventType
@@ -47,7 +48,25 @@ export function trackClientEvent(input: TrackClientEventInput): void {
     metadata: input.metadata ?? {},
   }
 
-  const dedupeKey = `${payload.eventType}:${payload.feature}:${payload.sessionId ?? "none"}`
+  const metadataKey = JSON.stringify({
+    templateId:
+      typeof payload.metadata.templateId === "string"
+        ? payload.metadata.templateId
+        : null,
+    generatedAt:
+      typeof payload.metadata.generatedAt === "string"
+        ? payload.metadata.generatedAt
+        : null,
+    trigger:
+      typeof payload.metadata.trigger === "string"
+        ? payload.metadata.trigger
+        : null,
+    vote:
+      typeof payload.metadata.vote === "string"
+        ? payload.metadata.vote
+        : null,
+  })
+  const dedupeKey = `${payload.eventType}:${payload.feature}:${payload.sessionId ?? "none"}:${metadataKey}`
   if (shouldSkip(dedupeKey)) return
 
   const body = JSON.stringify(payload)

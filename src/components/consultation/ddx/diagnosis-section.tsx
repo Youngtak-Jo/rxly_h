@@ -17,18 +17,6 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  IconStethoscope,
-  IconExternalLink,
-  IconHierarchy2,
-  IconAlertTriangle,
-  IconTestPipe,
-  IconPill,
-  IconArrowUp,
-  IconBulb,
-  IconListCheck,
-  IconReload,
-} from "@tabler/icons-react"
 import type {
   DiagnosisItem,
   DiagnosisDetails,
@@ -151,85 +139,25 @@ function DiagnosisCard({
   const confidenceLabelKey = getConfidenceLabelKey(diagnosis.confidence)
 
   return (
-    <div
-      className="rounded-lg border p-3 space-y-2 cursor-pointer hover:border-foreground/30 transition-colors"
+    <button
+      type="button"
+      className="w-full cursor-pointer space-y-2 px-0 py-4 text-left transition-colors hover:text-foreground/90"
       onClick={() => onSelect(diagnosis)}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="space-y-0.5">
-          <p className="text-sm font-medium">{diagnosis.diseaseName}</p>
-          <p className="text-xs text-muted-foreground font-mono">
-            ICD-11: {diagnosis.icdCode}
-          </p>
-        </div>
-        <Badge
-          variant="secondary"
-          className={`text-[10px] shrink-0 ${confidenceColors[diagnosis.confidence] || ""}`}
-        >
-          {confidenceLabelKey ? t(confidenceLabelKey) : diagnosis.confidence}
-        </Badge>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold tracking-[-0.01em] text-foreground">
+          {diagnosis.diseaseName}
+        </p>
+        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+          ICD-11 {diagnosis.icdCode} · {t("confidence")}:{" "}
+          {confidenceLabelKey ? t(confidenceLabelKey) : diagnosis.confidence} ·{" "}
+          {t("references")}: {diagnosis.citations.length}
+        </p>
       </div>
-      <p className="text-xs text-muted-foreground leading-relaxed">
+      <p className="text-sm leading-6 text-muted-foreground">
         {diagnosis.evidence}
       </p>
-      {diagnosis.citations.length > 0 && (
-        <div className="pt-1 space-y-1">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-            {t("references")}
-          </p>
-          {(() => {
-            const citations = diagnosis.citations
-            // Pick up to 3 balanced across source types (round-robin)
-            const grouped = new Map<string, typeof citations>()
-            for (const c of citations) {
-              const arr = grouped.get(c.source) ?? []
-              arr.push(c)
-              grouped.set(c.source, arr)
-            }
-            const queues = Array.from(grouped.values()).map((arr) => [...arr])
-            const preview: typeof citations = []
-            let qi = 0
-            while (preview.length < 3 && queues.some((q) => q.length > 0)) {
-              if (queues[qi].length > 0) {
-                preview.push(queues[qi].shift()!)
-              }
-              qi = (qi + 1) % queues.length
-            }
-            const remaining = citations.length - preview.length
-            return (
-              <>
-                {preview.map((cite, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400"
-                  >
-                    <span className="shrink-0 text-[9px] font-medium uppercase px-1 py-0.5 rounded bg-muted">
-                      {cite.source === "europe_pmc"
-                        ? "EPMC"
-                        : cite.source.toUpperCase()}
-                    </span>
-                    <a
-                      href={cite.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="truncate hover:underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {cite.title}
-                    </a>
-                  </div>
-                ))}
-                {remaining > 0 && (
-                  <p className="text-[10px] text-muted-foreground">
-                    {t("moreSources", { count: remaining })}
-                  </p>
-                )}
-              </>
-            )
-          })()}
-        </div>
-      )}
-    </div>
+    </button>
   )
 }
 
@@ -281,18 +209,16 @@ function ClinicalSupportSection({
 
   return (
     <div className="space-y-4 pr-3">
-      {/* Diagnostic Criteria */}
       {support.diagnosticCriteria.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-sm font-medium flex items-center gap-1.5">
-            <IconListCheck className="size-3.5 text-blue-500" />
+          <p className="text-sm font-semibold text-foreground">
             {t("clinicalSections.diagnosticCriteria")}
           </p>
-          <ul className="space-y-1 ml-5">
+          <ul className="ml-5 space-y-1">
             {support.diagnosticCriteria.map((c, i) => (
               <li
                 key={i}
-                className="text-sm text-muted-foreground list-disc leading-relaxed"
+                className="list-disc text-sm leading-relaxed text-muted-foreground"
               >
                 {render(c)}
               </li>
@@ -301,18 +227,16 @@ function ClinicalSupportSection({
         </div>
       )}
 
-      {/* Recommended Workup */}
       {support.recommendedWorkup.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-sm font-medium flex items-center gap-1.5">
-            <IconTestPipe className="size-3.5 text-violet-500" />
+          <p className="text-sm font-semibold text-foreground">
             {t("clinicalSections.recommendedWorkup")}
           </p>
-          <ul className="space-y-1 ml-5">
+          <ul className="ml-5 space-y-1">
             {support.recommendedWorkup.map((w, i) => (
               <li
                 key={i}
-                className="text-sm text-muted-foreground list-disc leading-relaxed"
+                className="list-disc text-sm leading-relaxed text-muted-foreground"
               >
                 {render(w)}
               </li>
@@ -321,25 +245,23 @@ function ClinicalSupportSection({
         </div>
       )}
 
-      {/* Treatment Options */}
       {(support.treatmentOptions.firstLine.length > 0 ||
         support.treatmentOptions.alternatives.length > 0 ||
         support.treatmentOptions.nonPharmacologic.length > 0) && (
           <div className="space-y-1.5">
-            <p className="text-sm font-medium flex items-center gap-1.5">
-              <IconPill className="size-3.5 text-emerald-500" />
+            <p className="text-sm font-semibold text-foreground">
               {t("clinicalSections.treatmentOptions")}
             </p>
             {support.treatmentOptions.firstLine.length > 0 && (
               <div className="ml-5">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                <p className="mb-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                   {t("clinicalSections.firstLine")}
                 </p>
                 <ul className="space-y-0.5">
                   {support.treatmentOptions.firstLine.map((t, i) => (
                     <li
                       key={i}
-                      className="text-sm text-muted-foreground list-disc leading-relaxed"
+                      className="list-disc text-sm leading-relaxed text-muted-foreground"
                     >
                       {render(t)}
                     </li>
@@ -349,14 +271,14 @@ function ClinicalSupportSection({
             )}
             {support.treatmentOptions.alternatives.length > 0 && (
               <div className="ml-5 mt-1.5">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                <p className="mb-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                   {t("clinicalSections.alternatives")}
                 </p>
                 <ul className="space-y-0.5">
                   {support.treatmentOptions.alternatives.map((t, i) => (
                     <li
                       key={i}
-                      className="text-sm text-muted-foreground list-disc leading-relaxed"
+                      className="list-disc text-sm leading-relaxed text-muted-foreground"
                     >
                       {render(t)}
                     </li>
@@ -366,14 +288,14 @@ function ClinicalSupportSection({
             )}
             {support.treatmentOptions.nonPharmacologic.length > 0 && (
               <div className="ml-5 mt-1.5">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                <p className="mb-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                   {t("clinicalSections.nonPharmacologic")}
                 </p>
                 <ul className="space-y-0.5">
                   {support.treatmentOptions.nonPharmacologic.map((t, i) => (
                     <li
                       key={i}
-                      className="text-sm text-muted-foreground list-disc leading-relaxed"
+                      className="list-disc text-sm leading-relaxed text-muted-foreground"
                     >
                       {render(t)}
                     </li>
@@ -384,18 +306,16 @@ function ClinicalSupportSection({
           </div>
         )}
 
-      {/* Differentiating Features */}
       {support.differentiatingFeatures.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-sm font-medium flex items-center gap-1.5">
-            <IconStethoscope className="size-3.5 text-amber-500" />
+          <p className="text-sm font-semibold text-foreground">
             {t("clinicalSections.keyDifferentiatingFeatures")}
           </p>
-          <ul className="space-y-1 ml-5">
+          <ul className="ml-5 space-y-1">
             {support.differentiatingFeatures.map((f, i) => (
               <li
                 key={i}
-                className="text-sm text-muted-foreground list-disc leading-relaxed"
+                className="list-disc text-sm leading-relaxed text-muted-foreground"
               >
                 {render(f)}
               </li>
@@ -404,18 +324,16 @@ function ClinicalSupportSection({
         </div>
       )}
 
-      {/* Escalation Criteria */}
       {support.escalationCriteria.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-sm font-medium flex items-center gap-1.5">
-            <IconArrowUp className="size-3.5 text-red-500" />
+          <p className="text-sm font-semibold text-foreground">
             {t("clinicalSections.escalationCriteria")}
           </p>
-          <ul className="space-y-1 ml-5">
+          <ul className="ml-5 space-y-1">
             {support.escalationCriteria.map((e, i) => (
               <li
                 key={i}
-                className="text-sm text-muted-foreground list-disc leading-relaxed"
+                className="list-disc text-sm leading-relaxed text-muted-foreground"
               >
                 {render(e)}
               </li>
@@ -424,18 +342,16 @@ function ClinicalSupportSection({
         </div>
       )}
 
-      {/* Clinical Pearls */}
       {support.clinicalPearls.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-sm font-medium flex items-center gap-1.5">
-            <IconBulb className="size-3.5 text-yellow-500" />
+          <p className="text-sm font-semibold text-foreground">
             {t("clinicalSections.clinicalPearls")}
           </p>
-          <ul className="space-y-1 ml-5">
+          <ul className="ml-5 space-y-1">
             {support.clinicalPearls.map((p, i) => (
               <li
                 key={i}
-                className="text-sm text-muted-foreground list-disc leading-relaxed"
+                className="list-disc text-sm leading-relaxed text-muted-foreground"
               >
                 {render(p)}
               </li>
@@ -443,7 +359,6 @@ function ClinicalSupportSection({
           </ul>
         </div>
       )}
-
     </div>
   )
 }
@@ -475,16 +390,12 @@ function FetchStatusBanner({ fetchStatus }: { fetchStatus: FetchStatus }) {
   if (failures.length === 0) return null
 
   return (
-    <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-2.5 space-y-1">
-      <p className="text-xs font-medium text-amber-800 dark:text-amber-400 flex items-center gap-1">
-        <IconAlertTriangle className="size-3.5" />
+    <div className="space-y-1 rounded-md border border-amber-200 bg-amber-50 p-2.5">
+      <p className="text-xs font-medium text-amber-800">
         {t("externalSourcesFailed")}
       </p>
       {failures.map((f, i) => (
-        <p
-          key={i}
-          className="text-xs text-amber-700 dark:text-amber-500 ml-5"
-        >
+        <p key={i} className="ml-4 text-xs text-amber-700">
           - {f}
         </p>
       ))}
@@ -498,25 +409,22 @@ function RichReferenceCard({ reference }: { reference: MergedReference }) {
 
   if (icd11Detail) {
     return (
-      <div className="rounded-md border p-3 space-y-1.5">
+      <div className="space-y-2 rounded-md border border-border/70 p-3">
         <div className="flex items-start gap-2">
           <Badge
             variant="secondary"
-            className="text-[10px] uppercase shrink-0"
+            className="shrink-0 text-[10px] uppercase"
           >
             ICD-11
           </Badge>
           <span className="text-sm font-medium">{citation.title}</span>
         </div>
         {icd11Detail.parents.length > 0 && (
-          <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
-            <IconHierarchy2 className="size-3.5 shrink-0 mt-0.5" />
-            <span>
-              {icd11Detail.parents
-                .map((p) => (p.code ? `${p.title} (${p.code})` : p.title))
-                .join(" \u2192 ")}
-            </span>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            {icd11Detail.parents
+              .map((p) => (p.code ? `${p.title} (${p.code})` : p.title))
+              .join(" \u2192 ")}
+          </p>
         )}
         {icd11Detail.description && (
           <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">
@@ -532,9 +440,8 @@ function RichReferenceCard({ reference }: { reference: MergedReference }) {
           href={icd11Detail.browserUrl || citation.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+          className="text-xs text-primary hover:underline"
         >
-          <IconExternalLink className="size-3" />
           {t("viewSource")}
         </a>
       </div>
@@ -543,11 +450,11 @@ function RichReferenceCard({ reference }: { reference: MergedReference }) {
 
   if (articleDetail) {
     return (
-      <div className="rounded-md border p-3 space-y-1.5">
+      <div className="space-y-2 rounded-md border border-border/70 p-3">
         <div className="flex items-start gap-2">
           <Badge
             variant="secondary"
-            className="text-[10px] uppercase shrink-0"
+            className="shrink-0 text-[10px] uppercase"
           >
             {articleDetail.source === "europe_pmc" ? "EPMC" : "PUBMED"}
           </Badge>
@@ -568,9 +475,8 @@ function RichReferenceCard({ reference }: { reference: MergedReference }) {
           href={articleDetail.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+          className="text-xs text-primary hover:underline"
         >
-          <IconExternalLink className="size-3" />
           {t("viewArticle")}
         </a>
       </div>
@@ -579,9 +485,9 @@ function RichReferenceCard({ reference }: { reference: MergedReference }) {
 
   // Fallback: enriched citation without detail data (fetch failed)
   return (
-    <div className="rounded-md border p-3 space-y-1.5">
+    <div className="space-y-2 rounded-md border border-border/70 p-3">
       <div className="flex items-start gap-2">
-        <Badge variant="secondary" className="text-[10px] uppercase shrink-0">
+        <Badge variant="secondary" className="shrink-0 text-[10px] uppercase">
           {citation.source === "europe_pmc"
             ? "EPMC"
             : citation.source.toUpperCase()}
@@ -597,9 +503,8 @@ function RichReferenceCard({ reference }: { reference: MergedReference }) {
         href={citation.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+        className="text-xs text-primary hover:underline"
       >
-        <IconExternalLink className="size-3" />
         {t("viewSource")}
       </a>
     </div>
@@ -711,25 +616,15 @@ export function DiagnosisSection() {
   }, [])
 
   return (
-    <section>
-      {diagnoses.length === 0 ? (
-        <p className="text-sm text-muted-foreground/50 italic">
-          {tSupport("emptyState")}
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {diagnoses.map((dx) => (
-            <DiagnosisCard
-              key={dx.id}
-              diagnosis={dx}
-              onSelect={handleSelect}
-            />
-          ))}
-        </div>
-      )}
+    <>
+      <div className="divide-y divide-border/60">
+        {diagnoses.map((dx) => (
+          <DiagnosisCard key={dx.id} diagnosis={dx} onSelect={handleSelect} />
+        ))}
+      </div>
 
       <Dialog open={!!selectedDiagnosis} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{selectedDiagnosis?.diseaseName}</DialogTitle>
             <DialogDescription>
@@ -771,14 +666,13 @@ export function DiagnosisSection() {
             <DetailSkeleton />
           ) : error && !details ? (
             <div className="text-center py-6 space-y-3">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              <p className="text-sm text-destructive">{error}</p>
               <button
-                className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                className="text-xs text-primary hover:underline"
                 onClick={() =>
                   selectedDiagnosis && handleSelect(selectedDiagnosis)
                 }
               >
-                <IconReload className="size-3" />
                 {tSupport("retry")}
               </button>
             </div>
@@ -859,6 +753,6 @@ export function DiagnosisSection() {
           ) : null}
         </DialogContent>
       </Dialog>
-    </section>
+    </>
   )
 }
