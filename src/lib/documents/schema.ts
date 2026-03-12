@@ -320,6 +320,20 @@ export const sessionDocumentSaveSchema = z.object({
   generatedAt: z.string().datetime().nullable().optional(),
 })
 
+export const sessionDocumentPatchSchema = sessionDocumentSaveSchema.extend({
+  title: z.string().trim().max(200).nullable().optional(),
+})
+
+export const sessionDocumentAiReviseSchema = z.object({
+  prompt: z.string().trim().min(1).max(12000),
+  model: z.string().trim().min(1).max(200).optional(),
+  generationInputs: sessionDocumentGenerationInputsSchema.nullable().optional(),
+})
+
+export const sessionDocumentBlankCreateSchema = z.object({
+  title: z.string().trim().max(200).nullable().optional(),
+})
+
 export const documentAiDraftSchema = z.object({
   prompt: z.string().trim().min(10).max(12000),
   defaultLanguage: z.enum(DOCUMENT_TEMPLATE_LANGUAGES).default("en"),

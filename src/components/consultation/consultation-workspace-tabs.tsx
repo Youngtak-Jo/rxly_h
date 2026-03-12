@@ -1,57 +1,24 @@
 "use client"
 
-import { useRef } from "react"
-import {
-  DndContext,
-  MouseSensor,
-  TouchSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core"
-import {
-  SortableContext,
-  arrayMove,
-  horizontalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import {
-  IconLayoutSidebarRightExpand,
-  IconLoader2,
-  IconX,
-} from "@tabler/icons-react"
-import { useLocale, useTranslations } from "next-intl"
-import { toast } from "sonner"
+import { IconLayoutSidebarRightExpand, IconLoader2 } from "@tabler/icons-react"
+import { useTranslations } from "next-intl"
 
-import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
-import { cn } from "@/lib/utils"
 import {
   ConsultationTopRail,
   TOP_RAIL_SCROLL_CLASS,
 } from "./consultation-top-chrome"
-import {
-  BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID,
-  BUILT_IN_RECORD_TEMPLATE_ID,
-  buildDocumentTabId,
-} from "@/lib/documents/constants"
 import {
   type ConsultationTabId,
   useConsultationTabStore,
 } from "@/stores/consultation-tab-store"
 import { useDdxStore } from "@/stores/ddx-store"
 import { useInsightsStore } from "@/stores/insights-store"
-import { usePatientHandoutStore } from "@/stores/patient-handout-store"
-import { useRecordStore } from "@/stores/record-store"
 import { useResearchStore } from "@/stores/research-store"
-import { resolveWorkspaceTabDefinition } from "@/lib/documents/workspace"
 import { useSessionDocumentStore } from "@/stores/session-document-store"
 import { useSessionStore } from "@/stores/session-store"
-import type { WorkspaceTabId } from "@/types/document"
+import { cn } from "@/lib/utils"
 
 type Translator = (...args: never[]) => string
-const JUST_DRAGGED_CLICK_SUPPRESS_MS = 250
 
 function getTabAriaLabel(
   label: string,
@@ -77,24 +44,10 @@ function getTabAriaLabel(
   }
 
   if (opts.diagnosisCount > 0) {
-    parts.push(
-      translate("status.diagnosisCount", { count: opts.diagnosisCount })
-    )
+    parts.push(translate("status.diagnosisCount", { count: opts.diagnosisCount }))
   }
 
   return parts.join(", ")
-}
-
-type WorkspaceTabViewModel = {
-  id: WorkspaceTabId
-  label: string
-  ariaLabel: string
-  isActive: boolean
-  isProcessing: boolean
-  hasUnseenUpdate: boolean
-  diagnosisCount: number | null
-  closable: boolean
-  templateId: string | null
 }
 
 const WORKSPACE_TAB_BUTTON_CLASS_NAME = cn(
@@ -110,313 +63,118 @@ const WORKSPACE_ACTION_BUTTON_CLASS_NAME = cn(
   "focus-visible:ring-2 focus-visible:ring-ring/40"
 )
 
-function WorkspaceTabChip({
-  tab,
-  onSelect,
-  onClose,
-}: {
-  tab: WorkspaceTabViewModel
-  onSelect: (tabId: ConsultationTabId) => void
-  onClose: (templateId: string) => void
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({
-      id: tab.id,
-    })
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
-      className={cn("relative flex h-8 flex-none items-center", isDragging && "z-10")}
-    >
-      <button
-        type="button"
-        aria-current={tab.isActive ? "page" : undefined}
-        aria-label={tab.ariaLabel}
-        onClick={() => onSelect(tab.id)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault()
-            onSelect(tab.id)
-          }
-        }}
-        className={cn(
-          WORKSPACE_TAB_BUTTON_CLASS_NAME,
-          "w-full",
-          tab.closable ? "pr-7" : "pr-3",
-          isDragging && "opacity-80 shadow-lg"
-        )}
-        {...attributes}
-        {...listeners}
-      >
-        <span className="truncate">{tab.label}</span>
-        {(tab.isProcessing || tab.hasUnseenUpdate || tab.diagnosisCount !== null) && (
-          <span className="ml-1.5 flex items-center gap-1.5">
-            {tab.isProcessing ? (
-              <IconLoader2
-                className={cn(
-                  "size-3 animate-spin",
-                  tab.isActive ? "text-foreground/70" : "text-muted-foreground"
-                )}
-              />
-            ) : tab.hasUnseenUpdate ? (
-              <span className="size-1.5 rounded-full bg-emerald-500" />
-            ) : null}
-            {tab.diagnosisCount !== null ? (
-              <span
-                className={cn(
-                  "inline-flex min-w-4 items-center justify-center rounded-sm px-1 py-0.5 text-[10px] tabular-nums",
-                  tab.isActive
-                    ? "bg-muted text-foreground"
-                    : "bg-background/65 text-muted-foreground"
-                )}
-              >
-                {tab.diagnosisCount}
-              </span>
-            ) : null}
-          </span>
-        )}
-      </button>
-
-      {tab.closable && tab.templateId ? (
-        <button
-          type="button"
-          aria-label={`Close ${tab.label}`}
-          className={cn(
-            "absolute right-1 top-1/2 flex size-[18px] -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition hover:bg-black/5 hover:text-foreground",
-            tab.isActive && "text-foreground/70"
-          )}
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation()
-            onClose(tab.templateId!)
-          }}
-        >
-          <IconX className="size-3" />
-        </button>
-      ) : null}
-    </div>
-  )
-}
+const TOP_LEVEL_TABS: ConsultationTabId[] = [
+  "insights",
+  "ddx",
+  "documents",
+  "research",
+]
 
 export function ConsultationWorkspaceTabs() {
-  const locale = useLocale()
   const t = useTranslations("ConsultationTabs")
   const tTranscript = useTranslations("TranscriptViewer")
   const tHeader = useTranslations("SiteHeader")
   const activeTab = useConsultationTabStore((state) => state.activeTab)
   const setActiveTab = useConsultationTabStore((state) => state.setActiveTab)
   const unseenUpdates = useConsultationTabStore((state) => state.unseenUpdates)
-  const syncWithTabOrder = useConsultationTabStore((state) => state.syncWithTabOrder)
   const isTranscriptCollapsed = useConsultationTabStore(
     (state) => state.isTranscriptCollapsed
   )
   const toggleTranscript = useConsultationTabStore((state) => state._toggleTranscript)
-
-  const tabOrder = useDocumentWorkspaceStore((state) => state.tabOrder)
-  const installedDocuments = useDocumentWorkspaceStore(
-    (state) => state.installedDocuments
-  )
-  const uninstallDocument = useDocumentWorkspaceStore(
-    (state) => state.uninstallDocument
-  )
-  const installDocument = useDocumentWorkspaceStore((state) => state.installDocument)
-  const persistTabOrder = useDocumentWorkspaceStore((state) => state.persistTabOrder)
   const activeSessionId = useSessionStore((state) => state.activeSession?.id ?? null)
 
   const diagnosisCount = useDdxStore((state) => state.diagnoses.length)
   const isDdxProcessing = useDdxStore((state) => state.isProcessing)
   const isInsightsProcessing = useInsightsStore((state) => state.isProcessing)
-  const isRecordGenerating = useRecordStore((state) => state.isGenerating)
   const isResearchStreaming = useResearchStore((state) => state.isStreaming)
-  const isPatientHandoutGenerating = usePatientHandoutStore(
-    (state) => state.isGenerating
-  )
   const documentUiState = useSessionDocumentStore((state) =>
-    activeSessionId ? state.uiStateBySessionId[activeSessionId] ?? {} : {}
+    state.getSessionDocumentUiStates(activeSessionId)
   )
-  const justDraggedRef = useRef<{ tabId: WorkspaceTabId; at: number } | null>(null)
-
-  const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 6,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 140,
-        tolerance: 8,
-      },
-    })
+  const isAnyDocumentProcessing = Object.values(documentUiState).some(
+    (uiState) => uiState.isGenerating || uiState.isSaving
   )
   const showTranscriptToggle = !!toggleTranscript && isTranscriptCollapsed
-  const systemLabels = {
-    insights: t("insights"),
-    ddx: t("ddx"),
-    research: t("research"),
-  }
 
-  const processingByTab = {
-    insights: isInsightsProcessing,
-    ddx: isDdxProcessing,
-    research: isResearchStreaming,
-    [buildDocumentTabId(BUILT_IN_RECORD_TEMPLATE_ID)]: isRecordGenerating,
-    [buildDocumentTabId(BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID)]:
-      isPatientHandoutGenerating,
-    ...Object.fromEntries(
-      installedDocuments
-        .filter((document) => document.renderer === "GENERIC_STRUCTURED")
-        .map((document) => [
-          buildDocumentTabId(document.templateId),
-          !!documentUiState[document.templateId]?.isGenerating,
-        ])
-    ),
-  } satisfies Partial<Record<WorkspaceTabId, boolean>>
+  const tabs = TOP_LEVEL_TABS.map((tabId) => {
+    const label =
+      tabId === "documents"
+        ? t("documents")
+        : t(tabId as "insights" | "ddx" | "research")
+    const isProcessing =
+      tabId === "insights"
+        ? isInsightsProcessing
+        : tabId === "ddx"
+          ? isDdxProcessing
+          : tabId === "research"
+            ? isResearchStreaming
+            : isAnyDocumentProcessing
+    const hasUnseenUpdate = !!unseenUpdates[tabId] && activeTab !== tabId
+    const showDiagnosisCount = tabId === "ddx" && diagnosisCount > 0
 
-  const tabViewModels = tabOrder
-    .map((tabId) => resolveWorkspaceTabDefinition(tabId, installedDocuments, systemLabels))
-    .filter((tab): tab is NonNullable<typeof tab> => !!tab)
-    .map<WorkspaceTabViewModel>((tab) => {
-      const isProcessing = processingByTab[tab.id] ?? false
-      const hasUnseenUpdate = !!unseenUpdates[tab.id] && activeTab !== tab.id
-      const showDiagnosisCount = tab.id === "ddx" && diagnosisCount > 0
-
-      return {
-        id: tab.id,
-        label: tab.title,
-        ariaLabel: getTabAriaLabel(
-          tab.title,
-          {
-            isProcessing,
-            hasUnseenUpdate,
-            diagnosisCount: tab.id === "ddx" ? diagnosisCount : 0,
-          },
-          t
-        ),
-        isActive: activeTab === tab.id,
-        isProcessing,
-        hasUnseenUpdate,
-        diagnosisCount: showDiagnosisCount ? diagnosisCount : null,
-        closable: tab.closable,
-        templateId: tab.templateId,
-      }
-    })
-
-  const handleSelectTab = (tabId: ConsultationTabId) => {
-    const dragged = justDraggedRef.current
-    if (dragged) {
-      const elapsed = Date.now() - dragged.at
-      if (elapsed < JUST_DRAGGED_CLICK_SUPPRESS_MS && dragged.tabId === tabId) {
-        return
-      }
-      if (elapsed >= JUST_DRAGGED_CLICK_SUPPRESS_MS) {
-        justDraggedRef.current = null
-      }
-    }
-
-    setActiveTab(tabId)
-  }
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-
-    const oldIndex = tabOrder.findIndex((tabId) => tabId === active.id)
-    const newIndex = tabOrder.findIndex((tabId) => tabId === over.id)
-    if (oldIndex < 0 || newIndex < 0) return
-
-    justDraggedRef.current = {
-      tabId: active.id as WorkspaceTabId,
-      at: Date.now(),
-    }
-
-    const nextTabOrder = arrayMove(tabOrder, oldIndex, newIndex)
-
-    try {
-      const snapshot = await persistTabOrder(nextTabOrder, locale)
-      syncWithTabOrder(snapshot.tabOrder)
-    } catch (error) {
-      console.error("Failed to persist workspace tab order", error)
-      toast.error("Failed to save tab order")
-    }
-  }
-
-  const handleCloseDocumentTab = async (templateId: string) => {
-    const existingDocument = installedDocuments.find(
-      (document) => document.templateId === templateId
-    )
-    if (!existingDocument) return
-
-    const previousTabOrder = [...tabOrder]
-    const closingTabId = buildDocumentTabId(templateId)
-    const closingIndex = previousTabOrder.findIndex((tabId) => tabId === closingTabId)
-    const filteredBefore = previousTabOrder.filter((tabId) => tabId !== closingTabId)
-    const fallbackActiveTab =
-      closingIndex > 0
-        ? previousTabOrder[closingIndex - 1]
-        : (filteredBefore[0] ?? "insights")
-
-    try {
-      const snapshot = await uninstallDocument(templateId, locale)
-      syncWithTabOrder(snapshot.tabOrder)
-      if (activeTab === closingTabId && snapshot.tabOrder.includes(fallbackActiveTab)) {
-        setActiveTab(fallbackActiveTab)
-      }
-      toast.success(`${existingDocument.title} removed from workspace`, {
-        action: {
-          label: "Undo",
-          onClick: () => {
-            void installDocument(
-              templateId,
-              existingDocument.installedVersionId,
-              locale
-            )
-              .then(() => persistTabOrder(previousTabOrder, locale))
-              .then((restoredSnapshot) => {
-                syncWithTabOrder(restoredSnapshot.tabOrder)
-                setActiveTab(buildDocumentTabId(templateId))
-              })
-              .catch((error) => {
-                console.error("Failed to restore document tab", error)
-                toast.error("Failed to restore document")
-              })
-          },
+    return {
+      id: tabId,
+      label,
+      isProcessing,
+      hasUnseenUpdate,
+      diagnosisCount: showDiagnosisCount ? diagnosisCount : null,
+      ariaLabel: getTabAriaLabel(
+        label,
+        {
+          isProcessing,
+          hasUnseenUpdate,
+          diagnosisCount: showDiagnosisCount ? diagnosisCount : 0,
         },
-      })
-    } catch (error) {
-      console.error("Failed to uninstall document", error)
-      toast.error("Failed to remove document")
+        t
+      ),
     }
-  }
+  })
 
   return (
     <ConsultationTopRail className="h-auto min-h-0 items-center overflow-visible border-0 bg-transparent px-2 py-2">
       <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         <div className={cn(TOP_RAIL_SCROLL_CLASS, "h-auto min-h-0 items-center gap-1")}>
-          <DndContext
-            collisionDetection={closestCenter}
-            sensors={sensors}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={tabViewModels.map((tab) => tab.id)}
-              strategy={horizontalListSortingStrategy}
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              aria-current={activeTab === tab.id ? "page" : undefined}
+              aria-label={tab.ariaLabel}
+              onClick={() => setActiveTab(tab.id)}
+              className={WORKSPACE_TAB_BUTTON_CLASS_NAME}
             >
-              {tabViewModels.map((tab) => (
-                <WorkspaceTabChip
-                  key={tab.id}
-                  tab={tab}
-                  onSelect={handleSelectTab}
-                  onClose={handleCloseDocumentTab}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
+              <span className="truncate">{tab.label}</span>
+              {(tab.isProcessing ||
+                tab.hasUnseenUpdate ||
+                tab.diagnosisCount !== null) && (
+                <span className="ml-1.5 flex items-center gap-1.5">
+                  {tab.isProcessing ? (
+                    <IconLoader2
+                      className={cn(
+                        "size-3 animate-spin",
+                        activeTab === tab.id
+                          ? "text-foreground/70"
+                          : "text-muted-foreground"
+                      )}
+                    />
+                  ) : tab.hasUnseenUpdate ? (
+                    <span className="size-1.5 rounded-full bg-emerald-500" />
+                  ) : null}
+                  {tab.diagnosisCount !== null ? (
+                    <span
+                      className={cn(
+                        "inline-flex min-w-4 items-center justify-center rounded-sm px-1 py-0.5 text-[10px] tabular-nums",
+                        activeTab === tab.id
+                          ? "bg-muted text-foreground"
+                          : "bg-background/65 text-muted-foreground"
+                      )}
+                    >
+                      {tab.diagnosisCount}
+                    </span>
+                  ) : null}
+                </span>
+              )}
+            </button>
+          ))}
 
           {showTranscriptToggle ? (
             <button

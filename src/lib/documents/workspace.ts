@@ -21,7 +21,7 @@ export interface WorkspaceTabDefinition {
 export function resolveWorkspaceTabDefinition(
   tabId: WorkspaceTabId,
   installedDocuments: InstalledDocumentSummary[],
-  systemLabels: Record<"insights" | "ddx" | "research", string>
+  systemLabels: Record<"insights" | "ddx" | "documents" | "research", string>
 ): WorkspaceTabDefinition | null {
   if (isSystemWorkspaceTabId(tabId)) {
     return {

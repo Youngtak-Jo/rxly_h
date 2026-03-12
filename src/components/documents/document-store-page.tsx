@@ -6,14 +6,13 @@ import {
   IconFolder,
   IconLoader2,
   IconPlus,
-  IconRosetteDiscountCheckFilled,
-  IconUsers,
 } from "@tabler/icons-react"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 
 import { DocumentCatalogPreviewDialog } from "@/components/documents/document-catalog-preview-dialog"
+import { DocumentPreviewCard } from "@/components/documents/document-preview-card"
 import { DocumentPreviewContent } from "@/components/documents/document-preview-content"
 import { DocumentsHeader } from "@/components/documents/documents-header"
 import {
@@ -36,7 +35,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   getDocumentCategoryLabelKey,
@@ -147,151 +145,6 @@ function buildFallbackCatalogItem(
       generatedAt: null,
     },
   }
-}
-
-function DocumentPreviewCard({
-  item,
-  builtInLabel,
-  draftLabel,
-  updateLabel,
-  installCountLabel,
-  categoryLabel,
-  languageLabel,
-  regionLabel,
-  previewFallbackText,
-  workspaceVisible,
-  workspaceToggleBusy,
-  workspaceShownLabel,
-  workspaceHiddenLabel,
-  onWorkspaceVisibilityChange,
-  onOpen,
-}: {
-  item: DocumentCatalogItem
-  builtInLabel: string
-  draftLabel: string
-  updateLabel: string
-  installCountLabel: string | null
-  categoryLabel: string
-  languageLabel: string
-  regionLabel: string
-  previewFallbackText: string
-  workspaceVisible?: boolean
-  workspaceToggleBusy?: boolean
-  workspaceShownLabel?: string
-  workspaceHiddenLabel?: string
-  onWorkspaceVisibilityChange?: (next: boolean) => void
-  onOpen: (item: DocumentCatalogItem) => void
-}) {
-  const description = item.description.trim()
-  const workspaceSwitchLabel = workspaceVisible
-    ? workspaceShownLabel ?? "Shown in workspace"
-    : workspaceHiddenLabel ?? "Hidden from workspace"
-  const previewHeightClass = "h-[16.25rem]"
-  const hasWorkspaceSwitch =
-    typeof workspaceVisible === "boolean" && !!onWorkspaceVisibilityChange
-
-  return (
-    <div className="group relative w-full">
-      <button
-        type="button"
-        className="w-full cursor-pointer rounded-2xl text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        onClick={() => onOpen(item)}
-      >
-        <div
-          className={`relative ${previewHeightClass} overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-b from-muted/40 to-muted/20 transition group-hover:border-border group-hover:from-muted/55 group-hover:to-muted/35`}
-        >
-          {item.hasUpdate ? (
-            <div className="absolute inset-x-0 top-0 z-10 border-b border-emerald-300/70 bg-emerald-100/95 px-3 py-1.5 text-xs font-semibold text-emerald-900 backdrop-blur-sm">
-              {updateLabel}
-            </div>
-          ) : null}
-
-          <div
-            className={`absolute bottom-3 left-3 z-20 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-1.5 ${hasWorkspaceSwitch ? "pr-10" : ""}`}
-          >
-            <Badge
-              variant="outline"
-              className="border-border/60 bg-background/90 shadow-sm backdrop-blur-sm"
-            >
-              {categoryLabel}
-            </Badge>
-            <Badge
-              variant="outline"
-              className="border-border/60 bg-background/90 shadow-sm backdrop-blur-sm"
-            >
-              {languageLabel}
-            </Badge>
-            <Badge
-              variant="outline"
-              className="border-border/60 bg-background/90 shadow-sm backdrop-blur-sm"
-            >
-              {regionLabel}
-            </Badge>
-          </div>
-
-          <div className="absolute inset-x-0 bottom-1 flex justify-center px-5">
-            <div className="w-full max-w-[72%] rounded-t-xl rounded-b-none border border-b-0 border-border/70 bg-card shadow-[0_-8px_20px_rgba(0,0,0,0.04)]">
-              <div className="relative h-[14rem] overflow-hidden px-3 py-2">
-                <DocumentPreviewContent
-                  preview={item.preview}
-                  variant="card"
-                  placeholder={previewFallbackText}
-                />
-                {item.preview.previewContent ? (
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-card via-card/90 to-transparent" />
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-1.5 px-1 pt-3">
-          <div className="flex items-center gap-2">
-            <h3 className="truncate text-base font-semibold">{item.title}</h3>
-            {item.isBuiltIn ? (
-              <IconRosetteDiscountCheckFilled
-                className="size-4 shrink-0 text-sky-500"
-                title={builtInLabel}
-                aria-label={builtInLabel}
-              />
-            ) : null}
-            {item.visibility !== "PUBLIC" ? (
-              <Badge variant="outline" className="ml-auto">
-                {draftLabel}
-              </Badge>
-            ) : null}
-          </div>
-          <p className="h-10 line-clamp-2 text-sm leading-5 text-muted-foreground">
-            {description || "\u00A0"}
-          </p>
-
-          <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-            <span className="min-w-0 truncate">{item.authorName}</span>
-            {installCountLabel ? (
-              <span className="inline-flex shrink-0 items-center gap-1">
-                <IconUsers className="size-3.5" />
-                {installCountLabel}
-              </span>
-            ) : null}
-          </div>
-        </div>
-      </button>
-
-      {hasWorkspaceSwitch ? (
-        <Switch
-          checked={workspaceVisible}
-          disabled={workspaceToggleBusy}
-          size="sm"
-          className="absolute bottom-[1.05rem] right-3 z-30 scale-110 shadow-sm"
-          aria-label={workspaceSwitchLabel}
-          title={workspaceSwitchLabel}
-          onClick={(event) => event.stopPropagation()}
-          onPointerDown={(event) => event.stopPropagation()}
-          onCheckedChange={onWorkspaceVisibilityChange}
-        />
-      ) : null}
-    </div>
-  )
 }
 
 export function DocumentStorePage({
@@ -792,16 +645,28 @@ export function DocumentStorePage({
                           return (
                             <DocumentPreviewCard
                               key={`installed:${item.templateId}`}
-                              item={item}
+                              title={item.title}
+                              description={item.description}
                               categoryLabel={categoryLabel}
                               languageLabel={languageLabel}
                               regionLabel={regionLabel}
-                              previewFallbackText={previewFallbackText}
+                              preview={
+                                <DocumentPreviewContent
+                                  preview={item.preview}
+                                  variant="card"
+                                  placeholder={previewFallbackText}
+                                />
+                              }
+                              previewHasContent={!!item.preview.previewContent}
                               builtInLabel={builtInLabel}
+                              isBuiltIn={item.isBuiltIn}
                               draftLabel={draftLabel}
+                              isDraft={item.visibility !== "PUBLIC"}
                               updateLabel={updateLabel}
+                              hasUpdate={item.hasUpdate}
+                              authorName={item.authorName}
                               installCountLabel={installCountLabel}
-                              onOpen={setPreviewItem}
+                              onClick={() => setPreviewItem(item)}
                               workspaceVisible={visibleTabs.has(
                                 buildDocumentTabId(item.templateId)
                               )}
@@ -856,16 +721,28 @@ export function DocumentStorePage({
                         return (
                           <DocumentPreviewCard
                             key={`list:${item.templateId}`}
-                            item={item}
+                            title={item.title}
+                            description={item.description}
                             categoryLabel={categoryLabel}
                             languageLabel={languageLabel}
                             regionLabel={regionLabel}
-                            previewFallbackText={previewFallbackText}
+                            preview={
+                              <DocumentPreviewContent
+                                preview={item.preview}
+                                variant="card"
+                                placeholder={previewFallbackText}
+                              />
+                            }
+                            previewHasContent={!!item.preview.previewContent}
                             builtInLabel={builtInLabel}
+                            isBuiltIn={item.isBuiltIn}
                             draftLabel={draftLabel}
+                            isDraft={item.visibility !== "PUBLIC"}
                             updateLabel={updateLabel}
+                            hasUpdate={item.hasUpdate}
+                            authorName={item.authorName}
                             installCountLabel={installCountLabel}
-                            onOpen={setPreviewItem}
+                            onClick={() => setPreviewItem(item)}
                           />
                         )
                       })}

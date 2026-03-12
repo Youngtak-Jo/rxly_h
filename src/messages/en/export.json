@@ -7,5 +7,14 @@
     "expiredTitle": "Link Expired",
     "notFoundDescription": "This export link is invalid or has been removed.",
     "notFoundTitle": "Export Not Found"
+  },
+  "PublicShareViewer": {
+    "defaultTitle": "Shared document",
+    "notFoundDescription": "This patient share link is invalid or no longer available.",
+    "notFoundTitle": "Share Not Found",
+    "printButton": "Print / Save as PDF",
+    "revokedDescription": "This patient share link has been replaced. Please ask your clinician for the latest QR code or link.",
+    "revokedTitle": "Share Disabled",
+    "toolbarDescription": "View the document online or use Print / Save as PDF to keep a copy."
   }
 }

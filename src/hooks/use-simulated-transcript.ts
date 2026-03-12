@@ -72,8 +72,8 @@ export function useSimulatedTranscript() {
           const currentSession = useSessionStore.getState().activeSession
           if (!currentSession || currentSession.id !== sessionId) return
 
-          // Run forced final analysis FIRST (sets isProcessing gate synchronously)
-          // so waitForInsightsToComplete() in useLiveRecord will block until done
+          // Run forced final analysis first so downstream completion waits see
+          // the processing gate immediately.
           runFinalAnalysis()
 
           const store = useRecordingStore.getState()

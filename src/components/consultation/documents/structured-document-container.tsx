@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
+  IconChevronLeft,
   IconLoader2,
   IconThumbDown,
   IconThumbUp,
@@ -14,45 +15,44 @@ import {
   DocumentShell,
 } from "@/components/consultation/documents/document-shell"
 import { Button } from "@/components/ui/button"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Input } from "@/components/ui/input"
 import { deleteCachedSession } from "@/hooks/use-session-loader"
+import { ensureBlankDocumentPersisted } from "@/lib/consultation/blank-document"
+import {
+  BUILT_IN_BLANK_DOCUMENT_TEMPLATE_ID,
+  BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID,
+  BUILT_IN_RECORD_TEMPLATE_ID,
+} from "@/lib/documents/constants"
 import {
   createEmptySessionDocumentGenerationInputs,
-  resolveClinicalContextMode,
 } from "@/lib/documents/generation-config"
 import { getConfirmedDiagnosisRequirement } from "@/lib/documents/generation-requirements"
 import {
   buildStarterRichTextDocument,
+  emptyRichTextDocument,
   genericStructuredContentToRichTextDocument,
   isRichTextDocument,
   normalizeRichTextDocument,
   type RichTextDocument,
 } from "@/lib/documents/rich-text"
-import { buildDocumentTabId } from "@/lib/documents/constants"
 import { DEFAULT_UI_TIME_ZONE, type UiLocale } from "@/i18n/config"
 import { formatDateTime } from "@/i18n/format"
 import { trackClientEvent } from "@/lib/telemetry/client-events"
-import { useConsultationTabStore } from "@/stores/consultation-tab-store"
+import { useConsultationDocumentsStore } from "@/stores/consultation-documents-store"
 import { useDdxStore } from "@/stores/ddx-store"
 import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
-import { useInsightsStore } from "@/stores/insights-store"
+import { useActiveConsultationDocumentDraftStore } from "@/stores/active-consultation-document-draft-store"
 import { useSessionDocumentStore } from "@/stores/session-document-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useSettingsStore } from "@/stores/settings-store"
-import { useTranscriptStore } from "@/stores/transcript-store"
 import type { DiagnosisSelectionItem } from "@/types/diagnosis-selection"
 import type {
-  DocumentClinicalContextMode,
   SessionDocumentGenerationInputs,
   SessionDocumentRecord,
 } from "@/types/document"
 
 interface SessionDocumentSaveResponse {
   sessionDocument: SessionDocumentRecord
-  activeVersion: {
-    id: string
-    versionNumber: number
-  }
 }
 
 function normalizeCode(code: string) {
@@ -65,9 +65,37 @@ function buildGenerationInputsFingerprint(
   const normalized = generationInputs ?? createEmptySessionDocumentGenerationInputs()
 
   return JSON.stringify({
-    clinicalContextMode: normalized.clinicalContextMode,
     confirmedDiagnoses: normalized.confirmedDiagnoses,
   })
+}
+
+function buildSaveFingerprint(args: {
+  document: RichTextDocument
+  generationInputs: SessionDocumentGenerationInputs
+  title?: string | null
+  generatedAt?: string | null
+}) {
+  return JSON.stringify({
+    document: args.document,
+    generationInputs: args.generationInputs,
+    title: args.title?.trim() || null,
+    generatedAt: args.generatedAt ?? null,
+  })
+}
+
+function buildHydrationSignature(args: {
+  sessionId: string
+  sessionDocument: SessionDocumentRecord
+}) {
+  return [
+    args.sessionId,
+    args.sessionDocument.id,
+    args.sessionDocument.updatedAt,
+    args.sessionDocument.templateVersionId,
+    args.sessionDocument.title ?? "",
+    args.sessionDocument.generatedAt ?? "",
+    JSON.stringify(args.sessionDocument.contentJson ?? null),
+  ].join(":")
 }
 
 function hasValidConfirmedDiagnosisSelection(
@@ -117,7 +145,8 @@ function documentHasMeaningfulContent(
 
 function toRichTextDocument(
   sessionDocument: SessionDocumentRecord | null,
-  schemaNodes: SessionDocumentRecord["templateSchemaNodes"]
+  schemaNodes: SessionDocumentRecord["templateSchemaNodes"],
+  blankDocument: boolean
 ): RichTextDocument {
   if (sessionDocument?.contentJson) {
     if (isRichTextDocument(sessionDocument.contentJson)) {
@@ -130,66 +159,80 @@ function toRichTextDocument(
     })
   }
 
-  return buildStarterRichTextDocument(schemaNodes ?? [])
+  return blankDocument
+    ? emptyRichTextDocument()
+    : buildStarterRichTextDocument(schemaNodes ?? [])
+}
+
+async function readErrorMessage(
+  response: Response,
+  fallback: string
+): Promise<string> {
+  try {
+    const payload = (await response.json()) as { error?: string }
+    if (typeof payload?.error === "string" && payload.error.trim()) {
+      return payload.error
+    }
+  } catch {
+    // Ignore malformed error bodies.
+  }
+
+  return fallback
 }
 
 export function StructuredDocumentContainer({
-  templateId,
+  documentId,
 }: {
-  templateId: string
+  documentId: string
 }) {
   const tDocument = useTranslations("ConsultationDocument")
+  const tHub = useTranslations("ConsultationDocumentsHub")
   const locale = useLocale() as UiLocale
   const timeZone = useTimeZone() ?? DEFAULT_UI_TIME_ZONE
-  const activeTab = useConsultationTabStore((state) => state.activeTab)
   const activeSession = useSessionStore((state) => state.activeSession)
   const diagnoses = useDdxStore((state) => state.diagnoses)
-  const insightsSummary = useInsightsStore((state) => state.summary)
-  const insightsKeyFindings = useInsightsStore((state) => state.keyFindings)
-  const insightsRedFlags = useInsightsStore((state) => state.redFlags)
-  const insightsDiagnoses = useInsightsStore((state) => state.diagnoses)
-  const transcriptEntries = useTranscriptStore((state) => state.entries)
-  const installedDocument = useDocumentWorkspaceStore((state) =>
-    state.installedDocuments.find((document) => document.templateId === templateId) ??
-    null
-  )
+  const installedDocuments = useDocumentWorkspaceStore((state) => state.installedDocuments)
   const activeSessionId = activeSession?.id ?? null
+  const sessionDocument = useSessionDocumentStore((state) =>
+    state.getSessionDocumentById(activeSessionId, documentId)
+  )
+  const documentUiState = useSessionDocumentStore((state) =>
+    state.getSessionDocumentUiState(activeSessionId, documentId)
+  )
   const upsertSessionDocument = useSessionDocumentStore(
     (state) => state.upsertSessionDocument
   )
   const setSessionDocumentUiState = useSessionDocumentStore(
     (state) => state.setSessionDocumentUiState
   )
-  const sessionDocument = useSessionDocumentStore((state) =>
-    activeSessionId
-      ? state.documentsBySessionId[activeSessionId]?.[templateId] ?? null
-      : null
-  )
-  const documentUiState = useSessionDocumentStore((state) =>
-    activeSessionId
-      ? state.getSessionDocumentUiState(activeSessionId, templateId)
-      : {
-          isGenerating: false,
-          isSaving: false,
-          lastGenerationError: null,
-          feedbackForGeneratedAt: null,
-        }
-  )
+  const openPicker = useConsultationDocumentsStore((state) => state.openPicker)
   const documentModel = useSettingsStore((state) => state.aiModel.documentModel)
+
+  const installedDocument = useMemo(
+    () =>
+      sessionDocument
+        ? installedDocuments.find(
+            (document) => document.templateId === sessionDocument.templateId
+          ) ?? null
+        : null,
+    [installedDocuments, sessionDocument]
+  )
+  const isBlankDocument =
+    sessionDocument?.templateId === BUILT_IN_BLANK_DOCUMENT_TEMPLATE_ID
   const generationConfig = useMemo(
-    () => installedDocument?.installedVersionGenerationConfig ?? null,
-    [installedDocument?.installedVersionGenerationConfig]
+    () => (isBlankDocument ? null : installedDocument?.installedVersionGenerationConfig ?? null),
+    [installedDocument?.installedVersionGenerationConfig, isBlankDocument]
   )
   const confirmedDiagnosisRequirement = useMemo(
     () => (generationConfig ? getConfirmedDiagnosisRequirement(generationConfig) : null),
     [generationConfig]
   )
+  const hasConfirmedDiagnosisRequirement = !!confirmedDiagnosisRequirement
   const requiresConfirmedDiagnosis =
     confirmedDiagnosisRequirement?.required === true
   const confirmedDiagnosisSelectionMode =
     confirmedDiagnosisRequirement?.selectionMode ?? "single"
 
-  const [draftDocument, setDraftDocument] = useState<RichTextDocument | null>(null)
   const [pendingGenerationInputs, setPendingGenerationInputs] =
     useState<SessionDocumentGenerationInputs>(
       createEmptySessionDocumentGenerationInputs()
@@ -198,7 +241,18 @@ export function StructuredDocumentContainer({
   const [saveError, setSaveError] = useState<string | null>(null)
   const hydrationSignatureRef = useRef<string | null>(null)
   const lastSavedFingerprintRef = useRef<string | null>(null)
-  const autoGenerateAttemptRef = useRef<string | null>(null)
+  const lastGeneratedInputsFingerprintRef = useRef<string | null>(null)
+  const lastBlankPersistenceRequestRef = useRef<string | null>(null)
+  const skipAutosaveForSignatureRef = useRef<string | null>(null)
+  const activeDraft = useActiveConsultationDocumentDraftStore((state) =>
+    state.getDraft(activeSessionId, documentId)
+  )
+  const hydrateActiveDraft = useActiveConsultationDocumentDraftStore(
+    (state) => state.hydrateDraft
+  )
+  const patchActiveDraft = useActiveConsultationDocumentDraftStore(
+    (state) => state.patchDraft
+  )
 
   const schemaNodes = useMemo(
     () =>
@@ -211,245 +265,276 @@ export function StructuredDocumentContainer({
     ]
   )
   const starterDocument = useMemo(
-    () => buildStarterRichTextDocument(schemaNodes),
-    [schemaNodes]
+    () =>
+      isBlankDocument
+        ? emptyRichTextDocument()
+        : buildStarterRichTextDocument(schemaNodes),
+    [isBlankDocument, schemaNodes]
   )
   const currentDocument = useMemo(
-    () => toRichTextDocument(sessionDocument, schemaNodes),
-    [schemaNodes, sessionDocument]
-  )
-  const currentFingerprint = useMemo(
-    () => JSON.stringify(currentDocument),
-    [currentDocument]
+    () => toRichTextDocument(sessionDocument, schemaNodes, !!isBlankDocument),
+    [isBlankDocument, schemaNodes, sessionDocument]
   )
   const starterFingerprint = useMemo(
     () => JSON.stringify(starterDocument),
     [starterDocument]
   )
-  const isStarterDocument = currentFingerprint === starterFingerprint
-  const hasMeaningfulCurrentContent = documentHasMeaningfulContent(currentDocument)
+  const draftDocument = activeDraft?.draftDocument ?? null
+  const draftTitle = activeDraft?.draftTitle ?? ""
+  const isStreaming = activeDraft?.isStreaming ?? false
+  const isFinalReconcilePending = activeDraft?.finalReconcilePending === true
   const hasVisibleDocument =
     !!draftDocument &&
-    (!!sessionDocument?.generatedAt ||
-      (documentHasMeaningfulContent(draftDocument) &&
-        JSON.stringify(draftDocument) !== starterFingerprint))
-  const isActiveDocumentTab = activeTab === buildDocumentTabId(templateId)
-
-  const selectedClinicalContextMode = useMemo(() => {
-    if (!generationConfig) return "insights"
-    return resolveClinicalContextMode({
-      generationConfig,
-      generationInputs: pendingGenerationInputs,
-    })
-  }, [generationConfig, pendingGenerationInputs])
-
-  const insightsAvailable =
-    insightsSummary.trim().length > 0 ||
-    insightsKeyFindings.length > 0 ||
-    insightsRedFlags.length > 0 ||
-    insightsDiagnoses.length > 0
-  const transcriptAvailable = transcriptEntries.length > 0
-  const selectedClinicalSourceAvailable =
-    selectedClinicalContextMode === "transcript"
-      ? transcriptAvailable
-      : insightsAvailable
+    (isBlankDocument
+      ? true
+      : !!sessionDocument?.generatedAt ||
+        (documentHasMeaningfulContent(draftDocument) &&
+          JSON.stringify(draftDocument) !== starterFingerprint))
+  const shouldShowPreparationByDefault =
+    !isBlankDocument &&
+    hasConfirmedDiagnosisRequirement &&
+    !sessionDocument?.generatedAt &&
+    !documentHasMeaningfulContent(currentDocument)
+  const hydrationSignature =
+    activeSessionId && sessionDocument
+      ? buildHydrationSignature({
+          sessionId: activeSessionId,
+          sessionDocument,
+        })
+      : null
 
   useEffect(() => {
-    if (!activeSessionId) {
+    if (!activeSessionId || !sessionDocument) {
       hydrationSignatureRef.current = null
       lastSavedFingerprintRef.current = null
-      autoGenerateAttemptRef.current = null
-      setDraftDocument(null)
+      lastGeneratedInputsFingerprintRef.current = null
       setPendingGenerationInputs(createEmptySessionDocumentGenerationInputs())
       setShowPreparationView(false)
       setSaveError(null)
+      skipAutosaveForSignatureRef.current = null
       return
     }
 
-    const signature = [
-      activeSessionId,
-      templateId,
-      sessionDocument?.updatedAt ?? "new",
-      sessionDocument?.templateVersionId ?? installedDocument?.installedVersionId ?? "none",
-    ].join(":")
-
-    if (hydrationSignatureRef.current === signature) {
+    if (!hydrationSignature || hydrationSignatureRef.current === hydrationSignature) {
       return
     }
 
-    hydrationSignatureRef.current = signature
-    setDraftDocument(currentDocument)
-    lastSavedFingerprintRef.current = JSON.stringify(currentDocument)
-
-    const nextGenerationInputs =
-      sessionDocument?.generationInputs ?? createEmptySessionDocumentGenerationInputs()
+    hydrationSignatureRef.current = hydrationSignature
+    skipAutosaveForSignatureRef.current = hydrationSignature
+    const nextTitle = sessionDocument.title ?? installedDocument?.title ?? ""
+    const nextGenerationInputs = {
+      ...(sessionDocument.generationInputs ??
+        createEmptySessionDocumentGenerationInputs()),
+      clinicalContextMode: null,
+    }
+    if (
+      !activeDraft ||
+      (!activeDraft.dirty &&
+        !activeDraft.isStreaming &&
+        !activeDraft.finalReconcilePending)
+    ) {
+      hydrateActiveDraft({
+        sessionId: activeSessionId,
+        documentId: sessionDocument.id,
+        draftDocument: currentDocument,
+        draftTitle: nextTitle,
+        isStreaming: false,
+        streamRequestId: null,
+        dirty: false,
+        lastPersistedRevision: hydrationSignature,
+        sanitizedHtmlBuffer: "",
+        lastRenderableDocument: currentDocument,
+        finalReconcilePending: false,
+      })
+    }
     setPendingGenerationInputs(nextGenerationInputs)
-    setShowPreparationView(
-      requiresConfirmedDiagnosis &&
-        (!sessionDocument?.generatedAt ||
-          !hasValidConfirmedDiagnosisSelection(
-            nextGenerationInputs,
-            confirmedDiagnosisSelectionMode
-          ))
-    )
+    setShowPreparationView(shouldShowPreparationByDefault)
     setSaveError(null)
-
-    if (sessionDocument?.generatedAt) {
-      autoGenerateAttemptRef.current = null
-    }
+    lastSavedFingerprintRef.current = sessionDocument.needsSync
+      ? null
+      : buildSaveFingerprint({
+          document: currentDocument,
+          generationInputs: nextGenerationInputs,
+          title: sessionDocument.title,
+          generatedAt: sessionDocument.generatedAt,
+        })
+    lastGeneratedInputsFingerprintRef.current = sessionDocument.generatedAt
+      ? buildGenerationInputsFingerprint(sessionDocument.generationInputs)
+      : null
   }, [
     activeSessionId,
-    confirmedDiagnosisSelectionMode,
+    activeDraft,
     currentDocument,
-    installedDocument?.installedVersionId,
-    requiresConfirmedDiagnosis,
-    sessionDocument?.generatedAt,
-    sessionDocument?.generationInputs,
-    sessionDocument?.templateVersionId,
-    sessionDocument?.updatedAt,
-    templateId,
+    hydrateActiveDraft,
+    hydrationSignature,
+    installedDocument?.title,
+    sessionDocument,
+    shouldShowPreparationByDefault,
   ])
 
   useEffect(() => {
-    if (!activeSessionId || !draftDocument || !installedDocument) return
+    if (!activeSessionId || !sessionDocument || !draftDocument) return
 
-    const fingerprint = JSON.stringify(draftDocument)
-    if (lastSavedFingerprintRef.current === fingerprint) {
+    if (sessionDocument.localOnly) {
+      const persistenceFingerprint = JSON.stringify({
+        documentId: sessionDocument.id,
+        title: draftTitle.trim() || null,
+        document: draftDocument,
+      })
+
+      if (
+        !sessionDocument.pendingCreate &&
+        lastBlankPersistenceRequestRef.current !== persistenceFingerprint
+      ) {
+        lastBlankPersistenceRequestRef.current = persistenceFingerprint
+        void ensureBlankDocumentPersisted({
+          sessionId: activeSessionId,
+          documentId: sessionDocument.id,
+          fallbackTitle: draftTitle.trim() || tHub("untitledBlankDocument"),
+          errorMessage: tHub("errors.createBlankFailed"),
+        }).catch(() => {
+          // Keep the editor open and surface the error inline.
+        })
+      }
+      return
+    }
+
+    lastBlankPersistenceRequestRef.current = null
+
+    if (documentUiState.isGenerating || isStreaming || isFinalReconcilePending) {
+      return
+    }
+
+    if (
+      hydrationSignature &&
+      skipAutosaveForSignatureRef.current === hydrationSignature
+    ) {
+      skipAutosaveForSignatureRef.current = null
+      return
+    }
+
+    const nextFingerprint = buildSaveFingerprint({
+      document: draftDocument,
+      generationInputs: pendingGenerationInputs,
+      title: isBlankDocument ? draftTitle : sessionDocument.title,
+      generatedAt: sessionDocument.generatedAt,
+    })
+    if (lastSavedFingerprintRef.current === nextFingerprint) {
       return
     }
 
     const timer = setTimeout(async () => {
       try {
-        setSessionDocumentUiState(activeSessionId, templateId, {
+        setSessionDocumentUiState(activeSessionId, sessionDocument.id, {
           isSaving: true,
         })
 
+        const body: Record<string, unknown> = {
+          templateVersionId: sessionDocument.templateVersionId,
+          contentJson: draftDocument,
+          generationInputs: pendingGenerationInputs,
+        }
+        if (sessionDocument.generatedAt) {
+          body.generatedAt = sessionDocument.generatedAt
+        }
+        if (isBlankDocument) {
+          body.title = draftTitle.trim() || null
+        }
+
         const response = await fetch(
-          `/api/sessions/${activeSessionId}/documents/${templateId}`,
+          `/api/sessions/${activeSessionId}/documents/by-id/${sessionDocument.id}`,
           {
-            method: "PUT",
+            method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              templateVersionId:
-                sessionDocument?.templateVersionId ?? installedDocument.installedVersionId,
-              contentJson: draftDocument,
-              generationInputs: pendingGenerationInputs,
-              generatedAt: sessionDocument?.generatedAt ?? null,
-            }),
+            body: JSON.stringify(body),
           }
         )
 
         if (!response.ok) {
-          throw new Error("Failed to save document")
+          throw new Error(
+            await readErrorMessage(response, "Failed to save document")
+          )
         }
 
         const payload = (await response.json()) as SessionDocumentSaveResponse
-        lastSavedFingerprintRef.current = JSON.stringify(
-          payload.sessionDocument.contentJson
-        )
+        const nextRevision = buildHydrationSignature({
+          sessionId: activeSessionId,
+          sessionDocument: payload.sessionDocument,
+        })
+        const nextDocument = normalizeRichTextDocument(payload.sessionDocument.contentJson)
+        lastSavedFingerprintRef.current = buildSaveFingerprint({
+          document: nextDocument,
+          generationInputs:
+            payload.sessionDocument.generationInputs ??
+            createEmptySessionDocumentGenerationInputs(),
+          title: payload.sessionDocument.title,
+          generatedAt: payload.sessionDocument.generatedAt,
+        })
+        hydrateActiveDraft({
+          sessionId: activeSessionId,
+          documentId: payload.sessionDocument.id,
+          draftDocument: nextDocument,
+          draftTitle: payload.sessionDocument.title ?? installedDocument?.title ?? "",
+          isStreaming: false,
+          streamRequestId: null,
+          dirty: false,
+          lastPersistedRevision: nextRevision,
+          sanitizedHtmlBuffer: "",
+          lastRenderableDocument: nextDocument,
+          finalReconcilePending: false,
+        })
         upsertSessionDocument(payload.sessionDocument)
         deleteCachedSession(activeSessionId)
         setSaveError(null)
       } catch (error) {
         console.error("Failed to autosave document", error)
-        setSaveError("Failed to save document")
+        setSaveError(
+          error instanceof Error && error.message
+            ? error.message
+            : "Failed to save document"
+        )
       } finally {
-        setSessionDocumentUiState(activeSessionId, templateId, {
+        setSessionDocumentUiState(activeSessionId, sessionDocument.id, {
           isSaving: false,
         })
       }
-    }, 900)
+    }, 700)
 
     return () => clearTimeout(timer)
   }, [
     activeSessionId,
     draftDocument,
-    installedDocument,
-    pendingGenerationInputs,
-    sessionDocument?.generatedAt,
-    sessionDocument?.templateVersionId,
-    setSessionDocumentUiState,
-    templateId,
-    upsertSessionDocument,
-  ])
-
-  useEffect(() => {
-    if (!activeSessionId || !installedDocument) {
-      return
-    }
-
-    const pendingFingerprint = buildGenerationInputsFingerprint(
-      pendingGenerationInputs
-    )
-    const savedFingerprint = buildGenerationInputsFingerprint(
-      sessionDocument?.generationInputs
-    )
-    if (pendingFingerprint === savedFingerprint) {
-      return
-    }
-
-    if (
-      !sessionDocument &&
-      pendingFingerprint ===
-        buildGenerationInputsFingerprint(
-          createEmptySessionDocumentGenerationInputs()
-        )
-    ) {
-      return
-    }
-
-    const timer = setTimeout(async () => {
-      try {
-        const response = await fetch(
-          `/api/sessions/${activeSessionId}/documents/${templateId}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              templateVersionId:
-                sessionDocument?.templateVersionId ??
-                installedDocument.installedVersionId,
-              contentJson: draftDocument ?? starterDocument,
-              generationInputs: pendingGenerationInputs,
-              generatedAt: null,
-            }),
-          }
-        )
-
-        if (!response.ok) {
-          throw new Error("Failed to save document inputs")
-        }
-
-        const payload = (await response.json()) as SessionDocumentSaveResponse
-        upsertSessionDocument(payload.sessionDocument)
-        deleteCachedSession(activeSessionId)
-      } catch (error) {
-        console.error("Failed to save document generation inputs", error)
-      }
-    }, 350)
-
-    return () => clearTimeout(timer)
-  }, [
-    activeSessionId,
-    draftDocument,
-    installedDocument,
+    draftTitle,
+    documentUiState.isGenerating,
+    hydrateActiveDraft,
+    hydrationSignature,
+    installedDocument?.title,
+    isStreaming,
+    isBlankDocument,
+    isFinalReconcilePending,
     pendingGenerationInputs,
     sessionDocument,
-    starterDocument,
-    templateId,
+    setSessionDocumentUiState,
+    tHub,
     upsertSessionDocument,
   ])
 
   const handleGenerate = useCallback(
     async (
-      trigger: "auto_open" | "regenerate",
+      trigger: "manual_generate" | "regenerate",
       generationInputsOverride?: SessionDocumentGenerationInputs | null
     ) => {
-      if (!activeSessionId || !installedDocument || documentUiState.isGenerating) {
+      if (
+        !activeSessionId ||
+        !sessionDocument ||
+        !installedDocument ||
+        !generationConfig ||
+        documentUiState.isGenerating
+      ) {
         return
       }
 
-      setSessionDocumentUiState(activeSessionId, templateId, {
+      setSessionDocumentUiState(activeSessionId, sessionDocument.id, {
         isGenerating: true,
         lastGenerationError: null,
       })
@@ -459,18 +544,17 @@ export function StructuredDocumentContainer({
         feature: "custom_document",
         sessionId: activeSessionId,
         metadata: {
-          templateId,
+          templateId: sessionDocument.templateId,
           templateTitle: installedDocument.title,
-          templateVersionId:
-            sessionDocument?.templateVersionId ?? installedDocument.installedVersionId,
-          generatedAt: sessionDocument?.generatedAt ?? null,
+          templateVersionId: sessionDocument.templateVersionId,
+          generatedAt: sessionDocument.generatedAt ?? null,
           trigger,
         },
       })
 
       try {
         const response = await fetch(
-          `/api/sessions/${activeSessionId}/documents/${templateId}/generate`,
+          `/api/sessions/${activeSessionId}/documents/${sessionDocument.templateId}/generate`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -482,10 +566,9 @@ export function StructuredDocumentContainer({
         )
 
         if (!response.ok) {
-          const payload = (await response.json().catch(() => ({}))) as {
-            error?: string
-          }
-          throw new Error(payload.error || "Failed to generate document")
+          throw new Error(
+            await readErrorMessage(response, "Failed to generate document")
+          )
         }
 
         const payload = (await response.json()) as {
@@ -500,37 +583,44 @@ export function StructuredDocumentContainer({
                 payload.sessionDocument.templateSchemaNodes ?? schemaNodes,
             })
 
-        if (!documentHasMeaningfulContent(nextDocument)) {
-          throw new Error("Generated document is empty")
-        }
-
         upsertSessionDocument(payload.sessionDocument)
-        setDraftDocument(nextDocument)
+        hydrateActiveDraft({
+          sessionId: activeSessionId,
+          documentId: payload.sessionDocument.id,
+          draftDocument: nextDocument,
+          draftTitle: payload.sessionDocument.title ?? installedDocument.title,
+          isStreaming: false,
+          streamRequestId: null,
+          dirty: false,
+          lastPersistedRevision: buildHydrationSignature({
+            sessionId: activeSessionId,
+            sessionDocument: payload.sessionDocument,
+          }),
+          sanitizedHtmlBuffer: "",
+          lastRenderableDocument: nextDocument,
+          finalReconcilePending: false,
+        })
         setPendingGenerationInputs(
           payload.sessionDocument.generationInputs ??
             createEmptySessionDocumentGenerationInputs()
         )
         setShowPreparationView(false)
-        lastSavedFingerprintRef.current = JSON.stringify(nextDocument)
+        lastSavedFingerprintRef.current = buildSaveFingerprint({
+          document: nextDocument,
+          generationInputs:
+            payload.sessionDocument.generationInputs ??
+            createEmptySessionDocumentGenerationInputs(),
+          title: payload.sessionDocument.title,
+          generatedAt: payload.sessionDocument.generatedAt,
+        })
+        lastGeneratedInputsFingerprintRef.current = buildGenerationInputsFingerprint(
+          payload.sessionDocument.generationInputs
+        )
         deleteCachedSession(activeSessionId)
         setSaveError(null)
-        autoGenerateAttemptRef.current = null
-        setSessionDocumentUiState(activeSessionId, templateId, {
+        setSessionDocumentUiState(activeSessionId, sessionDocument.id, {
           lastGenerationError: null,
           feedbackForGeneratedAt: null,
-        })
-
-        trackClientEvent({
-          eventType: "analysis_completed",
-          feature: "custom_document",
-          sessionId: activeSessionId,
-          metadata: {
-            templateId,
-            templateTitle: installedDocument.title,
-            templateVersionId: payload.sessionDocument.templateVersionId,
-            generatedAt: payload.sessionDocument.generatedAt,
-            trigger,
-          },
         })
       } catch (error) {
         console.error("Failed to generate document", error)
@@ -538,25 +628,11 @@ export function StructuredDocumentContainer({
           error instanceof Error && error.message.trim()
             ? error.message
             : "request_error"
-        setSessionDocumentUiState(activeSessionId, templateId, {
+        setSessionDocumentUiState(activeSessionId, sessionDocument.id, {
           lastGenerationError: reason,
         })
-        trackClientEvent({
-          eventType: "analysis_failed",
-          feature: "custom_document",
-          sessionId: activeSessionId,
-          metadata: {
-            templateId,
-            templateTitle: installedDocument.title,
-            templateVersionId:
-              sessionDocument?.templateVersionId ?? installedDocument.installedVersionId,
-            generatedAt: sessionDocument?.generatedAt ?? null,
-            trigger,
-            reason,
-          },
-        })
       } finally {
-        setSessionDocumentUiState(activeSessionId, templateId, {
+        setSessionDocumentUiState(activeSessionId, sessionDocument.id, {
           isGenerating: false,
         })
       }
@@ -565,55 +641,15 @@ export function StructuredDocumentContainer({
       activeSessionId,
       documentModel,
       documentUiState.isGenerating,
+      generationConfig,
+      hydrateActiveDraft,
       installedDocument,
       schemaNodes,
-      sessionDocument?.generatedAt,
-      sessionDocument?.templateVersionId,
+      sessionDocument,
       setSessionDocumentUiState,
-      templateId,
       upsertSessionDocument,
     ]
   )
-
-  useEffect(() => {
-    if (!activeSessionId || !installedDocument || !isActiveDocumentTab) return
-    if (documentUiState.isGenerating) return
-    if (requiresConfirmedDiagnosis) return
-    if (!selectedClinicalSourceAvailable) return
-
-    const hasManualDraft =
-      !!sessionDocument &&
-      !sessionDocument.generatedAt &&
-      hasMeaningfulCurrentContent &&
-      !isStarterDocument
-
-    const shouldAutoGenerate =
-      !sessionDocument ||
-      (!sessionDocument.generatedAt &&
-        (!hasManualDraft || !hasMeaningfulCurrentContent || isStarterDocument))
-
-    if (!shouldAutoGenerate) return
-
-    const attemptKey = `${activeSessionId}:${templateId}:${selectedClinicalContextMode}`
-    if (autoGenerateAttemptRef.current === attemptKey) return
-
-    autoGenerateAttemptRef.current = attemptKey
-    void handleGenerate("auto_open", pendingGenerationInputs)
-  }, [
-    activeSessionId,
-    documentUiState.isGenerating,
-    handleGenerate,
-    hasMeaningfulCurrentContent,
-    installedDocument,
-    isActiveDocumentTab,
-    isStarterDocument,
-    pendingGenerationInputs,
-    requiresConfirmedDiagnosis,
-    selectedClinicalContextMode,
-    selectedClinicalSourceAvailable,
-    sessionDocument,
-    templateId,
-  ])
 
   const conditionItems = useMemo(() => {
     const byCode = new Map<string, DiagnosisSelectionItem>()
@@ -644,49 +680,62 @@ export function StructuredDocumentContainer({
     return Array.from(byCode.values())
   }, [diagnoses, pendingGenerationInputs.confirmedDiagnoses, tDocument])
 
-  const generationInputsDirty =
-    buildGenerationInputsFingerprint(pendingGenerationInputs) !==
-    buildGenerationInputsFingerprint(sessionDocument?.generationInputs)
+  if (!activeSessionId) {
+    return <DocumentShell empty emptyMessage={tDocument("startConsultation")} />
+  }
+
+  if (!sessionDocument) {
+    return <DocumentShell empty emptyMessage={tDocument("loading")} />
+  }
+
+  if (!isBlankDocument && (!installedDocument || !generationConfig)) {
+    return <DocumentShell empty emptyMessage={tDocument("loading")} />
+  }
+
   const hasValidPendingSelection = hasValidConfirmedDiagnosisSelection(
     pendingGenerationInputs,
     confirmedDiagnosisSelectionMode
   )
-  const documentIsStale = hasVisibleDocument && !sessionDocument?.generatedAt
-  const showPreparationPanel =
-    requiresConfirmedDiagnosis && (showPreparationView || !hasVisibleDocument)
-  const showInitialSetupPanel =
-    !requiresConfirmedDiagnosis &&
-    !hasVisibleDocument &&
-    !documentUiState.isGenerating
-  const showSetupPanel = showPreparationPanel || showInitialSetupPanel
-  const showStaleNotice = hasVisibleDocument && (generationInputsDirty || documentIsStale)
+  const showSetupPanel =
+    !isBlankDocument &&
+    (showPreparationView || (!hasVisibleDocument && !documentUiState.isGenerating))
+  const showStaleNotice =
+    !isBlankDocument &&
+    hasVisibleDocument &&
+    !!lastGeneratedInputsFingerprintRef.current &&
+    buildGenerationInputsFingerprint(pendingGenerationInputs) !==
+      lastGeneratedInputsFingerprintRef.current
 
   const canGenerate =
-    selectedClinicalSourceAvailable &&
+    !!generationConfig &&
     (!requiresConfirmedDiagnosis || hasValidPendingSelection)
 
-  const sourceHint =
-    selectedClinicalContextMode === "transcript"
-      ? tDocument("clinicalBasisTranscriptHint")
-      : tDocument("clinicalBasisInsightsHint")
-  const sourceNotReadyMessage =
-    selectedClinicalContextMode === "transcript"
-      ? tDocument("clinicalBasisTranscriptUnavailable")
-      : tDocument("clinicalBasisInsightsUnavailable")
-
-  const footerMeta = installedDocument ? (
+  const footerMeta = isBlankDocument ? (
     <>
-      <span>
-        v{sessionDocument?.templateVersionNumber ?? installedDocument.installedVersionNumber}
-      </span>
-      {sessionDocument?.generatedAt ? (
+      {sessionDocument.generatedAt ? (
         <span>
           {tDocument("generatedAt", {
             value: formatDateTime(sessionDocument.generatedAt, locale, timeZone),
           })}
         </span>
       ) : null}
-      {sessionDocument &&
+      {sessionDocument.pendingCreate || documentUiState.isSaving ? (
+        <span>{tDocument("saving")}</span>
+      ) : null}
+    </>
+  ) : (
+    <>
+      <span>
+        v{sessionDocument.templateVersionNumber ?? installedDocument?.installedVersionNumber}
+      </span>
+      {sessionDocument.generatedAt ? (
+        <span>
+          {tDocument("generatedAt", {
+            value: formatDateTime(sessionDocument.generatedAt, locale, timeZone),
+          })}
+        </span>
+      ) : null}
+      {installedDocument &&
       sessionDocument.templateVersionId !== installedDocument.installedVersionId ? (
         <span>{tDocument("updateAvailable")}</span>
       ) : null}
@@ -694,121 +743,111 @@ export function StructuredDocumentContainer({
         <span>{tDocument("saving")}</span>
       ) : null}
     </>
-  ) : null
+  )
 
   const feedbackDisabled =
-    !activeSessionId ||
-    !sessionDocument?.generatedAt ||
+    !sessionDocument.generatedAt ||
     documentUiState.feedbackForGeneratedAt === sessionDocument.generatedAt
 
   const submitFeedback = (vote: "up" | "down") => {
-    if (!activeSessionId || !installedDocument || !sessionDocument?.generatedAt) return
+    if (!activeSessionId || !sessionDocument.generatedAt || !installedDocument) return
 
     trackClientEvent({
       eventType: "document_feedback_submitted",
       feature: "custom_document",
       sessionId: activeSessionId,
       metadata: {
-        templateId,
+        templateId: sessionDocument.templateId,
         templateTitle: installedDocument.title,
-        templateVersionId:
-          sessionDocument.templateVersionId ?? installedDocument.installedVersionId,
+        templateVersionId: sessionDocument.templateVersionId,
         generatedAt: sessionDocument.generatedAt,
         vote,
       },
     })
 
-    setSessionDocumentUiState(activeSessionId, templateId, {
+    setSessionDocumentUiState(activeSessionId, sessionDocument.id, {
       feedbackForGeneratedAt: sessionDocument.generatedAt,
     })
   }
 
-  const renderClinicalBasisSection = (compact = false) => (
-    <DocumentSection
-      title={tDocument("clinicalBasisTitle")}
-      description={sourceHint}
-      className={compact ? "space-y-2" : undefined}
-    >
-      <div className="space-y-3 rounded-lg border px-4 py-4">
-        <ToggleGroup
-          type="single"
-          value={selectedClinicalContextMode}
-          onValueChange={(value) => {
-            if (!value || !generationConfig) return
-
-            const nextMode = value as DocumentClinicalContextMode
-            setPendingGenerationInputs((currentInputs) => ({
-              ...currentInputs,
-              clinicalContextMode:
-                nextMode === generationConfig.clinicalContextDefault
-                  ? null
-                  : nextMode,
-            }))
-          }}
-          variant="outline"
-          className="w-full justify-start"
-        >
-          <ToggleGroupItem value="insights">
-            {tDocument("clinicalBasisInsights")}
-          </ToggleGroupItem>
-          <ToggleGroupItem value="transcript">
-            {tDocument("clinicalBasisTranscript")}
-          </ToggleGroupItem>
-        </ToggleGroup>
-
-        {!selectedClinicalSourceAvailable ? (
-          <div className="rounded-md border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-            {sourceNotReadyMessage}
-          </div>
-        ) : null}
-      </div>
-    </DocumentSection>
-  )
-
-  if (!activeSessionId) {
-    return <DocumentShell empty emptyMessage={tDocument("startConsultation")} />
-  }
-
-  if (!installedDocument || !generationConfig) {
-    return <DocumentShell empty emptyMessage={tDocument("loading")} />
-  }
-
   const ambientState = documentUiState.isGenerating
-    ? sessionDocument?.generatedAt
+    ? sessionDocument.generatedAt
       ? "updating"
       : "generating"
+    : sessionDocument.pendingCreate
+      ? "saving"
     : documentUiState.isSaving
       ? "saving"
       : "idle"
-  const showFooterActions =
-    hasVisibleDocument ||
-    !!documentUiState.lastGenerationError ||
-    showSetupPanel
+  const titleValue =
+    sessionDocument.title ??
+    installedDocument?.title ??
+    tHub("untitledBlankDocument")
+  const topRightAction =
+    !isBlankDocument && showPreparationView && hasVisibleDocument ? (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+        onClick={() => setShowPreparationView(false)}
+      >
+        {tDocument("backToDocument")}
+      </Button>
+    ) : !isBlankDocument && hasConfirmedDiagnosisRequirement && hasVisibleDocument ? (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+        onClick={() => setShowPreparationView(true)}
+      >
+        {tDocument("changeDiagnosis")}
+      </Button>
+    ) : null
 
-  return (
+  const content = (
     <DocumentShell
       topActions={
-        showPreparationPanel && hasVisibleDocument ? (
+        <div className="flex w-full items-center gap-3">
           <Button
             type="button"
             variant="ghost"
-            size="sm"
-            className="-ml-3 text-muted-foreground hover:text-foreground"
-            onClick={() => setShowPreparationView(false)}
+            size="icon"
+            className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
+            aria-label={tHub("backToList")}
+            title={tHub("backToList")}
+            onClick={() => {
+              if (!activeSessionId) return
+              openPicker(activeSessionId)
+            }}
           >
-            {tDocument("backToDocument")}
+            <IconChevronLeft className="size-4" />
           </Button>
-        ) : requiresConfirmedDiagnosis && hasVisibleDocument ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="-ml-3 text-muted-foreground hover:text-foreground"
-            onClick={() => setShowPreparationView(true)}
-          >
-            {tDocument("changeDiagnosis")}
-          </Button>
-        ) : null
+
+          <div className="min-w-0 flex-1">
+            {isBlankDocument ? (
+              <Input
+                value={draftTitle}
+                onChange={(event) => {
+                  const nextTitle = event.target.value
+                  if (!activeSessionId || !sessionDocument) return
+                  patchActiveDraft(activeSessionId, sessionDocument.id, {
+                    draftTitle: nextTitle,
+                    dirty: true,
+                    finalReconcilePending: false,
+                  })
+                }}
+                placeholder={tHub("untitledBlankDocument")}
+                className="h-10 border-border/70 text-base font-semibold"
+              />
+            ) : (
+              <h2 className="truncate text-lg font-semibold">{titleValue}</h2>
+            )}
+          </div>
+
+          {topRightAction}
+        </div>
       }
       notice={
         showStaleNotice ? (
@@ -820,11 +859,11 @@ export function StructuredDocumentContainer({
       ambientState={ambientState}
       loading={documentUiState.isGenerating && !hasVisibleDocument}
       loadingLabel={tDocument("updating")}
-      error={documentUiState.lastGenerationError ?? saveError}
+      error={sessionDocument.createError ?? documentUiState.lastGenerationError ?? saveError}
       empty={false}
       footerMeta={footerMeta}
       footerActions={
-        showFooterActions ? (
+        !isBlankDocument ? (
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -833,7 +872,7 @@ export function StructuredDocumentContainer({
               disabled={documentUiState.isGenerating || !canGenerate}
               onClick={() => {
                 void handleGenerate(
-                  sessionDocument?.generatedAt ? "regenerate" : "auto_open",
+                  sessionDocument.generatedAt ? "regenerate" : "manual_generate",
                   pendingGenerationInputs
                 )
               }}
@@ -850,7 +889,7 @@ export function StructuredDocumentContainer({
               )}
             </Button>
 
-            {sessionDocument?.generatedAt ? (
+            {sessionDocument.generatedAt ? (
               <>
                 <Button
                   type="button"
@@ -882,8 +921,7 @@ export function StructuredDocumentContainer({
     >
       {showSetupPanel ? (
         <>
-          {renderClinicalBasisSection()}
-          {requiresConfirmedDiagnosis ? (
+          {hasConfirmedDiagnosisRequirement ? (
             <DocumentSection
               title={tDocument("confirmedDiagnosesTitle")}
               description={tDocument(
@@ -911,66 +949,47 @@ export function StructuredDocumentContainer({
                   tDocument("selectConfirmedDiagnosis", { name })
                 }
                 onChange={(nextConditions) => {
-                  setPendingGenerationInputs((currentInputs) => ({
-                    ...currentInputs,
-                    confirmedDiagnoses: nextConditions,
-                  }))
+                  setPendingGenerationInputs((currentInputs) => {
+                    return {
+                      ...currentInputs,
+                      confirmedDiagnoses: nextConditions,
+                    }
+                  })
                 }}
               />
             </DocumentSection>
           ) : null}
         </>
-      ) : hasVisibleDocument && draftDocument ? (
+      ) : draftDocument ? (
         <>
-          {renderClinicalBasisSection(true)}
           <DocumentEditor
             value={draftDocument}
             placeholder={tDocument("slashHint")}
             embedded
             toolbarMode="sticky"
             onChange={(nextValue) => {
-              if (!activeSessionId || !installedDocument) return
-
-              setDraftDocument(nextValue)
-              setSaveError(null)
-
-              upsertSessionDocument({
-                id: sessionDocument?.id ?? `draft:${activeSessionId}:${templateId}`,
-                sessionId: activeSessionId,
-                templateId,
-                templateVersionId:
-                  sessionDocument?.templateVersionId ??
-                  installedDocument.installedVersionId,
-                templateVersionNumber:
-                  sessionDocument?.templateVersionNumber ??
-                  installedDocument.installedVersionNumber,
-                templateSchemaNodes:
-                  sessionDocument?.templateSchemaNodes ??
-                  installedDocument.installedVersionSchemaNodes,
-                contentJson: nextValue as Record<string, unknown>,
-                generationInputs: pendingGenerationInputs,
-                generatedAt: sessionDocument?.generatedAt ?? null,
-                updatedAt: new Date().toISOString(),
+              if (!activeSessionId || !sessionDocument) return
+              patchActiveDraft(activeSessionId, sessionDocument.id, {
+                draftDocument: nextValue,
+                dirty: true,
+                finalReconcilePending: false,
               })
+              setSaveError(null)
             }}
           />
         </>
-      ) : (
-        <DocumentSection
-          title={tDocument("clinicalBasisTitle")}
-          description={sourceHint}
-        >
-          {!selectedClinicalSourceAvailable ? (
-            <div className="rounded-md border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-              {sourceNotReadyMessage}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {tDocument("noContent")}
-            </p>
-          )}
-        </DocumentSection>
-      )}
+      ) : null}
     </DocumentShell>
   )
+
+  const tourId =
+    sessionDocument.instanceKey === "default"
+      ? sessionDocument.templateId === BUILT_IN_RECORD_TEMPLATE_ID
+        ? "record-panel"
+        : sessionDocument.templateId === BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID
+          ? "patient-handout-panel"
+          : undefined
+      : undefined
+
+  return tourId ? <div data-tour={tourId}>{content}</div> : content
 }

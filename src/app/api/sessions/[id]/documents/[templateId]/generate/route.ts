@@ -11,7 +11,7 @@ import { buildGenerationOptions } from "@/lib/ai-request-options"
 import { withAiTelemetry } from "@/lib/telemetry/ai"
 import {
   createEmptySessionDocumentGenerationInputs,
-  resolveClinicalContextMode,
+  resolveAutomaticClinicalContext,
 } from "@/lib/documents/generation-config"
 import { getConfirmedDiagnosisRequirement } from "@/lib/documents/generation-requirements"
 import {
@@ -220,10 +220,15 @@ function buildContextMessage(args: {
   >
   uploadedImages: Array<UploadedImageEntry & { resolvedUrl: string }>
 }) {
-  const clinicalContextMode = resolveClinicalContextMode({
-    generationConfig: args.generationConfig,
+  const clinicalContextMode = resolveAutomaticClinicalContext({
     generationInputs: args.generationInputs,
+    insightsAvailable: insightsHaveContent(args.session),
+    transcriptAvailable: args.transcriptEntries.length > 0,
   })
+  const clinicalBasisLabel =
+    clinicalContextMode.mode === "automatic"
+      ? "automatic"
+      : clinicalContextMode.mode
 
   const parts: string[] = [
     `Document title: ${args.sessionDocumentTemplate.title}`,
@@ -232,7 +237,7 @@ function buildContextMessage(args: {
     `Document language: ${args.sessionDocumentTemplate.language}`,
     `Document region: ${args.sessionDocumentTemplate.region}`,
     `Empty value policy: ${args.generationConfig.emptyValuePolicy}`,
-    `Clinical basis: ${clinicalContextMode}`,
+    `Clinical basis: ${clinicalBasisLabel}`,
     `Attach uploaded source images: ${args.generationConfig.includeSourceImages ? "yes" : "no"}`,
     `Region guidance: ${buildRegionGuidance(args.sessionDocumentTemplate.region)}`,
     `Session metadata:\n${JSON.stringify({
@@ -247,9 +252,10 @@ function buildContextMessage(args: {
       : "Doctor notes:\nNo clinician-authored notes available.",
   ]
 
-  if (clinicalContextMode === "transcript") {
+  if (clinicalContextMode.includeTranscript) {
     parts.push(`Transcript:\n${buildTranscriptText(args.transcriptEntries)}`)
-  } else if (args.session.insights) {
+  }
+  if (clinicalContextMode.includeInsights && args.session.insights) {
     parts.push(
       `Insights:\n${JSON.stringify({
         summary: args.session.insights.summary,
@@ -257,6 +263,11 @@ function buildContextMessage(args: {
         redFlags: args.session.insights.redFlags,
         diagnosticKeywords: args.session.insights.diagnosticKeywords,
       })}`
+    )
+  }
+  if (!clinicalContextMode.includeTranscript && !clinicalContextMode.includeInsights) {
+    parts.push(
+      "Clinical context:\nNo transcript or insights are ready yet. Use available session metadata and doctor notes only."
     )
   }
 
@@ -416,17 +427,21 @@ export async function POST(
       }
     }
 
-    const clinicalContextMode = resolveClinicalContextMode({
-      generationConfig,
-      generationInputs: effectiveGenerationInputs,
-    })
-    if (clinicalContextMode === "transcript" && transcriptEntries.length === 0) {
+    const requestedClinicalContextMode =
+      effectiveGenerationInputs.clinicalContextMode
+    if (
+      requestedClinicalContextMode === "transcript" &&
+      transcriptEntries.length === 0
+    ) {
       return NextResponse.json(
         { error: "Transcript source is not ready yet for this document" },
         { status: 400 }
       )
     }
-    if (clinicalContextMode === "insights" && !insightsHaveContent(session)) {
+    if (
+      requestedClinicalContextMode === "insights" &&
+      !insightsHaveContent(session)
+    ) {
       return NextResponse.json(
         { error: "Insights source is not ready yet for this document" },
         { status: 400 }

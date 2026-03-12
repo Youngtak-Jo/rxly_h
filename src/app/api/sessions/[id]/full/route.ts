@@ -5,7 +5,10 @@ import { logAudit } from "@/lib/audit"
 import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { logger } from "@/lib/logger"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
-import { mapSessionDocumentRecord } from "@/lib/documents/server"
+import {
+  ensureCanonicalSessionDocuments,
+  mapSessionDocumentRecord,
+} from "@/lib/documents/server"
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -83,10 +86,12 @@ export async function GET(
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
+    await ensureCanonicalSessionDocuments(id, user.id)
+
     const queryStartedAt = performance.now()
     const [session, transcriptEntries, notes, researchMessages, recordingSegments] =
       await Promise.all([
-        prisma.session.findUnique({
+        prisma.session.findFirst({
           where: { id, userId: user.id },
           include: {
             insights: true,

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react"
 import { useTranslations } from "next-intl"
-import { useRouter } from "next/navigation"
 import type { PanelImperativeHandle } from "react-resizable-panels"
 import {
   ResizableHandle,
@@ -10,45 +9,126 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { CenterPanel } from "./center-panel"
 import { RightPanel } from "./right-panel"
 import {
   SmartConsultationComposer,
   type SmartConsultationComposerHandle,
 } from "./smart-consultation-composer"
+import { ConsultationWorkspaceTabs } from "./consultation-workspace-tabs"
 import { MobileTranscriptSection } from "./transcript/mobile-transcript-section"
 import { useSessionStore } from "@/stores/session-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
-import { cancelSessionLoad } from "@/hooks/use-session-loader"
-import { useRecordAutoSave } from "@/hooks/use-record-autosave"
+import { useCreateSession } from "@/hooks/use-create-session"
 import { useInsightsAutoSave } from "@/hooks/use-insights-autosave"
 import { useDdxAutoSave } from "@/hooks/use-ddx-autosave"
-import { usePatientHandoutAutoSave } from "@/hooks/use-patient-handout-autosave"
 import { useLiveDdx } from "@/hooks/use-live-ddx"
-import { useLiveRecord } from "@/hooks/use-live-record"
-import { useLivePatientHandout } from "@/hooks/use-live-patient-handout"
 import { useUnseenUpdateTracker } from "@/hooks/use-unseen-update-tracker"
 import { useSpeakerIdentification } from "@/hooks/use-speaker-identification"
 import { useSingleSpeakerClassification } from "@/hooks/use-single-speaker-classification"
 import { useDiagnosticHighlights } from "@/hooks/use-diagnostic-highlights"
 import { useMobileViewport } from "@/hooks/use-mobile"
 import { useAiDoctorStt } from "@/hooks/use-ai-doctor-stt"
-import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import { trackClientEvent } from "@/lib/telemetry/client-events"
 import { IconLoader2 } from "@tabler/icons-react"
 import Image from "next/image"
-import { v4 as uuidv4 } from "uuid"
 import { cn } from "@/lib/utils"
 import { useWorkspaceTabReconciliation } from "@/hooks/use-document-workspace"
+import { getCoreCachedSession } from "@/hooks/use-session-loader"
+import type { Session } from "@/types/session"
 
-export function ConsultationLayout() {
+function ConsultationCenterSkeleton() {
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-0 overflow-hidden">
+      <div className="shrink-0">
+        <ConsultationWorkspaceTabs />
+      </div>
+      <div className="consultation-center-scroll flex-1 overflow-y-auto">
+        <div className="space-y-4 p-4">
+          <Skeleton className="h-8 w-44 rounded-xl" />
+          <Skeleton className="h-28 w-full rounded-2xl" />
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(16rem,0.9fr)]">
+            <Skeleton className="h-64 w-full rounded-2xl" />
+            <div className="space-y-4">
+              <Skeleton className="h-24 w-full rounded-2xl" />
+              <Skeleton className="h-36 w-full rounded-2xl" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TranscriptPanelSkeleton() {
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+      <div className="border-b px-4 py-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 flex-1 rounded-2xl" />
+          <Skeleton className="h-10 w-24 rounded-full" />
+        </div>
+      </div>
+      <div className="flex-1 space-y-4 overflow-hidden p-4">
+        <Skeleton className="h-[4.5rem] w-[78%] rounded-3xl" />
+        <Skeleton className="ml-auto h-[5.5rem] w-[72%] rounded-3xl" />
+        <Skeleton className="h-20 w-[84%] rounded-3xl" />
+        <Skeleton className="ml-auto h-16 w-[58%] rounded-3xl" />
+      </div>
+    </div>
+  )
+}
+
+function MobileTranscriptSkeleton() {
+  return (
+    <div className="shrink-0 border-b bg-background px-4 py-4">
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 flex-1 rounded-2xl" />
+          <Skeleton className="h-10 w-24 rounded-full" />
+        </div>
+        <Skeleton className="h-20 w-[84%] rounded-3xl" />
+        <Skeleton className="ml-auto h-[4.5rem] w-[68%] rounded-3xl" />
+      </div>
+    </div>
+  )
+}
+
+function ConsultationComposerSkeleton() {
+  return (
+    <div className="pointer-events-none px-3 py-3 sm:px-4">
+      <div className="mx-auto w-full max-w-4xl rounded-[28px] border border-border/70 bg-background shadow-sm">
+        <div className="space-y-3 p-3 sm:p-4">
+          <Skeleton className="h-[72px] w-full rounded-3xl" />
+          <div className="flex flex-wrap gap-2">
+            <Skeleton className="h-9 w-20 rounded-full" />
+            <Skeleton className="h-9 w-24 rounded-full" />
+            <Skeleton className="h-9 w-24 rounded-full" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface ConsultationLayoutProps {
+  requestedSessionId?: string | null
+  initialSession?: Session | null
+  isRequestedSessionPending?: boolean
+}
+
+export function ConsultationLayout({
+  requestedSessionId = null,
+  initialSession = null,
+  isRequestedSessionPending = false,
+}: ConsultationLayoutProps) {
   const t = useTranslations("ConsultationLayout")
   const activeSession = useSessionStore((s) => s.activeSession)
-  const isLoading = useSessionStore((s) => s.isLoading)
+  const hydratingSessionId = useSessionStore((s) => s.hydratingSessionId)
+  const isActiveSessionLoading = useSessionStore((s) => s.isActiveSessionLoading)
   const isSwitching = useSessionStore((s) => s.isSwitching)
-  const addSession = useSessionStore((s) => s.addSession)
-  const setActiveSession = useSessionStore((s) => s.setActiveSession)
-  const router = useRouter()
+  const { createSession } = useCreateSession()
   const activeTab = useConsultationTabStore((s) => s.activeTab)
   const setTranscriptCollapsed = useConsultationTabStore(
     (s) => s.setTranscriptCollapsed
@@ -60,14 +140,29 @@ export function ConsultationLayout() {
   const lastWorkspaceOpenRef = useRef<string | null>(null)
   const [composerHeight, setComposerHeight] = useState(0)
   const { isMobile, isReady: isMobileReady } = useMobileViewport()
+  const hasRequestedSessionCoreLoaded =
+    !!requestedSessionId &&
+    (hydratingSessionId === requestedSessionId ||
+      !!getCoreCachedSession(requestedSessionId))
+  const shouldShowRequestedSessionSkeleton =
+    !!requestedSessionId &&
+    !!initialSession &&
+    isRequestedSessionPending &&
+    !hasRequestedSessionCoreLoaded &&
+    !isSwitching
+  const shouldShowRequestedSessionLoading =
+    !!requestedSessionId &&
+    !initialSession &&
+    !activeSession &&
+    isRequestedSessionPending &&
+    !isSwitching
+  const shouldBypassMobileReadyGate =
+    !!requestedSessionId &&
+    (!!initialSession || activeSession?.id === requestedSessionId)
 
-  useRecordAutoSave()
   useInsightsAutoSave()
   useDdxAutoSave()
-  usePatientHandoutAutoSave()
   useLiveDdx()
-  useLiveRecord()
-  useLivePatientHandout()
   useUnseenUpdateTracker()
   useWorkspaceTabReconciliation()
 
@@ -139,7 +234,7 @@ export function ConsultationLayout() {
     return () => {
       resizeObserver.disconnect()
     }
-  }, [activeSession, isMobile])
+  }, [activeSession, isMobile, shouldShowRequestedSessionSkeleton])
 
   // Register toggle function in store so SiteHeader can call it (desktop only)
   useEffect(() => {
@@ -155,58 +250,8 @@ export function ConsultationLayout() {
     }
   }, [toggleRightPanel, setToggleTranscript, isMobile, isMobileReady])
 
-  const createSession = async () => {
-    const tempId = uuidv4()
-    const now = new Date().toISOString()
-    const optimisticSession = {
-      id: tempId,
-      title: t("newConsultation"),
-      patientName: null,
-      mode: "DOCTOR" as const,
-      startedAt: now,
-      endedAt: null,
-      createdAt: now,
-      updatedAt: now,
-    }
-
-    cancelSessionLoad()
-    useSessionStore.getState().setSwitching(false)
-
-    // Reset AI doctor mode for new session
-    useConsultationModeStore.getState().reset()
-
-    addSession(optimisticSession)
-    setActiveSession(optimisticSession)
-
-    try {
-      const res = await fetch("/api/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: t("newConsultation") }),
-      })
-      if (!res.ok) throw new Error("Failed to create session")
-      const realSession = await res.json()
-
-      const store = useSessionStore.getState()
-      store.setSessions(
-        store.sessions.map((s) => (s.id === tempId ? realSession : s))
-      )
-      if (store.activeSession?.id === tempId) {
-        store.setActiveSession(realSession)
-      }
-      router.push(`/consultation/${realSession.id}`)
-    } catch (error) {
-      console.error("Failed to create session:", error)
-      const store = useSessionStore.getState()
-      store.setSessions(store.sessions.filter((s) => s.id !== tempId))
-      if (store.activeSession?.id === tempId) {
-        store.setActiveSession(null)
-      }
-    }
-  }
-
   // Initial loading (no session yet)
-  if (isLoading && !activeSession) {
+  if ((isActiveSessionLoading || shouldShowRequestedSessionLoading) && !activeSession) {
     return (
       <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-3">
         <IconLoader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -215,7 +260,7 @@ export function ConsultationLayout() {
     )
   }
 
-  if (!activeSession && !isSwitching) {
+  if (!activeSession && !shouldShowRequestedSessionSkeleton && !isSwitching) {
     return (
       <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-4 p-8 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl">
@@ -236,7 +281,7 @@ export function ConsultationLayout() {
 
   // Keep a neutral state until mobile breakpoint is resolved to avoid
   // a desktop-to-mobile layout jump on first paint.
-  if (activeSession && !isMobileReady) {
+  if ((activeSession || shouldShowRequestedSessionSkeleton) && !isMobileReady && !shouldBypassMobileReadyGate) {
     return (
       <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-3">
         <IconLoader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -256,12 +301,16 @@ export function ConsultationLayout() {
       style={centerPanelStageStyle}
     >
       <div className="min-h-0 flex-1 overflow-hidden">
-        <CenterPanel />
+        {shouldShowRequestedSessionSkeleton ? <ConsultationCenterSkeleton /> : <CenterPanel />}
       </div>
       <div className="absolute inset-x-0 bottom-0 z-20 pointer-events-none">
         <div className="pb-[env(safe-area-inset-bottom)]">
           <div ref={composerMeasureRef}>
-            <SmartConsultationComposer ref={composerRef} />
+            {shouldShowRequestedSessionSkeleton ? (
+              <ConsultationComposerSkeleton />
+            ) : (
+              <SmartConsultationComposer ref={composerRef} />
+            )}
           </div>
         </div>
       </div>
@@ -281,7 +330,12 @@ export function ConsultationLayout() {
           "flex flex-col flex-1 min-h-0 transition-opacity duration-200",
           isSwitching ? "opacity-40 pointer-events-none" : "opacity-100"
         )}>
-          {activeTab !== "research" && <MobileTranscriptSection />}
+          {activeTab !== "research" &&
+            (shouldShowRequestedSessionSkeleton ? (
+              <MobileTranscriptSkeleton />
+            ) : (
+              <MobileTranscriptSection />
+            ))}
           {centerPanelStage}
         </div>
       </div>
@@ -321,7 +375,11 @@ export function ConsultationLayout() {
               setTranscriptCollapsed(size.asPercentage === 0)
             }}
           >
-            <RightPanel onAddFiles={handleAddFilesFromTranscript} />
+            {shouldShowRequestedSessionSkeleton ? (
+              <TranscriptPanelSkeleton />
+            ) : (
+              <RightPanel onAddFiles={handleAddFilesFromTranscript} />
+            )}
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>

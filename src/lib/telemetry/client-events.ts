@@ -49,9 +49,21 @@ export function trackClientEvent(input: TrackClientEventInput): void {
   }
 
   const metadataKey = JSON.stringify({
+    channel:
+      typeof payload.metadata.channel === "string"
+        ? payload.metadata.channel
+        : null,
     templateId:
       typeof payload.metadata.templateId === "string"
         ? payload.metadata.templateId
+        : null,
+    sessionDocumentId:
+      typeof payload.metadata.sessionDocumentId === "string"
+        ? payload.metadata.sessionDocumentId
+        : null,
+    tab:
+      typeof payload.metadata.tab === "string"
+        ? payload.metadata.tab
         : null,
     generatedAt:
       typeof payload.metadata.generatedAt === "string"

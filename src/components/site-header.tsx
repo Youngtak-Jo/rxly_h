@@ -25,43 +25,41 @@ import {
 import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { useSessionStore } from "@/stores/session-store"
 import {
   IconPlug,
   IconDotsVertical,
   IconFileTypePdf,
-  IconMail,
   IconLoader2,
+  IconMail,
+  IconQrcode,
 } from "@tabler/icons-react"
+import { DocumentShareDialog } from "@/components/consultation/document-share-dialog"
 import { ExportDropdown } from "@/components/consultation/export-dropdown"
 import { MedplumSyncButton, SyncButtonIcon } from "@/components/medplum-sync-button"
+import { useConsultationExportActions } from "@/hooks/use-consultation-export-actions"
 import { useMedplumSyncStore } from "@/stores/medplum-sync-store"
 import { usePreparePayload } from "@/hooks/use-prepare-payload"
-import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useConnectorStore } from "@/stores/connector-store"
-import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
+import { useSessionStore } from "@/stores/session-store"
 import { useSettingsDialogStore } from "@/stores/settings-store"
-import { toast } from "sonner"
-import { generatePdf, getActiveTabExportHtml } from "@/lib/export-utils"
-import { trackClientEvent } from "@/lib/telemetry/client-events"
-import { resolveWorkspaceTabDefinition } from "@/lib/documents/workspace"
 
 function MobileHeaderMenu() {
   const t = useTranslations("SiteHeader")
-  const tTabs = useTranslations("ConsultationTabs")
+  const tExport = useTranslations("ExportDropdown")
   const tCommon = useTranslations("Common")
-  const activeSession = useSessionStore((s) => s.activeSession)
   const connectors = useConnectorStore((s) => s.connectors)
   const openSettings = useSettingsDialogStore((s) => s.openSettings)
   const enabledCount = Object.values(connectors).filter(Boolean).length
-  const activeTab = useConsultationTabStore((s) => s.activeTab)
-  const installedDocuments = useDocumentWorkspaceStore((s) => s.installedDocuments)
-  const activeTabLabel =
-    resolveWorkspaceTabDefinition(activeTab, installedDocuments, {
-      insights: tTabs("insights"),
-      ddx: tTabs("ddx"),
-      research: tTabs("research"),
-    })?.title ?? "Document"
+  const {
+    activeSession,
+    activeTab,
+    activeTabLabel,
+    buildDocumentSharePayload,
+    canShareDocument,
+    handlePdfExport,
+    sendEmail,
+    shareTarget,
+  } = useConsultationExportActions()
 
   const syncStatus = useMedplumSyncStore((s) => s.status)
   const startPrepare = useMedplumSyncStore((s) => s.startPrepare)
@@ -69,63 +67,20 @@ function MobileHeaderMenu() {
   const buildPayload = usePreparePayload()
 
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [email, setEmail] = useState("")
   const [isSending, setIsSending] = useState(false)
 
-  const handlePdfExport = async () => {
-    try {
-      const { blob, filename } = await generatePdf()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = filename
-      a.click()
-      URL.revokeObjectURL(url)
-      if (activeSession) {
-        trackClientEvent({
-          eventType: "export_clicked",
-          feature: "export",
-          sessionId: activeSession.id,
-          metadata: { tab: activeTab, channel: "pdf" },
-        })
-      }
-      toast.success(t("pdfSuccess"))
-    } catch (err) {
-      console.error("PDF export error:", err)
-      toast.error(t("pdfFailed"))
-    }
-  }
-
   const handleEmailSend = async () => {
-    if (!email) return
+    if (!email.trim()) return
+
     setIsSending(true)
-    try {
-      const { html, tabLabel } = getActiveTabExportHtml()
-      const subject = `Rxly — ${tabLabel}: ${activeSession?.title || t("consultationFallback")}`
+    const wasSent = await sendEmail(email)
+    setIsSending(false)
 
-      const res = await fetch("/api/export/email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: email, subject, html }),
-      })
-
-      if (!res.ok) throw new Error()
-
-      if (activeSession) {
-        trackClientEvent({
-          eventType: "export_clicked",
-          feature: "export",
-          sessionId: activeSession.id,
-          metadata: { tab: activeTab, channel: "email" },
-        })
-      }
-      toast.success(t("emailSent", { email }))
+    if (wasSent) {
       setEmailDialogOpen(false)
       setEmail("")
-    } catch {
-      toast.error(t("emailFailed"))
-    } finally {
-      setIsSending(false)
     }
   }
 
@@ -142,13 +97,19 @@ function MobileHeaderMenu() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handlePdfExport} disabled={!activeSession}>
+          <DropdownMenuItem onClick={() => void handlePdfExport()} disabled={!activeSession}>
             <IconFileTypePdf className="size-4" />
             {t("exportPdf")}
           </DropdownMenuItem>
+          {canShareDocument ? (
+            <DropdownMenuItem onClick={() => setShareDialogOpen(true)}>
+              <IconQrcode className="size-4" />
+              {tExport("shareWithPatient")}
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={!activeSession}>
             <IconMail className="size-4" />
-            {t("sendViaEmail")}
+            {tExport("sendViaEmail")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => openSettings("connectors")} disabled={!activeSession}>
@@ -187,37 +148,51 @@ function MobileHeaderMenu() {
       <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t("mobileEmailTitle")}</DialogTitle>
+            <DialogTitle>{tExport("sendViaEmailTitle")}</DialogTitle>
             <DialogDescription>
-              {t("mobileEmailDescription", { tab: activeTabLabel })}
+              {tExport("sendViaEmailDescription", { tab: activeTabLabel })}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="mobile-export-email">{t("recipientEmail")}</Label>
+              <Label htmlFor="mobile-export-email">{tExport("recipientEmail")}</Label>
               <Input
                 id="mobile-export-email"
                 type="email"
                 placeholder={tCommon("emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleEmailSend()}
+                onKeyDown={(e) => e.key === "Enter" && void handleEmailSend()}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleEmailSend} disabled={!email || isSending}>
+            <Button onClick={() => void handleEmailSend()} disabled={!email || isSending}>
               {isSending && <IconLoader2 className="size-4 animate-spin" />}
-              {isSending ? t("sending") : t("sendEmail")}
+              {isSending ? tExport("sending") : tExport("sendEmail")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DocumentShareDialog
+        activeTab={activeTab}
+        activeTabLabel={activeTabLabel}
+        buildSharePayload={buildDocumentSharePayload}
+        canShareDocument={canShareDocument}
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        shareTarget={shareTarget}
+      />
     </>
   )
 }
 
-export function SiteHeader() {
+interface SiteHeaderProps {
+  initialSessionTitle?: string | null
+}
+
+export function SiteHeader({ initialSessionTitle = null }: SiteHeaderProps) {
   const t = useTranslations("SiteHeader")
   const activeSession = useSessionStore((s) => s.activeSession)
   const connectors = useConnectorStore((s) => s.connectors)
@@ -233,7 +208,7 @@ export function SiteHeader() {
           className="mx-2 data-[orientation=vertical]:h-4"
         />
         <h1 className="text-sm font-medium truncate min-w-0">
-          {activeSession?.title || t("defaultTitle")}
+          {activeSession?.title || initialSessionTitle || t("defaultTitle")}
         </h1>
 
         <div data-tour="header-actions" className="ml-auto flex items-center gap-1">

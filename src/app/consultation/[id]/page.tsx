@@ -1,24 +1,63 @@
-"use client"
-
-import { use } from "react"
-import { SiteHeader } from "@/components/site-header"
-import { ConsultationLayout } from "@/components/consultation/consultation-layout"
-import { useSessionLoader } from "@/hooks/use-session-loader"
-import { WorkspaceShell } from "@/components/workspace/workspace-shell"
+import { redirect } from "next/navigation"
+import { prisma } from "@/lib/prisma"
+import { createClient } from "@/lib/supabase/server"
+import { ConsultationSessionClient } from "./consultation-session-client"
+import type { Session } from "@/types/session"
 
 export default function ConsultationSessionPage({
-    params,
+  params,
 }: {
-    params: Promise<{ id: string }>
+  params: Promise<{ id: string }>
 }) {
-    const { id } = use(params)
+  return <ConsultationSessionPageContent params={params} />
+}
 
-    // Auto-load the session from URL param
-    useSessionLoader(id)
+async function ConsultationSessionPageContent({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-    return (
-        <WorkspaceShell header={<SiteHeader />} withTourProvider>
-            <ConsultationLayout />
-        </WorkspaceShell>
-    )
+  if (!user) {
+    redirect("/login")
+  }
+
+  const initialSessionRecord = await prisma.session.findFirst({
+    where: {
+      id,
+      userId: user.id,
+    },
+    select: {
+      id: true,
+      title: true,
+      patientName: true,
+      mode: true,
+      startedAt: true,
+      endedAt: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  })
+
+  const initialSession: Session | null = initialSessionRecord
+    ? {
+        ...initialSessionRecord,
+        startedAt: initialSessionRecord.startedAt.toISOString(),
+        endedAt: initialSessionRecord.endedAt?.toISOString() ?? null,
+        createdAt: initialSessionRecord.createdAt.toISOString(),
+        updatedAt: initialSessionRecord.updatedAt.toISOString(),
+      }
+    : null
+
+  return (
+    <ConsultationSessionClient
+      sessionId={id}
+      initialSession={initialSession}
+    />
+  )
 }

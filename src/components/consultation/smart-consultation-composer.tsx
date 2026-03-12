@@ -23,25 +23,42 @@ import { SimulationDialog } from "@/components/consultation/simulation-dialog"
 import { deleteCachedSession } from "@/hooks/use-session-loader"
 import { useAiDoctor } from "@/hooks/use-ai-doctor"
 import { useDeepgram } from "@/hooks/use-deepgram"
+import { resolveConsultationDocumentContext } from "@/lib/consultation/active-document"
+import { ensureBlankDocumentPersisted } from "@/lib/consultation/blank-document"
+import { isSystemBlankDocumentTitle } from "@/lib/documents/blank-document"
+import { BUILT_IN_BLANK_DOCUMENT_TEMPLATE_ID } from "@/lib/documents/constants"
+import { htmlToRichTextDocument } from "@/lib/documents/rich-text-client"
+import { normalizeRichTextDocument } from "@/lib/documents/rich-text"
+import { sanitizeStreamingHtml } from "@/lib/documents/streaming-html"
 import { trackClientEvent } from "@/lib/telemetry/client-events"
 import { cn } from "@/lib/utils"
+import {
+  useActiveConsultationDocumentDraftStore,
+  type ActiveConsultationDocumentDraft,
+} from "@/stores/active-consultation-document-draft-store"
+import { useConsultationDocumentsStore } from "@/stores/consultation-documents-store"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useConnectorStore } from "@/stores/connector-store"
+import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useNoteStore } from "@/stores/note-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import type { ResearchCitation } from "@/stores/research-store"
 import { useResearchStore } from "@/stores/research-store"
+import { useSessionDocumentStore } from "@/stores/session-document-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useSettingsStore } from "@/stores/settings-store"
+import type { SessionDocumentRecord } from "@/types/document"
 import { toast } from "sonner"
 import {
   IconArrowUp,
   IconDots,
+  IconFileText,
   IconLoader2,
   IconMicrophone,
   IconMicrophoneOff,
+  IconNotes,
   IconPhoto,
   IconPlayerStop,
   IconSearch,
@@ -50,7 +67,8 @@ import {
   IconX,
 } from "@tabler/icons-react"
 
-type DraftMode = "note" | "research" | "aiDoctor"
+type DraftMode = "note" | "document" | "research" | "aiDoctor"
+type ClinicalDraftMode = "note" | "document"
 
 interface Attachment {
   file: File
@@ -67,10 +85,57 @@ type DraftMap = Record<DraftMode, DraftState>
 const BRACKET_CITATION_RE = /\[\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/gi
 const MARKDOWN_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/gi
 const URL_RE = /https?:\/\/[^\s)\]]+/gi
+const EMPTY_DOCUMENT_DRAFT_ERROR = "Failed to generate a document draft."
+
+type DocumentStreamEvent =
+  | { type: "title"; title: string }
+  | { type: "delta"; html: string }
+  | { type: "complete"; sessionDocument: SessionDocumentRecord }
+  | { type: "error"; error: string }
+
+function buildDocumentRevisionKey(document: {
+  updatedAt: string
+  generatedAt: string | null
+}) {
+  return `${document.updatedAt}:${document.generatedAt ?? ""}`
+}
+
+function nodeHasMeaningfulContent(
+  node: Record<string, unknown> | null | undefined
+): boolean {
+  if (!node) return false
+
+  if (node.type === "text") {
+    return typeof node.text === "string" && node.text.trim().length > 0
+  }
+
+  if (node.type === "image") {
+    return (
+      !!node.attrs &&
+      typeof node.attrs === "object" &&
+      typeof (node.attrs as { src?: unknown }).src === "string" &&
+      !!(node.attrs as { src: string }).src.trim()
+    )
+  }
+
+  const content = Array.isArray(node.content)
+    ? (node.content as Array<Record<string, unknown>>)
+    : []
+
+  return content.some((child) => nodeHasMeaningfulContent(child))
+}
+
+function documentHasMeaningfulContent(document: Record<string, unknown>): boolean {
+  const content = Array.isArray(document.content)
+    ? (document.content as Array<Record<string, unknown>>)
+    : []
+  return content.some((node) => nodeHasMeaningfulContent(node))
+}
 
 function createEmptyDrafts(): DraftMap {
   return {
     note: { text: "", attachments: [] },
+    document: { text: "", attachments: [] },
     research: { text: "", attachments: [] },
     aiDoctor: { text: "", attachments: [] },
   }
@@ -217,6 +282,9 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
     const isAiResponding = useConsultationModeStore((s) => s.isAiResponding)
     const isMicActive = useConsultationModeStore((s) => s.isMicActive)
     const setMicActive = useConsultationModeStore((s) => s.setMicActive)
+    const documentsHubUiState = useConsultationDocumentsStore((state) =>
+      state.getSessionUiState(activeSession?.id)
+    )
 
     const { isRecording } = useRecordingStore()
     const { startListening, stopListening } = useDeepgram()
@@ -238,33 +306,91 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
 
     const connectors = useConnectorStore((s) => s.connectors)
     const insights = useInsightsStore()
+    const installedDocuments = useDocumentWorkspaceStore((s) => s.installedDocuments)
+    const activeSessionDocuments = useSessionDocumentStore((state) =>
+      state.getSessionDocuments(activeSession?.id)
+    )
+    const documentContext = resolveConsultationDocumentContext({
+      uiState: documentsHubUiState,
+      installedDocuments,
+      sessionDocuments: activeSessionDocuments,
+    })
+    const documentTargetDocumentId = documentContext.targetDocumentId
+    const activeDocumentId =
+      activeTab === "documents" ? documentContext.editorDocumentId : null
+    const activeDocument = documentContext.installedDocument
+    const activeDocumentSessionDocument = documentContext.sessionDocument
+    const upsertSessionDocument = useSessionDocumentStore(
+      (state) => state.upsertSessionDocument
+    )
+    const setSessionDocumentUiState = useSessionDocumentStore(
+      (state) => state.setSessionDocumentUiState
+    )
+    const activeDocumentDraft = useActiveConsultationDocumentDraftStore((state) =>
+      state.getDraft(activeSession?.id, activeDocumentId)
+    )
+    const hydrateActiveDraft = useActiveConsultationDocumentDraftStore(
+      (state) => state.hydrateDraft
+    )
+    const patchActiveDraft = useActiveConsultationDocumentDraftStore(
+      (state) => state.patchDraft
+    )
+    const startStreamingDraft = useActiveConsultationDocumentDraftStore(
+      (state) => state.startStreaming
+    )
 
     const fileInputRef = useRef<HTMLInputElement>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const draftsRef = useRef<DraftMap>(createEmptyDrafts())
     const previousSessionIdRef = useRef<string | null>(activeSession?.id ?? null)
+    const previousActiveDocumentIdRef = useRef<string | null>(null)
+    const documentStreamRef = useRef<{
+      sessionId: string
+      documentId: string
+      streamRequestId: string
+      controller: AbortController
+    } | null>(null)
 
     const [drafts, setDrafts] = useState<DraftMap>(createEmptyDrafts)
     const [isSending, setIsSending] = useState(false)
+    const [clinicalDraftMode, setClinicalDraftMode] =
+      useState<ClinicalDraftMode>("note")
 
     draftsRef.current = drafts
 
     const isTranscriptHydrating =
       !!activeSession && hydratingSessionId === activeSession.id
+    const activeDocumentTitle =
+      activeDocumentDraft?.draftTitle.trim() ||
+      activeDocumentSessionDocument?.title ||
+      activeDocument?.title ||
+      tComposer("documentFallback")
+    const canSelectDocumentMode =
+      !!documentTargetDocumentId && !!activeDocumentSessionDocument
+    const canUseDocumentMode =
+      activeTab === "documents" &&
+      !!activeDocumentId &&
+      !!activeDocumentSessionDocument
     const currentDraftMode: DraftMode =
       activeTab === "research"
         ? "research"
         : consultationMode === "ai-doctor"
           ? "aiDoctor"
-          : "note"
+          : clinicalDraftMode === "document" && canUseDocumentMode
+            ? "document"
+            : "note"
     const currentDraft = drafts[currentDraftMode]
     const currentAttachments = currentDraft.attachments
+    const currentTrimmedText = currentDraft.text.trim()
     const hasCurrentContent =
-      currentDraft.text.trim().length > 0 || currentAttachments.length > 0
+      currentTrimmedText.length > 0 || currentAttachments.length > 0
+    const hasDocumentPrompt = drafts.document.text.trim().length > 0
     const isResearchMode = currentDraftMode === "research"
+    const isDocumentMode = currentDraftMode === "document"
     const isAiDoctorMode = currentDraftMode === "aiDoctor"
+    const isNoteMode = !isResearchMode && !isDocumentMode && !isAiDoctorMode
     const hasAttachments = currentAttachments.length > 0
-    const showSimulationButton = !isResearchMode
+    const showSimulationButton = !isResearchMode && !isDocumentMode
     const showIncludeInsightsButton = isResearchMode
     const isImageActive = hasAttachments
     const isResearchActive = isResearchMode
@@ -284,8 +410,52 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
 
       revokeDrafts(draftsRef.current)
       setDrafts(createEmptyDrafts())
+      setClinicalDraftMode("note")
       previousSessionIdRef.current = nextSessionId
     }, [activeSession?.id])
+
+    useEffect(() => {
+      if (consultationMode === "ai-doctor") return
+      if (clinicalDraftMode === "document" && !canSelectDocumentMode) {
+        setClinicalDraftMode("note")
+      }
+    }, [canSelectDocumentMode, clinicalDraftMode, consultationMode])
+
+    useEffect(() => {
+      const nextDocumentId =
+        activeTab === "documents" ? activeDocumentSessionDocument?.id ?? null : null
+      if (previousActiveDocumentIdRef.current === nextDocumentId) {
+        return
+      }
+
+      previousActiveDocumentIdRef.current = nextDocumentId
+      if (nextDocumentId && consultationMode !== "ai-doctor") {
+        setClinicalDraftMode("document")
+      }
+    }, [activeDocumentSessionDocument?.id, activeTab, consultationMode])
+
+    useEffect(() => {
+      const inFlight = documentStreamRef.current
+      if (!inFlight) return
+
+      const sessionChanged = inFlight.sessionId !== (activeSession?.id ?? null)
+      const documentChanged =
+        activeTab !== "documents" || inFlight.documentId !== (activeDocumentId ?? null)
+
+      if (!sessionChanged && !documentChanged) {
+        return
+      }
+
+      inFlight.controller.abort()
+      patchActiveDraft(inFlight.sessionId, inFlight.documentId, {
+        isStreaming: false,
+        streamRequestId: null,
+        dirty: false,
+        sanitizedHtmlBuffer: "",
+        finalReconcilePending: false,
+      })
+      documentStreamRef.current = null
+    }, [activeDocumentId, activeSession?.id, activeTab, patchActiveDraft])
 
     const setDraftText = useCallback(
       (draftMode: DraftMode, text: string) => {
@@ -318,6 +488,7 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
 
     const handleFileSelect = useCallback(
       (files: FileList | null) => {
+        if (currentDraftMode === "document") return
         if (!files || !activeSession) return
 
         const nextAttachments: Attachment[] = []
@@ -377,6 +548,7 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
 
     const handlePaste = useCallback(
       (event: ClipboardEvent<HTMLTextAreaElement>) => {
+        if (currentDraftMode === "document") return
         const items = event.clipboardData?.items
         if (!items) return
 
@@ -393,7 +565,7 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
         files.forEach((file) => transfer.items.add(file))
         handleFileSelect(transfer.files)
       },
-      [handleFileSelect]
+      [currentDraftMode, handleFileSelect]
     )
 
     const uploadAttachments = useCallback(
@@ -522,6 +694,536 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
         setIsSending(false)
       }
     }, [activeSession, clearDraft, hasCurrentContent, tNote, uploadAttachments])
+
+    const handleSendDocument = useCallback(async () => {
+      const prompt = draftsRef.current.document.text.trim()
+      if (!activeSession || !activeDocumentId || !activeDocumentSessionDocument) {
+        return
+      }
+
+      if (!prompt) {
+        toast.error(tComposer("documentPromptRequired"))
+        return
+      }
+
+      setIsSending(true)
+
+      let targetDocumentId = activeDocumentId
+      let targetSessionDocument = activeDocumentSessionDocument
+
+      try {
+        if (targetSessionDocument.localOnly) {
+          targetSessionDocument = await ensureBlankDocumentPersisted({
+            sessionId: activeSession.id,
+            documentId: targetDocumentId,
+            fallbackTitle:
+              targetSessionDocument.title ?? activeDocumentTitle,
+            errorMessage: tComposer("documentReviseFailed"),
+          })
+          targetDocumentId = targetSessionDocument.id
+        }
+
+        const latestTargetSessionDocument = useSessionDocumentStore
+          .getState()
+          .getSessionDocumentById(activeSession.id, targetDocumentId)
+        if (latestTargetSessionDocument) {
+          targetSessionDocument = latestTargetSessionDocument
+        }
+      } catch (error) {
+        console.error("Failed to prepare blank document for revise:", error)
+        toast.error(
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : tComposer("documentReviseFailed")
+        )
+        setIsSending(false)
+        return
+      }
+
+      setSessionDocumentUiState(activeSession.id, targetDocumentId, {
+        isGenerating: true,
+        lastGenerationError: null,
+      })
+
+      trackClientEvent({
+        eventType: "analysis_triggered",
+        feature: "custom_document",
+        sessionId: activeSession.id,
+        metadata: {
+          templateId: targetSessionDocument.templateId,
+          templateTitle: activeDocumentTitle,
+          generatedAt: targetSessionDocument.generatedAt,
+          trigger: "composer_revise",
+        },
+      })
+
+      try {
+        const generationInputs =
+          targetSessionDocument.generationInputs
+            ? {
+                ...targetSessionDocument.generationInputs,
+                clinicalContextMode: null,
+              }
+            : undefined
+        const model = useSettingsStore.getState().aiModel.documentModel
+
+        if (
+          targetSessionDocument.templateId === BUILT_IN_BLANK_DOCUMENT_TEMPLATE_ID
+        ) {
+          const existingDraft = useActiveConsultationDocumentDraftStore
+            .getState()
+            .getDraft(activeSession.id, targetDocumentId)
+          if (!existingDraft) {
+            const initialDraftDocument = normalizeRichTextDocument(
+              targetSessionDocument.contentJson
+            )
+            hydrateActiveDraft({
+              sessionId: activeSession.id,
+              documentId: targetDocumentId,
+              draftDocument: initialDraftDocument,
+              draftTitle:
+                targetSessionDocument.title ??
+                activeDocumentTitle,
+              isStreaming: false,
+              streamRequestId: null,
+              dirty: false,
+              lastPersistedRevision: buildDocumentRevisionKey(
+                targetSessionDocument
+              ),
+              sanitizedHtmlBuffer: "",
+              lastRenderableDocument: initialDraftDocument,
+              finalReconcilePending: false,
+            })
+          }
+
+          const controller = new AbortController()
+          const streamRequestId = crypto.randomUUID()
+          documentStreamRef.current = {
+            sessionId: activeSession.id,
+            documentId: targetDocumentId,
+            streamRequestId,
+            controller,
+          }
+          startStreamingDraft(activeSession.id, targetDocumentId, streamRequestId)
+
+          const response = await fetch(
+            `/api/sessions/${activeSession.id}/documents/by-id/${targetDocumentId}/ai-stream`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                prompt,
+                model,
+                generationInputs,
+              }),
+              signal: controller.signal,
+            }
+          )
+
+          if (!response.ok) {
+            const payload = (await response.json().catch(() => ({}))) as {
+              error?: string
+            }
+            const errorMessage =
+              payload.error === "Enter a request for the document."
+                ? tComposer("documentPromptRequired")
+                : payload.error === EMPTY_DOCUMENT_DRAFT_ERROR
+                  ? tComposer("documentDraftEmpty")
+                  : payload.error || tComposer("documentReviseFailed")
+            throw new Error(errorMessage)
+          }
+
+          const reader = response.body?.getReader()
+          if (!reader) {
+            throw new Error(tComposer("documentReviseFailed"))
+          }
+
+          const decoder = new TextDecoder()
+          let buffer = ""
+          let sanitizedHtmlBuffer = ""
+          let completePayload: SessionDocumentRecord | null = null
+          let flushTimer: ReturnType<typeof setTimeout> | null = null
+          let lastRenderableDocument =
+            useActiveConsultationDocumentDraftStore
+              .getState()
+              .getDraft(activeSession.id, targetDocumentId)?.lastRenderableDocument ??
+            useActiveConsultationDocumentDraftStore
+              .getState()
+              .getDraft(activeSession.id, targetDocumentId)?.draftDocument ??
+            normalizeRichTextDocument(targetSessionDocument.contentJson)
+
+          const getCurrentStreamDraft = () =>
+            useActiveConsultationDocumentDraftStore
+              .getState()
+              .getDraft(activeSession.id, targetDocumentId)
+
+          const isCurrentStreamActive = () =>
+            getCurrentStreamDraft()?.streamRequestId === streamRequestId
+
+          const patchStreamingDraft = (
+            patch: Partial<ActiveConsultationDocumentDraft>
+          ) => {
+            if (!isCurrentStreamActive()) return
+            patchActiveDraft(activeSession.id, targetDocumentId, {
+              ...patch,
+              isStreaming: true,
+              streamRequestId,
+              finalReconcilePending: true,
+            })
+          }
+
+          const applyTitleEvent = (title: string) => {
+            if (!isCurrentStreamActive()) return
+            const latestDraft = getCurrentStreamDraft()
+            const currentTitle =
+              latestDraft?.draftTitle ??
+              targetSessionDocument.title ??
+              activeDocumentTitle
+            if (!isSystemBlankDocumentTitle(currentTitle)) {
+              return
+            }
+
+            patchStreamingDraft({
+              draftTitle: title,
+              dirty: true,
+            })
+          }
+
+          const flushHtmlToDraft = (force = false) => {
+            const apply = () => {
+              if (!isCurrentStreamActive()) return
+              const nextHtml = sanitizeStreamingHtml(sanitizedHtmlBuffer).trim()
+              if (!nextHtml) return
+              try {
+                const nextDocument = htmlToRichTextDocument(nextHtml)
+                if (!documentHasMeaningfulContent(nextDocument)) {
+                  patchStreamingDraft({
+                    sanitizedHtmlBuffer: nextHtml,
+                  })
+                  return
+                }
+
+                lastRenderableDocument = nextDocument
+                patchStreamingDraft({
+                  draftDocument: nextDocument,
+                  lastRenderableDocument: nextDocument,
+                  sanitizedHtmlBuffer: nextHtml,
+                  dirty: true,
+                })
+              } catch {
+                patchStreamingDraft({
+                  lastRenderableDocument,
+                  sanitizedHtmlBuffer: nextHtml,
+                })
+              }
+            }
+
+            if (force) {
+              if (flushTimer) {
+                clearTimeout(flushTimer)
+                flushTimer = null
+              }
+              apply()
+              return
+            }
+
+            if (flushTimer) return
+            flushTimer = setTimeout(() => {
+              flushTimer = null
+              apply()
+            }, 240)
+          }
+
+          try {
+            while (true) {
+              const { done, value } = await reader.read()
+              if (done) break
+
+              buffer += decoder.decode(value, { stream: true })
+              const lines = buffer.split("\n")
+              buffer = lines.pop() ?? ""
+
+              for (const line of lines) {
+                const trimmedLine = line.trim()
+                if (!trimmedLine) continue
+
+                const event = JSON.parse(trimmedLine) as DocumentStreamEvent
+                if (event.type === "title") {
+                  applyTitleEvent(event.title)
+                  continue
+                }
+
+                if (event.type === "delta") {
+                  if (!isCurrentStreamActive()) continue
+                  sanitizedHtmlBuffer = sanitizeStreamingHtml(
+                    `${sanitizedHtmlBuffer}${event.html}`
+                  )
+                  flushHtmlToDraft()
+                  continue
+                }
+
+                if (event.type === "complete") {
+                  completePayload = event.sessionDocument
+                  break
+                }
+
+                if (event.type === "error") {
+                  throw new Error(
+                    event.error === EMPTY_DOCUMENT_DRAFT_ERROR
+                      ? tComposer("documentDraftEmpty")
+                      : event.error || tComposer("documentReviseFailed")
+                  )
+                }
+              }
+
+              if (completePayload) {
+                break
+              }
+            }
+
+            if (buffer.trim() && !completePayload) {
+              const finalEvent = JSON.parse(buffer.trim()) as DocumentStreamEvent
+              if (finalEvent.type === "complete") {
+                completePayload = finalEvent.sessionDocument
+              } else if (finalEvent.type === "error") {
+                throw new Error(
+                  finalEvent.error === EMPTY_DOCUMENT_DRAFT_ERROR
+                    ? tComposer("documentDraftEmpty")
+                    : finalEvent.error || tComposer("documentReviseFailed")
+                )
+              } else if (finalEvent.type === "delta") {
+                sanitizedHtmlBuffer = sanitizeStreamingHtml(
+                  `${sanitizedHtmlBuffer}${finalEvent.html}`
+                )
+              } else if (finalEvent.type === "title") {
+                applyTitleEvent(finalEvent.title)
+              }
+            }
+
+            flushHtmlToDraft(true)
+
+            if (!completePayload) {
+              throw new Error(tComposer("documentReviseFailed"))
+            }
+
+            if (!isCurrentStreamActive()) {
+              throw new DOMException("Aborted", "AbortError")
+            }
+
+            const finalDocument = normalizeRichTextDocument(
+              completePayload.contentJson
+            )
+            const hasMeaningfulFinalDocument =
+              documentHasMeaningfulContent(finalDocument)
+            const hasMeaningfulRenderableFallback =
+              documentHasMeaningfulContent(lastRenderableDocument)
+            if (!hasMeaningfulFinalDocument && !hasMeaningfulRenderableFallback) {
+              throw new Error(tComposer("documentDraftEmpty"))
+            }
+
+            const resolvedDocument = hasMeaningfulFinalDocument
+              ? finalDocument
+              : lastRenderableDocument
+            const resolvedPayload = hasMeaningfulFinalDocument
+              ? completePayload
+              : {
+                  ...completePayload,
+                  contentJson: resolvedDocument,
+                }
+
+            upsertSessionDocument(resolvedPayload)
+            hydrateActiveDraft({
+              sessionId: activeSession.id,
+              documentId: resolvedPayload.id,
+              draftDocument: resolvedDocument,
+              draftTitle:
+                resolvedPayload.title ??
+                activeDocumentTitle,
+              isStreaming: false,
+              streamRequestId: null,
+              dirty: false,
+              lastPersistedRevision: buildDocumentRevisionKey(resolvedPayload),
+              sanitizedHtmlBuffer: "",
+              lastRenderableDocument: resolvedDocument,
+              finalReconcilePending: false,
+            })
+            deleteCachedSession(activeSession.id)
+            clearDraft("document")
+            textareaRef.current?.focus()
+
+            setSessionDocumentUiState(activeSession.id, targetDocumentId, {
+              lastGenerationError: null,
+              feedbackForGeneratedAt: null,
+            })
+
+            trackClientEvent({
+              eventType: "analysis_completed",
+              feature: "custom_document",
+              sessionId: activeSession.id,
+              metadata: {
+                templateId: targetSessionDocument.templateId,
+                templateTitle: activeDocumentTitle,
+                generatedAt: resolvedPayload.generatedAt,
+                trigger: "composer_revise",
+              },
+            })
+          } finally {
+            if (flushTimer) {
+              clearTimeout(flushTimer)
+            }
+            if (
+              documentStreamRef.current?.streamRequestId === streamRequestId
+            ) {
+              documentStreamRef.current = null
+            }
+          }
+        } else {
+          const response = await fetch(
+            `/api/sessions/${activeSession.id}/documents/by-id/${targetDocumentId}/ai-revise`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                prompt,
+                model,
+                generationInputs,
+              }),
+            }
+          )
+
+          if (!response.ok) {
+            const payload = (await response.json().catch(() => ({}))) as {
+              error?: string
+            }
+            const errorMessage =
+              payload.error === "Enter a request for the document."
+                ? tComposer("documentPromptRequired")
+                : payload.error === EMPTY_DOCUMENT_DRAFT_ERROR
+                  ? tComposer("documentDraftEmpty")
+                  : payload.error || tComposer("documentReviseFailed")
+            throw new Error(errorMessage)
+          }
+
+          const payload = (await response.json()) as {
+            sessionDocument: SessionDocumentRecord
+          }
+
+          upsertSessionDocument(payload.sessionDocument)
+          hydrateActiveDraft({
+            sessionId: activeSession.id,
+            documentId: payload.sessionDocument.id,
+            draftDocument: normalizeRichTextDocument(
+              payload.sessionDocument.contentJson
+            ),
+            draftTitle:
+              payload.sessionDocument.title ??
+              activeDocumentTitle,
+            isStreaming: false,
+            streamRequestId: null,
+            dirty: false,
+            lastPersistedRevision: buildDocumentRevisionKey(
+              payload.sessionDocument
+            ),
+            sanitizedHtmlBuffer: "",
+            lastRenderableDocument: normalizeRichTextDocument(
+              payload.sessionDocument.contentJson
+            ),
+            finalReconcilePending: false,
+          })
+          deleteCachedSession(activeSession.id)
+          clearDraft("document")
+          textareaRef.current?.focus()
+
+          setSessionDocumentUiState(activeSession.id, targetDocumentId, {
+            lastGenerationError: null,
+            feedbackForGeneratedAt: null,
+          })
+
+          trackClientEvent({
+            eventType: "analysis_completed",
+            feature: "custom_document",
+            sessionId: activeSession.id,
+            metadata: {
+              templateId: targetSessionDocument.templateId,
+              templateTitle: activeDocumentTitle,
+              generatedAt: payload.sessionDocument.generatedAt,
+              trigger: "composer_revise",
+            },
+          })
+        }
+      } catch (error) {
+        console.error("Failed to revise document:", error)
+        const aborted =
+          error instanceof DOMException && error.name === "AbortError"
+        if (aborted) {
+          patchActiveDraft(activeSession.id, targetDocumentId, {
+            isStreaming: false,
+            streamRequestId: null,
+            dirty: false,
+            sanitizedHtmlBuffer: "",
+            finalReconcilePending: false,
+          })
+          if (documentStreamRef.current?.documentId === targetDocumentId) {
+            documentStreamRef.current = null
+          }
+          return
+        }
+
+        const reason =
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : "request_error"
+
+        patchActiveDraft(activeSession.id, targetDocumentId, {
+          isStreaming: false,
+          streamRequestId: null,
+          dirty: false,
+          sanitizedHtmlBuffer: "",
+          finalReconcilePending: false,
+        })
+        if (documentStreamRef.current?.documentId === targetDocumentId) {
+          documentStreamRef.current = null
+        }
+
+        setSessionDocumentUiState(activeSession.id, targetDocumentId, {
+          lastGenerationError: reason,
+        })
+        trackClientEvent({
+          eventType: "analysis_failed",
+          feature: "custom_document",
+          sessionId: activeSession.id,
+          metadata: {
+            templateId: targetSessionDocument.templateId,
+            templateTitle: activeDocumentTitle,
+            generatedAt: targetSessionDocument.generatedAt,
+            trigger: "composer_revise",
+            reason,
+          },
+        })
+        toast.error(
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : tComposer("documentReviseFailed")
+        )
+      } finally {
+        setSessionDocumentUiState(activeSession.id, targetDocumentId, {
+          isGenerating: false,
+        })
+        setIsSending(false)
+      }
+    }, [
+      activeDocumentId,
+      activeDocumentSessionDocument,
+      activeDocumentTitle,
+      activeSession,
+      clearDraft,
+      hydrateActiveDraft,
+      patchActiveDraft,
+      setSessionDocumentUiState,
+      startStreamingDraft,
+      tComposer,
+      upsertSessionDocument,
+    ])
 
     const handleSendAiDoctor = useCallback(async () => {
       if (!activeSession || !hasCurrentContent || isAiResponding) return
@@ -722,13 +1424,26 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
         return
       }
 
+      if (isDocumentMode) {
+        void handleSendDocument()
+        return
+      }
+
       if (isAiDoctorMode) {
         void handleSendAiDoctor()
         return
       }
 
       void handleSendNote()
-    }, [handleSendAiDoctor, handleSendNote, handleSendResearch, isAiDoctorMode, isResearchMode])
+    }, [
+      handleSendAiDoctor,
+      handleSendDocument,
+      handleSendNote,
+      handleSendResearch,
+      isAiDoctorMode,
+      isDocumentMode,
+      isResearchMode,
+    ])
 
     const handleStopResearch = useCallback(() => {
       const controller = useResearchStore.getState().abortController
@@ -794,6 +1509,23 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
       handleOpenResearch()
     }, [handleDismissResearch, handleOpenResearch, isResearchMode])
 
+    const handleSelectNoteMode = useCallback(() => {
+      setClinicalDraftMode("note")
+      if (activeTab === "research") {
+        setActiveTab(lastNonResearchTab || "insights")
+      }
+      requestAnimationFrame(() => textareaRef.current?.focus())
+    }, [activeTab, lastNonResearchTab, setActiveTab])
+
+    const handleSelectDocumentMode = useCallback(() => {
+      if (!canSelectDocumentMode) return
+      setClinicalDraftMode("document")
+      if (activeTab !== "documents") {
+        setActiveTab("documents")
+      }
+      requestAnimationFrame(() => textareaRef.current?.focus())
+    }, [activeTab, canSelectDocumentMode, setActiveTab])
+
     const handleClearResearchChat = useCallback(() => {
       clearMessages()
       if (activeSession) {
@@ -812,6 +1544,11 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
     const getPlaceholder = () => {
       if (!activeSession) return tComposer("placeholderNoSession")
       if (isResearchMode) return tComposer("placeholderResearch")
+      if (isDocumentMode) {
+        return tComposer("placeholderDocument", {
+          title: activeDocumentTitle,
+        })
+      }
       if (isAiDoctorMode) return tComposer("placeholderAiDoctor")
       return tComposer("placeholderDefault")
     }
@@ -827,14 +1564,16 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
       isSwitching ||
       isSending ||
       (isResearchMode ? isStreaming : false) ||
+      (isDocumentMode ? !canUseDocumentMode : false) ||
       (isAiDoctorMode ? isAiResponding : false)
 
     const isSendDisabled =
       !activeSession ||
       isSwitching ||
-      !hasCurrentContent ||
+      (isDocumentMode ? !hasDocumentPrompt : !hasCurrentContent) ||
       isSending ||
       (isResearchMode ? isStreaming : false) ||
+      (isDocumentMode ? !canUseDocumentMode : false) ||
       (isAiDoctorMode ? isAiResponding : false)
 
     const isMicActiveInUi =
@@ -901,6 +1640,40 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
 
                 <div className="flex items-end justify-between gap-3">
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                    {consultationMode !== "ai-doctor" ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleSelectNoteMode}
+                          className={cn(
+                            "h-9 rounded-full border-border/70 bg-background px-3 text-xs",
+                            isNoteMode &&
+                              "border-primary/30 bg-primary/10 text-foreground hover:bg-primary/15"
+                          )}
+                        >
+                          <IconNotes className="size-3.5" />
+                          {tComposer("modeNote")}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleSelectDocumentMode}
+                          disabled={!canSelectDocumentMode}
+                          className={cn(
+                            "h-9 rounded-full border-border/70 bg-background px-3 text-xs",
+                            isDocumentMode &&
+                              "border-primary/30 bg-primary/10 text-foreground hover:bg-primary/15"
+                          )}
+                        >
+                          <IconFileText className="size-3.5" />
+                          {tComposer("modeDocument")}
+                        </Button>
+                      </>
+                    ) : null}
+
                     <Button
                       type="button"
                       variant="outline"
@@ -921,7 +1694,7 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
                       variant="outline"
                       size="sm"
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={!activeSession || isSwitching}
+                      disabled={!activeSession || isSwitching || isDocumentMode}
                       className={cn(
                         "h-9 rounded-full border-border/70 bg-background px-3 text-xs",
                         isImageActive &&
@@ -1058,6 +1831,8 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
                         aria-label={
                           isResearchMode
                             ? tComposer("sendResearch")
+                            : isDocumentMode
+                              ? tComposer("sendDocument")
                             : tComposer("sendMessage")
                         }
                       >

@@ -29,6 +29,7 @@ model Session {
   researchMessages  ResearchMessage[]
   recordingSegments RecordingSegment[]
   sessionDocuments  SessionDocument[]
+  originDocumentTemplates DocumentTemplate[] @relation("OriginSessionTemplates")
   aiUsageEvents     AiUsageEvent[]
   clientEvents      ClientEvent[]
 
@@ -266,17 +267,36 @@ model ClientEvent {
   @@map("client_events")
 }
 
+enum ExportLinkAccessMode {
+  OWNER_AUTH
+  PUBLIC_LINK
+}
+
+enum ExportLinkChannel {
+  EMAIL_SECURE
+  PATIENT_SHARE
+}
+
 model ExportLink {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  sessionId   String   @map("session_id")
-  content     String   // encrypted HTML content
-  expiresAt   DateTime @map("expires_at")
-  accessCount Int      @default(0) @map("access_count")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id                String               @id @default(uuid())
+  userId            String               @map("user_id")
+  sessionId         String               @map("session_id")
+  sessionDocumentId String?              @map("session_document_id")
+  title             String?
+  content           String               // encrypted HTML content
+  accessMode        ExportLinkAccessMode @default(OWNER_AUTH) @map("access_mode")
+  channel           ExportLinkChannel    @default(EMAIL_SECURE)
+  expiresAt         DateTime?            @map("expires_at")
+  revokedAt         DateTime?            @map("revoked_at")
+  lastAccessedAt    DateTime?            @map("last_accessed_at")
+  accessCount       Int                  @default(0) @map("access_count")
+  createdAt         DateTime             @default(now()) @map("created_at")
 
   @@index([userId])
   @@index([sessionId])
+  @@index([sessionDocumentId])
+  @@index([sessionDocumentId, accessMode, revokedAt])
+  @@index([channel, createdAt])
   @@map("export_links")
 }
 
@@ -395,6 +415,11 @@ enum DocumentTemplateVisibility {
   PUBLIC
 }
 
+enum DocumentTemplateScope {
+  LIBRARY
+  SESSION_ONLY
+}
+
 enum DocumentTemplateVersionStatus {
   DRAFT
   PUBLISHED
@@ -406,6 +431,8 @@ model DocumentTemplate {
   ownerUserId              String?                    @map("owner_user_id")
   sourceKind               DocumentTemplateSourceKind @default(USER) @map("source_kind")
   renderer                 DocumentTemplateRenderer
+  scope                    DocumentTemplateScope      @default(LIBRARY)
+  originSessionId          String?                    @map("origin_session_id")
   visibility               DocumentTemplateVisibility @default(PRIVATE)
   title                    String
   description              String                     @default("")
@@ -418,6 +445,7 @@ model DocumentTemplate {
   updatedAt                DateTime                   @updatedAt @map("updated_at")
 
   versions              DocumentTemplateVersion[] @relation("TemplateVersions")
+  originSession         Session?                  @relation("OriginSessionTemplates", fields: [originSessionId], references: [id], onDelete: Cascade)
   latestDraftVersion    DocumentTemplateVersion?  @relation("LatestDraftVersion", fields: [latestDraftVersionId], references: [id], onDelete: SetNull)
   latestPublishedVersion DocumentTemplateVersion? @relation("LatestPublishedVersion", fields: [latestPublishedVersionId], references: [id], onDelete: SetNull)
   installedBy           UserInstalledDocument[]
@@ -426,6 +454,7 @@ model DocumentTemplate {
   @@index([ownerUserId, updatedAt])
   @@index([visibility, updatedAt])
   @@index([sourceKind, renderer])
+  @@index([scope, updatedAt])
   @@map("document_templates")
 }
 
@@ -485,7 +514,9 @@ model SessionDocument {
   id                String   @id @default(uuid())
   sessionId         String   @map("session_id")
   templateId        String   @map("template_id")
+  instanceKey       String   @default("default") @map("instance_key")
   templateVersionId String   @map("template_version_id")
+  title             String?  @map("title")
   contentJson       Json     @default("{}") @map("content_json")
   generationInputsJson Json? @map("generation_inputs_json")
   generatedAt       DateTime? @map("generated_at")
@@ -496,7 +527,7 @@ model SessionDocument {
   template        DocumentTemplate        @relation(fields: [templateId], references: [id], onDelete: Cascade)
   templateVersion DocumentTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
 
-  @@unique([sessionId, templateId])
+  @@unique([sessionId, templateId, instanceKey])
   @@index([sessionId, updatedAt])
   @@index([templateId, updatedAt])
   @@map("session_documents")

@@ -233,7 +233,11 @@ export interface InstalledDocumentSummary {
   hasUpdate: boolean
 }
 
-export type SystemWorkspaceTabId = "insights" | "ddx" | "research"
+export type SystemWorkspaceTabId =
+  | "insights"
+  | "ddx"
+  | "documents"
+  | "research"
 export type WorkspaceTabId = SystemWorkspaceTabId | `document:${string}`
 
 export interface DocumentWorkspaceSnapshot {
@@ -246,13 +250,19 @@ export interface SessionDocumentRecord {
   id: string
   sessionId: string
   templateId: string
+  instanceKey: string
   templateVersionId: string
+  title: string | null
   contentJson: Record<string, unknown>
   generationInputs: SessionDocumentGenerationInputs | null
   templateSchemaNodes?: DocumentSchemaNode[]
   templateVersionNumber?: number | null
   generatedAt: string | null
   updatedAt: string
+  localOnly?: boolean
+  pendingCreate?: boolean
+  createError?: string | null
+  needsSync?: boolean
 }
 
 export interface GenericDocumentFieldSection {

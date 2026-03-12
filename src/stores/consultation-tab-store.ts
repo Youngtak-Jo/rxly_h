@@ -2,8 +2,37 @@ import { create } from "zustand"
 import { useSessionStore } from "@/stores/session-store"
 import { trackClientEvent } from "@/lib/telemetry/client-events"
 import type { WorkspaceTabId } from "@/types/document"
+import {
+  getTemplateIdFromTabId,
+  isDocumentTabId,
+} from "@/lib/documents/constants"
+import { useConsultationDocumentsStore } from "@/stores/consultation-documents-store"
+import { useSessionDocumentStore } from "@/stores/session-document-store"
 
 export type ConsultationTabId = WorkspaceTabId
+
+function normalizeConsultationTabId(tab: ConsultationTabId): WorkspaceTabId {
+  return isDocumentTabId(tab) ? "documents" : tab
+}
+
+function syncDocumentHubSelection(tab: ConsultationTabId) {
+  if (!isDocumentTabId(tab)) return
+
+  const templateId = getTemplateIdFromTabId(tab)
+  const sessionId = useSessionStore.getState().activeSession?.id
+  if (!templateId || !sessionId) return
+
+  const defaultDocument = useSessionDocumentStore
+    .getState()
+    .getDefaultSessionDocument(sessionId, templateId)
+
+  if (defaultDocument) {
+    useConsultationDocumentsStore.getState().openDocument(sessionId, defaultDocument.id)
+    return
+  }
+
+  useConsultationDocumentsStore.getState().openPicker(sessionId)
+}
 
 interface ConsultationTabState {
   activeTab: WorkspaceTabId
@@ -28,23 +57,28 @@ export const useConsultationTabStore = create<ConsultationTabState>(
     lastNonResearchTab: "insights",
     setActiveTab: (tab) =>
       set((state) => {
-        if (state.activeTab !== tab) {
+        syncDocumentHubSelection(tab)
+        const normalizedTab = normalizeConsultationTabId(tab)
+
+        if (state.activeTab !== normalizedTab) {
           trackClientEvent({
             eventType: "tab_switched",
-            feature: tab,
+            feature: normalizedTab,
             sessionId: useSessionStore.getState().activeSession?.id ?? null,
             metadata: {
               from: state.activeTab,
-              to: tab,
+              to: normalizedTab,
             },
           })
         }
         return {
-          activeTab: tab,
+          activeTab: normalizedTab,
           lastNonResearchTab:
-            tab === "research" ? state.lastNonResearchTab : tab,
-          unseenUpdates: { ...state.unseenUpdates, [tab]: false },
-          visitedTabs: { ...state.visitedTabs, [tab]: true },
+            normalizedTab === "research"
+              ? state.lastNonResearchTab
+              : normalizedTab,
+          unseenUpdates: { ...state.unseenUpdates, [normalizedTab]: false },
+          visitedTabs: { ...state.visitedTabs, [normalizedTab]: true },
         }
       }),
 
@@ -52,49 +86,60 @@ export const useConsultationTabStore = create<ConsultationTabState>(
     visitedTabs: { insights: true },
     markTabUpdated: (tab) =>
       set((state) => {
-        if (state.activeTab === tab) return state
-        return { unseenUpdates: { ...state.unseenUpdates, [tab]: true } }
+        const normalizedTab = normalizeConsultationTabId(tab)
+        if (state.activeTab === normalizedTab) return state
+        return {
+          unseenUpdates: { ...state.unseenUpdates, [normalizedTab]: true },
+        }
       }),
     clearAllUnseenUpdates: () => set({ unseenUpdates: {} }),
     syncWithTabOrder: (tabOrder) =>
       set((state) => {
-        const nextActiveTab = tabOrder.includes(state.activeTab)
+        const normalizedTabOrder = Array.from(
+          new Set(tabOrder.map((tabId) => normalizeConsultationTabId(tabId)))
+        )
+        const nextActiveTab = normalizedTabOrder.includes(state.activeTab)
           ? state.activeTab
-          : (tabOrder[0] ?? "insights")
+          : (normalizedTabOrder[0] ?? "insights")
         const nextLastNonResearchTab =
           state.lastNonResearchTab !== "research" &&
-          tabOrder.includes(state.lastNonResearchTab)
+          normalizedTabOrder.includes(state.lastNonResearchTab)
             ? state.lastNonResearchTab
             : nextActiveTab === "research"
-              ? (tabOrder.find((tab) => tab !== "research") ?? "insights")
+              ? (normalizedTabOrder.find((tab) => tab !== "research") ?? "insights")
               : nextActiveTab
 
         const nextUnseenUpdates = Object.fromEntries(
-          tabOrder.map((tab) => [tab, state.unseenUpdates[tab] ?? false])
+          normalizedTabOrder.map((tab) => [tab, state.unseenUpdates[tab] ?? false])
         )
         const nextVisitedTabs = Object.fromEntries(
-          tabOrder.map((tab) => [tab, state.visitedTabs[tab] ?? tab === nextActiveTab])
+          normalizedTabOrder.map((tab) => [
+            tab,
+            state.visitedTabs[tab] ?? tab === nextActiveTab,
+          ])
         )
         const currentUnseenKeys = Object.keys(state.unseenUpdates)
         const hasSameUnseenKeys =
-          currentUnseenKeys.length === tabOrder.length &&
+          currentUnseenKeys.length === normalizedTabOrder.length &&
           currentUnseenKeys.every((key) =>
-            tabOrder.includes(key as WorkspaceTabId)
+            normalizedTabOrder.includes(key as WorkspaceTabId)
           )
         const hasSameUnseenValues =
           hasSameUnseenKeys &&
-          tabOrder.every(
+          normalizedTabOrder.every(
             (tab) => state.unseenUpdates[tab] === nextUnseenUpdates[tab]
           )
         const currentVisitedKeys = Object.keys(state.visitedTabs)
         const hasSameVisitedKeys =
-          currentVisitedKeys.length === tabOrder.length &&
+          currentVisitedKeys.length === normalizedTabOrder.length &&
           currentVisitedKeys.every((key) =>
-            tabOrder.includes(key as WorkspaceTabId)
+            normalizedTabOrder.includes(key as WorkspaceTabId)
           )
         const hasSameVisitedValues =
           hasSameVisitedKeys &&
-          tabOrder.every((tab) => state.visitedTabs[tab] === nextVisitedTabs[tab])
+          normalizedTabOrder.every(
+            (tab) => state.visitedTabs[tab] === nextVisitedTabs[tab]
+          )
 
         if (
           state.activeTab === nextActiveTab &&

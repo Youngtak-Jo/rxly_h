@@ -49,7 +49,7 @@ export async function requireSessionOwnership(
   sessionId: string,
   userId: string
 ): Promise<{ id: string }> {
-  const session = await prisma.session.findUnique({
+  const session = await prisma.session.findFirst({
     where: { id: sessionId, userId },
     select: { id: true },
   })

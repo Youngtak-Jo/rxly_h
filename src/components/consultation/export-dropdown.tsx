@@ -2,15 +2,15 @@
 
 import { useState } from "react"
 import { useTranslations } from "next-intl"
-import { Button } from "@/components/ui/button"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  IconFileTypePdf,
+  IconLoader2,
+  IconMail,
+  IconQrcode,
+  IconShare,
+} from "@tabler/icons-react"
+import { DocumentShareDialog } from "@/components/consultation/document-share-dialog"
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -19,93 +19,46 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  IconShare,
-  IconFileTypePdf,
-  IconMail,
-  IconLoader2,
-} from "@tabler/icons-react"
-import { toast } from "sonner"
-import { useSessionStore } from "@/stores/session-store"
-import { useConsultationTabStore } from "@/stores/consultation-tab-store"
-import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
-import { getActiveTabExportHtml, generatePdf } from "@/lib/export-utils"
-import { trackClientEvent } from "@/lib/telemetry/client-events"
-import { resolveWorkspaceTabDefinition } from "@/lib/documents/workspace"
+import { useConsultationExportActions } from "@/hooks/use-consultation-export-actions"
 
 export function ExportDropdown() {
   const t = useTranslations("ExportDropdown")
-  const tTabs = useTranslations("ConsultationTabs")
   const tCommon = useTranslations("Common")
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [email, setEmail] = useState("")
   const [isSending, setIsSending] = useState(false)
-  const activeSession = useSessionStore((s) => s.activeSession)
-  const activeTab = useConsultationTabStore((s) => s.activeTab)
-  const installedDocuments = useDocumentWorkspaceStore((s) => s.installedDocuments)
-  const activeTabLabel =
-    resolveWorkspaceTabDefinition(activeTab, installedDocuments, {
-      insights: tTabs("insights"),
-      ddx: tTabs("ddx"),
-      research: tTabs("research"),
-    })?.title ?? "Document"
-
-  const handlePdfExport = async () => {
-    try {
-      const { blob, filename } = await generatePdf()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = filename
-      a.click()
-      URL.revokeObjectURL(url)
-      if (activeSession) {
-        trackClientEvent({
-          eventType: "export_clicked",
-          feature: "export",
-          sessionId: activeSession.id,
-          metadata: { tab: activeTab, channel: "pdf" },
-        })
-      }
-      toast.success(t("pdfSuccess"))
-    } catch (err) {
-      console.error("PDF export error:", err)
-      toast.error(t("pdfFailed"))
-    }
-  }
+  const {
+    activeSession,
+    activeTab,
+    activeTabLabel,
+    buildDocumentSharePayload,
+    canShareDocument,
+    handlePdfExport,
+    sendEmail,
+    shareTarget,
+  } = useConsultationExportActions()
 
   const handleEmailSend = async () => {
-    if (!email) return
+    if (!email.trim()) return
+
     setIsSending(true)
-    try {
-      const { html, tabLabel } = getActiveTabExportHtml()
-      const subject = `Rxly — ${tabLabel}: ${activeSession?.title || t("consultationFallback")}`
+    const wasSent = await sendEmail(email)
+    setIsSending(false)
 
-      const res = await fetch("/api/export/email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: email, subject, html }),
-      })
-
-      if (!res.ok) throw new Error()
-
-      if (activeSession) {
-        trackClientEvent({
-          eventType: "export_clicked",
-          feature: "export",
-          sessionId: activeSession.id,
-          metadata: { tab: activeTab, channel: "email" },
-        })
-      }
-      toast.success(t("emailSent", { email }))
+    if (wasSent) {
       setEmailDialogOpen(false)
       setEmail("")
-    } catch {
-      toast.error(t("emailFailed"))
-    } finally {
-      setIsSending(false)
     }
   }
 
@@ -126,10 +79,16 @@ export function ExportDropdown() {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>{t("menuLabel", { tab: activeTabLabel })}</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handlePdfExport}>
+          <DropdownMenuItem onClick={() => void handlePdfExport()}>
             <IconFileTypePdf className="size-4" />
             {t("downloadPdf")}
           </DropdownMenuItem>
+          {canShareDocument ? (
+            <DropdownMenuItem onClick={() => setShareDialogOpen(true)}>
+              <IconQrcode className="size-4" />
+              {t("shareWithPatient")}
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem onClick={() => setEmailDialogOpen(true)}>
             <IconMail className="size-4" />
             {t("sendViaEmail")}
@@ -154,20 +113,30 @@ export function ExportDropdown() {
                 placeholder={tCommon("emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleEmailSend()}
+                onKeyDown={(e) => e.key === "Enter" && void handleEmailSend()}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleEmailSend} disabled={!email || isSending}>
-              {isSending && (
+            <Button onClick={() => void handleEmailSend()} disabled={!email || isSending}>
+              {isSending ? (
                 <IconLoader2 className="size-4 animate-spin" />
-              )}
+              ) : null}
               {isSending ? t("sending") : t("sendEmail")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DocumentShareDialog
+        activeTab={activeTab}
+        activeTabLabel={activeTabLabel}
+        buildSharePayload={buildDocumentSharePayload}
+        canShareDocument={canShareDocument}
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        shareTarget={shareTarget}
+      />
     </>
   )
 }

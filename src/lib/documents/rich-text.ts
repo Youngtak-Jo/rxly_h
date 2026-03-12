@@ -28,8 +28,12 @@ import type { ConsultationRecord, Vitals } from "@/types/record"
 
 export type RichTextDocument = JSONContent
 
+export type DocumentHtmlVariant = "default" | "export"
+
 export interface DocumentHtmlOptions {
   className?: string
+  includeStyles?: boolean
+  variant?: DocumentHtmlVariant
 }
 
 export interface RecordRichTextLabels {
@@ -94,9 +98,31 @@ const PATIENT_HANDOUT_SECTION_KEYS = [
   "disclaimer",
 ] as const
 
+export const DOCUMENT_SERIF_FONT_STACK = [
+  '"Iowan Old Style"',
+  '"Palatino Linotype"',
+  '"Book Antiqua"',
+  "Georgia",
+  '"Noto Serif KR"',
+  '"Apple SD Gothic Neo"',
+  '"Malgun Gothic"',
+  "serif",
+].join(", ")
+
+export const DOCUMENT_SANS_FONT_STACK = [
+  '"Geist"',
+  '"Inter"',
+  '"Noto Sans KR"',
+  '"Apple SD Gothic Neo"',
+  '"Malgun Gothic"',
+  '"Segoe UI"',
+  "ui-sans-serif",
+  "sans-serif",
+].join(", ")
+
 export const DOCUMENT_HTML_STYLE = `
   .rxly-document-root {
-    font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-family: ${DOCUMENT_SERIF_FONT_STACK};
     color: #1f2937;
     font-size: 15px;
     line-height: 1.75;
@@ -106,7 +132,7 @@ export const DOCUMENT_HTML_STYLE = `
   .rxly-document-root h2,
   .rxly-document-root h3,
   .rxly-document-root h4 {
-    font-family: "Geist", "Inter", ui-sans-serif, sans-serif;
+    font-family: ${DOCUMENT_SANS_FONT_STACK};
     color: #111827;
     letter-spacing: -0.02em;
   }
@@ -211,7 +237,7 @@ export const DOCUMENT_HTML_STYLE = `
     text-align: left;
   }
   .rxly-document-root th {
-    font-family: "Geist", "Inter", ui-sans-serif, sans-serif;
+    font-family: ${DOCUMENT_SANS_FONT_STACK};
     font-size: 0.76rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -252,6 +278,175 @@ export const DOCUMENT_HTML_STYLE = `
   }
 `
 
+export const DOCUMENT_EXPORT_HTML_STYLE = `
+  .rxly-document-root--export {
+    font-family: ${DOCUMENT_SERIF_FONT_STACK};
+    color: #1f2937;
+    font-size: 15px;
+    line-height: 1.74;
+    letter-spacing: -0.01em;
+    word-break: break-word;
+  }
+  .rxly-document-root--export :is(h1, h2, h3, h4) {
+    font-family: ${DOCUMENT_SANS_FONT_STACK};
+    color: #0f172a;
+    letter-spacing: -0.025em;
+  }
+  .rxly-document-root--export h1 {
+    margin: 0 0 1.3rem;
+    font-size: 1.82rem;
+    line-height: 1.1;
+  }
+  .rxly-document-root--export h2 {
+    margin: 1.95rem 0 0.72rem;
+    font-size: 1.04rem;
+    line-height: 1.24;
+    font-weight: 650;
+    text-transform: none;
+    letter-spacing: -0.02em;
+  }
+  .rxly-document-root--export h3 {
+    margin: 1.35rem 0 0.45rem;
+    font-size: 0.96rem;
+    line-height: 1.36;
+    font-weight: 620;
+  }
+  .rxly-document-root--export h4 {
+    margin: 1.05rem 0 0.38rem;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    font-weight: 620;
+  }
+  .rxly-document-root--export :is(p, ul, ol, blockquote, table, pre, hr, div[data-callout]) {
+    margin: 0.68rem 0;
+  }
+  .rxly-document-root--export ul,
+  .rxly-document-root--export ol {
+    padding-left: 1.25rem;
+  }
+  .rxly-document-root--export li + li {
+    margin-top: 0.3rem;
+  }
+  .rxly-document-root--export li::marker {
+    color: #667085;
+  }
+  .rxly-document-root--export ul[data-type="taskList"] {
+    list-style: none;
+    padding-left: 0;
+  }
+  .rxly-document-root--export :is(ul[data-type="taskList"] > li, li[data-type="taskItem"]) {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.72rem;
+    margin: 0.76rem 0;
+  }
+  .rxly-document-root--export :is(ul[data-type="taskList"] > li, li[data-type="taskItem"]) > label {
+    display: flex;
+    flex: none;
+    align-items: center;
+    margin-top: 0.18rem;
+  }
+  .rxly-document-root--export :is(ul[data-type="taskList"] > li, li[data-type="taskItem"]) > label input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: #9a3412;
+  }
+  .rxly-document-root--export :is(ul[data-type="taskList"] > li, li[data-type="taskItem"]) > div {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .rxly-document-root--export :is(ul[data-type="taskList"] > li, li[data-type="taskItem"]) > div > p:first-child {
+    margin-top: 0;
+  }
+  .rxly-document-root--export :is(ul[data-type="taskList"] > li, li[data-type="taskItem"]) > div > p + p {
+    margin-top: 0.28rem;
+    color: #667085;
+    font-size: 0.95em;
+  }
+  .rxly-document-root--export blockquote {
+    border-left: 3px solid #d0d5dd;
+    padding: 0.1rem 0 0.1rem 1rem;
+    color: #475467;
+  }
+  .rxly-document-root--export table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    overflow: hidden;
+  }
+  .rxly-document-root--export th,
+  .rxly-document-root--export td {
+    border: 1px solid #e4e7ec;
+    padding: 0.58rem 0.68rem;
+    vertical-align: top;
+    text-align: left;
+  }
+  .rxly-document-root--export th {
+    font-family: ${DOCUMENT_SANS_FONT_STACK};
+    background: #f8fafc;
+    font-size: 0.7rem;
+    font-weight: 650;
+    letter-spacing: 0.03em;
+    text-transform: none;
+    color: #667085;
+  }
+  .rxly-document-root--export a {
+    color: #9a3412;
+    text-decoration: underline;
+    text-decoration-thickness: 0.08em;
+    text-underline-offset: 0.16em;
+  }
+  .rxly-document-root--export pre {
+    overflow-x: auto;
+    border-radius: 14px;
+    border: 1px solid #e4e7ec;
+    background: #f8fafc;
+    padding: 0.82rem 0.9rem;
+    font-family: ${DOCUMENT_SANS_FONT_STACK};
+    font-size: 0.86rem;
+    line-height: 1.56;
+  }
+  .rxly-document-root--export code {
+    border-radius: 0.4rem;
+    background: #f3f4f6;
+    padding: 0.12rem 0.34rem;
+    font-family: ${DOCUMENT_SANS_FONT_STACK};
+    font-size: 0.9em;
+  }
+  .rxly-document-root--export pre code {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-size: inherit;
+  }
+  .rxly-document-root--export hr {
+    border: 0;
+    border-top: 1px solid #e4e7ec;
+  }
+  .rxly-document-root--export img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    border-radius: 1rem;
+    border: 1px solid #e4e7ec;
+  }
+  .rxly-document-root--export div[data-callout] {
+    border-radius: 1rem;
+    border: 1px solid #e4e7ec;
+    background: #f8fafc;
+    padding: 0.82rem 0.92rem;
+  }
+  .rxly-document-root--export div[data-callout="warning"] {
+    border-color: #fdba74;
+    background: #fff7ed;
+  }
+  .rxly-document-root--export div[data-callout="success"] {
+    border-color: #86efac;
+    background: #f0fdf4;
+  }
+`
+
 export function createRichTextExtensions(options?: {
   placeholder?: string
   includePlaceholder?: boolean
@@ -260,6 +455,8 @@ export function createRichTextExtensions(options?: {
   const extensions: AnyExtension[] = [
     StarterKit.configure({
       heading: false,
+      link: false,
+      underline: false,
       blockquote: {
         HTMLAttributes: { class: "rxly-document-blockquote" },
       },
@@ -994,6 +1191,15 @@ export function richTextDocumentToHtml(
 ): string {
   const extensions = createRichTextExtensions({ includePlaceholder: false })
   const body = generateHTML(normalizeRichTextDocument(document), extensions)
-  const className = options?.className || "rxly-document-root"
-  return `<style>${DOCUMENT_HTML_STYLE}</style><div class="${className}">${body}</div>`
+  const variant = options?.variant ?? "default"
+  const className =
+    options?.className ||
+    (variant === "export"
+      ? "rxly-document-root rxly-document-root--export"
+      : "rxly-document-root")
+  const style = variant === "export" ? DOCUMENT_EXPORT_HTML_STYLE : DOCUMENT_HTML_STYLE
+
+  return `${
+    options?.includeStyles === false ? "" : `<style>${style}</style>`
+  }<div class="${className}">${body}</div>`
 }

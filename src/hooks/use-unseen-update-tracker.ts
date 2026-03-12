@@ -4,14 +4,21 @@ import { useEffect } from "react"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useDdxStore } from "@/stores/ddx-store"
-import { useRecordStore } from "@/stores/record-store"
 import { useResearchStore } from "@/stores/research-store"
-import { usePatientHandoutStore } from "@/stores/patient-handout-store"
-import {
-  BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID,
-  BUILT_IN_RECORD_TEMPLATE_ID,
-  buildDocumentTabId,
-} from "@/lib/documents/constants"
+import { useSessionDocumentStore } from "@/stores/session-document-store"
+
+function hasAnyDocumentWork(
+  uiStateBySessionId: ReturnType<
+    typeof useSessionDocumentStore.getState
+  >["uiStateBySessionId"]
+) {
+  return Object.values(uiStateBySessionId).some((sessionUiState) =>
+    Object.values(sessionUiState).some(
+      (documentUiState) =>
+        documentUiState.isGenerating || documentUiState.isSaving
+    )
+  )
+}
 
 export function useUnseenUpdateTracker() {
   useEffect(() => {
@@ -29,32 +36,25 @@ export function useUnseenUpdateTracker() {
       }
     })
 
-    const unsubRecord = useRecordStore.subscribe((state, prev) => {
-      if (prev.isGenerating && !state.isGenerating) {
-        markTabUpdated(buildDocumentTabId(BUILT_IN_RECORD_TEMPLATE_ID))
-      }
-    })
-
     const unsubResearch = useResearchStore.subscribe((state, prev) => {
       if (prev.isStreaming && !state.isStreaming) {
         markTabUpdated("research")
       }
     })
-
-    const unsubPatientHandout = usePatientHandoutStore.subscribe((state, prev) => {
-      if (prev.isGenerating && !state.isGenerating) {
-        markTabUpdated(
-          buildDocumentTabId(BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID)
-        )
+    const unsubDocuments = useSessionDocumentStore.subscribe((state, prev) => {
+      if (
+        hasAnyDocumentWork(prev.uiStateBySessionId) &&
+        !hasAnyDocumentWork(state.uiStateBySessionId)
+      ) {
+        markTabUpdated("documents")
       }
     })
 
     return () => {
       unsubInsights()
       unsubDdx()
-      unsubRecord()
       unsubResearch()
-      unsubPatientHandout()
+      unsubDocuments()
     }
   }, [])
 }

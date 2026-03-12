@@ -41,7 +41,7 @@ async function fetchSessionList(): Promise<Session[] | null> {
 export function useSessionListLoader(enabled = true) {
   const hasLoadedSessionList = useSessionStore((s) => s.hasLoadedSessionList)
   const setSessions = useSessionStore((s) => s.setSessions)
-  const setLoading = useSessionStore((s) => s.setLoading)
+  const setSessionListLoading = useSessionStore((s) => s.setSessionListLoading)
   const setHasLoadedSessionList = useSessionStore((s) => s.setHasLoadedSessionList)
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export function useSessionListLoader(enabled = true) {
     if (hasLoadedSessionList) return
 
     const loadSessions = async () => {
-      setLoading(true)
+      setSessionListLoading(true)
       try {
         const sessions = await fetchSessionList()
         if (sessions) {
@@ -59,10 +59,16 @@ export function useSessionListLoader(enabled = true) {
       } catch (error) {
         console.error("Failed to load sessions:", error)
       } finally {
-        setLoading(false)
+        setSessionListLoading(false)
       }
     }
 
     void loadSessions()
-  }, [enabled, hasLoadedSessionList, setHasLoadedSessionList, setLoading, setSessions])
+  }, [
+    enabled,
+    hasLoadedSessionList,
+    setHasLoadedSessionList,
+    setSessionListLoading,
+    setSessions,
+  ])
 }

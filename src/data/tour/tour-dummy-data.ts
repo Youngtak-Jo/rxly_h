@@ -1,8 +1,9 @@
 import { useInsightsStore } from "@/stores/insights-store"
 import { useDdxStore } from "@/stores/ddx-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
-import { useRecordStore } from "@/stores/record-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
+import { useConsultationDocumentsStore } from "@/stores/consultation-documents-store"
+import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useNoteStore } from "@/stores/note-store"
 import {
@@ -10,12 +11,62 @@ import {
   useRecordingSegmentStore,
 } from "@/stores/recording-segment-store"
 import { useResearchStore } from "@/stores/research-store"
+import { useSessionDocumentStore } from "@/stores/session-document-store"
+import { BUILT_IN_RECORD_TEMPLATE_ID } from "@/lib/documents/constants"
+import { recordToRichTextDocument } from "@/lib/documents/rich-text"
 import type { ChecklistItem, DiagnosisItem } from "@/types/insights"
 import type { TranscriptEntry } from "@/types/session"
 import type { ConsultationRecord } from "@/types/record"
 import type { NoteEntry } from "@/stores/note-store"
 import type { ResearchMessage } from "@/stores/research-store"
-import type { WorkspaceTabId } from "@/types/document"
+import type {
+  SessionDocumentRecord,
+  WorkspaceTabId,
+} from "@/types/document"
+
+const TOUR_RECORD_LABELS = {
+  vitals: "Vitals",
+  sections: {
+    chiefComplaint: "Chief Complaint",
+    hpiText: "History of Present Illness",
+    medications: "Medications",
+    rosText: "Review of Systems",
+    pmh: "Past Medical History",
+    socialHistory: "Social History",
+    familyHistory: "Family History",
+    physicalExam: "Physical Examination",
+    labsStudies: "Labs and Studies",
+    assessment: "Assessment",
+    plan: "Plan",
+  },
+} as const
+
+function cloneSessionDocumentsMap() {
+  const store = useSessionDocumentStore.getState()
+
+  return {
+    documentsBySessionId: Object.fromEntries(
+      Object.entries(store.documentsBySessionId).map(([sessionId, documents]) => [
+        sessionId,
+        documents.map(
+          (document) =>
+            ({
+              ...document,
+              contentJson: structuredClone(document.contentJson),
+              generationInputs: document.generationInputs
+                ? structuredClone(document.generationInputs)
+                : null,
+              templateSchemaNodes: document.templateSchemaNodes
+                ? structuredClone(document.templateSchemaNodes)
+                : undefined,
+            }) satisfies SessionDocumentRecord
+        ),
+      ])
+    ),
+    documentSchemasBySessionId: structuredClone(store.documentSchemasBySessionId),
+    uiStateBySessionId: structuredClone(store.uiStateBySessionId),
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Snapshot types
@@ -37,7 +88,10 @@ export interface TourSnapshot {
     diagnosticKeywords: ReturnType<typeof useTranscriptStore.getState>["diagnosticKeywords"]
     highlightStatus: ReturnType<typeof useTranscriptStore.getState>["highlightStatus"]
   }
-  record: { record: ConsultationRecord | null }
+  sessionDocuments: ReturnType<typeof cloneSessionDocumentsMap>
+  consultationDocumentsUiState: ReturnType<
+    typeof useConsultationDocumentsStore.getState
+  >["uiStateBySessionId"]
   research: { messages: ResearchMessage[] }
   notes: NoteEntry[]
   recordingSegments: RecordingSegmentEntry[]
@@ -50,12 +104,12 @@ export function captureSnapshot(): TourSnapshot {
   const ins = useInsightsStore.getState()
   const ddx = useDdxStore.getState()
   const tx = useTranscriptStore.getState()
-  const rec = useRecordStore.getState()
   const res = useResearchStore.getState()
   const tab = useConsultationTabStore.getState()
   const ses = useSessionStore.getState()
   const notes = useNoteStore.getState()
   const recordingSegments = useRecordingSegmentStore.getState()
+  const consultationDocuments = useConsultationDocumentsStore.getState()
 
   return {
     activeTab: tab.activeTab,
@@ -74,7 +128,10 @@ export function captureSnapshot(): TourSnapshot {
       diagnosticKeywords: [...tx.diagnosticKeywords],
       highlightStatus: tx.highlightStatus,
     },
-    record: { record: rec.record ? { ...rec.record } : null },
+    sessionDocuments: cloneSessionDocumentsMap(),
+    consultationDocumentsUiState: structuredClone(
+      consultationDocuments.uiStateBySessionId
+    ),
     research: { messages: res.messages.map((m) => ({ ...m, citations: [...m.citations] })) },
     notes: notes.notes.map((n) => ({ ...n, imageUrls: [...n.imageUrls], storagePaths: [...n.storagePaths] })),
     recordingSegments: recordingSegments.segments.map((segment) => ({ ...segment })),
@@ -105,11 +162,14 @@ export function restoreSnapshot(snap: TourSnapshot) {
     useTranscriptStore.getState().setIdentificationStatus(snap.transcript.identificationStatus)
   }
 
-  // Restore record
-  useRecordStore.getState().reset()
-  if (snap.record.record) {
-    useRecordStore.getState().loadFromDB(snap.record.record)
-  }
+  useSessionDocumentStore.setState({
+    documentsBySessionId: snap.sessionDocuments.documentsBySessionId,
+    documentSchemasBySessionId: snap.sessionDocuments.documentSchemasBySessionId,
+    uiStateBySessionId: snap.sessionDocuments.uiStateBySessionId,
+  })
+  useConsultationDocumentsStore.setState({
+    uiStateBySessionId: snap.consultationDocumentsUiState,
+  })
 
   // Restore research
   useResearchStore.getState().reset()
@@ -130,15 +190,15 @@ export function restoreSnapshot(snap: TourSnapshot) {
     })
   }
 
-  // Restore tab
-  useConsultationTabStore.getState().setActiveTab(snap.activeTab)
-
   // Restore session
   if (!snap.hadSession) {
     useSessionStore.getState().setActiveSession(null)
   } else {
     useSessionStore.getState().setActiveSession(snap.activeSession)
   }
+
+  // Restore tab after session so document tab metadata can target the right session.
+  useConsultationTabStore.getState().setActiveTab(snap.activeTab)
 }
 
 // ---------------------------------------------------------------------------
@@ -274,7 +334,7 @@ export function injectDdxData() {
 }
 
 export function injectRecordData() {
-  useRecordStore.getState().setRecord({
+  const record: ConsultationRecord = {
     id: "tour-record",
     sessionId: TOUR_SESSION_ID,
     date: new Date().toISOString(),
@@ -294,7 +354,34 @@ export function injectRecordData() {
     assessment:
       "Migraine without aura is the most likely diagnosis. Low suspicion for secondary headache, but imaging warranted given hypertension history.",
     plan: "1. Prescribe Sumatriptan 50mg PRN\n2. Brain MRI with contrast\n3. Recommend headache diary\n4. Follow-up in 2 weeks",
+  }
+  const installedRecordDocument =
+    useDocumentWorkspaceStore
+      .getState()
+      .installedDocuments.find(
+        (document) => document.templateId === BUILT_IN_RECORD_TEMPLATE_ID
+      ) ?? null
+
+  useSessionDocumentStore.getState().upsertSessionDocument({
+    id: "tour-record",
+    sessionId: TOUR_SESSION_ID,
+    templateId: BUILT_IN_RECORD_TEMPLATE_ID,
+    instanceKey: "default",
+    templateVersionId:
+      installedRecordDocument?.installedVersionId ?? "tour-record-version",
+    title: null,
+    templateVersionNumber:
+      installedRecordDocument?.installedVersionNumber ?? 1,
+    templateSchemaNodes:
+      installedRecordDocument?.installedVersionSchemaNodes ?? [],
+    contentJson: recordToRichTextDocument(record, TOUR_RECORD_LABELS),
+    generationInputs: null,
+    generatedAt: null,
+    updatedAt: new Date().toISOString(),
   })
+  useConsultationDocumentsStore
+    .getState()
+    .openDocument(TOUR_SESSION_ID, "tour-record")
 }
 
 export function injectTranscriptData() {

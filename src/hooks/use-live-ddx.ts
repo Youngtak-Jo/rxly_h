@@ -241,8 +241,7 @@ export function useLiveDdx() {
     }
   }, [runDdx])
 
-  // Direct DDx trigger when recording/simulation stops
-  // Mirrors the pattern used in useLiveRecord for reliable end-of-session updates
+  // Direct DDx trigger when recording/simulation stops to catch the final turn.
   useEffect(() => {
     let prevIsRecording = useRecordingStore.getState().isRecording
 

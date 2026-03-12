@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { ExportLinkAccessMode, ExportLinkChannel } from "@prisma/client"
 import { Resend } from "resend"
 import { requireAuth } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
@@ -32,12 +33,16 @@ export async function POST(req: Request) {
       data: {
         userId: user.id,
         sessionId: sessionId || "unknown",
+        title: subject,
         content: encryptField(html) || "",
+        accessMode: ExportLinkAccessMode.OWNER_AUTH,
+        channel: ExportLinkChannel.EMAIL_SECURE,
         expiresAt,
       },
     })
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.rxly.app"
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin || "https://app.rxly.app"
     const secureUrl = `${appUrl}/export/${exportLink.id}`
 
     const { error } = await resend.emails.send({

@@ -17,14 +17,14 @@ import type { Session } from "@/types/session"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useInsightsStore } from "@/stores/insights-store"
-import { useRecordStore } from "@/stores/record-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useRecordingSegmentStore } from "@/stores/recording-segment-store"
 import { useNoteStore } from "@/stores/note-store"
 import { useDdxStore } from "@/stores/ddx-store"
 import { useResearchStore } from "@/stores/research-store"
-import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
+import { useConsultationDocumentsStore } from "@/stores/consultation-documents-store"
+import { useActiveConsultationDocumentDraftStore } from "@/stores/active-consultation-document-draft-store"
 import { useSessionDocumentStore } from "@/stores/session-document-store"
 import {
   getCachedSession,
@@ -74,13 +74,11 @@ export function NavSessions() {
   const { createSession } = useCreateSession()
   const transcriptStore = useTranscriptStore()
   const insightsStore = useInsightsStore()
-  const recordStore = useRecordStore()
   const recordingStore = useRecordingStore()
   const recordingSegmentStore = useRecordingSegmentStore()
   const noteStore = useNoteStore()
   const ddxStore = useDdxStore()
   const researchStore = useResearchStore()
-  const patientHandoutStore = usePatientHandoutStore()
 
   // Prefetch session data on hover (debounced)
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -100,13 +98,10 @@ export function NavSessions() {
     transcriptStore.reset()
     insightsStore.reset()
     ddxStore.reset()
-    recordStore.reset()
     recordingStore.reset()
     recordingSegmentStore.reset()
     noteStore.reset()
     researchStore.reset()
-    patientHandoutStore.reset()
-    useSessionDocumentStore.getState().reset()
     useConsultationModeStore.getState().reset()
     useConsultationTabStore.getState().clearAllUnseenUpdates()
   }
@@ -201,6 +196,9 @@ export function NavSessions() {
     // Optimistic removal for both active and inactive session delete.
     setSessions(previousSessions.filter((s) => s.id !== sessionId))
     deleteCachedSession(sessionId)
+    useSessionDocumentStore.getState().resetSessionDocuments(sessionId)
+    useConsultationDocumentsStore.getState().resetSessionUi(sessionId)
+    useActiveConsultationDocumentDraftStore.getState().clearSession(sessionId)
 
     try {
       const res = await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" })

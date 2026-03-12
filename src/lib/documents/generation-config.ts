@@ -41,3 +41,37 @@ export function resolveClinicalContextMode(args: {
     args.generationConfig.clinicalContextDefault
   )
 }
+
+export function resolveAutomaticClinicalContext(args: {
+  generationInputs?: Pick<SessionDocumentGenerationInputs, "clinicalContextMode"> | null
+  insightsAvailable: boolean
+  transcriptAvailable: boolean
+}): {
+  mode: DocumentClinicalContextMode | "automatic"
+  includeInsights: boolean
+  includeTranscript: boolean
+} {
+  const requestedMode = args.generationInputs?.clinicalContextMode
+
+  if (requestedMode === "insights") {
+    return {
+      mode: "insights",
+      includeInsights: true,
+      includeTranscript: false,
+    }
+  }
+
+  if (requestedMode === "transcript") {
+    return {
+      mode: "transcript",
+      includeInsights: false,
+      includeTranscript: true,
+    }
+  }
+
+  return {
+    mode: "automatic",
+    includeInsights: args.insightsAvailable,
+    includeTranscript: args.transcriptAvailable,
+  }
+}

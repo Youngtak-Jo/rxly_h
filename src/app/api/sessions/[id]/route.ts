@@ -5,7 +5,10 @@ import { logAudit } from "@/lib/audit"
 import { logger } from "@/lib/logger"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { sessionPatchSchema } from "@/lib/validations"
-import { mapSessionDocumentRecord } from "@/lib/documents/server"
+import {
+  ensureCanonicalSessionDocuments,
+  mapSessionDocumentRecord,
+} from "@/lib/documents/server"
 
 export async function GET(
   req: Request,
@@ -18,7 +21,9 @@ export async function GET(
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
-    const session = await prisma.session.findUnique({
+    await ensureCanonicalSessionDocuments(id, user.id)
+
+    const session = await prisma.session.findFirst({
       where: { id, userId: user.id },
       include: {
         insights: true,
@@ -118,7 +123,7 @@ export async function DELETE(
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
-    const existing = await prisma.session.findUnique({
+    const existing = await prisma.session.findFirst({
       where: { id, userId: user.id },
     })
     if (!existing) {

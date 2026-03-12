@@ -4,7 +4,8 @@ import type { Session } from "@/types/session"
 interface SessionState {
   activeSession: Session | null
   sessions: Session[]
-  isLoading: boolean
+  isSessionListLoading: boolean
+  isActiveSessionLoading: boolean
   isSwitching: boolean
   hydratingSessionId: string | null
   hasLoadedSessionList: boolean
@@ -12,7 +13,8 @@ interface SessionState {
   setSessions: (sessions: Session[]) => void
   addSession: (session: Session) => void
   updateSession: (id: string, partial: Partial<Session>) => void
-  setLoading: (loading: boolean) => void
+  setSessionListLoading: (loading: boolean) => void
+  setActiveSessionLoading: (loading: boolean) => void
   setSwitching: (switching: boolean) => void
   setHydratingSessionId: (sessionId: string | null) => void
   setHasLoadedSessionList: (loaded: boolean) => void
@@ -21,7 +23,8 @@ interface SessionState {
 export const useSessionStore = create<SessionState>((set) => ({
   activeSession: null,
   sessions: [],
-  isLoading: false,
+  isSessionListLoading: false,
+  isActiveSessionLoading: false,
   isSwitching: false,
   hydratingSessionId: null,
   hasLoadedSessionList: false,
@@ -44,7 +47,9 @@ export const useSessionStore = create<SessionState>((set) => ({
           : state.activeSession,
     })),
 
-  setLoading: (isLoading) => set({ isLoading }),
+  setSessionListLoading: (isSessionListLoading) => set({ isSessionListLoading }),
+  setActiveSessionLoading: (isActiveSessionLoading) =>
+    set({ isActiveSessionLoading }),
   setSwitching: (isSwitching) => set({ isSwitching }),
   setHydratingSessionId: (hydratingSessionId) => set({ hydratingSessionId }),
   setHasLoadedSessionList: (hasLoadedSessionList) => set({ hasLoadedSessionList }),

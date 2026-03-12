@@ -137,7 +137,7 @@ const globalForPrisma = globalThis as unknown as {
   __prismaRevision?: number
 }
 
-const PRISMA_CLIENT_REVISION = 2
+const PRISMA_CLIENT_REVISION = 3
 
 function getDatasourceUrl(): string | undefined {
   const raw = process.env.DATABASE_URL

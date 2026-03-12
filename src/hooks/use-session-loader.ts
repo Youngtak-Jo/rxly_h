@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { ChecklistItem, DiagnosisCitation } from "@/types/insights"
 import type { ConsultationRecord } from "@/types/record"
 import type { PatientHandoutDocument } from "@/types/patient-handout"
@@ -19,10 +19,8 @@ import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useDdxStore } from "@/stores/ddx-store"
 import { useInsightsStore } from "@/stores/insights-store"
 import { useNoteStore, type NoteEntry } from "@/stores/note-store"
-import { useRecordStore } from "@/stores/record-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useRecordingSegmentStore } from "@/stores/recording-segment-store"
-import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 import {
   useResearchStore,
   type ResearchMessage,
@@ -337,10 +335,8 @@ function restoreCoreStores(session: CoreSessionResponse) {
   const transcriptStore = useTranscriptStore.getState()
   const insightsStore = useInsightsStore.getState()
   const ddxStore = useDdxStore.getState()
-  const recordStore = useRecordStore.getState()
   const noteStore = useNoteStore.getState()
   const researchStore = useResearchStore.getState()
-  const patientHandoutStore = usePatientHandoutStore.getState()
   const recordingStore = useRecordingStore.getState()
   const recordingSegmentStore = useRecordingSegmentStore.getState()
   const consultationModeStore = useConsultationModeStore.getState()
@@ -385,16 +381,6 @@ function restoreCoreStores(session: CoreSessionResponse) {
         sortOrder: dx.sortOrder,
       }))
     )
-  }
-
-  recordStore.reset()
-  if (session.record) {
-    recordStore.loadFromDB(session.record)
-  }
-
-  patientHandoutStore.reset()
-  if (session.patientHandout) {
-    patientHandoutStore.loadFromDB(session.patientHandout)
   }
 
   sessionDocumentStore.hydrateSessionDocuments(
@@ -536,20 +522,43 @@ export async function prefetchCoreSessionById(
   }
 }
 
-export async function loadSessionById(sessionId: string): Promise<boolean> {
+function hasCachedSessionData(sessionId: string): boolean {
+  return !!getCoreCachedSession(sessionId) || !!getCachedSession(sessionId)
+}
+
+export async function loadSessionById(
+  sessionId: string,
+  options?: { seedSession?: Session | null }
+): Promise<boolean> {
   const store = useSessionStore.getState()
   const activeSession = store.activeSession
-  if (activeSession?.id === sessionId) return true
+  const cachedFullSession = getCachedSession(sessionId)
+  const cachedCoreSession = getCoreCachedSession(sessionId)
+
+  if (activeSession?.id === sessionId && (cachedFullSession || cachedCoreSession)) {
+    store.setActiveSessionLoading(false)
+    store.setSwitching(false)
+    return true
+  }
 
   const recordingState = useRecordingStore.getState()
   if (recordingState.isSimulating && recordingState.simulationControls) {
     recordingState.simulationControls.stop({ skipFinalAnalysis: true })
   }
 
-  if (activeSession) {
+  if (
+    options?.seedSession &&
+    (!activeSession || activeSession.id !== sessionId) &&
+    !cachedFullSession &&
+    !cachedCoreSession
+  ) {
+    store.setActiveSession(options.seedSession)
+  }
+
+  if (activeSession && activeSession.id !== sessionId) {
     store.setSwitching(true)
   } else {
-    store.setLoading(true)
+    store.setActiveSessionLoading(true)
   }
   store.setHydratingSessionId(null)
 
@@ -558,12 +567,13 @@ export async function loadSessionById(sessionId: string): Promise<boolean> {
   const requestStart = performance.now()
 
   try {
-    const cachedFullSession = getCachedSession(sessionId)
     if (cachedFullSession) {
       if (targetSessionLoadId !== sessionId) return false
 
       restoreCoreStores(cachedFullSession.session)
       hydrateHeavyStores(cachedFullSession)
+      useSessionStore.getState().setActiveSessionLoading(false)
+      useSessionStore.getState().setSwitching(false)
 
       // Cache hit path: return immediately, then refresh in background to avoid
       // serving stale data for up to FULL_CACHE_TTL_MS.
@@ -595,7 +605,7 @@ export async function loadSessionById(sessionId: string): Promise<boolean> {
 
     const coreLoadedMs = performance.now() - requestStart
     const currentStore = useSessionStore.getState()
-    currentStore.setLoading(false)
+    currentStore.setActiveSessionLoading(false)
     currentStore.setSwitching(false)
     currentStore.setHydratingSessionId(sessionId)
 
@@ -642,38 +652,73 @@ export async function loadSessionById(sessionId: string): Promise<boolean> {
     console.error("Failed to load session:", message, error)
     const { toast } = await import("sonner")
     toast.error(message)
-    useSessionStore.getState().setHydratingSessionId(null)
+    const latestStore = useSessionStore.getState()
+    latestStore.setHydratingSessionId(null)
+    latestStore.setActiveSessionLoading(false)
+    if (
+      options?.seedSession &&
+      latestStore.activeSession?.id === sessionId &&
+      !hasCachedSessionData(sessionId)
+    ) {
+      latestStore.setActiveSession(null)
+    }
     return false
   } finally {
     const latestStore = useSessionStore.getState()
     if (targetSessionLoadId === sessionId) {
-      latestStore.setLoading(false)
+      latestStore.setActiveSessionLoading(false)
       latestStore.setSwitching(false)
     }
   }
 }
 
-export function useSessionLoader(sessionId: string | null) {
+export function useSessionLoader(
+  sessionId: string | null,
+  options?: { seedSession?: Session | null }
+) {
   const activeSessionId = useSessionStore((s) => s.activeSession?.id)
   const loadedRef = useRef<string | null>(null)
+  const [settledSessionId, setSettledSessionId] = useState<string | null>(null)
+  const seedSession = options?.seedSession ?? null
+  const hasResolvedInitialLoad =
+    !sessionId ||
+    (activeSessionId === sessionId && hasCachedSessionData(sessionId)) ||
+    settledSessionId === sessionId
 
   useEffect(() => {
     if (!sessionId) return
 
-    if (activeSessionId === sessionId) {
+    if (activeSessionId === sessionId && hasCachedSessionData(sessionId)) {
       const store = useSessionStore.getState()
       // Re-entering the current session from another route should clear any stale
       // transition flags left behind by a previous navigation attempt.
-      store.setLoading(false)
+      store.setActiveSessionLoading(false)
       store.setSwitching(false)
       store.setHydratingSessionId(null)
       loadedRef.current = sessionId
       return
     }
 
+    let cancelled = false
+
     if (loadedRef.current === sessionId) return
     loadedRef.current = sessionId
 
-    void loadSessionById(sessionId)
-  }, [sessionId, activeSessionId])
+    void loadSessionById(
+      sessionId,
+      seedSession ? { seedSession } : undefined
+    ).then((success) => {
+      if (cancelled) return
+      setSettledSessionId(sessionId)
+      if (!success && loadedRef.current === sessionId) {
+        loadedRef.current = null
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeSessionId, seedSession, sessionId])
+
+  return { hasResolvedInitialLoad }
 }

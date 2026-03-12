@@ -1,8 +1,14 @@
+import { randomUUID } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import {
+  BUILT_IN_BLANK_DOCUMENT_TEMPLATE_ID,
   BUILT_IN_DOCUMENTS,
+  BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID,
+  BUILT_IN_RECORD_TEMPLATE_ID,
   DEFAULT_DOCUMENT_TEMPLATE_IDS,
+  DEFAULT_SESSION_DOCUMENT_INSTANCE_KEY,
+  HIDDEN_BUILT_IN_DOCUMENT_TEMPLATE_IDS,
   SYSTEM_WORKSPACE_TAB_IDS,
   buildDocumentTabId,
   createDefaultTabOrder,
@@ -43,6 +49,18 @@ import {
 import { normalizeDocumentCategory } from "@/lib/documents/categories"
 import type { UiLocale } from "@/i18n/config"
 import { createDocumentGenerationConfig } from "@/lib/documents/generation-config"
+import {
+  derivePatientHandoutFromRichTextDocument,
+  deriveRecordFromRichTextDocument,
+  genericStructuredContentToRichTextDocument,
+  isRichTextDocument,
+  normalizeRichTextDocument,
+  patientHandoutToRichTextDocument,
+  recordToRichTextDocument,
+  type RichTextDocument,
+} from "@/lib/documents/rich-text"
+import type { PatientHandoutDocument } from "@/types/patient-handout"
+import type { ConsultationRecord } from "@/types/record"
 
 type TemplateWithVersions = Prisma.DocumentTemplateGetPayload<{
   include: {
@@ -96,6 +114,41 @@ const SEEDED_PUBLIC_TEMPLATE_METADATA = new Map(
 
 function buildWorkspaceEnsureKey(userId: string, locale: UiLocale): string {
   return `${userId}:${locale}`
+}
+
+const SESSION_DOCUMENT_INSTANCE_FIELDS_SUPPORTED = (() => {
+  const model = Prisma.dmmf.datamodel.models.find(
+    (candidate) => candidate.name === "SessionDocument"
+  )
+  if (!model) return false
+
+  return model.fields.some((field) => field.name === "instanceKey")
+})()
+
+function supportsSessionDocumentInstances(): boolean {
+  return SESSION_DOCUMENT_INSTANCE_FIELDS_SUPPORTED
+}
+
+function buildVisibleTemplateWhere(): Prisma.DocumentTemplateWhereInput {
+  return HIDDEN_BUILT_IN_DOCUMENT_TEMPLATE_IDS.length > 0
+    ? {
+        id: {
+          notIn: HIDDEN_BUILT_IN_DOCUMENT_TEMPLATE_IDS,
+        },
+      }
+    : {}
+}
+
+function buildVisibleInstalledDocumentWhere():
+  | Pick<Prisma.UserInstalledDocumentWhereInput, "templateId">
+  | Record<string, never> {
+  return HIDDEN_BUILT_IN_DOCUMENT_TEMPLATE_IDS.length > 0
+    ? {
+        templateId: {
+          notIn: HIDDEN_BUILT_IN_DOCUMENT_TEMPLATE_IDS,
+        },
+      }
+    : {}
 }
 
 function isRxlyAuthoredTemplate(template: {
@@ -220,7 +273,12 @@ function buildCatalogTemplateWhere(
   userId: string
 ): Prisma.DocumentTemplateWhereInput {
   return {
-    OR: buildCatalogTemplateAccessClauses(userId),
+    AND: [
+      buildVisibleTemplateWhere(),
+      {
+        OR: buildCatalogTemplateAccessClauses(userId),
+      },
+    ],
   }
 }
 
@@ -229,7 +287,14 @@ function buildRetainedTemplateWhere(
 ): Prisma.DocumentTemplateWhereInput {
   return {
     OR: [
-      ...buildCatalogTemplateAccessClauses(userId),
+      {
+        AND: [
+          buildVisibleTemplateWhere(),
+          {
+            OR: buildCatalogTemplateAccessClauses(userId),
+          },
+        ],
+      },
       {
         installedBy: {
           some: {
@@ -255,6 +320,7 @@ function buildInstalledDocumentWhere(
 ): Prisma.UserInstalledDocumentWhereInput {
   return {
     userId,
+    ...buildVisibleInstalledDocumentWhere(),
   }
 }
 
@@ -329,6 +395,176 @@ function toVersionPreview(
     generatedAt: version.previewGeneratedAt?.toISOString() ?? null,
     inputChecksum: version.previewInputChecksum,
   }
+}
+
+const LEGACY_RECORD_LABELS = {
+  vitals: "Vitals",
+  sections: {
+    chiefComplaint: "Chief Complaint",
+    hpiText: "History of Present Illness",
+    medications: "Medications",
+    rosText: "Review of Systems",
+    pmh: "Past Medical History",
+    socialHistory: "Social History",
+    familyHistory: "Family History",
+    physicalExam: "Physical Examination",
+    labsStudies: "Labs and Studies",
+    assessment: "Assessment",
+    plan: "Plan",
+  },
+} as const
+
+const LEGACY_HANDOUT_LABELS = {
+  sections: {
+    conditionOverview: "Condition Overview",
+    signsSymptoms: "Signs and Symptoms",
+    causesRiskFactors: "Causes and Risk Factors",
+    complications: "Complications",
+    treatmentOptions: "Treatment Options",
+    whenToSeekHelp: "When to Seek Help",
+    additionalAdviceFollowUp: "Additional Advice and Follow-Up",
+    disclaimer: "Disclaimer",
+  },
+} as const
+
+function toStoredRichTextDocument(input: {
+  contentJson: unknown
+  templateVersion?: {
+    schemaJson: unknown
+  } | null
+}): RichTextDocument {
+  if (isRichTextDocument(input.contentJson)) {
+    return normalizeRichTextDocument(input.contentJson)
+  }
+
+  const schemaNodes = input.templateVersion?.schemaJson
+    ? (toRecord(input.templateVersion.schemaJson) as DocumentTemplateSchema).nodes
+    : undefined
+
+  return genericStructuredContentToRichTextDocument({
+    contentJson: toRecord(input.contentJson) as Record<string, unknown>,
+    schemaNodes,
+  })
+}
+
+function buildLegacyRecordSkeleton(
+  sessionId: string,
+  patientName: string | null,
+  generatedAt?: string | Date | null
+): ConsultationRecord {
+  const isoGeneratedAt =
+    generatedAt instanceof Date
+      ? generatedAt.toISOString()
+      : typeof generatedAt === "string"
+        ? generatedAt
+        : new Date().toISOString()
+
+  return {
+    id: `legacy-record:${sessionId}`,
+    sessionId,
+    date: isoGeneratedAt,
+    patientName,
+    chiefComplaint: null,
+    hpiText: null,
+    medications: null,
+    rosText: null,
+    pmh: null,
+    socialHistory: null,
+    familyHistory: null,
+    vitals: null,
+    physicalExam: null,
+    labsStudies: null,
+    assessment: null,
+    plan: null,
+    documentJson: null,
+  }
+}
+
+function buildLegacyHandoutSkeleton(input: {
+  sessionId: string
+  generatedAt?: string | Date | null
+  conditions?: PatientHandoutDocument["conditions"]
+}): PatientHandoutDocument {
+  const isoGeneratedAt =
+    input.generatedAt instanceof Date
+      ? input.generatedAt.toISOString()
+      : typeof input.generatedAt === "string"
+        ? input.generatedAt
+        : new Date().toISOString()
+
+  return {
+    id: `legacy-handout:${input.sessionId}`,
+    sessionId: input.sessionId,
+    language: "en",
+    conditions: input.conditions ?? [],
+    entries: [],
+    generatedAt: isoGeneratedAt,
+    documentJson: null,
+  }
+}
+
+export function legacyRecordToSessionDocumentContent(
+  record: ConsultationRecord
+): RichTextDocument {
+  return normalizeRichTextDocument(
+    record.documentJson,
+    recordToRichTextDocument(record, LEGACY_RECORD_LABELS)
+  )
+}
+
+export function sessionDocumentToLegacyRecord(input: {
+  sessionId: string
+  patientName: string | null
+  sessionDocument: {
+    contentJson: unknown
+    templateVersion?: {
+      schemaJson: unknown
+    } | null
+    generatedAt?: string | Date | null
+  }
+}): ConsultationRecord {
+  const documentJson = toStoredRichTextDocument(input.sessionDocument)
+  return deriveRecordFromRichTextDocument(
+    documentJson,
+    buildLegacyRecordSkeleton(
+      input.sessionId,
+      input.patientName,
+      input.sessionDocument.generatedAt ?? null
+    )
+  )
+}
+
+export function legacyPatientHandoutToSessionDocumentContent(
+  handout: PatientHandoutDocument
+): RichTextDocument {
+  return normalizeRichTextDocument(
+    handout.documentJson,
+    patientHandoutToRichTextDocument(handout, LEGACY_HANDOUT_LABELS)
+  )
+}
+
+export function sessionDocumentToLegacyPatientHandout(input: {
+  sessionId: string
+  sessionDocument: {
+    contentJson: unknown
+    templateVersion?: {
+      schemaJson: unknown
+    } | null
+    generationInputs?: SessionDocumentRecord["generationInputs"] | null
+    generatedAt?: string | Date | null
+  }
+}): PatientHandoutDocument {
+  const documentJson = toStoredRichTextDocument(input.sessionDocument)
+  const conditions = input.sessionDocument.generationInputs?.confirmedDiagnoses ?? []
+
+  return derivePatientHandoutFromRichTextDocument(
+    documentJson,
+    buildLegacyHandoutSkeleton({
+      sessionId: input.sessionId,
+      generatedAt: input.sessionDocument.generatedAt ?? null,
+      conditions,
+    })
+  )
 }
 
 function buildStoredPreviewPayload(
@@ -407,7 +643,9 @@ export function mapSessionDocumentRecord(document: {
   id: string
   sessionId: string
   templateId: string
+  instanceKey?: string
   templateVersionId: string
+  title?: string | null
   contentJson: unknown
   generationInputsJson?: unknown
   templateVersion?: {
@@ -421,7 +659,10 @@ export function mapSessionDocumentRecord(document: {
     id: document.id,
     sessionId: document.sessionId,
     templateId: document.templateId,
+    instanceKey:
+      document.instanceKey ?? DEFAULT_SESSION_DOCUMENT_INSTANCE_KEY,
     templateVersionId: document.templateVersionId,
+    title: document.title ?? null,
     contentJson: toRecord(document.contentJson) as Record<string, unknown>,
     generationInputs: (() => {
       if (!document.generationInputsJson) return null
@@ -594,6 +835,149 @@ export async function ensureBuiltInDocumentTemplates(): Promise<void> {
   }
 
   await builtInTemplateEnsurePromise
+}
+
+export async function ensureCanonicalSessionDocuments(
+  sessionId: string,
+  userId: string
+): Promise<void> {
+  await ensureBuiltInDocumentTemplates()
+
+  const supportsInstances = supportsSessionDocumentInstances()
+
+  const session = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      userId,
+    },
+    include: {
+      record: true,
+      patientHandout: true,
+      sessionDocuments: {
+        where: {
+          templateId: {
+            in: [
+              BUILT_IN_RECORD_TEMPLATE_ID,
+              BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID,
+            ],
+          },
+          ...(supportsInstances
+            ? {
+                instanceKey: DEFAULT_SESSION_DOCUMENT_INSTANCE_KEY,
+              }
+            : {}),
+        },
+      },
+    },
+  })
+
+  if (!session) return
+
+  const existingTemplateIds = new Set(
+    session.sessionDocuments.map((document) => document.templateId)
+  )
+  const builtInTemplates = await prisma.documentTemplate.findMany({
+    where: {
+      id: {
+        in: [BUILT_IN_RECORD_TEMPLATE_ID, BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID],
+      },
+    },
+    select: {
+      id: true,
+      latestPublishedVersionId: true,
+    },
+  })
+  const versionIdByTemplateId = new Map(
+    builtInTemplates
+      .filter(
+        (template): template is typeof template & { latestPublishedVersionId: string } =>
+          !!template.latestPublishedVersionId
+      )
+      .map((template) => [template.id, template.latestPublishedVersionId])
+  )
+
+  if (
+    session.record &&
+    !existingTemplateIds.has(BUILT_IN_RECORD_TEMPLATE_ID) &&
+    versionIdByTemplateId.has(BUILT_IN_RECORD_TEMPLATE_ID)
+  ) {
+    const legacyRecord: ConsultationRecord = {
+      id: session.record.id,
+      sessionId,
+      date: session.record.date.toISOString(),
+      patientName: session.record.patientName,
+      chiefComplaint: session.record.chiefComplaint,
+      hpiText: session.record.hpiText,
+      medications: session.record.medications,
+      rosText: session.record.rosText,
+      pmh: session.record.pmh,
+      socialHistory: session.record.socialHistory,
+      familyHistory: session.record.familyHistory,
+      vitals:
+        session.record.vitals && typeof session.record.vitals === "object"
+          ? (toRecord(
+              session.record.vitals
+            ) as unknown as ConsultationRecord["vitals"])
+          : null,
+      physicalExam: session.record.physicalExam,
+      labsStudies: session.record.labsStudies,
+      assessment: session.record.assessment,
+      plan: session.record.plan,
+      documentJson: session.record.documentJson
+        ? (toRecord(session.record.documentJson) as RichTextDocument)
+        : null,
+    }
+
+    await upsertSessionDocument({
+      sessionId,
+      templateId: BUILT_IN_RECORD_TEMPLATE_ID,
+      instanceKey: DEFAULT_SESSION_DOCUMENT_INSTANCE_KEY,
+      templateVersionId: versionIdByTemplateId.get(BUILT_IN_RECORD_TEMPLATE_ID)!,
+      contentJson: legacyRecordToSessionDocumentContent(
+        legacyRecord
+      ) as Record<string, unknown>,
+      generationInputs: null,
+      generatedAt: session.record.updatedAt.toISOString(),
+    })
+  }
+
+  if (
+    session.patientHandout &&
+    !existingTemplateIds.has(BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID) &&
+    versionIdByTemplateId.has(BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID)
+  ) {
+    const legacyHandout: PatientHandoutDocument = {
+      id: session.patientHandout.id,
+      sessionId,
+      language: session.patientHandout.language === "ko" ? "ko" : "en",
+      conditions: toRecord(
+        session.patientHandout.conditions
+      ) as unknown as PatientHandoutDocument["conditions"],
+      entries: toRecord(
+        session.patientHandout.entries
+      ) as unknown as PatientHandoutDocument["entries"],
+      documentJson: session.patientHandout.documentJson
+        ? (toRecord(session.patientHandout.documentJson) as RichTextDocument)
+        : null,
+      generatedAt: session.patientHandout.generatedAt.toISOString(),
+    }
+
+    await upsertSessionDocument({
+      sessionId,
+      templateId: BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID,
+      instanceKey: DEFAULT_SESSION_DOCUMENT_INSTANCE_KEY,
+      templateVersionId:
+        versionIdByTemplateId.get(BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID)!,
+      contentJson: legacyPatientHandoutToSessionDocumentContent(
+        legacyHandout
+      ) as Record<string, unknown>,
+      generationInputs: {
+        clinicalContextMode: null,
+        confirmedDiagnoses: legacyHandout.conditions,
+      },
+      generatedAt: legacyHandout.generatedAt,
+    })
+  }
 }
 
 async function ensureDefaultInstalledDocumentsExistInternal(
@@ -1651,6 +2035,7 @@ export async function getSessionDocumentForUser(input: {
   userId: string
   sessionId: string
   templateId: string
+  instanceKey?: string
 }): Promise<{
   sessionDocument: SessionDocumentRecord | null
   template: TemplateWithVersions
@@ -1674,10 +2059,21 @@ export async function getSessionDocumentForUser(input: {
     sanitizeTemplateForViewer(template, input.userId)
   )
 
+  await ensureCanonicalSessionDocuments(input.sessionId, input.userId)
+
   const sessionDocument = await prisma.sessionDocument.findFirst({
     where: {
       sessionId: input.sessionId,
       templateId: input.templateId,
+      ...(supportsSessionDocumentInstances()
+        ? {
+            instanceKey:
+              input.instanceKey ?? DEFAULT_SESSION_DOCUMENT_INSTANCE_KEY,
+          }
+        : {}),
+    },
+    include: {
+      templateVersion: true,
     },
   })
   const installedDocument =
@@ -1698,46 +2094,142 @@ export async function getSessionDocumentForUser(input: {
   }
 }
 
+export async function getSessionDocumentByIdForUser(input: {
+  userId: string
+  sessionId: string
+  documentId: string
+}): Promise<{
+  sessionDocument: SessionDocumentRecord
+  template: TemplateWithVersions
+  installedDocument: InstalledDocumentSummary | null
+}> {
+  const workspace = await ensureDefaultInstalledDocuments(input.userId)
+  await ensureCanonicalSessionDocuments(input.sessionId, input.userId)
+
+  const record = await prisma.sessionDocument.findFirst({
+    where: {
+      id: input.documentId,
+      sessionId: input.sessionId,
+      session: {
+        userId: input.userId,
+      },
+    },
+    include: {
+      templateVersion: true,
+    },
+  })
+
+  if (!record) {
+    throw new Error("Session document not found")
+  }
+
+  const template = await prisma.documentTemplate.findFirst({
+    where: {
+      id: record.templateId,
+      ...buildRetainedTemplateWhere(input.userId),
+    },
+    include: {
+      latestDraftVersion: true,
+      latestPublishedVersion: true,
+    },
+  })
+  if (!template) {
+    throw new Error("Template not found")
+  }
+
+  const normalizedTemplate = withNormalizedTemplateCategory(
+    sanitizeTemplateForViewer(template, input.userId)
+  )
+
+  return {
+    sessionDocument: mapSessionDocumentRecord(record),
+    template: normalizedTemplate,
+    installedDocument:
+      workspace.installedDocuments.find(
+        (document) => document.templateId === record.templateId
+      ) ?? null,
+  }
+}
+
 export async function upsertSessionDocument(input: {
+  documentId?: string
   sessionId: string
   templateId: string
+  instanceKey?: string
   templateVersionId: string
+  title?: string | null
   contentJson: Record<string, unknown>
   generationInputs?: SessionDocumentRecord["generationInputs"]
   generatedAt?: string | null
 }): Promise<SessionDocumentRecord> {
-  const record = await prisma.sessionDocument.upsert({
-    where: {
-      sessionId_templateId: {
-        sessionId: input.sessionId,
-        templateId: input.templateId,
-      },
-    },
-    update: {
-      templateVersionId: input.templateVersionId,
-      contentJson: input.contentJson as unknown as Prisma.InputJsonValue,
-      generationInputsJson:
-        input.generationInputs === undefined
-          ? undefined
-          : input.generationInputs === null
-            ? Prisma.JsonNull
-            : (input.generationInputs as unknown as Prisma.InputJsonValue),
-      generatedAt: input.generatedAt ? new Date(input.generatedAt) : null,
-    },
-    create: {
-      sessionId: input.sessionId,
-      templateId: input.templateId,
-      templateVersionId: input.templateVersionId,
-      contentJson: input.contentJson as unknown as Prisma.InputJsonValue,
-      generationInputsJson:
-        input.generationInputs === undefined
+  const supportsInstances = supportsSessionDocumentInstances()
+  const sharedData = {
+    templateVersionId: input.templateVersionId,
+    ...(supportsInstances ? { title: input.title ?? null } : {}),
+    contentJson: input.contentJson as unknown as Prisma.InputJsonValue,
+    generationInputsJson:
+      input.generationInputs === undefined
+        ? undefined
+        : input.generationInputs === null
           ? Prisma.JsonNull
-          : input.generationInputs === null
-            ? Prisma.JsonNull
-            : (input.generationInputs as unknown as Prisma.InputJsonValue),
-      generatedAt: input.generatedAt ? new Date(input.generatedAt) : null,
-    },
-  })
+          : (input.generationInputs as unknown as Prisma.InputJsonValue),
+    generatedAt: input.generatedAt ? new Date(input.generatedAt) : null,
+  }
+
+  const record = input.documentId
+    ? await prisma.sessionDocument.update({
+        where: { id: input.documentId },
+        data: sharedData,
+      })
+    : supportsInstances
+      ? await prisma.sessionDocument.upsert({
+          where: {
+            sessionId_templateId_instanceKey: {
+              sessionId: input.sessionId,
+              templateId: input.templateId,
+              instanceKey:
+                input.instanceKey ?? DEFAULT_SESSION_DOCUMENT_INSTANCE_KEY,
+            },
+          },
+          update: sharedData,
+          create: {
+            sessionId: input.sessionId,
+            templateId: input.templateId,
+            instanceKey:
+              input.instanceKey ?? DEFAULT_SESSION_DOCUMENT_INSTANCE_KEY,
+            ...sharedData,
+          },
+        })
+      : await (async () => {
+          const existing = await prisma.sessionDocument.findFirst({
+            where: {
+              sessionId: input.sessionId,
+              templateId: input.templateId,
+            },
+            select: { id: true },
+          })
+
+          if (existing) {
+            return prisma.sessionDocument.update({
+              where: { id: existing.id },
+              data: sharedData,
+            })
+          }
+
+          return prisma.sessionDocument.create({
+            data: {
+              sessionId: input.sessionId,
+              templateId: input.templateId,
+              ...sharedData,
+              generationInputsJson:
+                input.generationInputs === undefined
+                  ? Prisma.JsonNull
+                  : input.generationInputs === null
+                    ? Prisma.JsonNull
+                    : (input.generationInputs as unknown as Prisma.InputJsonValue),
+            },
+          })
+        })()
 
   const recordWithVersion = await prisma.sessionDocument.findUniqueOrThrow({
     where: { id: record.id },
@@ -1755,12 +2247,18 @@ export async function createInitialSessionDocumentIfMissing(input: {
   templateVersionId: string
   schema: DocumentTemplateSchema
 }): Promise<SessionDocumentRecord> {
-  const existing = await prisma.sessionDocument.findUnique({
+  const existing = await prisma.sessionDocument.findFirst({
     where: {
-      sessionId_templateId: {
-        sessionId: input.sessionId,
-        templateId: input.templateId,
-      },
+      sessionId: input.sessionId,
+      templateId: input.templateId,
+      ...(supportsSessionDocumentInstances()
+        ? {
+            instanceKey: DEFAULT_SESSION_DOCUMENT_INSTANCE_KEY,
+          }
+        : {}),
+    },
+    include: {
+      templateVersion: true,
     },
   })
 
@@ -1769,8 +2267,44 @@ export async function createInitialSessionDocumentIfMissing(input: {
   return upsertSessionDocument({
     sessionId: input.sessionId,
     templateId: input.templateId,
+    instanceKey: DEFAULT_SESSION_DOCUMENT_INSTANCE_KEY,
     templateVersionId: input.templateVersionId,
     contentJson: createEmptyDocumentContent(input.schema),
+    generatedAt: null,
+  })
+}
+
+export async function createBlankSessionDocument(input: {
+  sessionId: string
+  title?: string | null
+  contentJson?: Record<string, unknown>
+}): Promise<SessionDocumentRecord> {
+  if (!supportsSessionDocumentInstances()) {
+    throw new Error(
+      "Blank documents require a Prisma client refresh. Restart the development server and try again."
+    )
+  }
+
+  await ensureBuiltInDocumentTemplates()
+
+  const template = await prisma.documentTemplate.findUnique({
+    where: { id: BUILT_IN_BLANK_DOCUMENT_TEMPLATE_ID },
+    select: {
+      latestPublishedVersionId: true,
+    },
+  })
+
+  if (!template?.latestPublishedVersionId) {
+    throw new Error("Blank document template not found")
+  }
+
+  return upsertSessionDocument({
+    sessionId: input.sessionId,
+    templateId: BUILT_IN_BLANK_DOCUMENT_TEMPLATE_ID,
+    instanceKey: randomUUID(),
+    templateVersionId: template.latestPublishedVersionId,
+    title: input.title ?? null,
+    contentJson: input.contentJson ?? normalizeRichTextDocument({}),
     generatedAt: null,
   })
 }

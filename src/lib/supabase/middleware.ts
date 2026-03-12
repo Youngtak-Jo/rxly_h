@@ -39,6 +39,7 @@ export async function updateSession(request: NextRequest) {
     "/auth",
     "/api",
     "/export",
+    "/share",
   ]
 
   const isPublicPath =

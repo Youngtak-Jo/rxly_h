@@ -7,5 +7,14 @@
     "expiredTitle": "링크 만료",
     "notFoundDescription": "이 내보내기 링크가 유효하지 않거나 삭제되었습니다.",
     "notFoundTitle": "내보내기를 찾을 수 없음"
+  },
+  "PublicShareViewer": {
+    "defaultTitle": "공유 문서",
+    "notFoundDescription": "이 환자 공유 링크가 유효하지 않거나 더 이상 사용할 수 없습니다.",
+    "notFoundTitle": "공유 링크를 찾을 수 없음",
+    "printButton": "인쇄 / PDF로 저장",
+    "revokedDescription": "이 환자 공유 링크는 교체되었습니다. 최신 QR 코드나 링크를 다시 받아 주세요.",
+    "revokedTitle": "공유 중지됨",
+    "toolbarDescription": "문서를 온라인에서 확인하거나 인쇄 / PDF 저장으로 사본을 보관하세요."
   }
 }

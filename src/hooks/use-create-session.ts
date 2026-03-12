@@ -10,14 +10,14 @@ import type { Session } from "@/types/session"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useTranscriptStore } from "@/stores/transcript-store"
 import { useInsightsStore } from "@/stores/insights-store"
-import { useRecordStore } from "@/stores/record-store"
 import { useRecordingStore } from "@/stores/recording-store"
 import { useRecordingSegmentStore } from "@/stores/recording-segment-store"
 import { useNoteStore } from "@/stores/note-store"
 import { useDdxStore } from "@/stores/ddx-store"
 import { useResearchStore } from "@/stores/research-store"
-import { usePatientHandoutStore } from "@/stores/patient-handout-store"
 import { useConsultationModeStore } from "@/stores/consultation-mode-store"
+import { useConsultationDocumentsStore } from "@/stores/consultation-documents-store"
+import { useActiveConsultationDocumentDraftStore } from "@/stores/active-consultation-document-draft-store"
 import { useSessionDocumentStore } from "@/stores/session-document-store"
 import {
   cancelSessionLoad,
@@ -32,13 +32,11 @@ export function useCreateSession() {
   const { addSession, setActiveSession } = useSessionStore()
   const transcriptStore = useTranscriptStore()
   const insightsStore = useInsightsStore()
-  const recordStore = useRecordStore()
   const recordingStore = useRecordingStore()
   const recordingSegmentStore = useRecordingSegmentStore()
   const noteStore = useNoteStore()
   const ddxStore = useDdxStore()
   const researchStore = useResearchStore()
-  const patientHandoutStore = usePatientHandoutStore()
 
   const stopSimulationIfRunning = () => {
     const recState = useRecordingStore.getState()
@@ -47,17 +45,19 @@ export function useCreateSession() {
     }
   }
 
-  const resetConsultationStores = () => {
+  const resetConsultationStores = (sessionId?: string) => {
     transcriptStore.reset()
     insightsStore.reset()
     ddxStore.reset()
-    recordStore.reset()
     recordingStore.reset()
     recordingSegmentStore.reset()
     noteStore.reset()
     researchStore.reset()
-    patientHandoutStore.reset()
-    useSessionDocumentStore.getState().reset()
+    if (sessionId) {
+      useSessionDocumentStore.getState().resetSessionDocuments(sessionId)
+      useConsultationDocumentsStore.getState().resetSessionUi(sessionId)
+      useActiveConsultationDocumentDraftStore.getState().clearSession(sessionId)
+    }
     useConsultationModeStore.getState().reset()
     useConsultationTabStore.getState().clearAllUnseenUpdates()
   }
@@ -121,7 +121,7 @@ export function useCreateSession() {
 
     addSession(optimisticSession)
     setActiveSession(optimisticSession)
-    resetConsultationStores()
+    resetConsultationStores(tempId)
     router.push(`/consultation/${tempId}`)
 
     try {
