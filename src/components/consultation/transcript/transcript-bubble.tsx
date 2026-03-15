@@ -135,7 +135,7 @@ export const TranscriptBubble = memo(function TranscriptBubble({
                 : "center"
 
     const bubbleClassName = cn(
-        "max-w-[90%] px-3 py-2 text-left transition-colors",
+        "max-w-[92%] px-3 py-2 text-left transition-colors sm:max-w-[90%]",
         isSeekable &&
             "cursor-pointer hover:brightness-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
         align === "left" && "rounded-2xl rounded-tl-sm bg-muted",
@@ -146,7 +146,7 @@ export const TranscriptBubble = memo(function TranscriptBubble({
 
     const content = (
         <>
-            <p className="text-sm leading-relaxed">
+            <p className="text-[13px] leading-5 sm:text-sm sm:leading-relaxed">
                 {diagnosticKeywords.length > 0
                     ? highlightText(entry.text, diagnosticKeywords).map(
                         (seg, j) =>
@@ -176,7 +176,7 @@ export const TranscriptBubble = memo(function TranscriptBubble({
                 >
                     <span
                         className={cn(
-                            "text-[10px] font-medium",
+                            "text-[9px] font-medium sm:text-[10px]",
                             align === "right"
                                 ? "text-primary/70"
                                 : "text-muted-foreground"
@@ -184,7 +184,7 @@ export const TranscriptBubble = memo(function TranscriptBubble({
                     >
                         {speakerLabel(entry.speaker)}
                     </span>
-                    <span className="text-[10px] font-mono text-muted-foreground/60">
+                    <span className="text-[9px] font-mono text-muted-foreground/60 sm:text-[10px]">
                         {formatTime(entry.createdAt, locale, timeZone)}
                     </span>
                 </div>

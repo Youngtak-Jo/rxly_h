@@ -73,6 +73,7 @@ interface SessionDocumentState {
     previousDocumentId: string,
     nextDocument: SessionDocumentRecord
   ) => void
+  removeSessionDocument: (sessionId: string, documentId: string) => void
   createOptimisticBlankDocument: (
     sessionId: string,
     title?: string | null
@@ -297,6 +298,42 @@ export const useSessionDocumentStore = create<SessionDocumentState>(
           uiStateBySessionId: {
             ...state.uiStateBySessionId,
             [nextDocument.sessionId]: nextUiState,
+          },
+        }
+      }),
+
+    removeSessionDocument: (sessionId, documentId) =>
+      set((state) => {
+        const currentDocuments = state.documentsBySessionId[sessionId] ?? []
+        if (!currentDocuments.some((document) => document.id === documentId)) {
+          return state
+        }
+
+        const nextDocuments = currentDocuments.filter(
+          (document) => document.id !== documentId
+        )
+        const nextSchemas = {
+          ...(state.documentSchemasBySessionId[sessionId] ?? {}),
+        }
+        delete nextSchemas[documentId]
+
+        const nextUiState = {
+          ...(state.uiStateBySessionId[sessionId] ?? {}),
+        }
+        delete nextUiState[documentId]
+
+        return {
+          documentsBySessionId: {
+            ...state.documentsBySessionId,
+            [sessionId]: nextDocuments,
+          },
+          documentSchemasBySessionId: {
+            ...state.documentSchemasBySessionId,
+            [sessionId]: nextSchemas,
+          },
+          uiStateBySessionId: {
+            ...state.uiStateBySessionId,
+            [sessionId]: nextUiState,
           },
         }
       }),

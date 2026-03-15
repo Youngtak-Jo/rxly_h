@@ -15,7 +15,7 @@ const TAB_CONTENT_CLASS_NAME = "mt-0 min-h-0 overflow-hidden"
 function DocumentTabContent({ children }: { children: ReactNode }) {
   return (
     <div className="consultation-center-scroll h-full overflow-y-auto">
-      <div className="min-w-0 p-4">{children}</div>
+      <div className="min-w-0 p-3 sm:p-4">{children}</div>
     </div>
   )
 }

@@ -44,7 +44,7 @@ export function ResearchMessageBubble({
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
+        <div className="max-w-[84%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-[13px] text-primary-foreground sm:max-w-[80%] sm:px-4 sm:py-2.5 sm:text-sm">
           {message.content && (
             <p className="whitespace-pre-wrap">{message.content}</p>
           )}
@@ -57,7 +57,7 @@ export function ResearchMessageBubble({
                   alt={`Research attachment ${index + 1}`}
                   width={88}
                   height={88}
-                  className="h-20 w-20 rounded-xl border border-white/20 object-cover"
+                  className="h-16 w-16 rounded-xl border border-white/20 object-cover sm:h-20 sm:w-20"
                   unoptimized
                 />
               ))}
@@ -115,7 +115,7 @@ export function ResearchMessageBubble({
       ) : isStreaming ? (
         <div className="flex items-center gap-1.5 py-2">
           <span className="h-2 w-2 rounded-full bg-violet-500 animate-pulse" />
-          <span className="text-xs text-muted-foreground">
+          <span className="text-[11px] text-muted-foreground sm:text-xs">
             {t("searching")}
           </span>
         </div>

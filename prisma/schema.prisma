@@ -510,6 +510,16 @@ model UserWorkspaceLayout {
   @@map("user_workspace_layouts")
 }
 
+model UserBootstrapState {
+  userId                 String   @id @map("user_id")
+  sampleSessionsSeededAt DateTime? @map("sample_sessions_seeded_at")
+  samplePackVersion      Int      @default(0) @map("sample_pack_version")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  @@map("user_bootstrap_states")
+}
+
 model SessionDocument {
   id                String   @id @default(uuid())
   sessionId         String   @map("session_id")

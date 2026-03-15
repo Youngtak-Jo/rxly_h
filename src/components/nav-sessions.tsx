@@ -34,6 +34,7 @@ import {
   cancelSessionLoad,
 } from "@/hooks/use-session-loader"
 import { useCreateSession } from "@/hooks/use-create-session"
+import { isExampleSession } from "@/lib/session-order"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,8 +50,6 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-
-
 function formatShortTimeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
   if (seconds < 60) return `${seconds}s`
@@ -63,6 +62,14 @@ function formatShortTimeAgo(date: Date): string {
   const months = Math.floor(days / 30)
   if (months < 12) return `${months}mo`
   return `${Math.floor(days / 365)}y`
+}
+
+function getSessionMetaLabel(session: Session, exampleLabel: string): string {
+  if (isExampleSession(session)) {
+    return exampleLabel
+  }
+
+  return formatShortTimeAgo(new Date(session.startedAt))
 }
 
 export function NavSessions() {
@@ -332,15 +339,15 @@ export function NavSessions() {
                     <span className="line-clamp-2 min-w-0 flex-1">
                       {session.title || t("untitledSession")}
                     </span>
-                    <div className="ml-auto w-11 shrink-0 pr-4">
+                    <div className="ml-auto w-16 shrink-0 pr-4">
                       {isDeleting ? (
                         <div className="flex h-5 items-center justify-end text-muted-foreground">
                           <IconLoader2 className="size-3 animate-spin" />
                         </div>
                       ) : (
                         <div className="relative flex h-5 items-center justify-end">
-                          <span className="hidden text-xs tabular-nums text-muted-foreground transition-opacity md:inline group-hover/session:opacity-0">
-                            {formatShortTimeAgo(new Date(session.startedAt))}
+                          <span className="hidden truncate text-xs tabular-nums text-muted-foreground transition-opacity md:inline group-hover/session:opacity-0">
+                            {getSessionMetaLabel(session, t("exampleBadge"))}
                           </span>
                           <DropdownMenu>
                             <DropdownMenuTrigger

@@ -4,6 +4,7 @@ import {
   normalizeRichTextDocument,
   type RichTextDocument,
 } from "@/lib/documents/rich-text"
+import { isSystemBlankDocumentTitle } from "@/lib/documents/blank-document"
 import type { SessionDocumentRecord } from "@/types/document"
 import { useConsultationDocumentsStore } from "@/stores/consultation-documents-store"
 import {
@@ -65,19 +66,46 @@ function documentHasMeaningfulContent(
   )
 }
 
+export function shouldPersistBlankDocumentDraft(args: {
+  title?: string | null
+  document?: RichTextDocument | Record<string, unknown> | null
+}): boolean {
+  const normalizedTitle =
+    typeof args.title === "string" ? args.title.trim() : ""
+  const hasCustomTitle =
+    normalizedTitle.length > 0 && !isSystemBlankDocumentTitle(normalizedTitle)
+
+  return hasCustomTitle || documentHasMeaningfulContent(args.document)
+}
+
 function shouldSyncBlankDraft(args: {
   currentDocument: SessionDocumentRecord
   currentDraft: ActiveConsultationDocumentDraft | null
 }): boolean {
-  if (documentHasMeaningfulContent(args.currentDraft?.lastRenderableDocument)) {
+  if (
+    shouldPersistBlankDocumentDraft({
+      title: args.currentDraft?.draftTitle,
+      document: args.currentDraft?.lastRenderableDocument,
+    })
+  ) {
     return true
   }
 
-  if (documentHasMeaningfulContent(args.currentDraft?.draftDocument)) {
+  if (
+    shouldPersistBlankDocumentDraft({
+      title: args.currentDocument.title,
+      document: args.currentDraft?.draftDocument,
+    })
+  ) {
     return true
   }
 
-  if (documentHasMeaningfulContent(args.currentDocument.contentJson)) {
+  if (
+    shouldPersistBlankDocumentDraft({
+      title: args.currentDocument.title,
+      document: args.currentDocument.contentJson,
+    })
+  ) {
     return true
   }
 

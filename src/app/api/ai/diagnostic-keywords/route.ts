@@ -2,14 +2,17 @@ import { NextResponse } from "next/server"
 import { generateText } from "ai"
 import { DEFAULT_MODEL } from "@/lib/xai"
 import { getModel, isSupportedModel } from "@/lib/ai-provider"
-import { DIAGNOSTIC_KEYWORDS_PROMPT } from "@/lib/prompts"
+import {
+  buildDiagnosticKeywordsPrompt,
+  buildDiagnosticKeywordsSystemPrompt,
+  parseDiagnosticKeywordsResponse,
+} from "@/lib/ai/diagnostic-keywords-generator"
 import { requireAuth } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { logger } from "@/lib/logger"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { errorResponse } from "@/lib/api-response"
 import { buildGenerationOptions } from "@/lib/ai-request-options"
-import { safeParseAIJson } from "@/lib/validations"
 import { withAiTelemetry } from "@/lib/telemetry/ai"
 
 export async function POST(req: Request) {
@@ -40,11 +43,11 @@ export async function POST(req: Request) {
       async () => {
         const result = await generateText({
           model: getModel(modelId),
-          system: DIAGNOSTIC_KEYWORDS_PROMPT,
+          system: buildDiagnosticKeywordsSystemPrompt(),
           messages: [
             {
               role: "user",
-              content: `Extract diagnostic keywords from this consultation transcript:\n\n${transcript}`,
+              content: buildDiagnosticKeywordsPrompt(transcript),
             },
           ],
           ...buildGenerationOptions(modelId, {
@@ -65,19 +68,14 @@ export async function POST(req: Request) {
       }
     )
 
-    const parsedResult = safeParseAIJson<unknown>(text)
-    if (parsedResult.error) {
+    try {
+      const parsed = parseDiagnosticKeywordsResponse(text)
+      logAudit({ userId: user.id, action: "READ", resource: "ai_keywords" })
+      return Response.json(parsed)
+    } catch {
       logger.error("Diagnostic keywords: AI returned invalid JSON")
       return NextResponse.json({ error: "AI returned invalid response format" }, { status: 502 })
     }
-    const parsed = parsedResult.data
-
-    if (!Array.isArray(parsed)) {
-      return NextResponse.json({ error: "Invalid response format" }, { status: 502 })
-    }
-
-    logAudit({ userId: user.id, action: "READ", resource: "ai_keywords" })
-    return Response.json(parsed)
   } catch (error) {
     if (error instanceof NextResponse) return error
     logger.error("Diagnostic keyword extraction error:", error)

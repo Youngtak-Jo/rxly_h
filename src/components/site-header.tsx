@@ -29,6 +29,7 @@ import {
   IconPlug,
   IconDotsVertical,
   IconFileTypePdf,
+  IconLayoutSidebarRightExpand,
   IconLoader2,
   IconMail,
   IconQrcode,
@@ -40,6 +41,7 @@ import { useConsultationExportActions } from "@/hooks/use-consultation-export-ac
 import { useMedplumSyncStore } from "@/stores/medplum-sync-store"
 import { usePreparePayload } from "@/hooks/use-prepare-payload"
 import { useConnectorStore } from "@/stores/connector-store"
+import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useSessionStore } from "@/stores/session-store"
 import { useSettingsDialogStore } from "@/stores/settings-store"
 
@@ -194,9 +196,16 @@ interface SiteHeaderProps {
 
 export function SiteHeader({ initialSessionTitle = null }: SiteHeaderProps) {
   const t = useTranslations("SiteHeader")
+  const tTranscript = useTranslations("TranscriptViewer")
   const activeSession = useSessionStore((s) => s.activeSession)
   const connectors = useConnectorStore((s) => s.connectors)
   const openSettings = useSettingsDialogStore((s) => s.openSettings)
+  const toggleMobileTranscript = useConsultationTabStore(
+    (s) => s.toggleMobileTranscript
+  )
+  const isMobileTranscriptOpen = useConsultationTabStore(
+    (s) => s.isMobileTranscriptOpen
+  )
   const enabledCount = Object.values(connectors).filter(Boolean).length
 
   return (
@@ -233,8 +242,19 @@ export function SiteHeader({ initialSessionTitle = null }: SiteHeaderProps) {
           </div>
 
           {/* Mobile: combined dropdown */}
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center gap-1">
             <MobileHeaderMenu />
+            <Button
+              variant={isMobileTranscriptOpen ? "secondary" : "ghost"}
+              size="icon"
+              className="size-8 text-muted-foreground hover:text-foreground"
+              disabled={!activeSession}
+              onClick={toggleMobileTranscript}
+              aria-label={t("showTranscript")}
+              title={tTranscript("headerTranscript")}
+            >
+              <IconLayoutSidebarRightExpand className="size-4" />
+            </Button>
           </div>
         </div>
       </div>

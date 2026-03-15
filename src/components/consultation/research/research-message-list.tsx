@@ -81,15 +81,15 @@ export function ResearchMessageList() {
 
   if (messages.length === 0) {
     return (
-      <div className="consultation-center-scroll flex flex-1 items-center justify-center overflow-y-auto p-6">
-        <div className="flex flex-col items-center gap-4 w-full max-w-sm">
+      <div className="consultation-center-scroll flex flex-1 items-center justify-center overflow-y-auto p-4 sm:p-6">
+        <div className="flex w-full max-w-sm flex-col items-center gap-3 sm:gap-4">
           <div className="flex flex-col items-center gap-2 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
-              <IconPlug className="h-5 w-5 text-muted-foreground" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted sm:h-10 sm:w-10">
+              <IconPlug className="h-4 w-4 text-muted-foreground sm:h-5 sm:w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium">{t("title")}</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-[13px] font-medium sm:text-sm">{t("title")}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground sm:text-xs">
                 {t("description")}
               </p>
             </div>
@@ -99,16 +99,16 @@ export function ResearchMessageList() {
             {CONNECTORS.map((connector) => (
               <div
                 key={connector.key}
-                className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                className="flex items-center justify-between gap-3 rounded-lg border p-2.5 sm:p-3"
               >
                 <div className="space-y-0.5 min-w-0">
                   <Label
                     htmlFor={`research-connector-${connector.key}`}
-                    className="text-sm font-medium cursor-pointer"
+                    className="cursor-pointer text-[13px] font-medium sm:text-sm"
                   >
                     {tSettings(`connectors.items.${connector.key}.label`)}
                   </Label>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground sm:text-xs">
                     {tSettings(`connectors.items.${connector.key}.description`)}
                   </p>
                 </div>
@@ -129,9 +129,9 @@ export function ResearchMessageList() {
     <div
       ref={scrollRef}
       onScroll={handleScroll}
-      className="consultation-center-scroll flex-1 overflow-y-auto px-4 py-4"
+      className="consultation-center-scroll flex-1 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4"
     >
-      <div className="flex flex-col gap-6 max-w-3xl mx-auto">
+      <div className="mx-auto flex max-w-3xl flex-col gap-4 sm:gap-6">
         {messages.map((msg, index) => (
           <ResearchMessageBubble
             key={msg.id}

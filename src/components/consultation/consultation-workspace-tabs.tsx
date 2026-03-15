@@ -51,14 +51,14 @@ function getTabAriaLabel(
 }
 
 const WORKSPACE_TAB_BUTTON_CLASS_NAME = cn(
-  "inline-flex h-8 items-center rounded-lg border-0 px-3 text-[14px] font-medium shadow-none outline-none transition-colors",
+  "inline-flex h-7 items-center rounded-lg border-0 px-2.5 text-[12px] font-medium shadow-none outline-none transition-colors sm:h-8 sm:px-3 sm:text-[14px]",
   "bg-transparent text-foreground/68 hover:bg-transparent hover:text-foreground",
   "focus-visible:ring-2 focus-visible:ring-ring/40",
   "aria-[current=page]:bg-muted aria-[current=page]:text-foreground"
 )
 
 const WORKSPACE_ACTION_BUTTON_CLASS_NAME = cn(
-  "inline-flex h-8 items-center rounded-lg border-0 px-3 text-[14px] font-medium shadow-none outline-none transition-colors",
+  "inline-flex h-7 items-center rounded-lg border-0 px-2.5 text-[12px] font-medium shadow-none outline-none transition-colors sm:h-8 sm:px-3 sm:text-[14px]",
   "bg-transparent text-foreground/68 hover:bg-transparent hover:text-foreground",
   "focus-visible:ring-2 focus-visible:ring-ring/40"
 )
@@ -130,9 +130,9 @@ export function ConsultationWorkspaceTabs() {
   })
 
   return (
-    <ConsultationTopRail className="h-auto min-h-0 items-center overflow-visible border-0 bg-transparent px-2 py-2">
+    <ConsultationTopRail className="h-auto min-h-0 items-center overflow-visible border-0 bg-transparent px-1.5 py-1.5 sm:px-2 sm:py-2">
       <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        <div className={cn(TOP_RAIL_SCROLL_CLASS, "h-auto min-h-0 items-center gap-1")}>
+        <div className={cn(TOP_RAIL_SCROLL_CLASS, "h-auto min-h-0 items-center gap-0.5 sm:gap-1")}>
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -146,7 +146,7 @@ export function ConsultationWorkspaceTabs() {
               {(tab.isProcessing ||
                 tab.hasUnseenUpdate ||
                 tab.diagnosisCount !== null) && (
-                <span className="ml-1.5 flex items-center gap-1.5">
+                <span className="ml-1 flex items-center gap-1 sm:ml-1.5 sm:gap-1.5">
                   {tab.isProcessing ? (
                     <IconLoader2
                       className={cn(
@@ -162,7 +162,7 @@ export function ConsultationWorkspaceTabs() {
                   {tab.diagnosisCount !== null ? (
                     <span
                       className={cn(
-                        "inline-flex min-w-4 items-center justify-center rounded-sm px-1 py-0.5 text-[10px] tabular-nums",
+                        "inline-flex min-w-3.5 items-center justify-center rounded-sm px-1 py-0.5 text-[9px] tabular-nums sm:min-w-4 sm:text-[10px]",
                         activeTab === tab.id
                           ? "bg-muted text-foreground"
                           : "bg-background/65 text-muted-foreground"

@@ -137,7 +137,19 @@ const globalForPrisma = globalThis as unknown as {
   __prismaRevision?: number
 }
 
-const PRISMA_CLIENT_REVISION = 3
+const PRISMA_CLIENT_REVISION = 4
+
+function clientSupportsCurrentSchema(client: PrismaClient | undefined): boolean {
+  if (!client) return false
+
+  const bootstrapDelegate = (
+    client as PrismaClient & {
+      userBootstrapState?: { create?: unknown }
+    }
+  ).userBootstrapState
+
+  return typeof bootstrapDelegate?.create === "function"
+}
 
 function getDatasourceUrl(): string | undefined {
   const raw = process.env.DATABASE_URL
@@ -258,7 +270,7 @@ function createPrismaClient() {
 const currentDatasourceUrl = getDatasourceUrl()
 
 const shouldReuseGlobalClient =
-  !!globalForPrisma.__prisma &&
+  clientSupportsCurrentSchema(globalForPrisma.__prisma) &&
   globalForPrisma.__prismaDatasourceUrl === currentDatasourceUrl &&
   globalForPrisma.__prismaRevision === PRISMA_CLIENT_REVISION
 

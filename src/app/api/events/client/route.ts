@@ -38,12 +38,44 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid event payload" }, { status: 400 })
     }
 
+    const originalSessionId = parsed.data.sessionId ?? null
+    let persistedSessionId = originalSessionId
+    let metadata = parsed.data.metadata as Record<string, unknown>
+
+    if (originalSessionId) {
+      const persistedSession = await prisma.session.findFirst({
+        where: {
+          id: originalSessionId,
+          userId: user.id,
+        },
+        select: {
+          id: true,
+        },
+      })
+
+      if (!persistedSession) {
+        logger.warn("Client event arrived before session persisted; storing without session id", {
+          userId: user.id,
+          sessionId: originalSessionId,
+          eventType: parsed.data.eventType,
+          feature: parsed.data.feature,
+        })
+
+        persistedSessionId = null
+        metadata = {
+          ...metadata,
+          droppedSessionId: originalSessionId,
+          sessionIdFallbackReason: "session_not_persisted",
+        }
+      }
+    }
+
     const baseData = {
       userId: user.id,
-      sessionId: parsed.data.sessionId ?? null,
+      sessionId: persistedSessionId,
       eventType: parsed.data.eventType,
       feature: parsed.data.feature,
-      metadata: parsed.data.metadata as Prisma.InputJsonValue,
+      metadata: metadata as Prisma.InputJsonValue,
     }
 
     try {
@@ -62,7 +94,7 @@ export async function POST(req: Request) {
 
       logger.warn("Client event arrived before session persisted; storing without session id", {
         userId: user.id,
-        sessionId: parsed.data.sessionId,
+        sessionId: originalSessionId,
         eventType: parsed.data.eventType,
         feature: parsed.data.feature,
       })
@@ -72,8 +104,8 @@ export async function POST(req: Request) {
           ...baseData,
           sessionId: null,
           metadata: {
-            ...(parsed.data.metadata ?? {}),
-            droppedSessionId: parsed.data.sessionId,
+            ...metadata,
+            droppedSessionId: originalSessionId,
             sessionIdFallbackReason: "session_not_persisted",
           } as Prisma.InputJsonValue,
         },

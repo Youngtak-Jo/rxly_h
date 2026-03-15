@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { generateObject, type UserContent } from "ai"
+import { generateObject } from "ai"
 import { createClient } from "@supabase/supabase-js"
 import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
@@ -9,144 +9,30 @@ import { getModel, isSupportedModel } from "@/lib/ai-provider"
 import { DEFAULT_MODEL } from "@/lib/xai"
 import { buildGenerationOptions } from "@/lib/ai-request-options"
 import { withAiTelemetry } from "@/lib/telemetry/ai"
-import {
-  createEmptySessionDocumentGenerationInputs,
-  resolveAutomaticClinicalContext,
-} from "@/lib/documents/generation-config"
 import { getConfirmedDiagnosisRequirement } from "@/lib/documents/generation-requirements"
 import {
-  buildDocumentContentSchema,
-  normalizeDocumentContentForStorage,
+  buildDocumentContextMessage,
+  buildDocumentObjectSchema,
+  buildDoctorNotesText,
+  buildUploadedImageCandidates,
+  insightsHaveContent,
+  normalizeGeneratedDocumentContent,
   normalizeStoredDocumentGenerationConfig,
-  sessionDocumentGenerationInputsSchema,
-} from "@/lib/documents/schema"
+  resolveDocumentGenerationInputs,
+  type UploadedImageEntry,
+} from "@/lib/ai/document-generator"
 import {
   getSessionDocumentForUser,
   upsertSessionDocument,
 } from "@/lib/documents/server"
 import { logAudit } from "@/lib/audit"
 import { genericStructuredContentToRichTextDocument } from "@/lib/documents/rich-text"
-import type {
-  DocumentGenerationConfig,
-  SessionDocumentGenerationInputs,
-} from "@/types/document"
+import type { SessionDocumentGenerationInputs } from "@/types/document"
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-
-type SessionWithDocumentContext = {
-  id: string
-  title: string | null
-  patientName: string | null
-  mode: string
-  startedAt: Date
-  insights: {
-    summary: string
-    keyFindings: unknown
-    redFlags: unknown
-    diagnosticKeywords: unknown
-  } | null
-}
-
-type TranscriptContextEntry = {
-  speaker: string
-  text: string
-}
-
-type NoteContextEntry = {
-  content: string
-  imageUrls: unknown
-  storagePaths: unknown
-  createdAt: Date
-}
-
-type UploadedImageEntry = {
-  caption: string
-  storagePath: string | null
-  imageUrl: string | null
-  createdAt: Date
-}
-
-function buildConfirmedDiagnosesText(
-  generationInputs: SessionDocumentGenerationInputs
-) {
-  if (generationInputs.confirmedDiagnoses.length === 0) {
-    return ""
-  }
-
-  return generationInputs.confirmedDiagnoses
-    .map((diagnosis) =>
-      JSON.stringify({
-        icdCode: diagnosis.icdCode,
-        diseaseName: diagnosis.diseaseName,
-        source: diagnosis.source,
-      })
-    )
-    .join("\n")
-}
-
-function buildRegionGuidance(region: string) {
-  if (region === "global") {
-    return "Keep the document globally applicable. Avoid country-specific regulatory assumptions unless the template explicitly requires them."
-  }
-
-  if (region === "kr") {
-    return "Use Korean clinical and administrative conventions when region-specific wording matters."
-  }
-
-  return "Use United States clinical and administrative conventions when region-specific wording matters."
-}
-
-function toStringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : []
-}
-
-function hasNonEmptyArray(value: unknown): boolean {
-  return Array.isArray(value) && value.length > 0
-}
-
-function buildDoctorNotesText(notes: NoteContextEntry[]): string {
-  return notes
-    .map((note) => note.content.trim())
-    .filter(Boolean)
-    .join("\n")
-}
-
-function buildTranscriptText(transcriptEntries: TranscriptContextEntry[]): string {
-  return transcriptEntries.map((entry) => `${entry.speaker}: ${entry.text}`).join("\n")
-}
-
-function insightsHaveContent(session: SessionWithDocumentContext) {
-  return (
-    !!session.insights &&
-    (session.insights.summary.trim().length > 0 ||
-      hasNonEmptyArray(session.insights.keyFindings) ||
-      hasNonEmptyArray(session.insights.redFlags) ||
-      hasNonEmptyArray(session.insights.diagnosticKeywords))
-  )
-}
-
-function buildUploadedImageCandidates(notes: NoteContextEntry[]): UploadedImageEntry[] {
-  return notes
-    .flatMap((note) => {
-      const imageUrls = toStringArray(note.imageUrls)
-      const storagePaths = toStringArray(note.storagePaths)
-      const itemCount = Math.max(imageUrls.length, storagePaths.length)
-
-      return Array.from({ length: itemCount }, (_, index) => ({
-        caption: note.content.trim() || "Doctor note image",
-        storagePath: storagePaths[index] ?? null,
-        imageUrl: imageUrls[index] ?? null,
-        createdAt: note.createdAt,
-      }))
-    })
-    .filter((item) => item.storagePath || item.imageUrl)
-    .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
-}
 
 async function resolveUploadedImages(
   candidates: UploadedImageEntry[]
@@ -197,117 +83,6 @@ async function resolveUploadedImages(
   }
 
   return deduped
-}
-
-function buildContextMessage(args: {
-  session: SessionWithDocumentContext
-  transcriptEntries: TranscriptContextEntry[]
-  doctorNotesText: string
-  generationInputs: SessionDocumentGenerationInputs
-  sessionDocumentTemplate: {
-    title: string
-    description: string
-    category: string
-    language: string
-    region: string
-  }
-  generationConfig: Pick<
-    DocumentGenerationConfig,
-    | "clinicalContextDefault"
-    | "includeSourceImages"
-    | "systemInstructions"
-    | "emptyValuePolicy"
-  >
-  uploadedImages: Array<UploadedImageEntry & { resolvedUrl: string }>
-}) {
-  const clinicalContextMode = resolveAutomaticClinicalContext({
-    generationInputs: args.generationInputs,
-    insightsAvailable: insightsHaveContent(args.session),
-    transcriptAvailable: args.transcriptEntries.length > 0,
-  })
-  const clinicalBasisLabel =
-    clinicalContextMode.mode === "automatic"
-      ? "automatic"
-      : clinicalContextMode.mode
-
-  const parts: string[] = [
-    `Document title: ${args.sessionDocumentTemplate.title}`,
-    `Description: ${args.sessionDocumentTemplate.description}`,
-    `Document category: ${args.sessionDocumentTemplate.category}`,
-    `Document language: ${args.sessionDocumentTemplate.language}`,
-    `Document region: ${args.sessionDocumentTemplate.region}`,
-    `Empty value policy: ${args.generationConfig.emptyValuePolicy}`,
-    `Clinical basis: ${clinicalBasisLabel}`,
-    `Attach uploaded source images: ${args.generationConfig.includeSourceImages ? "yes" : "no"}`,
-    `Region guidance: ${buildRegionGuidance(args.sessionDocumentTemplate.region)}`,
-    `Session metadata:\n${JSON.stringify({
-      sessionId: args.session.id,
-      title: args.session.title,
-      patientName: args.session.patientName,
-      mode: args.session.mode,
-      startedAt: args.session.startedAt,
-    })}`,
-    args.doctorNotesText
-      ? `Doctor notes:\n${args.doctorNotesText}`
-      : "Doctor notes:\nNo clinician-authored notes available.",
-  ]
-
-  if (clinicalContextMode.includeTranscript) {
-    parts.push(`Transcript:\n${buildTranscriptText(args.transcriptEntries)}`)
-  }
-  if (clinicalContextMode.includeInsights && args.session.insights) {
-    parts.push(
-      `Insights:\n${JSON.stringify({
-        summary: args.session.insights.summary,
-        keyFindings: args.session.insights.keyFindings,
-        redFlags: args.session.insights.redFlags,
-        diagnosticKeywords: args.session.insights.diagnosticKeywords,
-      })}`
-    )
-  }
-  if (!clinicalContextMode.includeTranscript && !clinicalContextMode.includeInsights) {
-    parts.push(
-      "Clinical context:\nNo transcript or insights are ready yet. Use available session metadata and doctor notes only."
-    )
-  }
-
-  const confirmedDiagnosesText = buildConfirmedDiagnosesText(args.generationInputs)
-  if (confirmedDiagnosesText) {
-    parts.push(`Confirmed diagnoses:\n${confirmedDiagnosesText}`)
-  }
-
-  if (args.generationConfig.includeSourceImages && args.uploadedImages.length > 0) {
-    parts.push(
-      [
-        `Uploaded source images (${args.uploadedImages.length}):`,
-        ...args.uploadedImages.map((image, index) => {
-          const trimmedCaption =
-            image.caption.length > 400
-              ? `${image.caption.slice(0, 397)}...`
-              : image.caption
-          return `Image ${index + 1}: ${trimmedCaption}`
-        }),
-      ].join("\n")
-    )
-  }
-
-  const content: UserContent = [
-    {
-      type: "text",
-      text: parts.join("\n\n"),
-    },
-  ]
-
-  if (args.generationConfig.includeSourceImages) {
-    for (const uploadedImage of args.uploadedImages) {
-      content.push({
-        type: "image",
-        image: new URL(uploadedImage.resolvedUrl),
-      })
-    }
-  }
-
-  return content
 }
 
 export async function POST(
@@ -388,24 +163,18 @@ export async function POST(
     const generationConfig = normalizeStoredDocumentGenerationConfig(
       activeVersion.generationConfigJson
     )
-    const parsedGenerationInputs =
-      body.generationInputs !== undefined
-        ? sessionDocumentGenerationInputsSchema
-            .nullable()
-            .safeParse(body.generationInputs)
-        : null
-    if (parsedGenerationInputs && !parsedGenerationInputs.success) {
+    const { error: generationInputsError, effectiveGenerationInputs } =
+      resolveDocumentGenerationInputs(
+        body.generationInputs,
+        sessionDocumentContext.sessionDocument?.generationInputs
+      )
+    if (generationInputsError || !effectiveGenerationInputs) {
       return NextResponse.json(
-        { error: "Invalid document generation inputs" },
+        { error: generationInputsError ?? "Invalid document generation inputs" },
         { status: 400 }
       )
     }
 
-    const effectiveGenerationInputs =
-      parsedGenerationInputs && parsedGenerationInputs.success
-        ? parsedGenerationInputs.data ?? createEmptySessionDocumentGenerationInputs()
-        : sessionDocumentContext.sessionDocument?.generationInputs ??
-          createEmptySessionDocumentGenerationInputs()
     const confirmedDiagnosisRequirement =
       getConfirmedDiagnosisRequirement(generationConfig)
     if (confirmedDiagnosisRequirement?.required) {
@@ -454,7 +223,7 @@ export async function POST(
       : []
 
     const model = getModel(modelId)
-    const messageContent = buildContextMessage({
+    const messageContent = buildDocumentContextMessage({
       session,
       transcriptEntries,
       doctorNotesText,
@@ -470,7 +239,7 @@ export async function POST(
       uploadedImages,
     })
 
-    const objectSchema = buildDocumentContentSchema(schemaJson as never)
+    const objectSchema = buildDocumentObjectSchema(schemaJson)
     const generated = await withAiTelemetry(
       {
         userId: user.id,
@@ -514,12 +283,10 @@ export async function POST(
       }
     )
 
-    const normalizedContent = normalizeDocumentContentForStorage(
-      {
-        nodes: schemaJson.nodes as never,
-      },
-      generated
-    )
+    const normalizedContent = normalizeGeneratedDocumentContent({
+      schemaJson,
+      generated,
+    })
     const richTextDocument = genericStructuredContentToRichTextDocument({
       contentJson: normalizedContent,
       schemaNodes: schemaJson.nodes as never,

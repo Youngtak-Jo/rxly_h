@@ -7,10 +7,6 @@ const prisma = new PrismaClient()
 async function verifyEncryption() {
     console.log("Starting verification...")
 
-    const testSessionId = "test-session-" + Date.now()
-    const testPatientName = "Test Patient " + Date.now()
-    const testUserId = "user-" + Date.now()
-
     try {
         // 1. Create a session with PHI via the application's Prisma client (which has middleware)
         // We need to import the *extended* client from lib/prisma, but for this script we might verify logic directly or simulate middleware

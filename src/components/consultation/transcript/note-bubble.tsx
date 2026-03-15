@@ -15,7 +15,7 @@ export const NoteBubble = memo(function NoteBubble({ note }: { note: NoteEntry }
     <div className="mt-3">
       <div className="rounded-r-lg border-l-2 border-primary bg-muted/50 px-3 py-2">
         {note.content && (
-          <p className="text-sm leading-relaxed">{note.content}</p>
+          <p className="text-[13px] leading-5 sm:text-sm sm:leading-relaxed">{note.content}</p>
         )}
         {note.imageUrls && note.imageUrls.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -26,13 +26,13 @@ export const NoteBubble = memo(function NoteBubble({ note }: { note: NoteEntry }
                 alt={`Medical image ${j + 1} from note`}
                 width={48}
                 height={48}
-                className="h-12 w-12 rounded border object-cover"
+                className="h-11 w-11 rounded border object-cover sm:h-12 sm:w-12"
                 unoptimized
               />
             ))}
           </div>
         )}
-        <span className="mt-1 block font-mono text-[10px] text-muted-foreground/60">
+        <span className="mt-1 block font-mono text-[9px] text-muted-foreground/60 sm:text-[10px]">
           {formatTime(note.createdAt, locale, timeZone)}
         </span>
       </div>

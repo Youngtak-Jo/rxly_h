@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import type { Session } from "@/types/session"
+import { sortSessionsForList } from "@/lib/session-order"
 
 interface SessionState {
   activeSession: Session | null
@@ -31,15 +32,17 @@ export const useSessionStore = create<SessionState>((set) => ({
 
   setActiveSession: (session) => set({ activeSession: session }),
 
-  setSessions: (sessions) => set({ sessions }),
+  setSessions: (sessions) => set({ sessions: sortSessionsForList(sessions) }),
 
   addSession: (session) =>
-    set((state) => ({ sessions: [session, ...state.sessions] })),
+    set((state) => ({
+      sessions: sortSessionsForList([session, ...state.sessions]),
+    })),
 
   updateSession: (id, partial) =>
     set((state) => ({
-      sessions: state.sessions.map((s) =>
-        s.id === id ? { ...s, ...partial } : s
+      sessions: sortSessionsForList(
+        state.sessions.map((s) => (s.id === id ? { ...s, ...partial } : s))
       ),
       activeSession:
         state.activeSession?.id === id

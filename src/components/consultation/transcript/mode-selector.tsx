@@ -83,8 +83,8 @@ export function ModeSelector() {
 
   return (
     <>
-      <div className="flex flex-col gap-3 py-6 px-4">
-        <p className="text-xs text-muted-foreground/60 mb-1">
+      <div className="flex flex-col gap-2.5 px-3 py-4 sm:gap-3 sm:px-4 sm:py-6">
+        <p className="mb-1 text-[11px] text-muted-foreground/60 sm:text-xs">
           {t("chooseMode")}
         </p>
         {OPTIONS.map((option) => {
@@ -101,7 +101,7 @@ export function ModeSelector() {
               key={option.value}
               onClick={() => handleOptionClick(option.value)}
               className={cn(
-                "w-full flex items-start gap-3 rounded-lg border px-4 py-3 text-left transition-all",
+                "flex w-full items-start gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all sm:gap-3 sm:px-4 sm:py-3",
                 selected
                   ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                   : "border-border hover:border-muted-foreground/30 hover:bg-muted/30"
@@ -123,7 +123,7 @@ export function ModeSelector() {
                 <div className="flex items-center gap-1.5">
                   <Icon
                     className={cn(
-                      "size-3.5 shrink-0",
+                      "size-3 shrink-0 sm:size-3.5",
                       selected
                         ? "text-primary"
                         : "text-muted-foreground"
@@ -131,14 +131,14 @@ export function ModeSelector() {
                   />
                   <span
                     className={cn(
-                      "text-sm font-medium leading-tight",
+                      "text-[13px] font-medium leading-tight sm:text-sm",
                       selected ? "text-primary" : "text-foreground"
                     )}
                   >
                     {label}
                   </span>
                 </div>
-                <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                <p className="mt-0.5 text-[10px] text-muted-foreground/70 sm:text-[11px]">
                   {description}
                 </p>
               </div>

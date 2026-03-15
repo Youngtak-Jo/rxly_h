@@ -15,8 +15,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { SimulationDialog } from "@/components/consultation/simulation-dialog"
@@ -30,6 +32,7 @@ import { BUILT_IN_BLANK_DOCUMENT_TEMPLATE_ID } from "@/lib/documents/constants"
 import { htmlToRichTextDocument } from "@/lib/documents/rich-text-client"
 import { normalizeRichTextDocument } from "@/lib/documents/rich-text"
 import { sanitizeStreamingHtml } from "@/lib/documents/streaming-html"
+import { parseResearchCitations } from "@/lib/research-citations"
 import { trackClientEvent } from "@/lib/telemetry/client-events"
 import { cn } from "@/lib/utils"
 import {
@@ -53,7 +56,6 @@ import type { SessionDocumentRecord } from "@/types/document"
 import { toast } from "sonner"
 import {
   IconArrowUp,
-  IconDots,
   IconFileText,
   IconLoader2,
   IconMicrophone,
@@ -61,6 +63,7 @@ import {
   IconNotes,
   IconPhoto,
   IconPlayerStop,
+  IconPlus,
   IconSearch,
   IconTestPipe,
   IconTrash,
@@ -82,9 +85,6 @@ interface DraftState {
 
 type DraftMap = Record<DraftMode, DraftState>
 
-const BRACKET_CITATION_RE = /\[\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/gi
-const MARKDOWN_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/gi
-const URL_RE = /https?:\/\/[^\s)\]]+/gi
 const EMPTY_DOCUMENT_DRAFT_ERROR = "Failed to generate a document draft."
 
 type DocumentStreamEvent =
@@ -151,70 +151,6 @@ function revokeDrafts(drafts: DraftMap) {
   Object.values(drafts).forEach((draft) => revokeAttachments(draft.attachments))
 }
 
-function normalizeUrl(url: string): string {
-  return url.trim().replace(/[.,;:]+$/, "")
-}
-
-function sourceFromUrl(url: string): ResearchCitation["source"] {
-  if (url.includes("pubmed.ncbi.nlm.nih.gov")) return "pubmed"
-  if (url.includes("europepmc.org")) return "europe_pmc"
-  if (url.includes("icd.who.int")) return "icd11"
-  if (url.includes("api.fda.gov") || url.includes("open.fda.gov")) return "openfda"
-  if (url.includes("clinicaltrials.gov")) return "clinical_trials"
-  if (url.includes("dailymed.nlm.nih.gov")) return "dailymed"
-  return "pubmed"
-}
-
-function parseCitations(text: string): ResearchCitation[] {
-  const citations: ResearchCitation[] = []
-  const seen = new Set<string>()
-  const sourceMap: Record<string, ResearchCitation["source"]> = {
-    PUBMED: "pubmed",
-    EPMC: "europe_pmc",
-    "ICD-11": "icd11",
-    ICD11: "icd11",
-    FDA: "openfda",
-    OPENFDA: "openfda",
-    TRIALS: "clinical_trials",
-    "CLINICALTRIALS.GOV": "clinical_trials",
-    DAILYMED: "dailymed",
-  }
-
-  const addCitation = (label: string, rawUrl: string) => {
-    const url = normalizeUrl(rawUrl)
-    if (!url || seen.has(url)) return
-
-    seen.add(url)
-    const normalizedLabel = label.trim().toUpperCase()
-    citations.push({
-      source: sourceMap[normalizedLabel] || sourceFromUrl(url),
-      title: label.trim() || normalizedLabel,
-      url,
-    })
-  }
-
-  for (const match of text.matchAll(BRACKET_CITATION_RE)) {
-    addCitation(match[1], match[2])
-  }
-
-  for (const match of text.matchAll(MARKDOWN_LINK_RE)) {
-    addCitation(match[1], match[2])
-  }
-
-  for (const match of text.matchAll(URL_RE)) {
-    const url = normalizeUrl(match[0])
-    if (!url || seen.has(url)) continue
-    citations.push({
-      source: sourceFromUrl(url),
-      title: sourceFromUrl(url).toUpperCase(),
-      url,
-    })
-    seen.add(url)
-  }
-
-  return citations
-}
-
 async function persistResearchMessagePair(
   sessionId: string,
   question: string,
@@ -267,6 +203,7 @@ export interface SmartConsultationComposerHandle {
 export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHandle>(
   function SmartConsultationComposer(_props, ref) {
     const tComposer = useTranslations("SmartComposer")
+    const tDocumentsHub = useTranslations("ConsultationDocumentsHub")
     const tNote = useTranslations("NoteInputBar")
     const tResearch = useTranslations("ResearchInput")
 
@@ -285,6 +222,7 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
     const documentsHubUiState = useConsultationDocumentsStore((state) =>
       state.getSessionUiState(activeSession?.id)
     )
+    const openDocument = useConsultationDocumentsStore((state) => state.openDocument)
 
     const { isRecording } = useRecordingStore()
     const { startListening, stopListening } = useDeepgram()
@@ -323,6 +261,9 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
     const upsertSessionDocument = useSessionDocumentStore(
       (state) => state.upsertSessionDocument
     )
+    const createOptimisticBlankDocument = useSessionDocumentStore(
+      (state) => state.createOptimisticBlankDocument
+    )
     const setSessionDocumentUiState = useSessionDocumentStore(
       (state) => state.setSessionDocumentUiState
     )
@@ -355,6 +296,7 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
     const [isSending, setIsSending] = useState(false)
     const [clinicalDraftMode, setClinicalDraftMode] =
       useState<ClinicalDraftMode>("note")
+    const [isActionMenuOpen, setIsActionMenuOpen] = useState(false)
 
     draftsRef.current = drafts
 
@@ -392,11 +334,7 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
     const hasAttachments = currentAttachments.length > 0
     const showSimulationButton = !isResearchMode && !isDocumentMode
     const showIncludeInsightsButton = isResearchMode
-    const isImageActive = hasAttachments
     const isResearchActive = isResearchMode
-    const imageButtonLabel = isImageActive
-      ? `${tComposer("toolImage")} ${currentAttachments.length}`
-      : tComposer("toolImage")
 
     useEffect(() => {
       return () => {
@@ -1346,7 +1284,7 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
             updateAssistantMessage(assistantId, accumulated)
           }
 
-          const citations = parseCitations(accumulated)
+          const citations = parseResearchCitations(accumulated)
           finalizeAssistantMessage(assistantId, accumulated, citations)
 
           const saved = await persistResearchMessagePair(
@@ -1368,7 +1306,7 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
               .messages.find((message) => message.id === assistantId)
 
             if (current) {
-              const citations = parseCitations(current.content)
+              const citations = parseResearchCitations(current.content)
               finalizeAssistantMessage(assistantId, current.content, citations)
 
               const saved = await persistResearchMessagePair(
@@ -1518,13 +1456,27 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
     }, [activeTab, lastNonResearchTab, setActiveTab])
 
     const handleSelectDocumentMode = useCallback(() => {
-      if (!canSelectDocumentMode) return
+      if (!activeSession || isSwitching) return
+
+      if (!canSelectDocumentMode) {
+        const optimisticDocument = createOptimisticBlankDocument(activeSession.id)
+        openDocument(activeSession.id, optimisticDocument.id)
+      }
+
       setClinicalDraftMode("document")
       if (activeTab !== "documents") {
         setActiveTab("documents")
       }
       requestAnimationFrame(() => textareaRef.current?.focus())
-    }, [activeTab, canSelectDocumentMode, setActiveTab])
+    }, [
+      activeSession,
+      activeTab,
+      canSelectDocumentMode,
+      createOptimisticBlankDocument,
+      isSwitching,
+      openDocument,
+      setActiveTab,
+    ])
 
     const handleClearResearchChat = useCallback(() => {
       clearMessages()
@@ -1578,15 +1530,54 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
 
     const isMicActiveInUi =
       consultationMode === "ai-doctor" ? isMicActive : isRecording
+    const composerActionButtonClassName = "h-8 w-8 rounded-full sm:h-9 sm:w-9"
+    const composerSmallIconClassName = "size-3 sm:size-3.5"
+    const composerPrimaryIconClassName = "size-3.5 sm:size-4"
+    const actionMenuButtonClassName =
+      "flex w-full items-start gap-2 rounded-xl px-3 py-2.5 text-left text-[12px] transition-colors hover:bg-accent sm:text-[13px]"
+    const actionMenuTriggerClassName =
+      "h-8 rounded-full px-2.5 text-[11px] font-medium text-foreground/78 hover:bg-accent/65 hover:text-foreground sm:h-9 sm:px-3 sm:text-xs"
+
+    const closeActionMenu = useCallback(() => {
+      setIsActionMenuOpen(false)
+    }, [])
+
+    const handleOpenImagePickerFromMenu = useCallback(() => {
+      closeActionMenu()
+      requestAnimationFrame(() => fileInputRef.current?.click())
+    }, [closeActionMenu])
+
+    const handleClearResearchChatFromMenu = useCallback(() => {
+      handleClearResearchChat()
+      closeActionMenu()
+    }, [closeActionMenu, handleClearResearchChat])
+
+    const actionMenuHelperText = isDocumentMode
+      ? tComposer("menuHelperDocument")
+      : isResearchMode
+        ? includeInsights
+          ? tComposer("menuHelperResearchWithInsights")
+          : tComposer("menuHelperResearch")
+        : hasAttachments
+          ? tComposer("menuHelperImages", { count: currentAttachments.length })
+          : tComposer("menuHelperDefault")
+    const selectedModeLabel = isResearchMode
+      ? tComposer("toolResearch")
+      : isDocumentMode
+        ? tComposer("modeDocument")
+        : tComposer("modeNote")
+    const documentModeLabel = canSelectDocumentMode
+      ? tComposer("modeDocument")
+      : tDocumentsHub("blankDocumentTitle")
 
     return (
       <div
         data-tour="note-input"
-        className="pointer-events-auto px-3 py-3 sm:px-4"
+        className="pointer-events-auto px-2.5 py-2 sm:px-4 sm:py-3"
       >
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-3">
-          <div className="rounded-[28px] border border-border/70 bg-background shadow-sm">
-            <div className="flex flex-col gap-3 p-3 sm:p-4">
+          <div className="rounded-[24px] border border-border/70 bg-background shadow-sm sm:rounded-[28px]">
+            <div className="flex flex-col gap-2.5 p-2.5 sm:gap-3 sm:p-4">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -1600,22 +1591,22 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
               />
 
               {hasAttachments && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {currentAttachments.map((attachment, index) => (
                     <div
                       key={`${attachment.preview}-${index}`}
-                      className="group relative overflow-hidden rounded-2xl border"
+                      className="group relative overflow-hidden rounded-xl border sm:rounded-2xl"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={attachment.preview}
                         alt={tNote("attachmentAlt")}
-                        className="h-16 w-16 object-cover"
+                        className="h-14 w-14 object-cover sm:h-16 sm:w-16"
                       />
                       <button
                         type="button"
                         onClick={() => removeAttachment(index)}
-                        className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-background/90 text-foreground opacity-0 transition group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+                        className="absolute right-1 top-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-background/90 text-foreground opacity-0 transition group-hover:opacity-100 [@media(hover:none)]:opacity-100 sm:h-5 sm:w-5"
                         aria-label={tComposer("removeImage")}
                       >
                         <IconX className="size-3" />
@@ -1625,7 +1616,7 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
                 </div>
               )}
 
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-2">
                 <Textarea
                   ref={textareaRef}
                   placeholder={getPlaceholder()}
@@ -1634,138 +1625,189 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
                   onKeyDown={handleKeyDown}
                   onPaste={handlePaste}
                   disabled={isTextareaDisabled}
-                  className="min-h-[72px] w-full resize-none rounded-3xl border-0 bg-transparent px-1 py-1.5 text-[16px] leading-6 shadow-none focus-visible:ring-0 md:text-sm"
+                  className="min-h-[60px] w-full resize-none rounded-3xl border-0 bg-transparent px-0.5 py-1 text-[15px] leading-5 shadow-none focus-visible:ring-0 sm:min-h-[72px] sm:px-1 sm:py-1.5 sm:text-[16px] sm:leading-6 md:text-sm"
                   rows={1}
                 />
 
-                <div className="flex items-end justify-between gap-3">
-                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                    {consultationMode !== "ai-doctor" ? (
-                      <>
+                <div className="flex items-end gap-2">
+                  <div className="flex flex-1 justify-start">
+                    <DropdownMenu
+                      open={isActionMenuOpen}
+                      onOpenChange={setIsActionMenuOpen}
+                    >
+                      <DropdownMenuTrigger asChild>
                         <Button
                           type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleSelectNoteMode}
-                          className={cn(
-                            "h-9 rounded-full border-border/70 bg-background px-3 text-xs",
-                            isNoteMode &&
-                              "border-primary/30 bg-primary/10 text-foreground hover:bg-primary/15"
-                          )}
+                          variant="ghost"
+                          className={actionMenuTriggerClassName}
+                          aria-label={tComposer("moreActions")}
                         >
-                          <IconNotes className="size-3.5" />
-                          {tComposer("modeNote")}
+                          <IconPlus className={composerPrimaryIconClassName} />
+                          <span className="truncate">{selectedModeLabel}</span>
                         </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleSelectDocumentMode}
-                          disabled={!canSelectDocumentMode}
-                          className={cn(
-                            "h-9 rounded-full border-border/70 bg-background px-3 text-xs",
-                            isDocumentMode &&
-                              "border-primary/30 bg-primary/10 text-foreground hover:bg-primary/15"
-                          )}
-                        >
-                          <IconFileText className="size-3.5" />
-                          {tComposer("modeDocument")}
-                        </Button>
-                      </>
-                    ) : null}
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleToggleResearch}
-                      className={cn(
-                        "h-9 rounded-full border-border/70 bg-background px-3 text-xs",
-                        isResearchActive &&
-                          "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/60"
-                      )}
-                    >
-                      <IconSearch className="size-3.5" />
-                      {tComposer("toolResearch")}
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={!activeSession || isSwitching || isDocumentMode}
-                      className={cn(
-                        "h-9 rounded-full border-border/70 bg-background px-3 text-xs",
-                        isImageActive &&
-                          "border-primary/30 bg-primary/10 text-foreground hover:bg-primary/15"
-                      )}
-                    >
-                      <IconPhoto className="size-3.5" />
-                      {imageButtonLabel}
-                    </Button>
-
-                    {showIncludeInsightsButton && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIncludeInsights(!includeInsights)}
-                        className={cn(
-                          "h-9 rounded-full border-border/70 bg-background px-3 text-xs",
-                          includeInsights &&
-                            "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/60"
-                        )}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        side="top"
+                        align="start"
+                        sideOffset={10}
+                        className="w-[min(19rem,calc(100vw-1rem))] rounded-2xl border border-border/80 bg-background/98 p-1.5 shadow-xl backdrop-blur"
                       >
-                        <IconSearch className="size-3.5" />
-                        {tResearch("includeInsights")}
-                      </Button>
-                    )}
+                        {consultationMode !== "ai-doctor" ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleSelectNoteMode()
+                                closeActionMenu()
+                              }}
+                              className={cn(
+                                actionMenuButtonClassName,
+                                isNoteMode && "bg-primary/10 text-foreground"
+                              )}
+                            >
+                              <IconNotes className={cn(composerSmallIconClassName, "mt-0.5 shrink-0")} />
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate font-medium">
+                                  {tComposer("modeNote")}
+                                </div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleSelectDocumentMode()
+                                closeActionMenu()
+                              }}
+                              disabled={!activeSession || isSwitching}
+                              className={cn(
+                                actionMenuButtonClassName,
+                                "disabled:pointer-events-none disabled:opacity-50",
+                                isDocumentMode && "bg-primary/10 text-foreground"
+                              )}
+                            >
+                              <IconFileText className={cn(composerSmallIconClassName, "mt-0.5 shrink-0")} />
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate font-medium">
+                                  {documentModeLabel}
+                                </div>
+                              </div>
+                            </button>
+                          </>
+                        ) : null}
 
-                    {showSimulationButton && (
-                      <SimulationDialog
-                        trigger={
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-9 rounded-full border-border/70 bg-background px-3 text-xs"
-                          >
-                            <IconTestPipe className="size-3.5" />
-                            {tComposer("toolSimulation")}
-                          </Button>
-                        }
-                      />
-                    )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleToggleResearch()
+                            closeActionMenu()
+                          }}
+                          className={cn(
+                            actionMenuButtonClassName,
+                            isResearchActive &&
+                              "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200"
+                          )}
+                        >
+                          <IconSearch className={cn(composerSmallIconClassName, "mt-0.5 shrink-0")} />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-medium">{tComposer("toolResearch")}</div>
+                          </div>
+                        </button>
 
-                    {isResearchMode && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
+                        {showIncludeInsightsButton ? (
+                          <button
                             type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-full text-muted-foreground"
-                            aria-label={tComposer("moreActions")}
+                            onClick={() => setIncludeInsights(!includeInsights)}
+                            className={cn(
+                              actionMenuButtonClassName,
+                              includeInsights &&
+                                "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200"
+                            )}
                           >
-                            <IconDots className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent side="top" align="start">
-                          <DropdownMenuItem
-                            onClick={handleClearResearchChat}
-                            disabled={messages.length === 0}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <IconTrash className="size-4" />
-                            {tResearch("clearChat")}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                            <IconSearch className={cn(composerSmallIconClassName, "mt-0.5 shrink-0")} />
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate font-medium">
+                                {tResearch("includeInsights")}
+                              </div>
+                            </div>
+                          </button>
+                        ) : null}
+
+                        <DropdownMenuSeparator />
+
+                        <button
+                          type="button"
+                          onClick={handleOpenImagePickerFromMenu}
+                          disabled={!activeSession || isSwitching || isDocumentMode}
+                          className={cn(
+                            actionMenuButtonClassName,
+                            "disabled:pointer-events-none disabled:opacity-50"
+                          )}
+                        >
+                          <IconPhoto className={cn(composerSmallIconClassName, "mt-0.5 shrink-0")} />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-medium">{tComposer("menuAddImage")}</div>
+                          </div>
+                          {currentAttachments.length > 0 ? (
+                            <Badge
+                              variant="secondary"
+                              className="mt-0.5 rounded-full px-1.5 py-0 text-[10px]"
+                            >
+                              {currentAttachments.length}
+                            </Badge>
+                          ) : null}
+                        </button>
+
+                        {showSimulationButton ? (
+                          <div className="px-1 py-0.5">
+                            <SimulationDialog
+                              trigger={
+                                <button
+                                  type="button"
+                                  onClick={closeActionMenu}
+                                  className={actionMenuButtonClassName}
+                                >
+                                  <IconTestPipe className={cn(composerSmallIconClassName, "mt-0.5 shrink-0")} />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="truncate font-medium">
+                                      {tComposer("toolSimulation")}
+                                    </div>
+                                  </div>
+                                </button>
+                              }
+                            />
+                          </div>
+                        ) : null}
+
+                        {isResearchMode ? (
+                          <DropdownMenuSeparator />
+                        ) : null}
+
+                        {isResearchMode && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={handleClearResearchChatFromMenu}
+                              disabled={messages.length === 0}
+                              className="rounded-xl px-3 py-2.5 text-[12px] text-destructive focus:text-destructive"
+                            >
+                              <IconTrash className={cn(composerSmallIconClassName, "mt-0.5 shrink-0")} />
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate font-medium">
+                                  {tResearch("clearChat")}
+                                </div>
+                              </div>
+                            </DropdownMenuItem>
+                          </>
+                        )}
+
+                        <DropdownMenuSeparator />
+                        <div className="px-3 py-2 text-[10px] leading-4 text-muted-foreground">
+                          {actionMenuHelperText}
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
 
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-1 sm:gap-2">
                     <Button
                       type="button"
                       variant={isMicActiveInUi ? "default" : "outline"}
@@ -1775,7 +1817,7 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
                       }}
                       disabled={isMicDisabled}
                       className={cn(
-                        "h-9 w-9 rounded-full",
+                        composerActionButtonClassName,
                         isMicActiveInUi &&
                           consultationMode !== "ai-doctor" &&
                           "bg-destructive text-white hover:bg-destructive/90",
@@ -1795,14 +1837,14 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
                     >
                       {consultationMode === "ai-doctor" ? (
                         isMicActive ? (
-                          <IconMicrophone className="size-4 animate-pulse" />
+                          <IconMicrophone className={cn(composerPrimaryIconClassName, "animate-pulse")} />
                         ) : (
-                          <IconMicrophoneOff className="size-4" />
+                          <IconMicrophoneOff className={composerPrimaryIconClassName} />
                         )
                       ) : isRecording ? (
-                        <IconPlayerStop className="size-4" />
+                        <IconPlayerStop className={composerPrimaryIconClassName} />
                       ) : (
-                        <IconMicrophone className="size-4" />
+                        <IconMicrophone className={composerPrimaryIconClassName} />
                       )}
                     </Button>
 
@@ -1811,10 +1853,13 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
                         type="button"
                         size="icon"
                         onClick={handleStopResearch}
-                        className="h-9 w-9 rounded-full bg-emerald-600 text-white hover:bg-emerald-500"
+                        className={cn(
+                          composerActionButtonClassName,
+                          "bg-emerald-600 text-white hover:bg-emerald-500"
+                        )}
                         aria-label={tComposer("stopResearch")}
                       >
-                        <IconPlayerStop className="size-4" />
+                        <IconPlayerStop className={composerPrimaryIconClassName} />
                       </Button>
                     ) : (
                       <Button
@@ -1823,7 +1868,7 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
                         onClick={handleSend}
                         disabled={isSendDisabled}
                         className={cn(
-                          "h-9 w-9 rounded-full",
+                          composerActionButtonClassName,
                           isResearchMode
                             ? "bg-emerald-600 text-white hover:bg-emerald-500"
                             : ""
@@ -1837,11 +1882,11 @@ export const SmartConsultationComposer = forwardRef<SmartConsultationComposerHan
                         }
                       >
                         {isSending || (!isResearchMode && isAiResponding) ? (
-                          <IconLoader2 className="size-4 animate-spin" />
+                          <IconLoader2 className={cn(composerPrimaryIconClassName, "animate-spin")} />
                         ) : isResearchMode ? (
-                          <IconSearch className="size-4" />
+                          <IconSearch className={composerPrimaryIconClassName} />
                         ) : (
-                          <IconArrowUp className="size-4" />
+                          <IconArrowUp className={composerPrimaryIconClassName} />
                         )}
                       </Button>
                     )}

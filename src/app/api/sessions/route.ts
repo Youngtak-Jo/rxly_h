@@ -4,6 +4,8 @@ import { requireAuth } from "@/lib/auth"
 import { logAudit } from "@/lib/audit"
 import { logger } from "@/lib/logger"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { ensureSampleConsultationsForUser } from "@/lib/sample-consultations/server"
+import { sortSessionsForList } from "@/lib/session-order"
 
 export async function GET() {
   try {
@@ -12,13 +14,14 @@ export async function GET() {
     const { allowed } = checkRateLimit(user.id, "data")
     if (!allowed) return rateLimitResponse()
 
+    await ensureSampleConsultationsForUser(user.id)
+
     const sessions = await prisma.session.findMany({
       where: { userId: user.id },
       orderBy: { startedAt: "desc" },
-      take: 50,
     })
     logAudit({ userId: user.id, action: "READ", resource: "session" })
-    return NextResponse.json(sessions)
+    return NextResponse.json(sortSessionsForList(sessions).slice(0, 50))
   } catch (error) {
     if (error instanceof NextResponse) return error
     logger.error("Failed to fetch sessions:", error)

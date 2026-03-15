@@ -49,6 +49,10 @@ interface ConsultationTabState {
   setTranscriptCollapsed: (collapsed: boolean) => void
   _toggleTranscript: (() => void) | null
   setToggleTranscript: (fn: (() => void) | null) => void
+
+  isMobileTranscriptOpen: boolean
+  setMobileTranscriptOpen: (open: boolean) => void
+  toggleMobileTranscript: () => void
 }
 
 export const useConsultationTabStore = create<ConsultationTabState>(
@@ -163,5 +167,10 @@ export const useConsultationTabStore = create<ConsultationTabState>(
       set({ isTranscriptCollapsed: collapsed }),
     _toggleTranscript: null,
     setToggleTranscript: (fn) => set({ _toggleTranscript: fn }),
+
+    isMobileTranscriptOpen: false,
+    setMobileTranscriptOpen: (open) => set({ isMobileTranscriptOpen: open }),
+    toggleMobileTranscript: () =>
+      set((state) => ({ isMobileTranscriptOpen: !state.isMobileTranscriptOpen })),
   })
 )

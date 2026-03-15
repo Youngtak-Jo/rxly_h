@@ -24,7 +24,6 @@ import { getDocumentCategoryLabelKey } from "@/lib/documents/categories"
 import { createEmptySessionDocumentGenerationInputs } from "@/lib/documents/generation-config"
 import { getConfirmedDiagnosisRequirement } from "@/lib/documents/generation-requirements"
 import { buildStarterRichTextDocument } from "@/lib/documents/rich-text"
-import { ensureBlankDocumentPersisted } from "@/lib/consultation/blank-document"
 import {
   BUILT_IN_BLANK_DOCUMENT_TEMPLATE_ID,
   buildDocumentTabId,
@@ -360,19 +359,9 @@ export function DocumentsHub() {
               onClick={() => {
                 if (!activeSessionId) return
 
-                const optimisticDocument = createOptimisticBlankDocument(
-                  activeSessionId,
-                  t("untitledBlankDocument")
-                )
+                const optimisticDocument =
+                  createOptimisticBlankDocument(activeSessionId)
                 openExistingDocument(optimisticDocument.id)
-                void ensureBlankDocumentPersisted({
-                  sessionId: activeSessionId,
-                  documentId: optimisticDocument.id,
-                  fallbackTitle: t("untitledBlankDocument"),
-                  errorMessage: t("errors.createBlankFailed"),
-                }).catch(() => {
-                  // The editor will surface the non-blocking error.
-                })
               }}
             />
 

@@ -17,7 +17,7 @@ import {
   type SmartConsultationComposerHandle,
 } from "./smart-consultation-composer"
 import { ConsultationWorkspaceTabs } from "./consultation-workspace-tabs"
-import { MobileTranscriptSection } from "./transcript/mobile-transcript-section"
+import { MobileTranscriptSheet } from "./transcript/mobile-transcript-sheet"
 import { useSessionStore } from "@/stores/session-store"
 import { useConsultationTabStore } from "@/stores/consultation-tab-store"
 import { useCreateSession } from "@/hooks/use-create-session"
@@ -80,21 +80,6 @@ function TranscriptPanelSkeleton() {
   )
 }
 
-function MobileTranscriptSkeleton() {
-  return (
-    <div className="shrink-0 border-b bg-background px-4 py-4">
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-10 flex-1 rounded-2xl" />
-          <Skeleton className="h-10 w-24 rounded-full" />
-        </div>
-        <Skeleton className="h-20 w-[84%] rounded-3xl" />
-        <Skeleton className="ml-auto h-[4.5rem] w-[68%] rounded-3xl" />
-      </div>
-    </div>
-  )
-}
-
 function ConsultationComposerSkeleton() {
   return (
     <div className="pointer-events-none px-3 py-3 sm:px-4">
@@ -134,6 +119,9 @@ export function ConsultationLayout({
     (s) => s.setTranscriptCollapsed
   )
   const setToggleTranscript = useConsultationTabStore((s) => s.setToggleTranscript)
+  const setMobileTranscriptOpen = useConsultationTabStore(
+    (s) => s.setMobileTranscriptOpen
+  )
   const rightPanelRef = useRef<PanelImperativeHandle | null>(null)
   const composerRef = useRef<SmartConsultationComposerHandle | null>(null)
   const composerMeasureRef = useRef<HTMLDivElement | null>(null)
@@ -250,6 +238,12 @@ export function ConsultationLayout({
     }
   }, [toggleRightPanel, setToggleTranscript, isMobile, isMobileReady])
 
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileTranscriptOpen(false)
+    }
+  }, [isMobile, setMobileTranscriptOpen])
+
   // Initial loading (no session yet)
   if ((isActiveSessionLoading || shouldShowRequestedSessionLoading) && !activeSession) {
     return (
@@ -321,6 +315,7 @@ export function ConsultationLayout({
   if (isMobile) {
     return (
       <div className="relative flex-1 min-h-0 min-w-0 flex flex-col">
+        <MobileTranscriptSheet loading={shouldShowRequestedSessionSkeleton} />
         {isSwitching && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 transition-opacity duration-150">
             <IconLoader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -330,12 +325,6 @@ export function ConsultationLayout({
           "flex flex-col flex-1 min-h-0 transition-opacity duration-200",
           isSwitching ? "opacity-40 pointer-events-none" : "opacity-100"
         )}>
-          {activeTab !== "research" &&
-            (shouldShowRequestedSessionSkeleton ? (
-              <MobileTranscriptSkeleton />
-            ) : (
-              <MobileTranscriptSection />
-            ))}
           {centerPanelStage}
         </div>
       </div>

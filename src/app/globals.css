@@ -1357,6 +1357,72 @@
   text-decoration: underline;
 }
 
+@media (max-width: 767px) {
+  .research-markdown {
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .research-markdown h2 {
+    font-size: 15px;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.4rem;
+  }
+
+  .research-markdown h3 {
+    font-size: 14px;
+    margin-top: 1.125rem;
+    margin-bottom: 0.625rem;
+  }
+
+  .research-markdown h4 {
+    font-size: 13px;
+    margin-top: 1rem;
+  }
+
+  .research-markdown p {
+    margin-top: 0.625rem;
+    margin-bottom: 0.625rem;
+    line-height: 1.75;
+  }
+
+  .research-markdown ul,
+  .research-markdown ol {
+    margin-top: 0.625rem;
+    margin-bottom: 0.625rem;
+    padding-left: 1.25rem;
+  }
+
+  .research-markdown li {
+    line-height: 1.72;
+  }
+
+  .research-markdown blockquote {
+    padding: 0.625rem 0.875rem;
+  }
+
+  .research-markdown table {
+    font-size: 12px;
+  }
+
+  .research-markdown th {
+    padding: 0.5rem 0.625rem;
+  }
+
+  .research-markdown td {
+    padding: 0.45rem 0.625rem;
+  }
+
+  .research-markdown pre {
+    padding: 0.875rem;
+  }
+
+  .research-markdown code {
+    font-size: 12px;
+  }
+}
+
 /* ── driver.js tour overrides ───────────────────────────────────────── */
 /* NOTE: Do NOT set background on .driver-overlay — it bleeds through
    the SVG cutout and dims the highlighted element. The overlay color is

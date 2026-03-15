@@ -6,6 +6,7 @@ import { getDocumentWorkspaceSnapshot } from "@/lib/documents/server"
 import { logAudit } from "@/lib/audit"
 import { normalizeUiLocale } from "@/i18n/config"
 import { resolveServerUiLocale } from "@/i18n/server"
+import { ensureSampleConsultationsForUser } from "@/lib/sample-consultations/server"
 
 export async function GET(req: Request) {
   try {
@@ -17,6 +18,8 @@ export async function GET(req: Request) {
     const locale =
       normalizeUiLocale(url.searchParams.get("locale")) ??
       (await resolveServerUiLocale())
+
+    await ensureSampleConsultationsForUser(user.id)
 
     const snapshot = await getDocumentWorkspaceSnapshot(user.id, locale)
     logAudit({

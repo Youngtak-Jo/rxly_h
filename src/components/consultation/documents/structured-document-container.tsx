@@ -17,7 +17,10 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { deleteCachedSession } from "@/hooks/use-session-loader"
-import { ensureBlankDocumentPersisted } from "@/lib/consultation/blank-document"
+import {
+  ensureBlankDocumentPersisted,
+  shouldPersistBlankDocumentDraft,
+} from "@/lib/consultation/blank-document"
 import {
   BUILT_IN_BLANK_DOCUMENT_TEMPLATE_ID,
   BUILT_IN_PATIENT_HANDOUT_TEMPLATE_ID,
@@ -53,6 +56,31 @@ import type {
 
 interface SessionDocumentSaveResponse {
   sessionDocument: SessionDocumentRecord
+}
+
+const pendingPristineBlankDiscardTimers = new Map<
+  string,
+  ReturnType<typeof setTimeout>
+>()
+
+function cancelPendingPristineBlankDiscard(key: string | null) {
+  if (!key) return
+  const timer = pendingPristineBlankDiscardTimers.get(key)
+  if (!timer) return
+  clearTimeout(timer)
+  pendingPristineBlankDiscardTimers.delete(key)
+}
+
+function schedulePendingPristineBlankDiscard(
+  key: string,
+  discard: () => void
+) {
+  cancelPendingPristineBlankDiscard(key)
+  const timer = setTimeout(() => {
+    pendingPristineBlankDiscardTimers.delete(key)
+    discard()
+  }, 0)
+  pendingPristineBlankDiscardTimers.set(key, timer)
 }
 
 function normalizeCode(code: string) {
@@ -202,6 +230,9 @@ export function StructuredDocumentContainer({
   const upsertSessionDocument = useSessionDocumentStore(
     (state) => state.upsertSessionDocument
   )
+  const removeSessionDocument = useSessionDocumentStore(
+    (state) => state.removeSessionDocument
+  )
   const setSessionDocumentUiState = useSessionDocumentStore(
     (state) => state.setSessionDocumentUiState
   )
@@ -253,6 +284,9 @@ export function StructuredDocumentContainer({
   const patchActiveDraft = useActiveConsultationDocumentDraftStore(
     (state) => state.patchDraft
   )
+  const clearActiveDraft = useActiveConsultationDocumentDraftStore(
+    (state) => state.clearDocument
+  )
 
   const schemaNodes = useMemo(
     () =>
@@ -283,6 +317,24 @@ export function StructuredDocumentContainer({
   const draftTitle = activeDraft?.draftTitle ?? ""
   const isStreaming = activeDraft?.isStreaming ?? false
   const isFinalReconcilePending = activeDraft?.finalReconcilePending === true
+  const pristineBlankDiscardKey =
+    activeSessionId && sessionDocument
+      ? `${activeSessionId}:${sessionDocument.id}`
+      : null
+  const latestBlankDraftRef = useRef({
+    activeSessionId,
+    sessionDocument,
+    draftDocument,
+    draftTitle,
+    isBlankDocument,
+  })
+  latestBlankDraftRef.current = {
+    activeSessionId,
+    sessionDocument,
+    draftDocument,
+    draftTitle,
+    isBlankDocument,
+  }
   const hasVisibleDocument =
     !!draftDocument &&
     (isBlankDocument
@@ -302,6 +354,44 @@ export function StructuredDocumentContainer({
           sessionDocument,
         })
       : null
+
+  const discardPristineBlankDocument = useCallback(() => {
+    const snapshot = latestBlankDraftRef.current
+    if (
+      !snapshot.activeSessionId ||
+      !snapshot.sessionDocument?.localOnly ||
+      !snapshot.isBlankDocument
+    ) {
+      return
+    }
+
+    if (
+      shouldPersistBlankDocumentDraft({
+        title: snapshot.draftTitle,
+        document: snapshot.draftDocument,
+      })
+    ) {
+      return
+    }
+
+    clearActiveDraft(snapshot.activeSessionId, snapshot.sessionDocument.id)
+    removeSessionDocument(snapshot.activeSessionId, snapshot.sessionDocument.id)
+  }, [clearActiveDraft, removeSessionDocument])
+
+  useEffect(() => {
+    cancelPendingPristineBlankDiscard(pristineBlankDiscardKey)
+  }, [pristineBlankDiscardKey])
+
+  useEffect(() => {
+    return () => {
+      if (!pristineBlankDiscardKey) return
+      // Defer discarding so a Strict Mode remount can cancel it.
+      schedulePendingPristineBlankDiscard(
+        pristineBlankDiscardKey,
+        discardPristineBlankDocument
+      )
+    }
+  }, [discardPristineBlankDocument, pristineBlankDiscardKey])
 
   useEffect(() => {
     if (!activeSessionId || !sessionDocument) {
@@ -376,6 +466,15 @@ export function StructuredDocumentContainer({
     if (!activeSessionId || !sessionDocument || !draftDocument) return
 
     if (sessionDocument.localOnly) {
+      if (
+        !shouldPersistBlankDocumentDraft({
+          title: draftTitle,
+          document: draftDocument,
+        })
+      ) {
+        return
+      }
+
       const persistenceFingerprint = JSON.stringify({
         documentId: sessionDocument.id,
         title: draftTitle.trim() || null,
@@ -819,6 +918,8 @@ export function StructuredDocumentContainer({
             title={tHub("backToList")}
             onClick={() => {
               if (!activeSessionId) return
+              cancelPendingPristineBlankDiscard(pristineBlankDiscardKey)
+              discardPristineBlankDocument()
               openPicker(activeSessionId)
             }}
           >
