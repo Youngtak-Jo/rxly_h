@@ -70,23 +70,20 @@
     "modeLabels": {
       "insights": "Live Insights",
       "ddx": "Differential Dx",
-      "record": "Consultation Record",
-      "research": "Research",
-      "patientHandout": "Patient Handout"
+      "documents": "Documents"
     },
     "modeShortLabels": {
       "insights": "LI",
       "ddx": "DDx",
-      "record": "CR",
-      "research": "Ref",
-      "patientHandout": "Pt Ed"
+      "documents": "Docs"
     },
     "panels": {
       "insights": "Live insights panel",
       "transcript": "Transcript panel",
+      "transcriptOverlay": "Recent transcript overlay",
       "ddx": "Differential diagnosis panel",
       "support": "Clinical decision support panel",
-      "record": "Consultation record overview",
+      "documents": "Documents panel",
       "fhir": "Review FHIR data dialog preview",
       "research": "Research panel",
       "patientHandout": "Patient handout panel"
@@ -116,9 +113,14 @@
       "validationNotes": "Validation Notes",
       "research": "Research",
       "userQuery": "User Query",
-      "patientHandout": "Patient Handout"
+      "patientHandout": "Patient Handout",
+      "documents": "Documents"
     },
     "noCriticalWarningSigns": "No critical warning signs yet.",
+    "insights": {
+      "recentTranscript": "Recent transcript",
+      "latestBubbles": "Showing the latest 3 bubbles"
+    },
     "speaker": {
       "doctor": "Dr",
       "patient": "Pt"
@@ -130,6 +132,29 @@
       "lower": "Lower"
     },
     "confidenceFormat": "{value} confidence",
+    "ddx": {
+      "mobileSummaryTitle": "Top diagnosis",
+      "immediateActions": "Immediate actions"
+    },
+    "documents": {
+      "currentDocument": "Current document",
+      "selectorLabel": "Document examples",
+      "fhirSummaryTitle": "FHIR sync",
+      "resourceSummary": "{ready} ready / {needsReview} needs review",
+      "reviewNeeded": "One item still needs clinical review.",
+      "syncReady": "All core resources are ready to sync.",
+      "openSync": "Open sync preview",
+      "kinds": {
+        "record": "Consultation Record",
+        "research": "Research",
+        "patientHandout": "Patient Handout"
+      },
+      "descriptions": {
+        "record": "Structured visit note and plan",
+        "research": "Evidence brief and source-backed answer",
+        "patientHandout": "Patient-facing summary and next steps"
+      }
+    },
     "record": {
       "vitals": {
         "temp": "Temp",

@@ -70,23 +70,20 @@
     "modeLabels": {
       "insights": "실시간 인사이트",
       "ddx": "감별진단",
-      "record": "진료 기록",
-      "research": "리서치",
-      "patientHandout": "환자 안내문"
+      "documents": "문서"
     },
     "modeShortLabels": {
       "insights": "요약",
       "ddx": "DDx",
-      "record": "기록",
-      "research": "연구",
-      "patientHandout": "안내"
+      "documents": "문서"
     },
     "panels": {
       "insights": "실시간 인사이트 패널",
       "transcript": "전사 패널",
+      "transcriptOverlay": "최근 전사 오버레이",
       "ddx": "감별진단 패널",
       "support": "임상 의사결정 지원 패널",
-      "record": "진료 기록 개요",
+      "documents": "문서 패널",
       "fhir": "FHIR 데이터 검토 대화상자 미리보기",
       "research": "리서치 패널",
       "patientHandout": "환자 안내문 패널"
@@ -116,9 +113,14 @@
       "validationNotes": "검증 메모",
       "research": "리서치",
       "userQuery": "사용자 질의",
-      "patientHandout": "환자 안내문"
+      "patientHandout": "환자 안내문",
+      "documents": "문서"
     },
     "noCriticalWarningSigns": "아직 중요한 경고 신호는 없습니다.",
+    "insights": {
+      "recentTranscript": "최근 전사",
+      "latestBubbles": "가장 최근 말풍선 3개만 표시"
+    },
     "speaker": {
       "doctor": "의사",
       "patient": "환자"
@@ -130,6 +132,29 @@
       "lower": "낮음"
     },
     "confidenceFormat": "{value} 신뢰도",
+    "ddx": {
+      "mobileSummaryTitle": "대표 진단",
+      "immediateActions": "즉시 조치"
+    },
+    "documents": {
+      "currentDocument": "현재 문서",
+      "selectorLabel": "문서 예시 선택",
+      "fhirSummaryTitle": "FHIR 동기화",
+      "resourceSummary": "준비 완료 {ready}개 / 검토 필요 {needsReview}개",
+      "reviewNeeded": "임상 검토가 필요한 항목이 남아 있습니다.",
+      "syncReady": "핵심 리소스가 동기화 준비를 마쳤습니다.",
+      "openSync": "동기화 미리보기",
+      "kinds": {
+        "record": "진료 기록",
+        "research": "리서치",
+        "patientHandout": "환자 안내문"
+      },
+      "descriptions": {
+        "record": "구조화된 진료 기록과 계획",
+        "research": "근거 요약과 출처 기반 답변",
+        "patientHandout": "환자용 요약과 다음 단계 안내"
+      }
+    },
     "record": {
       "vitals": {
         "temp": "체온",

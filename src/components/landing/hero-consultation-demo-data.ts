@@ -1,9 +1,4 @@
-export type HeroDemoMode =
-  | "insights"
-  | "ddx"
-  | "record"
-  | "research"
-  | "patientHandout"
+export type HeroDemoMode = "insights" | "ddx" | "documents"
 
 export interface HeroDemoModeOption {
   id: HeroDemoMode
@@ -13,6 +8,17 @@ export interface HeroDemoModeOption {
 export const HERO_DEMO_MODE_OPTIONS: HeroDemoModeOption[] = [
   { id: "insights", label: "Live Insights" },
   { id: "ddx", label: "Differential Dx" },
+  { id: "documents", label: "Documents" },
+]
+
+export type HeroDemoDocumentKind = "record" | "research" | "patientHandout"
+
+export interface HeroDemoDocumentOption {
+  id: HeroDemoDocumentKind
+  label: string
+}
+
+export const HERO_DEMO_DOCUMENT_OPTIONS: HeroDemoDocumentOption[] = [
   { id: "record", label: "Consultation Record" },
   { id: "research", label: "Research" },
   { id: "patientHandout", label: "Patient Handout" },
