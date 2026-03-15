@@ -68,8 +68,9 @@
     "blankDocumentPreviewDescription": "빈 페이지에서 바로 시작합니다.",
     "blankDocumentPreviewTitle": "빈 캔버스",
     "blankDocumentTitle": "빈 문서 만들기",
+    "catalogButton": "문서 카탈로그",
     "editorEyebrow": "현재 문서",
-    "emptyDescription": "이 진료에는 아직 설치된 문서 템플릿이 없습니다.",
+    "emptyDescription": "이 진료에는 아직 활성화된 문서 템플릿이 없습니다.",
     "emptyHint": "먼저 문서 라이브러리에서 템플릿을 설치하거나 관리하세요.",
     "emptyTitle": "설치된 문서 없음",
     "errors": {

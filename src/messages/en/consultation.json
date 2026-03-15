@@ -68,8 +68,9 @@
     "blankDocumentPreviewDescription": "Start from an empty page.",
     "blankDocumentPreviewTitle": "Blank canvas",
     "blankDocumentTitle": "Create Blank Document",
+    "catalogButton": "Document Catalog",
     "editorEyebrow": "Current document",
-    "emptyDescription": "This consultation does not have any installed document templates yet.",
+    "emptyDescription": "This consultation does not have any active document templates yet.",
     "emptyHint": "Install or manage templates in the document library first.",
     "emptyTitle": "No installed documents",
     "errors": {

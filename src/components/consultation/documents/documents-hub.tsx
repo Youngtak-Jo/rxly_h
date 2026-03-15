@@ -21,13 +21,13 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { deleteCachedSession } from "@/hooks/use-session-loader"
 import { getDocumentCategoryLabelKey } from "@/lib/documents/categories"
+import { getVisibleConsultationInstalledDocuments } from "@/lib/consultation/documents-hub"
 import { createEmptySessionDocumentGenerationInputs } from "@/lib/documents/generation-config"
 import { getConfirmedDiagnosisRequirement } from "@/lib/documents/generation-requirements"
 import { buildStarterRichTextDocument } from "@/lib/documents/rich-text"
 import {
   BUILT_IN_BLANK_DOCUMENT_TEMPLATE_ID,
   buildDocumentTabId,
-  getTemplateIdFromTabId,
 } from "@/lib/documents/constants"
 import { useConsultationDocumentsStore } from "@/stores/consultation-documents-store"
 import { useDocumentWorkspaceStore } from "@/stores/document-workspace-store"
@@ -156,25 +156,10 @@ export function DocumentsHub() {
   )
   const [actionKey, setActionKey] = useState<string | null>(null)
 
-  const orderedDocuments = useMemo(() => {
-    const installedByTemplateId = new Map(
-      installedDocuments.map((document) => [document.templateId, document])
-    )
-    const templateIdsFromLayout = tabOrder
-      .map((tabId) => getTemplateIdFromTabId(tabId))
-      .filter((templateId): templateId is string => !!templateId)
-
-    const orderedTemplateIds = [
-      ...templateIdsFromLayout,
-      ...installedDocuments
-        .map((document) => document.templateId)
-        .filter((templateId) => !templateIdsFromLayout.includes(templateId)),
-    ]
-
-    return orderedTemplateIds
-      .map((templateId) => installedByTemplateId.get(templateId))
-      .filter((document): document is InstalledDocumentSummary => !!document)
-  }, [installedDocuments, tabOrder])
+  const orderedDocuments = useMemo(
+    () => getVisibleConsultationInstalledDocuments(installedDocuments, tabOrder),
+    [installedDocuments, tabOrder]
+  )
 
   const blankDocuments = useMemo(
     () =>
@@ -336,6 +321,11 @@ export function DocumentsHub() {
       <DocumentSection
         title={t("pickerTitle")}
         description={t("pickerDescription")}
+        actions={
+          <Button asChild size="sm" variant="outline">
+            <Link href="/documents">{t("catalogButton")}</Link>
+          </Button>
+        }
       >
         <div className="space-y-6">
           {orderedDocuments.length === 0 ? (
