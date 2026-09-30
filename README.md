@@ -5,21 +5,26 @@
 <h1 align="center">Rxly.ai</h1>
 
 <p align="center">
-  <strong>Real-time AI-Powered Medical Consultation Assistant</strong><br/>
-  Transforming patient consultations with live transcription, intelligent clinical insights, and automated medical documentation.
+  <strong>Real-time AI medical consultation assistant</strong><br/>
+  Live transcription, clinical insights and draft records that a physician reviews during the visit.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Next.js%2016-000000?logo=next.js&logoColor=white" alt="Next.js" />
   <img src="https://img.shields.io/badge/Tailwind%20CSS%204-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" />
-  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
 </p>
 
 <p align="center">
   <a href="https://rxly.ai"><strong>Live Demo &rarr;</strong></a>
 </p>
+
+I was one of 500 participants selected from roughly 13,000 applicants for Anthropic's Built with Opus 4.6 Claude Code hackathon. I developed Rxly alone during the hackathon and submitted it. After the submission, I continued development until March 2026.
+
+The prototype has not undergone clinical validation or a compliance audit.
+
+- Project write-up: [youngtakjo.com/en/projects/rxly](https://youngtakjo.com/en/projects/rxly)
+- Hackathon submission: [Built with Opus 4.6 gallery](https://cerebralvalley.ai/e/claude-code-hackathon/hackathon/gallery/96)
 
 ---
 
@@ -31,48 +36,53 @@
 
 ## Why Rxly?
 
-My brother works as a firefighter in Korea. Through him, I witnessed firsthand how overwhelmed emergency rooms have become. In Korea, **emergency room capacity denial cases surged 88% year-over-year** — patients are being turned away because the system simply can't keep up.
+My brother works as a firefighter in Korea. Through him, I saw firsthand how overwhelmed emergency rooms have become.
 
-In the United States, healthcare spending has reached **$15,474 per person annually**, consuming **18% of the nation's GDP**. Globally, healthcare costs continue to climb at every level — individuals, businesses, and governments — driven by an aging population, the rise of chronic diseases, and escalating service prices.
-
-**We believe AI can change this.** By augmenting healthcare professionals with intelligent tools, we can dramatically increase productivity across the medical ecosystem. When doctors spend less time on documentation and more time on patients, the entire system becomes more efficient — and ultimately, **more lives are saved.**
-
-Rxly.ai is our answer: an AI assistant that works alongside physicians in real-time, handling transcription, analysis, and documentation so they can focus on what matters most — the patient.
+Rxly focuses on one part of clinical work: turning a consultation into a usable record. While listening to a patient, a physician also has to identify key information, remember follow-up questions and prepare documentation for after the visit. I built an assistant that prepares draft records and items to review as the conversation unfolds. I worked through clinical requirements with physicians practicing in the US and focused on a workspace they can use during the consultation.
 
 ---
 
 ## Key Features
 
 ### Real-Time Voice Transcription
-Live speech-to-text optimized for medical terminology with automatic speaker diarization. Every word of the consultation is captured accurately in real-time.
+
+Live speech-to-text with speaker diarization. English uses Deepgram's Nova-3 Medical model; other languages use Nova-3. Interim results are handled separately from finalized utterances.
+
+### Speaker Role Identification
+
+Speech is first grouped by speaker. The conversation content is then used to assign doctor and patient roles, and a speaker stays unidentified until a role is assigned.
 
 ### AI Clinical Insights
-Instant generation of clinical summaries, key findings, red flags, and dynamic action checklists — updated live as the conversation unfolds.
+
+Clinical summaries, key findings, red flags and action checklists update as the conversation continues. Checked items, physician notes and manually added items are kept when new suggestions arrive.
 
 ### Differential Diagnosis (DDx)
-Evidence-based differential diagnoses ranked by confidence level, complete with ICD-11 classification codes and supporting clinical evidence.
 
-### Tier 1 Medical Knowledge Integration
-A RAG (Retrieval-Augmented Generation) pipeline connecting **authoritative medical sources** — including **OpenFDA, ClinicalTrials.gov, DailyMed, PubMed, and Europe PMC** — providing physicians with high-confidence, evidence-based answers at the point of care.
+Differential-diagnosis candidates are ranked by confidence and carry ICD-11 codes and links to the sources retrieved for them. The model can still suggest candidates when retrieval returns nothing, so appearing in the list does not mean a candidate has been verified.
 
-### Automated Medical Scribe
-Structured SOAP notes (Subjective, Objective, Assessment, Plan) auto-generated from the voice conversation and physician annotations. No more hours spent on charting after clinic.
+### Medical Knowledge Sources
+
+A retrieval pipeline queries five medical knowledge sources (OpenFDA, ClinicalTrials.gov, DailyMed, PubMed and Europe PMC) in parallel, with ICD-11 lookup alongside them. Sources that return results are passed to the model with titles and links for citation. A slow or failed source does not block the others.
+
+### Draft Medical Records
+
+Structured SOAP notes (Subjective, Objective, Assessment, Plan) are drafted from the transcript, physician notes and the existing draft. Editable document templates add their own fields, and templates with a diagnosis field can require a confirmed diagnosis.
 
 ### Simulation Mode
-Test and demonstrate the platform capabilities with a built-in simulation engine. Run complex clinical scenarios at up to 4x speed to verify real-time analysis without needing live actors.
 
-### PWA Support
-Install Rxly as a native-like application on desktop and mobile devices. Offline-capable architecture ensures critical functionality remains accessible.
-
-### Intelligent Speaker Identification
-AI-based automatic classification of Doctor vs. Patient speech from raw audio, enabling accurate attribution throughout the transcript.
+A built-in simulation replays sample consultations at up to 4x speed. It is used to inspect transcription, analysis updates, pausing and resuming, and session switching without a live conversation.
 
 ### Multimodal Image Analysis
-Upload medical images during a consultation for context-aware AI analysis — correlated with the ongoing conversation, patient history, and clinical findings.
 
-### EMR/EHR Integration
-FHIR R4-compliant data export for seamless interoperability with electronic health record systems.
+Images uploaded during a consultation are analyzed together with the conversation and earlier image findings.
 
+### FHIR Export with Review
+
+The app prepares a FHIR R4 bundle, shows it for review, and then sends it to Medplum. This provides an export format and connector; interoperability with a hospital EMR has not been validated.
+
+### Installable Web App
+
+A web app manifest lets supporting browsers install Rxly on desktop and mobile.
 
 ## How It Works
 
@@ -87,10 +97,10 @@ FHIR R4-compliant data export for seamless interoperability with electronic heal
                                                                        └─────────────────────────┘
 ```
 
-1. **Record** — The physician starts a consultation and Rxly begins live transcription with speaker diarization.
-2. **Analyze** — AI processes the transcript in real-time, generating insights, flagging red flags, and suggesting differential diagnoses.
-3. **Document** — A complete SOAP note is automatically drafted, ready for physician review and EMR export.
-4. **Research** — Physicians can query the built-in research assistant, backed by 6 medical knowledge sources, for evidence-based answers during the consultation.
+1. **Record:** The physician starts a consultation and Rxly begins live transcription with speaker diarization.
+2. **Analyze:** The AI processes the transcript as it grows, generating insights, flagging red flags and suggesting differential diagnoses.
+3. **Document:** A SOAP note is drafted for the physician to review, edit and export.
+4. **Research:** Physicians can query the built-in research assistant, backed by five medical knowledge sources (OpenFDA, ClinicalTrials.gov, DailyMed, PubMed, Europe PMC) and ICD-11 lookup, during the consultation.
 
 ---
 
@@ -98,7 +108,7 @@ FHIR R4-compliant data export for seamless interoperability with electronic heal
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20.9+
 - PostgreSQL database
 - API keys for AI, speech-to-text, and authentication services
 
@@ -106,8 +116,8 @@ FHIR R4-compliant data export for seamless interoperability with electronic heal
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/rxly.git
-cd rxly
+git clone https://github.com/Youngtak-Jo/rxly_h.git
+cd rxly_h
 
 # Install dependencies
 npm install
@@ -174,19 +184,12 @@ Open [http://localhost:3000](http://localhost:3000) to see the application.
 
 ## Security & Privacy
 
-Rxly.ai implements technical safeguards in preparation for HIPAA compliance:
+Rxly implements technical controls informed by HIPAA requirements:
 
-- **AES-256-GCM Encryption** — All Protected Health Information (PHI) is encrypted at rest in the database
-- **Comprehensive Audit Logging** — Every data access and modification is recorded with full audit trails
-- **Content Security Policy** — Strict CSP headers prevent XSS and injection attacks
-- **Rate Limiting** — API endpoints are rate-limited to prevent abuse
-- **Prompt Injection Protection** — All user inputs are sanitized before reaching AI models
-- **Transport Security** — HSTS headers enforce HTTPS connections
+- **AES-256-GCM field encryption:** Clinical text fields are encrypted before they are written to the database.
+- **Audit logging:** Most API routes record create, read, update and delete actions with the user and resource.
+- **Security headers:** Every route sets a Content Security Policy, HSTS, X-Frame-Options and related headers.
+- **Rate limiting:** Most API routes apply per-user request limits.
+- **Custom-instruction filtering:** A physician's custom instructions are capped at 2,000 characters and discarded if they match known prompt-injection patterns before they are added to the system prompt.
 
-> **Note:** Rxly.ai is implementing technical safeguards aligned with HIPAA requirements. A Business Associate Agreement (BAA) is not currently in place.
-
----
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+> **Note:** These controls do not substitute for clinical validation or a compliance audit. A Business Associate Agreement (BAA) is not in place.
